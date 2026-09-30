@@ -1,0 +1,199 @@
+AVISOS DE TERCEROS DE Cotejo
+THIRD-PARTY NOTICES FOR Cotejo
+
+========================================================================
+Cotejo incluye componentes de terceros que se rigen por sus
+propias licencias, no por la licencia de Cotejo (LICENSE,
+LicenseRef-Cotejo-Proprietary). Nada en la licencia de Cotejo
+restringe los derechos que estas licencias le conceden. Dónde están
+los textos completos de cada licencia se dice en la sección F.
+
+Cotejo includes third-party components governed by their own
+licenses, not by the Cotejo license (LICENSE,
+LicenseRef-Cotejo-Proprietary). Nothing in the Cotejo license
+restricts the rights these licenses grant you. Section F says where
+the full text of each license is.
+
+
+------------------------------------------------------------------------
+A. COMPONENTES QUE Cotejo USA DIRECTAMENTE
+------------------------------------------------------------------------
+
+Python
+  Licencia: PSF-2.0 (Python Software Foundation License Version 2)
+  Copyright (c) 2001 Python Software Foundation. All rights reserved.
+  Incluye componentes con sus propias licencias, enumerados en el
+  archivo de licencia de Python que acompaña al programa (sección F).
+  https://www.python.org/
+
+PyGObject
+  Licencia: LGPL-2.1-or-later
+  Copyright (c) los autores de PyGObject.
+  https://gitlab.gnome.org/GNOME/pygobject
+
+GTK 4
+  Licencia: LGPL-2.1-or-later
+  Copyright (c) The GTK Team y colaboradores.
+  https://gitlab.gnome.org/GNOME/gtk
+
+libadwaita
+  Licencia: LGPL-2.1-or-later
+  Copyright (c) los autores de libadwaita.
+  https://gitlab.gnome.org/GNOME/libadwaita
+
+GLib (incluye GObject, GIO y girepository)
+  Licencia: LGPL-2.1-or-later
+  Copyright (c) los autores de GLib.
+  https://gitlab.gnome.org/GNOME/glib
+
+gobject-introspection (typelibs y, si el build la incluye,
+libgirepository-1.0)
+  Licencia: LGPL-2.1-or-later (librería); los .typelib se generan a
+  partir de cada librería y siguen su licencia.
+  https://gitlab.gnome.org/GNOME/gobject-introspection
+
+Pango
+  Licencia: LGPL-2.1-or-later
+  Copyright (c) los autores de Pango.
+  https://gitlab.gnome.org/GNOME/pango
+
+
+------------------------------------------------------------------------
+B. TIPOGRAFÍAS (carpeta de fuentes del programa)
+------------------------------------------------------------------------
+
+Las tres se distribuyen bajo la SIL Open Font License 1.1, cuyo texto
+completo acompaña a las fuentes en el archivo OFL.txt. Pueden usarse,
+estudiarse, modificarse y redistribuirse libremente, pero no venderse
+por sí solas.
+
+Inter
+  Licencia: OFL-1.1
+  Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)
+  Archivo: Inter[opsz,wght].ttf
+
+Sora
+  Licencia: OFL-1.1
+  Copyright 2019 The Sora Project Authors
+  (https://github.com/sora-xor/sora-font)
+  Archivo: Sora[wght].ttf
+
+IBM Plex Mono
+  Licencia: OFL-1.1
+  Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"
+  Archivos: IBMPlexMono-Regular.ttf, IBMPlexMono-Medium.ttf
+  https://github.com/IBM/plex
+
+
+------------------------------------------------------------------------
+C. LIBRERÍAS BAJO LGPL: SUS DERECHOS Y EL CÓDIGO FUENTE
+   LGPL LIBRARIES: YOUR RIGHTS AND THE SOURCE CODE
+------------------------------------------------------------------------
+
+Cotejo usa las librerías marcadas como LGPL en este archivo. Se
+distribuyen bajo la GNU Lesser General Public License, versión 2.1 (o,
+a su elección, una posterior cuando la librería lo permite). El texto
+completo está en licenses/LGPL-2.1.txt (versión de Windows).
+
+Esas librerías se entregan como archivos separados y enlazados de forma
+dinámica: en Windows, los archivos .dll de la carpeta del programa, el
+paquete «gi» de PyGObject y los archivos .typelib de
+lib/girepository-1.0; en Linux, las librerías compartidas (.so) del
+sistema o del paquete. Usted puede sustituir cualquiera de ellas por una
+versión modificada o distinta de la misma librería, siempre que sea
+compatible en su interfaz, y Cotejo la usará en su lugar. La
+licencia de Cotejo le permite modificar esas librerías para su
+propio uso y aplicar ingeniería inversa en la medida necesaria para
+depurar esas modificaciones (LICENSE, cláusula 4.3).
+
+Código fuente: el código fuente completo y correspondiente de cada
+librería LGPL incluida en una versión de Cotejo, con los scripts
+usados para compilarla, se publica junto a esa versión en
+https://github.com/Rafael088/cotejo/releases. Además, Rafael Eduardo Aguirre Gonzalez ofrece, durante al menos tres años
+desde la última vez que distribuya esa versión, entregar ese código
+fuente a cualquiera que lo solicite en https://github.com/Rafael088/cotejo/issues, por un precio no
+superior al coste de realizar la copia.
+
+Cotejo uses the libraries marked as LGPL in this file. They are
+distributed under the GNU Lesser General Public License, version 2.1 (or,
+at your option, a later version where the library allows it). The full
+text is in licenses/LGPL-2.1.txt (Windows version).
+
+These libraries are shipped as separate, dynamically linked files: on
+Windows, the .dll files in the program folder, the PyGObject "gi"
+package and the .typelib files in lib/girepository-1.0; on Linux, the
+shared libraries (.so) of the system or package. You may replace any of
+them with a modified or different, interface-compatible version of the
+same library, and Cotejo will use it instead. The Cotejo
+license allows you to modify these libraries for your own use and to
+reverse engineer to the extent necessary to debug such modifications
+(LICENSE, section 4.3).
+
+Source code: the complete corresponding source code of each LGPL library
+included in a Cotejo release, together with the scripts used to
+build it, is published alongside that release at https://github.com/Rafael088/cotejo/releases. In
+addition, Rafael Eduardo Aguirre Gonzalez offers, for at least three years after it last
+distributes that release, to provide that source code to anyone who
+requests it at https://github.com/Rafael088/cotejo/issues, for a charge no more than the cost of
+making the copy.
+
+
+------------------------------------------------------------------------
+D. EL RUNTIME DE WINDOWS / THE WINDOWS RUNTIME
+   (solo en el ZIP portable y el instalador de Windows)
+------------------------------------------------------------------------
+
+La versión de Windows lleva su propio Python, GTK 4 y libadwaita en la
+carpeta «runtime», tomados sin modificar de los paquetes de MSYS2
+(UCRT64, https://www.msys2.org/), junto con sus dependencias: cairo,
+Pango, HarfBuzz, FreeType, gdk-pixbuf, librsvg, FriBidi, gettext,
+libiconv, zlib, libpng, libjpeg-turbo, OpenSSL y el runtime de GCC,
+entre otras. La lista exacta de cada versión, con el archivo, la huella
+SHA-256 y la licencia que declara cada paquete, está en
+runtime/PAQUETES.txt; se genera al construir, así que siempre es la de
+lo que se incluyó. Las versiones de Linux no redistribuyen nada de esto:
+usan el Python y el GTK del sistema.
+
+The Windows version ships its own Python, GTK 4 and libadwaita in the
+"runtime" folder, taken unmodified from the MSYS2 packages (UCRT64,
+https://www.msys2.org/), together with their dependencies: cairo,
+Pango, HarfBuzz, FreeType, gdk-pixbuf, librsvg, FriBidi, gettext,
+libiconv, zlib, libpng, libjpeg-turbo, OpenSSL and the GCC runtime,
+among others. The exact list for each release, with the file, its
+SHA-256 and the license each package declares, is in
+runtime/PAQUETES.txt; it is generated at build time, so it always
+matches what was included. The Linux versions redistribute none of
+this: they use the system's Python and GTK.
+
+FreeType: Portions of this software are copyright © The FreeType
+Project (www.freetype.org). All rights reserved.
+
+
+------------------------------------------------------------------------
+E. LANZADORES E INSTALADOR / LAUNCHERS AND INSTALLER
+------------------------------------------------------------------------
+
+Los ejecutables de bin\ e interno\ (cotejo.exe, cotejoboard.exe...) son
+código propio de Cotejo y se rigen por su licencia. El instalador de
+Windows se crea con Inno Setup (https://jrsoftware.org/isinfo.php), cuya
+licencia permite distribuir los instaladores creados con él.
+
+The executables in bin\ and interno\ (cotejo.exe, cotejoboard.exe...) are
+Cotejo's own code and are covered by its license. The Windows installer
+is built with Inno Setup (https://jrsoftware.org/isinfo.php), whose
+license allows distributing the installers created with it.
+
+
+------------------------------------------------------------------------
+F. TEXTOS COMPLETOS DE LAS LICENCIAS / FULL LICENSE TEXTS
+------------------------------------------------------------------------
+
+  licenses/LGPL-2.1.txt         GNU Lesser General Public License 2.1
+                                (Windows)
+  runtime/share/licenses/<paquete>/
+                                el archivo de licencia de cada paquete del
+                                runtime, tal como lo publica MSYS2; el de
+                                Python está en python3.*/LICENSE (Windows)
+                                / each runtime package's license file
+  data/fonts/OFL.txt            SIL Open Font License 1.1, junto a las
+                                tipografías (en Windows, app/data/fonts)
