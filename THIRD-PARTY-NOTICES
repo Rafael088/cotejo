@@ -140,7 +140,7 @@ making the copy.
 
 ------------------------------------------------------------------------
 D. EL RUNTIME DE WINDOWS / THE WINDOWS RUNTIME
-   (solo en el ZIP portable y el instalador de Windows)
+   (solo en el instalador de Windows)
 ------------------------------------------------------------------------
 
 La versión de Windows lleva su propio Python, GTK 4 y libadwaita en la
