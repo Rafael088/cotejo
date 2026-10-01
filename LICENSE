@@ -1,38 +1,41 @@
 SPDX-License-Identifier: LicenseRef-Cotejo-Proprietary
 
-LICENCIA DE USUARIO FINAL DE Cotejo
+LICENCIA DE USUARIO FINAL DE COTEJO
 Identificador: LicenseRef-Cotejo-Proprietary
 
-Copyright (c) 2026 Rafael Eduardo Aguirre Gonzalez. Todos los derechos reservados.
+Copyright (c) 2026 Rafael Eduardo Aguirre Gonzalez. Todos los derechos
+reservados.
 
 Lea esta licencia antes de instalar o usar el Software. Al instalarlo,
-copiarlo o usarlo, usted acepta estos términos. Si no los acepta, no
+copiarlo o usarlo, Usted acepta estos términos. Si no los acepta, no
 instale ni use el Software.
 
 
 1. DEFINICIONES
 
-1.1 «Software»: los programas ejecutables de Cotejo en forma
-    binaria o compilada, sus instaladores, archivos portables, recursos,
-    iconos y documentación, tal como los publica Rafael Eduardo Aguirre Gonzalez por sus
-    canales oficiales, incluidas las actualizaciones que usted reciba.
-    No incluye los Componentes de Terceros.
+1.1 «Software»: los programas de Cotejo, tanto sus ejecutables y
+    lanzadores compilados como los archivos de código (entre ellos los
+    scripts de Python) con los que funcionan, sus instaladores, paquetes,
+    recursos, iconos y documentación, tal como los publica
+    Rafael Eduardo Aguirre Gonzalez por sus canales oficiales, incluidas las
+    actualizaciones que Usted reciba. No incluye los Componentes de
+    Terceros.
 
 1.2 «Componentes de Terceros»: el software, las librerías, los entornos
     de ejecución y las tipografías de otros titulares que se distribuyen
     junto con el Software, enumerados en el archivo THIRD-PARTY-NOTICES.
 
-1.3 «Usted»: la persona física que instala o usa el Software, o la
+1.3 «Usted»: la persona natural que instala o usa el Software, o la
     organización en cuyo nombre lo hace.
 
 
 2. CONCESIÓN DE LICENCIA
 
-2.1 Rafael Eduardo Aguirre Gonzalez le concede, sin coste, una licencia no exclusiva,
-    mundial, intransferible y no sublicenciable para instalar y usar el
-    Software, en cualquier número de dispositivos, con fines personales
-    o comerciales, incluido su uso dentro de una empresa o para prestar
-    servicios a terceros.
+2.1 Rafael Eduardo Aguirre Gonzalez le concede, sin coste, una licencia no
+    exclusiva, mundial, intransferible y no sublicenciable para instalar y
+    usar el Software, en cualquier número de dispositivos, con fines
+    personales o comerciales, incluido su uso dentro de una empresa o para
+    prestar servicios a terceros.
 
 2.2 Si Usted es una organización, puede instalar el Software en los
     dispositivos que controle y permitir que lo usen sus empleados y
@@ -40,7 +43,8 @@ instale ni use el Software.
     de Rafael Eduardo Aguirre Gonzalez y se use conforme a esta licencia.
 
 2.3 El Software se licencia, no se vende. Todo derecho no concedido
-    expresamente en esta licencia queda reservado a Rafael Eduardo Aguirre Gonzalez.
+    expresamente en esta licencia queda reservado a
+    Rafael Eduardo Aguirre Gonzalez.
 
 
 3. RESTRICCIONES
@@ -51,7 +55,7 @@ pueda excluirse por contrato, Usted no puede:
   a) modificar, adaptar, traducir o crear obras derivadas del Software;
   b) redistribuir, publicar, alojar para descarga, compartir o poner a
      disposición de terceros copias del Software, sus instaladores o
-     sus archivos portables, fuera de lo previsto en la cláusula 2.2;
+     sus paquetes, fuera de lo previsto en la cláusula 2.2;
   c) vender, alquilar, prestar, arrendar o sublicenciar el Software, ni
      cobrar por darle acceso a él;
   d) descompilar, desensamblar, desempaquetar el instalador o el
@@ -73,11 +77,13 @@ pueda excluirse por contrato, Usted no puede:
 
 4.2 Algunos Componentes de Terceros (entre ellos GTK, libadwaita, GLib,
     Pango y PyGObject) se distribuyen bajo la GNU Lesser General Public
-    License, versión 2.1 o posterior («LGPL»). Esos componentes se
-    entregan como archivos separados y enlazados de forma dinámica (por
-    ejemplo, archivos .dll en Windows y .so en Linux). Usted puede
-    sustituirlos por versiones modificadas o distintas de esas mismas
-    librerías, y el Software podrá usarlas en su lugar.
+    License, versión 2.1 o posterior («LGPL»), salvo que THIRD-PARTY-NOTICES
+    indique otra versión para un componente. En Windows esos componentes
+    se entregan como archivos separados y enlazados de forma dinámica
+    (archivos .dll y módulos de Python de la carpeta del programa); en
+    Linux el Software usa los del sistema, que no se distribuyen con él.
+    Usted puede sustituirlos por versiones modificadas o distintas de
+    esas mismas librerías, y el Software podrá usarlas en su lugar.
 
 4.3 Las restricciones de la cláusula 3 (en particular las letras a y d)
     no se aplican:
@@ -96,20 +102,23 @@ pueda excluirse por contrato, Usted no puede:
 5. TITULARIDAD
 
 El Software, su código fuente, su diseño y sus marcas son y seguirán
-siendo propiedad de Rafael Eduardo Aguirre Gonzalez o de sus licenciantes. Si Usted envía
-comentarios o sugerencias sobre el Software, Rafael Eduardo Aguirre Gonzalez puede usarlos
-libremente y sin obligación alguna hacia Usted.
+siendo propiedad de Rafael Eduardo Aguirre Gonzalez o de sus licenciantes.
+Si Usted envía comentarios o sugerencias sobre el Software,
+Rafael Eduardo Aguirre Gonzalez puede usarlos libremente y sin obligación
+alguna hacia Usted.
 
 
 6. ACTUALIZACIONES Y SOPORTE
 
-6.1 Rafael Eduardo Aguirre Gonzalez no está obligado a publicar actualizaciones,
-    correcciones ni nuevas versiones, ni a mantener disponibles las
-    anteriores.
+6.1 Rafael Eduardo Aguirre Gonzalez no está obligado a publicar
+    actualizaciones, correcciones ni nuevas versiones, ni a mantener
+    disponibles las anteriores.
 
 6.2 El soporte, si se presta, es limitado, gratuito y sin compromiso de
-    plazo ni de resultado, a través de https://github.com/Rafael088/cotejo/issues. Rafael Eduardo Aguirre Gonzalez puede
-    cambiar o dejar de prestar el soporte en cualquier momento.
+    plazo ni de resultado, a través de
+    https://github.com/Rafael088/cotejo/issues.
+    Rafael Eduardo Aguirre Gonzalez puede cambiar o dejar de prestar el
+    soporte en cualquier momento.
 
 
 7. SUS DATOS
@@ -121,24 +130,25 @@ copias de seguridad de ellos.
 
 8. EXCLUSIÓN DE GARANTÍA
 
-EN LA MEDIDA MÁXIMA PERMITIDA POR LA LEY APLICABLE, EL SOFTWARE SE
-ENTREGA «TAL CUAL» Y «SEGÚN DISPONIBILIDAD», SIN GARANTÍA DE NINGÚN TIPO,
-EXPRESA O IMPLÍCITA, INCLUIDAS, SIN LIMITARSE A ELLAS, LAS GARANTÍAS DE
+EN LA MEDIDA MÁXIMA PERMITIDA POR LA LEY APLICABLE, EL SOFTWARE SE ENTREGA
+«TAL CUAL» Y «SEGÚN DISPONIBILIDAD», SIN GARANTÍA DE NINGÚN TIPO, EXPRESA
+O IMPLÍCITA, INCLUIDAS, SIN LIMITARSE A ELLAS, LAS GARANTÍAS DE
 COMERCIABILIDAD, IDONEIDAD PARA UN FIN PARTICULAR, TITULARIDAD Y NO
-INFRACCIÓN. Rafael Eduardo Aguirre Gonzalez NO GARANTIZA QUE EL SOFTWARE FUNCIONE SIN
-INTERRUPCIONES NI ERRORES, NI QUE NO DAÑE O PIERDA DATOS.
+INFRACCIÓN. Rafael Eduardo Aguirre Gonzalez NO GARANTIZA QUE EL SOFTWARE
+FUNCIONE SIN INTERRUPCIONES NI ERRORES, NI QUE NO DAÑE O PIERDA DATOS.
 
 
 9. LIMITACIÓN DE RESPONSABILIDAD
 
-EN LA MEDIDA MÁXIMA PERMITIDA POR LA LEY APLICABLE, Rafael Eduardo Aguirre Gonzalez NO SERÁ
-RESPONSABLE DE NINGÚN DAÑO INDIRECTO, INCIDENTAL, ESPECIAL, CONSECUENTE
-O PUNITIVO, NI DE LA PÉRDIDA DE DATOS, BENEFICIOS, INGRESOS O NEGOCIO,
-DERIVADOS DEL USO O DE LA IMPOSIBILIDAD DE USAR EL SOFTWARE, AUNQUE SE
-HAYA ADVERTIDO DE SU POSIBILIDAD. DADO QUE EL SOFTWARE SE LICENCIA SIN
-COSTE, LA RESPONSABILIDAD TOTAL DE Rafael Eduardo Aguirre Gonzalez POR CUALQUIER CAUSA NO
-EXCEDERÁ DE CERO (0) EUROS O DEL MÍNIMO QUE LA LEY APLICABLE NO PERMITA
-EXCLUIR.
+EN LA MEDIDA MÁXIMA PERMITIDA POR LA LEY APLICABLE,
+Rafael Eduardo Aguirre Gonzalez NO SERÁ RESPONSABLE DE NINGÚN DAÑO
+INDIRECTO, INCIDENTAL, ESPECIAL, CONSECUENTE O PUNITIVO, NI DE LA PÉRDIDA
+DE DATOS, BENEFICIOS, INGRESOS O NEGOCIO, DERIVADOS DEL USO O DE LA
+IMPOSIBILIDAD DE USAR EL SOFTWARE, AUNQUE SE HAYA ADVERTIDO DE SU
+POSIBILIDAD. DADO QUE EL SOFTWARE SE LICENCIA SIN COSTE, LA
+RESPONSABILIDAD TOTAL DE Rafael Eduardo Aguirre Gonzalez POR CUALQUIER
+CAUSA NO EXCEDERÁ DE CERO (0) PESOS COLOMBIANOS O DEL MÍNIMO QUE LA LEY
+APLICABLE NO PERMITA EXCLUIR.
 
 Nada en esta licencia excluye o limita la responsabilidad que no pueda
 excluirse o limitarse según la ley aplicable, ni afecta a los derechos
@@ -165,11 +175,12 @@ que la ley reconozca a Usted como consumidor.
 11.2 Si alguna cláusula resulta inválida o inaplicable, se aplicará en
      la medida permitida y el resto de la licencia seguirá vigente.
 
-11.3 Esta licencia es el acuerdo completo entre Usted y Rafael Eduardo Aguirre Gonzalez
-     sobre el Software. No renunciar a exigir un derecho no supone
-     renunciar a él.
+11.3 Esta licencia es el acuerdo completo entre Usted y
+     Rafael Eduardo Aguirre Gonzalez sobre el Software. No renunciar a
+     exigir un derecho no supone renunciar a él.
 
-11.4 Usted no puede ceder esta licencia. Rafael Eduardo Aguirre Gonzalez puede cederla.
+11.4 Usted no puede ceder esta licencia. Rafael Eduardo Aguirre Gonzalez
+     puede cederla.
 
 11.5 Esta licencia se ofrece en español y en inglés. Si hay diferencias
      entre ambas versiones, prevalece la versión en español.
@@ -183,22 +194,23 @@ prevails in case of discrepancy)
 ========================================================================
 
 
-Cotejo END USER LICENSE AGREEMENT
+COTEJO END USER LICENSE AGREEMENT
 Identifier: LicenseRef-Cotejo-Proprietary
 
 Copyright (c) 2026 Rafael Eduardo Aguirre Gonzalez. All rights reserved.
 
 Please read this license before installing or using the Software. By
-installing, copying or using it, you accept these terms. If you do not
+installing, copying or using it, You accept these terms. If You do not
 accept them, do not install or use the Software.
 
 
 1. DEFINITIONS
 
-1.1 "Software": the executable programs of Cotejo in binary or
-    compiled form, their installers, portable archives, resources, icons
-    and documentation, as published by Rafael Eduardo Aguirre Gonzalez through its official
-    channels, including any updates you receive. It does not include
+1.1 "Software": the programs of Cotejo, both their compiled executables
+    and launchers and the code files (including Python scripts) they run
+    on, their installers, packages, resources, icons and documentation, as
+    published by Rafael Eduardo Aguirre Gonzalez through his official
+    channels, including any updates You receive. It does not include the
     Third-Party Components.
 
 1.2 "Third-Party Components": software, libraries, runtimes and
@@ -211,11 +223,11 @@ accept them, do not install or use the Software.
 
 2. LICENSE GRANT
 
-2.1 Rafael Eduardo Aguirre Gonzalez grants You, free of charge, a non-exclusive, worldwide,
-    non-transferable and non-sublicensable license to install and use the
-    Software, on any number of devices, for personal or commercial
-    purposes, including use within a business or to provide services to
-    third parties.
+2.1 Rafael Eduardo Aguirre Gonzalez grants You, free of charge, a
+    non-exclusive, worldwide, non-transferable and non-sublicensable
+    license to install and use the Software, on any number of devices, for
+    personal or commercial purposes, including use within a business or to
+    provide services to third parties.
 
 2.2 If You are an organization, You may install the Software on devices
     You control and allow your employees and contractors to use it,
@@ -234,7 +246,7 @@ excluded by contract, You may not:
   a) modify, adapt, translate or create derivative works of the Software;
   b) redistribute, publish, host for download, share or make available
      to third parties copies of the Software, its installers or its
-     portable archives, other than as provided in section 2.2;
+     packages, other than as provided in section 2.2;
   c) sell, rent, lend, lease or sublicense the Software, or charge for
      access to it;
   d) decompile, disassemble, unpack the installer or the executable to
@@ -256,11 +268,13 @@ excluded by contract, You may not:
 
 4.2 Some Third-Party Components (including GTK, libadwaita, GLib, Pango
     and PyGObject) are distributed under the GNU Lesser General Public
-    License, version 2.1 or later ("LGPL"). These components are shipped
-    as separate, dynamically linked files (for example, .dll files on
-    Windows and .so files on Linux). You may replace them with modified
-    or different versions of the same libraries, and the Software may
-    use them instead.
+    License, version 2.1 or later ("LGPL"), unless THIRD-PARTY-NOTICES
+    states another version for a given component. On Windows these
+    components are shipped as separate, dynamically linked files (.dll
+    files and Python modules in the program folder); on Linux the
+    Software uses the system's own, which are not distributed with it.
+    You may replace them with modified or different versions of the same
+    libraries, and the Software may use them instead.
 
 4.3 The restrictions in section 3 (in particular items a and d) do not
     apply:
@@ -279,19 +293,22 @@ excluded by contract, You may not:
 5. OWNERSHIP
 
 The Software, its source code, design and trademarks are and will remain
-the property of Rafael Eduardo Aguirre Gonzalez or its licensors. If You send feedback or
-suggestions about the Software, Rafael Eduardo Aguirre Gonzalez may use them freely and
-without any obligation to You.
+the property of Rafael Eduardo Aguirre Gonzalez or his licensors. If You
+send feedback or suggestions about the Software,
+Rafael Eduardo Aguirre Gonzalez may use them freely and without any
+obligation to You.
 
 
 6. UPDATES AND SUPPORT
 
-6.1 Rafael Eduardo Aguirre Gonzalez has no obligation to publish updates, fixes or new
-    versions, or to keep earlier versions available.
+6.1 Rafael Eduardo Aguirre Gonzalez has no obligation to publish updates,
+    fixes or new versions, or to keep earlier versions available.
 
 6.2 Support, if provided, is limited, free of charge and without any
-    commitment as to response time or outcome, through https://github.com/Rafael088/cotejo/issues.
-    Rafael Eduardo Aguirre Gonzalez may change or discontinue support at any time.
+    commitment as to response time or outcome, through
+    https://github.com/Rafael088/cotejo/issues.
+    Rafael Eduardo Aguirre Gonzalez may change or discontinue support at
+    any time.
 
 
 7. YOUR DATA
@@ -304,24 +321,25 @@ it.
 8. DISCLAIMER OF WARRANTY
 
 TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE SOFTWARE IS
-PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE AND
-NON-INFRINGEMENT. Rafael Eduardo Aguirre Gonzalez DOES NOT WARRANT THAT THE SOFTWARE WILL
-OPERATE WITHOUT INTERRUPTION OR ERROR, OR THAT IT WILL NOT DAMAGE OR LOSE
-DATA.
+NON-INFRINGEMENT. Rafael Eduardo Aguirre Gonzalez DOES NOT WARRANT THAT
+THE SOFTWARE WILL OPERATE WITHOUT INTERRUPTION OR ERROR, OR THAT IT WILL
+NOT DAMAGE OR LOSE DATA.
 
 
 9. LIMITATION OF LIABILITY
 
-TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, Rafael Eduardo Aguirre Gonzalez SHALL NOT
-BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL OR
-PUNITIVE DAMAGES, OR FOR ANY LOSS OF DATA, PROFITS, REVENUE OR BUSINESS,
-ARISING OUT OF THE USE OF OR INABILITY TO USE THE SOFTWARE, EVEN IF
-ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. AS THE SOFTWARE IS LICENSED
-FREE OF CHARGE, THE TOTAL LIABILITY OF Rafael Eduardo Aguirre Gonzalez FOR ANY CAUSE SHALL
-NOT EXCEED ZERO (0) EUROS OR THE MINIMUM AMOUNT THAT APPLICABLE LAW DOES
-NOT ALLOW TO BE EXCLUDED.
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW,
+Rafael Eduardo Aguirre Gonzalez SHALL NOT BE LIABLE FOR ANY INDIRECT,
+INCIDENTAL, SPECIAL, CONSEQUENTIAL OR PUNITIVE DAMAGES, OR FOR ANY LOSS OF
+DATA, PROFITS, REVENUE OR BUSINESS, ARISING OUT OF THE USE OF OR INABILITY
+TO USE THE SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+AS THE SOFTWARE IS LICENSED FREE OF CHARGE, THE TOTAL LIABILITY OF
+Rafael Eduardo Aguirre Gonzalez FOR ANY CAUSE SHALL NOT EXCEED ZERO (0)
+COLOMBIAN PESOS OR THE MINIMUM AMOUNT THAT APPLICABLE LAW DOES NOT ALLOW
+TO BE EXCLUDED.
 
 Nothing in this license excludes or limits any liability that cannot be
 excluded or limited under applicable law, nor does it affect any rights
@@ -348,11 +366,12 @@ You may have as a consumer under the law.
      enforced to the extent permitted and the rest of this license shall
      remain in effect.
 
-11.3 This license is the entire agreement between You and Rafael Eduardo Aguirre Gonzalez
-     regarding the Software. Failure to enforce a right is not a waiver
-     of it.
+11.3 This license is the entire agreement between You and
+     Rafael Eduardo Aguirre Gonzalez regarding the Software. Failure to
+     enforce a right is not a waiver of it.
 
-11.4 You may not assign this license. Rafael Eduardo Aguirre Gonzalez may assign it.
+11.4 You may not assign this license. Rafael Eduardo Aguirre Gonzalez may
+     assign it.
 
 11.5 This license is provided in Spanish and English. If the two versions
      differ, the Spanish version prevails.
