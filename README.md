@@ -5,7 +5,7 @@ Este repositorio aloja los artefactos publicados de [Cotejo](https://github.com/
 > **Tus agentes entregan. Tú compruebas.** Cotejo es un board de pendientes de escritorio que lee las tareas de tu segundo cerebro y decide qué modelo puede atender cada una.
 
 > [!WARNING]
-> **Cotejo 1.0 es software en fase beta.** Todavía puede tener fallos o comportarse de forma
+> **Cotejo 1.1 es software en fase beta.** Todavía puede tener fallos o comportarse de forma
 > inesperada. Se ofrece «tal cual», sin garantías de ningún tipo, como dice su licencia
 > ([`LICENSE`](LICENSE), cláusula 8). Haz copia de tu segundo cerebro antes de probarlo y, si algo
 > falla, cuéntalo en un [issue](../../issues).
@@ -21,7 +21,7 @@ trae el enlace de cada uno, y también están en la lista **Assets** al final de
 | `cotejo-<version>-1-any.pkg.tar.zst` | Arch / Omarchy | Paquete de pacman: `sudo pacman -U cotejo-…-pkg.tar.zst`. |
 | `cotejo-<version>-linux.tar.gz` | Otras distribuciones de Linux | Descomprime y corre `./install.sh`. |
 
-Cada release lleva sus checksums SHA-256 en el cuerpo de la nota y en el archivo `SHA256SUMS`
+Cada release lleva el archivo `SHA256SUMS` con los checksums SHA-256 de todos sus archivos
 (`sha256sum -c SHA256SUMS`). `Cotejo-<version>-fuentes-terceros.tar` trae el código fuente de
 los componentes LGPL/GPL que incluye la versión de Windows.
 
