@@ -5,7 +5,7 @@ Este repositorio aloja los artefactos publicados de [Cotejo](https://github.com/
 > **Tus agentes entregan. Tú compruebas.** Cotejo es un board de pendientes de escritorio que lee las tareas de tu segundo cerebro y decide qué modelo puede atender cada una.
 
 > [!WARNING]
-> **Cotejo 1.1 es software en fase beta.** Todavía puede tener fallos o comportarse de forma
+> **Cotejo 1.2 es software en fase beta.** Todavía puede tener fallos o comportarse de forma
 > inesperada. Se ofrece «tal cual», sin garantías de ningún tipo, como dice su licencia
 > ([`LICENSE`](LICENSE), cláusula 8). Haz copia de tu segundo cerebro antes de probarlo y, si algo
 > falla, cuéntalo en un [issue](../../issues).
