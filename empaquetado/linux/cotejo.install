@@ -1,0 +1,20 @@
+post_install() {
+  # Lo de cada usuario (protocolo de sus agentes, widget de Omarchy) lo pone el board la primera
+  # vez que esa persona abre Cotejo: el paquete no puede tocar ningún $HOME (cotejo-8ecldw).
+  echo "Cotejo: abre Cotejo una vez (menú o cotejo --board) y quedan puestos el widget de"
+  echo "Omarchy y el aviso a tus agentes. Para hacerlo ya: sh /usr/share/tareas-obsidian/linux/usuario.sh"
+  echo "Para saber si todo funciona: cotejo doctor"
+}
+
+post_upgrade() {
+  # El Widget.qml puede cambiar al actualizar: el board lo vuelve a poner al arrancar con la
+  # versión nueva (usuario.json dice de qué versión es lo que hay).
+  echo "Cotejo: el widget y el aviso a tus agentes se ponen al día la próxima vez que abras Cotejo."
+}
+
+pre_remove() {
+  # Corre antes de borrar los archivos, pero como root: no puede entrar en el $HOME de nadie.
+  echo "Cotejo: lo que usuario.sh puso en cada usuario se queda (skills de los agentes y el"
+  echo "widget en ~/.config/omarchy/plugins/cotejo.barra). Para quitarlo, antes de desinstalar:"
+  echo "  sh /usr/share/tareas-obsidian/linux/usuario.sh --quitar"
+}

@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cotejo — Identidad</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --negro: #101114; --negro-web: #0A0A0A; --superficie: #2A2C33; --borde: #3A3D45;
+    --tenue: #A8ACB6; --tenue-claro: #565B66; --blanco: #FFFFFF; --papel: #FAFAFA;
+    --verde: #16C98D; --verde-claro: #0E9F6E; --verde-texto: #08734F;
+    --sans: "Inter", system-ui, sans-serif; --display: "Sora", "Inter", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { font: 16px/1.6 var(--sans); color: var(--negro); background: var(--papel); }
+  .contenedor { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+  section { padding: 72px 0; }
+  .etiqueta { font: 600 12px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase;
+              color: var(--verde-texto); margin-bottom: 16px; }
+  h2 { font: 600 32px/1.2 var(--display); letter-spacing: -.01em; margin-bottom: 24px; }
+  p + p { margin-top: 12px; }
+
+  .heroe { background: var(--negro); color: var(--blanco); text-align: center; padding: 96px 0 88px; }
+  .heroe .etiqueta { color: var(--verde); }
+  .heroe .logo-heroe { width: min(560px, 100%); height: auto; filter: drop-shadow(0 0 36px rgba(22, 201, 141, .22)); }
+  .oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .heroe h1 { font: 600 64px/1 var(--display); letter-spacing: -.02em; margin: 28px 0 14px; }
+  .heroe p { color: var(--tenue); font-size: 19px; margin-top: 28px; }
+
+  .concepto { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+  .anotado { background: var(--negro); border-radius: 20px; padding: 24px; }
+  .anotado text { font: 500 50px var(--mono); fill: var(--tenue); }
+  .anotado line { stroke: var(--tenue); stroke-width: 4; stroke-dasharray: 14 14; }
+  .anotado circle.marca { fill: var(--verde); }
+
+  .rejilla { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .carta { position: relative; border-radius: 16px; min-height: 200px; display: grid; place-items: center;
+           padding: 48px 24px; transition: transform .2s ease; }
+  .carta:hover { transform: translateY(-3px); }
+  .carta.clara { background: var(--blanco); box-shadow: 0 1px 2px rgba(16,17,20,.06), 0 8px 24px rgba(16,17,20,.06); }
+  .carta.oscura { background: var(--negro-web); color: var(--tenue); }
+  .carta.ancha { grid-column: 1 / -1; }
+  .carta .nombre { position: absolute; top: 16px; left: 18px; font: 600 12px var(--sans);
+                   letter-spacing: .1em; text-transform: uppercase; opacity: .7; }
+  .carta .archivo { position: absolute; bottom: 14px; right: 18px; font: 12px var(--mono); opacity: .6; }
+  .carta img { max-width: 100%; }
+  .pie-foto { font: 12px var(--mono); margin-top: 10px; opacity: .6; text-align: center; }
+
+  .paleta { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
+  .chip { border-radius: 14px; overflow: hidden; background: var(--blanco);
+          box-shadow: 0 1px 2px rgba(16,17,20,.06), 0 8px 24px rgba(16,17,20,.05); }
+  .muestra { height: 104px; display: flex; align-items: flex-end; padding: 10px 12px; font: 500 13px var(--mono); }
+  .chip div.info { padding: 12px 14px 16px; font-size: 14px; }
+  .chip strong { display: block; font-weight: 600; }
+  .chip span { color: var(--tenue-claro); font-size: 13px; }
+
+  .tipos { display: grid; gap: 20px; }
+  .tipo { background: var(--blanco); border-radius: 16px; padding: 28px;
+          box-shadow: 0 1px 2px rgba(16,17,20,.06), 0 8px 24px rgba(16,17,20,.05); }
+  .tipo small { font: 12px var(--mono); color: var(--tenue-claro); display: block; margin-bottom: 8px; }
+
+  pre { background: var(--negro); color: #D6D9DF; border-radius: 16px; padding: 24px; overflow-x: auto;
+        font: 14px/1.7 var(--mono); }
+  pre .k { color: var(--verde); } pre .s { color: #F0C987; } pre .c { color: #6A6E78; }
+  .dev { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+  footer { background: var(--negro); color: var(--tenue); padding: 40px 0; font-size: 14px; }
+  footer .contenedor { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+  footer img { height: 28px; }
+
+  @media (max-width: 760px) {
+    .concepto, .rejilla, .dev { grid-template-columns: 1fr; }
+    .heroe h1 { font-size: 44px; }
+    h2 { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="heroe">
+  <div class="contenedor">
+    <div class="etiqueta">Identidad de marca</div>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="3 -926 3483 1171" class="logo-heroe" width="560" height="188" role="img" aria-label="Cotejo">
+  <g><path d="M761.42 -173.50A385.0 385.0 0 1 1 656.14 -676.12L559.87 -572.48A245.0 245.0 0 1 0 579.55 -173.50Z" fill="#FFFFFF"/><polyline points="277,-357 393,-240 928,-816" fill="none" stroke="#16C98D" stroke-width="140" stroke-linecap="round" stroke-linejoin="round"/></g><path transform="translate(188.4 0)" fill="#FFFFFF" d="M939.5 19Q868 19 813 -4Q758 -27 720 -66.2Q682 -105.5 662.5 -155.5Q643 -205.5 643 -260V-281Q643 -336.5 663.2 -387.2Q683.5 -438 722 -477.2Q760.5 -516.5 815.5 -539.2Q870.5 -562 939.5 -562Q1009 -562 1063.8 -539.2Q1118.5 -516.5 1157 -477.2Q1195.5 -438 1215.8 -387.2Q1236 -336.5 1236 -281V-260Q1236 -205.5 1216.5 -155.5Q1197 -105.5 1159 -66.2Q1121 -27 1066 -4Q1011 19 939.5 19ZM939.5 -100Q990.5 -100 1025.5 -122.2Q1060.5 -144.5 1078.8 -183.2Q1097 -222 1097 -270.5Q1097 -320.5 1078.2 -359.2Q1059.5 -398 1024.2 -420.5Q989 -443 939.5 -443Q890.5 -443 855 -420.5Q819.5 -398 800.8 -359.2Q782 -320.5 782 -270.5Q782 -222 800.2 -183.2Q818.5 -144.5 853.8 -122.2Q889 -100 939.5 -100ZM1583.5 7Q1508.5 7 1460 -12.5Q1411.5 -32 1387.8 -78.2Q1364 -124.5 1364 -203.5L1364.5 -696H1494.5L1494 -195Q1494 -155 1515.5 -133.5Q1537 -112 1577 -112H1662V7ZM1278 -441V-543H1662V-441ZM2012 19Q1942 19 1889.5 -5Q1837 -29 1802.5 -69.2Q1768 -109.5 1750.5 -159.5Q1733 -209.5 1733 -262V-281Q1733 -335 1750.5 -385.2Q1768 -435.5 1802.2 -475.2Q1836.5 -515 1887.8 -538.5Q1939 -562 2006 -562Q2094 -562 2153.2 -523.2Q2212.5 -484.5 2242.8 -422.2Q2273 -360 2273 -288V-237.5H1792V-322.5H2185.5L2143 -281Q2143 -333 2127.8 -370Q2112.5 -407 2082.2 -427Q2052 -447 2006 -447Q1959.5 -447 1927.5 -425.8Q1895.5 -404.5 1879.2 -365.2Q1863 -326 1863 -271Q1863 -219.5 1878.8 -180Q1894.5 -140.5 1927.5 -118.2Q1960.5 -96 2012 -96Q2062.5 -96 2094.5 -116.5Q2126.5 -137 2135.5 -166.5H2263.5Q2252 -111 2217.8 -69Q2183.5 -27 2131.2 -4Q2079 19 2012 19ZM2302 205V86H2344Q2381 86 2400.8 66Q2420.5 46 2420.5 9.5V-543H2554.5V1.5Q2554.5 76.5 2531.8 121Q2509 165.5 2460.8 185.2Q2412.5 205 2335 205ZM2341.5 -439V-543H2554.5V-439ZM2466 -612Q2425.5 -612 2406 -633.2Q2386.5 -654.5 2386.5 -687.5Q2386.5 -720.5 2406 -741.8Q2425.5 -763 2466 -763Q2507 -763 2526.2 -741.8Q2545.5 -720.5 2545.5 -687.5Q2545.5 -654.5 2526.2 -633.2Q2507 -612 2466 -612ZM2961.5 19Q2890 19 2835 -4Q2780 -27 2742 -66.2Q2704 -105.5 2684.5 -155.5Q2665 -205.5 2665 -260V-281Q2665 -336.5 2685.2 -387.2Q2705.5 -438 2744 -477.2Q2782.5 -516.5 2837.5 -539.2Q2892.5 -562 2961.5 -562Q3031 -562 3085.8 -539.2Q3140.5 -516.5 3179 -477.2Q3217.5 -438 3237.8 -387.2Q3258 -336.5 3258 -281V-260Q3258 -205.5 3238.5 -155.5Q3219 -105.5 3181 -66.2Q3143 -27 3088 -4Q3033 19 2961.5 19ZM2961.5 -100Q3012.5 -100 3047.5 -122.2Q3082.5 -144.5 3100.8 -183.2Q3119 -222 3119 -270.5Q3119 -320.5 3100.2 -359.2Q3081.5 -398 3046.2 -420.5Q3011 -443 2961.5 -443Q2912.5 -443 2877 -420.5Q2841.5 -398 2822.8 -359.2Q2804 -320.5 2804 -270.5Q2804 -222 2822.2 -183.2Q2840.5 -144.5 2875.8 -122.2Q2911 -100 2961.5 -100Z"/>
+</svg>
+    <h1 class="oculto">Cotejo</h1>
+    <p>Tus agentes entregan. Tú compruebas.</p>
+  </div>
+</header>
+
+<section>
+  <div class="contenedor concepto">
+    <div class="anotado">
+      <svg viewBox="-660 -980 2440 1100" role="img" aria-label="La C con sus detalles señalados">
+        <path d="M761.42 -173.50A385.0 385.0 0 1 1 656.14 -676.12L559.87 -572.48A245.0 245.0 0 1 0 579.55 -173.50Z" fill="#FFFFFF"/>
+        <polyline points="277,-357 393,-240 928,-816" fill="none" stroke="#16C98D" stroke-width="140" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle class="marca" cx="608" cy="-624" r="16"/><line x1="608" y1="-624" x2="1060" y2="-930"/>
+        <text x="1080" y="-915">1 · ranura del check</text>
+        <circle class="marca" cx="928" cy="-816" r="16"/><line x1="928" y1="-816" x2="1060" y2="-780"/>
+        <text x="1080" y="-765">3 · punta redonda: tú</text>
+        <circle class="marca" cx="670" cy="-173" r="16"/><line x1="670" y1="-173" x2="1060" y2="0"/>
+        <text x="1080" y="15">2 · corte de la «c»</text>
+        <circle class="marca" cx="43" cy="-366" r="16"/><line x1="43" y1="-366" x2="-200" y2="40"/>
+        <text x="-640" y="90">4 · la C: el agente</text>
+      </svg>
+    </div>
+    <div>
+      <div class="etiqueta">Concepto</div>
+      <h2>El check es la primera letra</h2>
+      <p>Cotejar es comprobar contra algo. En Cotejo el agente toma una tarea y la entrega con evidencia, pero
+        «hecho» solo lo dice una persona. El logo lo cuenta dentro del nombre: la C, en el color del texto, es el
+        trabajo que llega; el check, en Verde Hecho, es la comprobación. Su brazo largo sale por la boca de la C
+        y flota sobre la «o». Sin el check, la C queda a medias y la palabra también.</p>
+      <p>La C tiene el trazo de las letras de Sora, así que se lee como letra y no como un ícono pegado delante.
+        Va cortada a escuadra: la punta de arriba en paralelo al check, como una ranura hecha a su medida (1), y la
+        de abajo en horizontal, igual que las puntas de la «c» de Sora (2). El check lleva las puntas redondas (3):
+        la C es la máquina y el check es la mano. Esa misma C, sola, es el ícono de la app y el favicon.</p>
+      <p>Un solo acento, porque el verde significa algo: lo que ya está comprobado. En todo el logo, lo único
+        verde es el check.</p>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="contenedor">
+    <div class="etiqueta">Variantes</div>
+    <h2>Una sola letra en todas partes</h2>
+    <div class="rejilla">
+      <div class="carta clara ancha"><span class="nombre">Logo completo</span>
+        <img src="logo-full.svg" alt="Cotejo" width="480"><span class="archivo">logo-full.svg</span></div>
+      <div class="carta oscura ancha"><span class="nombre">Sobre oscuro</span>
+        <img src="logo-white.svg" alt="Cotejo en blanco" width="480"><span class="archivo">logo-white.svg</span></div>
+      <div class="carta oscura"><span class="nombre">La C sola</span>
+        <img src="logo-mark-oscuro.svg" alt="Símbolo de Cotejo" width="120"><span class="archivo">logo-mark-oscuro.svg</span></div>
+      <div class="carta clara"><span class="nombre">Ícono de app</span>
+        <img src="logo-icon.svg" alt="Ícono de Cotejo" width="128"><span class="archivo">logo-icon.svg</span></div>
+      <div class="carta clara"><span class="nombre">Pequeño</span>
+        <img src="logo-wordmark.svg" alt="Cotejo" width="180"><span class="archivo">logo-wordmark.svg</span></div>
+      <div class="carta oscura"><span class="nombre">Favicon</span>
+        <div><img src="favicon.svg" alt="Favicon de Cotejo" width="64"><div class="pie-foto">16×16 px, trazo engrosado</div></div>
+        <span class="archivo">favicon.svg</span></div>
+      <div class="carta clara"><span class="nombre">La C sobre claro</span>
+        <img src="logo-mark.svg" alt="Símbolo de Cotejo" width="120"><span class="archivo">logo-mark.svg</span></div>
+      <div class="carta oscura"><span class="nombre">Completo sobre oscuro</span>
+        <img src="logo-full-oscuro.svg" alt="Cotejo" width="320"><span class="archivo">logo-full-oscuro.svg</span></div>
+      <div class="carta clara ancha"><span class="nombre">Una tinta</span>
+        <img src="logo-black.svg" alt="Cotejo en negro" width="480"><span class="archivo">logo-black.svg</span></div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="contenedor">
+    <div class="etiqueta">Color</div>
+    <h2>Neutros y un solo verde</h2>
+    <div class="paleta">
+      <div class="chip"><div class="muestra" style="background:#101114;color:#fff">#101114</div>
+        <div class="info"><strong>Negro</strong><span>Fondo oscuro, texto y C sobre claro</span></div></div>
+      <div class="chip"><div class="muestra" style="background:#2A2C33;color:#fff">#2A2C33</div>
+        <div class="info"><strong>Superficie</strong><span>Cartas y elementos elevados</span></div></div>
+      <div class="chip"><div class="muestra" style="background:#3A3D45;color:#fff">#3A3D45</div>
+        <div class="info"><strong>Borde</strong><span>Líneas sobre oscuro</span></div></div>
+      <div class="chip"><div class="muestra" style="background:#A8ACB6;color:#101114">#A8ACB6</div>
+        <div class="info"><strong>Tenue</strong><span>Texto secundario sobre oscuro</span></div></div>
+      <div class="chip"><div class="muestra" style="background:#16C98D;color:#101114">#16C98D</div>
+        <div class="info"><strong>Verde Hecho</strong><span>El check sobre oscuro · 8,8:1. Nunca sobre blanco</span></div></div>
+      <div class="chip"><div class="muestra" style="background:#0E9F6E;color:#fff">#0E9F6E</div>
+        <div class="info"><strong>Verde Hecho claro</strong><span>El check sobre claro · 3,4:1. Solo en el logo</span></div></div>
+      <div class="chip"><div class="muestra" style="background:#08734F;color:#fff">#08734F</div>
+        <div class="info"><strong>Verde texto</strong><span>Texto verde sobre claro · 5,9:1</span></div></div>
+      <div class="chip"><div class="muestra" style="background:#FAFAFA;color:#101114;box-shadow:inset 0 -1px #eee">#FAFAFA</div>
+        <div class="info"><strong>Papel</strong><span>Fondo claro de la web</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="contenedor">
+    <div class="etiqueta">Tipografía</div>
+    <h2>Sora, Inter e IBM Plex Mono</h2>
+    <div class="tipos">
+      <div class="tipo"><small>Sora SemiBold · «otejo» y los titulares</small>
+        <div style="font:600 44px/1.15 var(--display);letter-spacing:-.01em">Hecho es cuando alguien lo revisó.</div></div>
+      <div class="tipo"><small>Inter Regular · el texto</small>
+        <div style="font-size:18px">Tus agentes toman las tareas, las entregan con evidencia y las dejan en «Para comprobar». El check lo pones tú, en el board. Ñandú, pingüino, ¿acción?</div></div>
+      <div class="tipo"><small>IBM Plex Mono · comandos y datos</small>
+        <div style="font:16px var(--mono)">cotejo entregar cotejo-z6s1ue --evidencia "542 pruebas en verde"</div></div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="contenedor">
+    <div class="etiqueta">Para desarrollo</div>
+    <h2>Referencia</h2>
+    <div class="dev">
+<pre><span class="c">// tailwind.config.js</span>
+colors: {
+  <span class="k">cotejo</span>: {
+    negro:      <span class="s">'#101114'</span>,
+    superficie: <span class="s">'#2A2C33'</span>,
+    borde:      <span class="s">'#3A3D45'</span>,
+    tenue:      <span class="s">'#A8ACB6'</span>,
+    verde:      <span class="s">'#16C98D'</span>,
+    <span class="c">// sobre fondo claro</span>
+    verdeClaro: <span class="s">'#0E9F6E'</span>, <span class="c">// logo</span>
+    verdeTexto: <span class="s">'#08734F'</span>, <span class="c">// texto</span>
+  },
+},
+fontFamily: {
+  display: [<span class="s">'Sora'</span>, <span class="s">'sans-serif'</span>],
+  sans:    [<span class="s">'Inter'</span>, <span class="s">'sans-serif'</span>],
+  mono:    [<span class="s">'IBM Plex Mono'</span>, <span class="s">'monospace'</span>],
+}</pre>
+<pre><span class="c">docs/marca/</span>
+logo-mark.svg         <span class="c">la C sola, sobre claro</span>
+logo-mark-oscuro.svg  <span class="c">la C sola, sobre oscuro</span>
+logo-full.svg         <span class="c">el logo: «Cotejo» (320)</span>
+logo-full-oscuro.svg  <span class="c">el mismo sobre oscuro</span>
+logo-wordmark.svg     <span class="c">el logo pequeño (180)</span>
+logo-icon.svg         <span class="c">ícono de app (512)</span>
+favicon.svg           <span class="c">16 px, trazo engrosado</span>
+logo-white.svg        <span class="c">una tinta, sobre oscuro</span>
+logo-black.svg        <span class="c">una tinta, sobre claro</span>
+<span class="c">+ PNG: logo-icon-512/192,
+  apple-touch-icon, logo-full(-oscuro)</span>
+generar.py            <span class="c">de aquí sale todo</span></pre>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="contenedor">
+    <img src="logo-full-oscuro.svg" alt="Cotejo">
+    <span>Identidad de marca · 2026</span>
+  </div>
+</footer>
+</body>
+</html>

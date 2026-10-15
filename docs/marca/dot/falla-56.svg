@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="56" height="56" role="img" aria-label="dot de Cotejo: falla">
+  <title>dot · falla</title>
+  <!-- Pose en t = 0 de tareas/dot.py: no se edita a mano, sale de generar.py. -->
+  <defs><radialGradient id="g-dot" cx="0.38" cy="0.3" r="0.95"><stop offset="0" stop-color="#92b7a9"/><stop offset="0.55" stop-color="#55907c"/><stop offset="1" stop-color="#34594d"/></radialGradient><linearGradient id="g-pluma" gradientUnits="userSpaceOnUse" x1="0" y1="16" x2="0" y2="56"><stop offset="0" stop-color="#92b7a9"/><stop offset="1" stop-color="#55907c"/></linearGradient></defs>
+  <polyline points="86,34 104,54 132,18" fill="none" stroke="url(#g-pluma)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" transform="matrix(0.5299 0.848 -0.848 0.5299 94.683 -56.8126)"/>
+  <circle cx="100" cy="112" r="64" fill="url(#g-dot)" transform="matrix(1 0 0 1 0 6)"/>
+  <rect x="74.5" y="89" width="11" height="26" rx="5.5" fill="#0a0e0c" transform="matrix(0.9903 -0.1183 0.1392 0.8417 -15.4171 39.9075)"/>
+  <rect x="114.5" y="89" width="11" height="26" rx="5.5" fill="#0a0e0c" transform="matrix(0.9903 -0.1183 0.1392 0.8417 -15.0278 44.6394)"/>
+  <path d="M88 138Q100 129 112 138" fill="none" stroke="#0a0e0c" stroke-width="6.5" stroke-linecap="round" transform="matrix(1 0 0 1 0 6)"/>
+</svg>

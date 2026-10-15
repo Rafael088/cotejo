@@ -1,0 +1,200 @@
+"""La ficha de una tarea y el selector de agente."""
+
+from gi.repository import Adw, Gtk, Pango
+
+from .. import modelo
+from .comun import (
+    ESPACIADO_LG, ESPACIADO_SM, ESPACIADO_XL, ESPACIADO_XS, ICONOS_COLUMNA, ICONOS_DIFICULTAD,
+    NOMBRES_DIFICULTAD, anotacion_visible, id_corto,
+)
+from .piezas import con_mano, etiquetar, icono
+
+
+class Detalle:
+    """La ficha de una tarea y el selector de agente."""
+
+    def ver_detalle(self, proyecto, tarea):
+        self.dialogo_detalle(proyecto, tarea).present(self)
+
+    def dialogo_detalle(self, proyecto, tarea):
+        """La ficha de una tarea: lo que la carta no enseña y lo que se puede hacer con ella.
+
+        Se lee de arriba abajo en el orden en que se decide: qué es (id, versión, nombre y
+        descripción, cada cosa una sola vez), quién la tiene y cuánto cuesta, lo último que se
+        dijo de ella y, abajo y fijas, las dos acciones de mover. El modelo se cambia aquí mismo
+        en vez de cerrar y buscar el ⋮; en Finalizada ya no, porque lo hecho no se reasigna.
+        Nada de abrir la nota: todo lo que hay que saber de la tarea está en la ficha.
+        """
+        version, nombre_corto, descripcion = tarea.partes
+        nombres = dict(modelo.COLUMNAS)
+        dialogo = Adw.Dialog(title=f"{id_corto(tarea.id)} · {nombres[tarea.columna]}",
+                             content_width=560)
+        vista = Adw.ToolbarView(css_classes=["detalle"])
+        cabecera = Adw.HeaderBar(show_title=False)
+        # La columna donde está, a la izquierda de la barra, como la miga de pan de la ficha:
+        # el título del diálogo queda para el lector de pantalla y el selector de ventanas.
+        donde_esta = Gtk.Box(spacing=ESPACIADO_SM, css_classes=["detalle-columna"])
+        donde_esta.append(icono(ICONOS_COLUMNA[tarea.columna], 14))
+        donde_esta.append(Gtk.Label(label=nombres[tarea.columna]))
+        if proyecto is not None:
+            donde_esta.append(Gtk.Label(label="·", css_classes=["detalle-tenue"]))
+            donde_esta.append(Gtk.Label(label=proyecto.nombre, css_classes=["detalle-tenue"],
+                                        ellipsize=Pango.EllipsizeMode.END, max_width_chars=24))
+        cabecera.pack_start(donde_esta)
+        vista.add_top_bar(cabecera)
+
+        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_LG,
+                         margin_top=ESPACIADO_LG, margin_bottom=ESPACIADO_XL,
+                         margin_start=ESPACIADO_XL + ESPACIADO_XS,
+                         margin_end=ESPACIADO_XL + ESPACIADO_XS)
+
+        # Los textos se pueden seleccionar con el mouse para copiarlos, pero no toman el foco:
+        # si no, la primera etiqueta se abría con todo el texto resaltado.
+        # Qué es. Sin dos puntos en el texto, el «nombre» es solo su principio recortado y la
+        # descripción el texto entero: enseñar los dos era leer la misma frase dos veces.
+        que_es = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_SM)
+        arriba = Gtk.Box(spacing=ESPACIADO_SM)
+        arriba.append(Gtk.Label(label=id_corto(tarea.id), tooltip_text=tarea.id,
+                                css_classes=["carta-codigo", "detalle-id"]))
+        if version:
+            arriba.append(Gtk.Label(label=version, css_classes=["carta-version"]))
+        que_es.append(arriba)
+        recortado = nombre_corto.rstrip("…").rstrip()
+        solo_titulo = descripcion == nombre_corto or descripcion.startswith(recortado)
+        titulo = descripcion if solo_titulo else nombre_corto
+        que_es.append(Gtk.Label(label=titulo, xalign=0, wrap=True, selectable=True, focusable=False,
+                                wrap_mode=Pango.WrapMode.WORD_CHAR,
+                                css_classes=["detalle-nombre"]
+                                + (["largo"] if len(titulo) > 90 else [])))
+        if not solo_titulo:
+            que_es.append(Gtk.Label(label=descripcion, xalign=0, wrap=True, selectable=True, focusable=False,
+                                    wrap_mode=Pango.WrapMode.WORD_CHAR,
+                                    css_classes=["detalle-descripcion"]))
+        cuerpo.append(que_es)
+
+        # Quién la tiene, cuánto cuesta y dónde vive: tres datos en una franja, cada uno con
+        # su rótulo encima, en vez de una tabla de clave y valor que había que leer entera.
+        datos = Gtk.Box(spacing=ESPACIADO_XL, css_classes=["detalle-datos"], homogeneous=False)
+        datos.append(self.dato_de_detalle("Modelo", self.selector_de_agente(proyecto, tarea,
+                                                                            dialogo)))
+        dificultad = Gtk.Box(spacing=ESPACIADO_XS)
+        if tarea.dificultad:
+            dificultad.append(icono(ICONOS_DIFICULTAD.get(tarea.dificultad, ""), 14))
+        dificultad.append(Gtk.Label(
+            label=NOMBRES_DIFICULTAD.get(tarea.dificultad, tarea.dificultad or "Sin calcular"),
+            css_classes=["detalle-valor"] + ([] if tarea.dificultad else ["detalle-tenue"])))
+        datos.append(self.dato_de_detalle("Dificultad", dificultad))
+        vive = Gtk.Label(label=tarea.donde or "—", xalign=0, selectable=True, focusable=False,
+                         ellipsize=Pango.EllipsizeMode.START, tooltip_text=tarea.donde or None,
+                         css_classes=["detalle-ruta"])
+        datos.append(self.dato_de_detalle("Dónde vive", vive, expandir=True))
+        cuerpo.append(datos)
+
+        # Lo último que se dijo de ella, entero y seleccionable: en la carta va recortado a
+        # tres líneas, y aquí es donde se lee y se copia.
+        visible = anotacion_visible(tarea, self.app.bitacora.get(tarea.id))
+        if visible is not None:
+            clase, titulo_anotacion, texto = visible
+            caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS,
+                           css_classes=["anotacion", clase])
+            cabeza = Gtk.Box(spacing=ESPACIADO_XS)
+            cabeza.append(icono("devuelta" if clase == "detenida" else "evidencia", 12))
+            cabeza.append(Gtk.Label(label=titulo_anotacion, xalign=0, hexpand=True,
+                                    css_classes=["anotacion-titulo"]))
+            caja.append(cabeza)
+            caja.append(Gtk.Label(label=texto.strip(), xalign=0, wrap=True, selectable=True, focusable=False,
+                                  wrap_mode=Pango.WrapMode.WORD_CHAR,
+                                  css_classes=["anotacion-texto"]))
+            cuerpo.append(caja)
+
+        vista.set_content(Gtk.ScrolledWindow(child=cuerpo, propagate_natural_height=True,
+                                             max_content_height=520,
+                                             hscrollbar_policy=Gtk.PolicyType.NEVER))
+
+        # Mover, abajo y fijo: atrás a la izquierda, adelante a la derecha y en verde, como
+        # el orden de las columnas. Nunca a Finalizada desde aquí: eso es comprobar.
+        orden = [c for c, _ in modelo.COLUMNAS]
+        i = orden.index(tarea.columna)
+        acciones = Gtk.Box(spacing=ESPACIADO_SM, css_classes=["detalle-acciones"])
+
+        def accion(texto, destino, nombre_icono, clase, icono_al_final=False):
+            fila = Gtk.Box(spacing=ESPACIADO_SM)
+            partes = [Gtk.Label(label=texto), icono(nombre_icono, 14)]
+            for parte in (partes if icono_al_final else reversed(partes)):
+                fila.append(parte)
+            boton = con_mano(Gtk.Button(child=fila, css_classes=[clase]))
+            etiquetar(boton, texto)
+            boton.texto = texto
+
+            def al_pulsar(*_):
+                dialogo.close()
+                self.mover(proyecto, tarea, destino)
+            boton.connect("clicked", al_pulsar)
+            return boton
+
+        if i > 0:
+            acciones.append(accion(f"Devolver a {nombres[orden[i - 1]]}", orden[i - 1],
+                                   "flecha-izquierda", "flat"))
+        acciones.append(Gtk.Box(hexpand=True))
+        if i + 1 < len(orden) - 1:
+            acciones.append(accion(f"Pasar a {nombres[orden[i + 1]]}", orden[i + 1],
+                                   "flecha-derecha", "suggested-action", icono_al_final=True))
+        if acciones.get_first_child() is not acciones.get_last_child():
+            vista.add_bottom_bar(acciones)
+        dialogo.set_child(vista)
+        return dialogo
+
+    @staticmethod
+    def dato_de_detalle(rotulo, valor, expandir=False):
+        """Uno de los datos de la franja de la ficha: rótulo pequeño encima, valor debajo."""
+        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS,
+                       hexpand=expandir)
+        caja.append(Gtk.Label(label=rotulo.upper(), xalign=0, css_classes=["detalle-clave"]))
+        valor.set_valign(Gtk.Align.CENTER)
+        caja.append(valor)
+        return caja
+
+    def selector_de_agente(self, proyecto, tarea, dialogo):
+        """El modelo de la ficha: un botón con el que tiene, que despliega a quién pasársela.
+
+        En Finalizada es solo el nombre: lo hecho ya no cambia de manos.
+        """
+        quien = ("sin-agente" if not tarea.agente else
+                 "persona" if tarea.agente in self.alias_persona else "agente")
+        fila = Gtk.Box(spacing=ESPACIADO_XS)
+        fila.append(icono(quien, 14))
+        fila.append(Gtk.Label(label=tarea.agente or "Sin asignar",
+                              css_classes=["detalle-valor"]
+                              + ([] if tarea.agente else ["detalle-tenue"])))
+        if tarea.hecha:
+            return fila
+        boton = Gtk.MenuButton(child=fila, always_show_arrow=True,
+                               css_classes=["flat", "detalle-agente"])
+        etiquetar(boton, f"Cambiar el modelo, ahora {tarea.agente or 'sin asignar'}")
+        boton.set_tooltip_text("Cambiar a quién está asignada")
+        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
+                       margin_top=ESPACIADO_SM, margin_bottom=ESPACIADO_SM,
+                       margin_start=ESPACIADO_SM, margin_end=ESPACIADO_SM)
+        popover = Gtk.Popover(child=caja)
+        caja.append(Gtk.Label(label="ASIGNAR A", xalign=0, css_classes=["menu-titulo"]))
+
+        def asignar(p, t, agente, pop):
+            dialogo.close()
+            self.al_asignar(p, t, agente, pop)
+        caja.append(self.lista_de_agentes(proyecto, tarea, popover, asignar))
+        boton.set_popover(popover)
+        return con_mano(boton)
+
+    def lista_de_agentes(self, proyecto, tarea, popover, funcion=None):
+        """Las opciones de «Asignar a», con scroll: con los modelos que registran los clientes
+        la lista pasa de treinta, y sin él el popover no cabe en la ventana y GTK no lo abre."""
+        agentes = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        for agente in self.agentes + ("",):
+            if agente == tarea.agente:
+                continue
+            quien = ("sin-agente" if not agente else
+                     "persona" if agente in self.alias_persona else "agente")
+            agentes.append(self.opcion(agente or "Sin agente", funcion or self.al_asignar,
+                                       proyecto, tarea, agente, popover, quien))
+        return Gtk.ScrolledWindow(child=agentes, hscrollbar_policy=Gtk.PolicyType.NEVER,
+                                  propagate_natural_height=True, max_content_height=320)

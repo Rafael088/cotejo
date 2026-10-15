@@ -1,0 +1,4 @@
+# LF en toda copia, también en Windows (donde git convierte a CRLF por defecto): el instalador
+# tiene que llevar los mismos bytes que el commit, y construir.py compara la huella del SVG
+# del icono con la de cotejo.ico.
+* text=auto eol=lf

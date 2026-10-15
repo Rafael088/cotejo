@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="24" height="24" role="img" aria-label="dot de Cotejo: celebra">
+  <title>dot · celebra</title>
+  <!-- Pose en t = 0 de tareas/dot.py: no se edita a mano, sale de generar.py. -->
+  <defs><radialGradient id="g-dot" cx="0.38" cy="0.3" r="0.95"><stop offset="0" stop-color="#7ef0c4"/><stop offset="0.55" stop-color="#16c98d"/><stop offset="1" stop-color="#0c7d58"/></radialGradient><linearGradient id="g-pluma" gradientUnits="userSpaceOnUse" x1="0" y1="16" x2="0" y2="56"><stop offset="0" stop-color="#7ef0c4"/><stop offset="1" stop-color="#16c98d"/></linearGradient></defs>
+  <circle cx="100" cy="112" r="64" fill="url(#g-dot)"/>
+  <path d="M73 104q7 -10 14 0" fill="none" stroke="#08120e" stroke-width="6" stroke-linecap="round"/>
+  <path d="M113 104q7 -10 14 0" fill="none" stroke="#08120e" stroke-width="6" stroke-linecap="round"/>
+  <path d="M82 124Q100 144 118 124" fill="none" stroke="#08120e" stroke-width="6.5" stroke-linecap="round"/>
+  <path d="M168 64L168 76M162 70L174 70" fill="none" stroke="#f0c987" stroke-width="4" stroke-linecap="round"/>
+  <path d="M150 22L150 34M144 28L156 28" fill="none" stroke="#f0c987" stroke-width="4" stroke-linecap="round"/>
+</svg>

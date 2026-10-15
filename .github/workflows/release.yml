@@ -1,0 +1,154 @@
+# Una versión, de la etiqueta al borrador del release, sin pasar por la máquina de nadie:
+#
+#   git tag v1.0.1 && git push origin v1.0.1
+#
+# Comprueba que la etiqueta dice la misma versión que `tareas.__version__`, corre linux.yml y
+# windows.yml enteros (pruebas, los paquetes y cada uno instalado en una máquina limpia) y solo
+# si todo pasa junta los artefactos con un SHA256SUMS. Si falla cualquier instalación limpia, no
+# sale nada.
+#
+# Además sube todo al release v<versión> de este mismo repo **como borrador**, con las notas de
+# docs/releases/v<versión>.md, usando el token del propio run (o RELEASES_TOKEN, si existe).
+# Publicarlo es de una persona, y nunca toca un release que ya esté publicado.
+#
+# Los paquetes pasan de un job a otro por la caché de Actions y no como artefactos, que gastan
+# la cuota de almacenamiento de la cuenta (en octubre de 2026 se agotó y bloqueó la 1.1.0).
+#
+# Para rehacer el release de una etiqueta con los workflows de master (los de la etiqueta pueden
+# estar viejos): `gh workflow run release.yml --ref master -f etiqueta=v1.1.0`. Se construye el
+# código de la etiqueta, no el de master.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      etiqueta:
+        description: "Etiqueta a construir (p. ej. v1.1.0); vacío, el ref del run"
+        type: string
+        default: ""
+
+concurrency:
+  group: release-${{ inputs.etiqueta || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      ref: ${{ inputs.etiqueta }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.etiqueta }}
+      - id: version
+        env:
+          ETIQUETA: ${{ inputs.etiqueta || (github.ref_type == 'tag' && github.ref_name) || '' }}
+        run: |
+          VERSION=$(sh empaquetado/linux/construir.sh --version)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [ -n "$ETIQUETA" ] && [ "$ETIQUETA" != "v$VERSION" ]; then
+            echo "::error::La etiqueta $ETIQUETA no coincide con tareas.__version__ ($VERSION)"
+            exit 1
+          fi
+
+  linux:
+    needs: version
+    uses: ./.github/workflows/linux.yml
+    with:
+      ref: ${{ needs.version.outputs.ref }}
+
+  windows:
+    needs: version
+    uses: ./.github/workflows/windows.yml
+    with:
+      ref: ${{ needs.version.outputs.ref }}
+      desde_release: true
+
+  publicar:
+    needs: [version, linux, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      REPO_PUBLICO: ${{ github.repository }}
+      HAY_TOKEN: si
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.ref }}
+
+      - uses: actions/cache/restore@v4
+        with:
+          key: cotejo-linux-${{ github.run_id }}
+          path: salida
+          fail-on-cache-miss: true
+
+      - uses: actions/cache/restore@v4
+        with:
+          key: cotejo-windows-${{ github.run_id }}
+          path: salida-windows
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+
+      - run: mkdir release && cp salida/* salida-windows/* release/
+
+      # Los cuatro que se publican, con el nombre que esperan las notas y la web, y nada más.
+      - name: Juntar
+        run: |
+          cd release
+          rm -f SHA256SUMS-linux SHA256SUMS-windows
+          for archivo in "cotejo-$VERSION-1-any.pkg.tar.zst" "cotejo-$VERSION-linux.tar.gz" \
+                         "Cotejo-$VERSION-windows-x64-instalador.exe" "Cotejo-$VERSION-fuentes-terceros.tar"; do
+            [ -f "$archivo" ] || { echo "::error::Falta $archivo"; ls -l; exit 1; }
+          done
+          sha256sum cotejo-* Cotejo-* | tee SHA256SUMS
+          sha256sum -c SHA256SUMS
+
+      # Solo sin RELEASES_TOKEN, que es cuando no hay otro sitio donde dejarlo.
+      - uses: actions/upload-artifact@v4
+        if: env.HAY_TOKEN != 'si'
+        with:
+          name: cotejo-release
+          path: release/
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Borrador del release
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN || github.token }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::notice::Sin RELEASES_TOKEN: los archivos quedan en el artefacto cotejo-release."
+            exit 0
+          fi
+          ETIQUETA="v$VERSION"
+          NOTAS="docs/releases/$ETIQUETA.md"
+          if borrador=$(gh release view "$ETIQUETA" -R "$REPO_PUBLICO" --json isDraft --jq .isDraft 2>/dev/null); then
+            if [ "$borrador" != true ]; then
+              echo "::error::$ETIQUETA ya está publicado en $REPO_PUBLICO: no se toca."
+              exit 1
+            fi
+          else
+            gh release create "$ETIQUETA" -R "$REPO_PUBLICO" --draft --title "Cotejo $VERSION" \
+              --notes "Borrador creado por release.yml."
+          fi
+          if [ -f "$NOTAS" ]; then
+            # Las notas llevan los SHA-256 en el cuerpo: si los archivos cambiaron, hay que
+            # actualizarlas antes de publicar (aquí no se reescriben solas).
+            for suma in $(grep -oE '\b[0-9a-f]{64}\b' "$NOTAS" | sort -u); do
+              grep -q "^$suma " release/SHA256SUMS || \
+                echo "::warning::$NOTAS trae un SHA-256 ($suma) que no es de estos archivos: actualízalo antes de publicar."
+            done
+            # La primera línea (# Título) es el título; el resto, el cuerpo.
+            sed '1d' "$NOTAS" > /tmp/cuerpo.md
+            gh release edit "$ETIQUETA" -R "$REPO_PUBLICO" --draft \
+              --title "$(head -1 "$NOTAS" | sed 's/^# *//')" --notes-file /tmp/cuerpo.md
+          else
+            echo "::warning::No hay $NOTAS: el borrador se queda con las notas que tenía."
+          fi
+          gh release upload "$ETIQUETA" -R "$REPO_PUBLICO" --clobber release/*
+          echo "::notice::Borrador $ETIQUETA de $REPO_PUBLICO al día. Publicarlo es a mano."

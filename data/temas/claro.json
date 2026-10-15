@@ -1,0 +1,29 @@
+{
+  "nombre": "Claro",
+  "descripcion": "Neutros sobre papel, para trabajar de día.",
+  "esquema": "claro",
+  "colores": {
+    "fondo": "#F6F7F9",
+    "superficie": "#FFFFFF",
+    "superficie-alta": "#F1F3F6",
+    "columna": "#ECEEF2",
+    "borde": "#D3D6DD",
+    "borde-hondo": "#E2E5EA",
+    "borde-chip": "#C2C6CE",
+    "texto": "#101114",
+    "texto-chip": "#33363D",
+    "tenue": "#565B66",
+    "tenue-hondo": "#80858F",
+    "senal": "#08734F",
+    "senal-suave": "rgba(8, 115, 79, 0.10)",
+    "sobre-senal": "#FFFFFF",
+    "ambar": "#7A4E00",
+    "ambar-fondo": "#F8EACB",
+    "ambar-velo": "rgba(122, 78, 0, 0.07)",
+    "velo-sutil": "rgba(16, 17, 20, 0.03)",
+    "velo": "rgba(16, 17, 20, 0.05)",
+    "velo-fuerte": "rgba(16, 17, 20, 0.06)",
+    "barra": "rgba(16, 17, 20, 0.18)",
+    "barra-activa": "rgba(16, 17, 20, 0.36)"
+  }
+}

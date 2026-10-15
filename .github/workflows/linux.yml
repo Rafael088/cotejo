@@ -1,0 +1,205 @@
+# Linux, igual que windows.yml: las pruebas, los dos paquetes (tar.gz y el de pacman) armados
+# en un contenedor de Arch y no en la máquina del autor, y cada uno instalado en un contenedor
+# recién creado, como en un PC recién estrenado. El .BUILDINFO que graba makepkg lleva la ruta
+# del contenedor (/tmp/cotejo-dist) y no la de ningún $HOME.
+#
+# Lo que sale pasa a los otros jobs por la caché de Actions (clave cotejo-linux-<run>), no como
+# artefacto: los artefactos gastan la cuota de almacenamiento de la cuenta y la caché no.
+# release.yml lo reutiliza igual.
+name: Linux
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Qué construir (una etiqueta, p. ej. v1.1.0); vacío, el ref del run"
+        type: string
+        default: ""
+  # Las etiquetas de versión las arma release.yml, que llama a este.
+  push:
+    branches: ["**"]
+    paths:
+      - "tareas/**"
+      - "enrutador/**"
+      - "skills/**"
+      - "extras/**"
+      - "barra/**"
+      - "data/**"
+      - "pruebas/**"
+      - "herramientas/**"
+      - "empaquetado/linux/**"
+      - "install.sh"
+      - "uninstall.sh"
+      - ".github/workflows/linux.yml"
+
+jobs:
+  # Todas, con GTK y en un servidor X de mentira: las del board también corren.
+  pruebas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: archlinux:latest
+    steps:
+      - name: Dependencias
+        run: |
+          pacman -Syu --noconfirm --needed git python python-gobject python-cairo gtk4 libadwaita \
+            xorg-server-xvfb base-devel
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      # Como root, las que comprueban un archivo sin permiso de escritura no prueban nada, y
+      # git no lee un repo de otro dueño.
+      - name: Pruebas
+        run: |
+          useradd -m probador
+          chown -R probador: "$GITHUB_WORKSPACE"
+          su probador -c 'xvfb-run -a python -m unittest discover pruebas'
+
+  # Sin PyGObject y con un Python anterior: lo que tiene quien instala solo la CLI. Las del
+  # board se saltan; si alguna da por hecho GTK o Python 3.14, aquí se pone roja.
+  pruebas-sin-gtk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Pruebas
+        run: python -m unittest discover pruebas
+
+  # Construir e instalar los paquetes cuesta dos tercios del run y solo dice algo nuevo cuando
+  # cambia el empaquetado: en un push a una rama de tarea basta con las pruebas. Corren en
+  # master, en las etiquetas de versión, desde release.yml (workflow_call hereda el evento del
+  # que llama: un push de etiqueta o un workflow_dispatch) y a mano con workflow_dispatch.
+  # Sin construir, los dos instalar-* se saltan solos (needs).
+  construir:
+    needs: [pruebas, pruebas-sin-gtk]
+    if: >-
+      github.event_name != 'push' || github.ref == 'refs/heads/master' ||
+      startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: archlinux:latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Herramientas
+        run: pacman -Syu --noconfirm --needed base-devel git python
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      # makepkg no corre como root, y git no lee un repo de otro dueño.
+      - name: Usuario para makepkg
+        run: |
+          useradd -m constructor
+          chown -R constructor: "$GITHUB_WORKSPACE"
+
+      - id: version
+        run: echo "version=$(su constructor -c 'sh empaquetado/linux/construir.sh --version')" >> "$GITHUB_OUTPUT"
+
+      - name: Construir
+        run: |
+          su constructor -c 'DIST=/tmp/cotejo-dist sh empaquetado/linux/construir.sh --arch'
+          mkdir -p salida
+          cp /tmp/cotejo-dist/cotejo-*-linux.tar.gz /tmp/cotejo-dist/arch/cotejo-*.pkg.tar.zst salida/
+          cd salida && sha256sum * | tee SHA256SUMS-linux
+
+      # Lo que se publica, sin rutas de la máquina de nadie, nombres ni secretos. El repo entero
+      # no pasa (sus pruebas llevan esos patrones a propósito); el tar.gz, sí.
+      - name: Purga del tar.gz
+        run: |
+          mkdir /tmp/purga && tar -xzf salida/cotejo-*-linux.tar.gz -C /tmp/purga
+          python herramientas/purga.py --raiz /tmp/purga/cotejo-*
+
+      - uses: actions/cache/save@v4
+        with:
+          key: cotejo-linux-${{ github.run_id }}
+          path: salida
+
+  # El paquete de pacman en un Arch limpio, con las dependencias opcionales del board.
+  instalar-arch:
+    needs: construir
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: archlinux:latest
+    steps:
+      - name: Dependencias
+        run: |
+          pacman -Syu --noconfirm --needed python python-gobject python-cairo gtk4 libadwaita \
+            xorg-server-xvfb xorg-xwininfo xorg-xwd
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/cache/restore@v4
+        with:
+          key: cotejo-linux-${{ github.run_id }}
+          path: salida
+          fail-on-cache-miss: true
+      - name: Instalar y probar
+        run: |
+          xvfb-run -a python empaquetado/linux/probar_instalado.py \
+            --pacman salida/cotejo-*.pkg.tar.zst --version "${{ needs.construir.outputs.version }}" \
+            --registros registros
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        continue-on-error: true
+        with:
+          name: registros-arch
+          path: registros
+          if-no-files-found: ignore
+          retention-days: 3
+
+  # El tar.gz con su install.sh en una distribución que no es Arch: con board y solo la CLI.
+  instalar-tar:
+    needs: construir
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: ubuntu:24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        variante: [board, cli]
+    steps:
+      - name: Dependencias
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          apt-get update -q
+          # zstd: sin él, actions/cache busca la caché como gzip y no la encuentra (construir la
+          # guarda con zstd, que en Arch viene de serie).
+          apt-get install -yq python3 zstd
+          if [ "${{ matrix.variante }}" = board ]; then
+            apt-get install -yq python3-gi python3-gi-cairo gir1.2-gtk-4.0 gir1.2-adw-1 xvfb x11-utils x11-apps
+          fi
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/cache/restore@v4
+        with:
+          key: cotejo-linux-${{ github.run_id }}
+          path: salida
+          fail-on-cache-miss: true
+      - name: Instalar y probar
+        run: |
+          if [ "${{ matrix.variante }}" = board ]; then
+            xvfb-run -a python3 empaquetado/linux/probar_instalado.py \
+              --tar salida/cotejo-*-linux.tar.gz --version "${{ needs.construir.outputs.version }}" \
+              --registros registros
+          else
+            python3 empaquetado/linux/probar_instalado.py --sin-board \
+              --tar salida/cotejo-*-linux.tar.gz --version "${{ needs.construir.outputs.version }}" \
+              --registros registros
+          fi
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        continue-on-error: true
+        with:
+          name: registros-tar-${{ matrix.variante }}
+          path: registros
+          if-no-files-found: ignore
+          retention-days: 3

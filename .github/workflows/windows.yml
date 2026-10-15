@@ -1,0 +1,123 @@
+# El instalador de Windows se compila aquí y no en la máquina del autor: Inno Setup solo existe
+# en Windows, y así además los .exe se corren de verdad antes de publicar nada.
+#
+# Corre solo a mano (workflow_dispatch) o desde release.yml: un run de Windows cuenta doble en
+# los minutos de Actions, y en cada push se los comía.
+#
+# Desde release.yml, lo que sale (el instalador, las fuentes de terceros y su SHA-256) pasa a
+# publicar por la caché de Actions (clave cotejo-windows-<run>), que no gasta la cuota de
+# almacenamiento. Corrido a mano, además queda como artefacto del run, para bajarlo con
+# `gh run download`.
+name: Windows
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Qué construir (una etiqueta, p. ej. v1.1.0); vacío, el ref del run"
+        type: string
+        default: ""
+      desde_release:
+        description: "Lo llama release.yml: el resultado va a la caché y no a un artefacto"
+        type: boolean
+        default: false
+
+jobs:
+  instalador:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # zstandard para leer los paquetes de MSYS2. LLVM e Inno Setup 6 ya vienen en la imagen;
+      # si alguno faltara, se instala.
+      - name: Herramientas
+        run: |
+          python -m pip install --quiet zstandard
+          echo "C:/Program Files/LLVM/bin" >> "$GITHUB_PATH"
+          if [ ! -f "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" ]; then choco install innosetup -y --no-progress; fi
+
+      - uses: actions/cache@v4
+        with:
+          path: empaquetado/windows/cache
+          key: msys2-${{ hashFiles('empaquetado/windows/construir.py', 'empaquetado/windows/fuentes_terceros.py') }}
+          restore-keys: msys2-
+
+      - name: Construir
+        run: python empaquetado/windows/construir.py
+
+      # La oferta de código fuente que promete THIRD-PARTY-NOTICES (sección C, H11): los
+      # .src.tar.zst de MSYS2 de cada paquete LGPL/GPL del runtime que se acaba de armar.
+      - name: Fuentes de terceros
+        run: python empaquetado/windows/fuentes_terceros.py empaquetado/windows/construido/Cotejo/runtime
+
+      # Lo que el usuario hace después de instalar: el instalador en silencio, y los comandos
+      # desde donde quedaron, sin config ni vault, como en un PC recién estrenado.
+      - name: Instalar y probar
+        run: python empaquetado/windows/probar_instalado.py empaquetado/windows/construido/Cotejo-*-instalador.exe
+
+      # B5 (v1.1): despachar con worktree de verdad en Windows, con Git Bash, MSYSTEM y una
+      # ruta de repo de más de 260 caracteres. Usa el Cotejo que acaba de instalar el paso de
+      # arriba; no sube nada propio (su registro cae en construido/registros, que ya se sube).
+      - name: Despachar con worktree
+        run: python empaquetado/windows/probar_despachar.py
+
+      # v1.2 · F1: los verbos del almacén `.cotejo/` (init, contexto, anotar, bitacora,
+      # proponer decision, buscar, leer, editar, resolver) y `importar obsidian`, contra un
+      # repo de prueba con ruta larga, espacios y acentos — y una imagen que tiene que caer en
+      # recursos/. Usa el Cotejo que acaba de instalar «Instalar y probar»; su registro cae en
+      # construido/registros, que ya se sube.
+      - name: Almacén e importador de Obsidian
+        run: python empaquetado/windows/probar_almacen.py
+
+      # v1.2.4: `cotejo release` contra un repo con y sin tags bajo la misma raíz larga, con
+      # espacios y acentos: .cotejo/releases/vX.Y.Z.md, idempotente, y que nunca etiqueta.
+      - name: Notas de versión (release)
+        run: python empaquetado/windows/probar_release.py
+
+      - name: Checksum
+        run: |
+          cd empaquetado/windows/construido
+          sha256sum Cotejo-*-instalador.exe Cotejo-*-fuentes-terceros.tar | tee SHA256SUMS-windows
+          mkdir -p "$GITHUB_WORKSPACE/salida-windows"
+          cp Cotejo-*-instalador.exe Cotejo-*-fuentes-terceros.tar SHA256SUMS-windows "$GITHUB_WORKSPACE/salida-windows/"
+
+      # enableCrossOsArchive: lo restaura publicar, que corre en Linux.
+      - uses: actions/cache/save@v4
+        if: inputs.desde_release
+        with:
+          key: cotejo-windows-${{ github.run_id }}
+          path: salida-windows
+          enableCrossOsArchive: true
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !inputs.desde_release }}
+        continue-on-error: true
+        with:
+          name: cotejo-windows
+          path: |
+            empaquetado/windows/construido/Cotejo-*-instalador.exe
+            empaquetado/windows/construido/Cotejo-*-fuentes-terceros.tar
+            empaquetado/windows/construido/SHA256SUMS-windows
+          if-no-files-found: error
+          retention-days: 3
+
+      # Si el board se cayó, lo que dijo Python al caerse.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        continue-on-error: true
+        with:
+          name: registros
+          path: empaquetado/windows/construido/registros
+          if-no-files-found: ignore
+          retention-days: 3

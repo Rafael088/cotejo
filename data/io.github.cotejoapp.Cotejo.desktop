@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Cotejo
+GenericName=Tareas y board de tus proyectos
+Comment=Las tareas pendientes de tus proyectos de Obsidian, y el board para seguirlas
+Exec=tareas-obsidian
+Icon=io.github.cotejoapp.Cotejo
+Terminal=false
+Categories=Office;ProjectManagement;
+Keywords=cotejo;foco;todo;tareas;board;obsidian;pendientes;proyectos;
+StartupWMClass=io.github.cotejoapp.Cotejo

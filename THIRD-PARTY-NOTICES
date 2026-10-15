@@ -32,6 +32,11 @@ PyGObject
   Copyright (c) los autores de PyGObject.
   https://gitlab.gnome.org/GNOME/pygobject
 
+pycairo (python-cairo)
+  Licencia: LGPL-2.1-only o MPL-1.1, a elección
+  Copyright (c) los autores de pycairo.
+  https://github.com/pygobject/pycairo
+
 GTK 4
   Licencia: LGPL-2.1-or-later
   Copyright (c) The GTK Team y colaboradores.

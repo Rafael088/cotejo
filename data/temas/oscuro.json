@@ -1,0 +1,29 @@
+{
+  "nombre": "Oscuro",
+  "descripcion": "El de siempre: neutros sobre negro y Verde Hecho como único acento.",
+  "esquema": "oscuro",
+  "colores": {
+    "fondo": "#101114",
+    "superficie": "#2A2C33",
+    "superficie-alta": "#31343C",
+    "columna": "#15161A",
+    "borde": "#3A3D45",
+    "borde-hondo": "#1E2025",
+    "borde-chip": "#474A53",
+    "texto": "#FFFFFF",
+    "texto-chip": "#D6D9DF",
+    "tenue": "#A8ACB6",
+    "tenue-hondo": "#6A6E78",
+    "senal": "#16C98D",
+    "senal-suave": "rgba(22, 201, 141, 0.14)",
+    "sobre-senal": "#101114",
+    "ambar": "#F0C987",
+    "ambar-fondo": "#3A2F22",
+    "ambar-velo": "rgba(240, 201, 135, 0.08)",
+    "velo-sutil": "rgba(255, 255, 255, 0.04)",
+    "velo": "rgba(255, 255, 255, 0.05)",
+    "velo-fuerte": "rgba(255, 255, 255, 0.06)",
+    "barra": "rgba(255, 255, 255, 0.14)",
+    "barra-activa": "rgba(255, 255, 255, 0.30)"
+  }
+}

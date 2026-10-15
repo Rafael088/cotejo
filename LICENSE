@@ -46,6 +46,16 @@ instale ni use el Software.
     expresamente en esta licencia queda reservado a
     Rafael Eduardo Aguirre Gonzalez.
 
+2.4 Rafael Eduardo Aguirre Gonzalez publica el código fuente del
+    Software en su repositorio oficial
+    (https://github.com/Rafael088/cotejo) para que se pueda leer,
+    revisar y auditar, y para reportar fallos. Publicarlo no convierte
+    el Software en software libre ni de código abierto: leer ese código
+    no le concede ningún derecho distinto de los de esta licencia, y las
+    restricciones de la cláusula 3 se aplican también a él, salvo la de
+    intentar obtener el código fuente (letra d), que no se aplica al
+    publicado en ese repositorio.
+
 
 3. RESTRICCIONES
 
@@ -106,6 +116,11 @@ siendo propiedad de Rafael Eduardo Aguirre Gonzalez o de sus licenciantes.
 Si Usted envía comentarios o sugerencias sobre el Software,
 Rafael Eduardo Aguirre Gonzalez puede usarlos libremente y sin obligación
 alguna hacia Usted.
+Si Usted envía código o cualquier otra contribución (por ejemplo, un
+pull request), declara que tiene derecho a hacerlo y le concede a
+Rafael Eduardo Aguirre Gonzalez una licencia perpetua, mundial, gratuita,
+irrevocable, transferible y sublicenciable para usarla, modificarla y
+distribuirla, como parte del Software o fuera de él.
 
 
 6. ACTUALIZACIONES Y SOPORTE
@@ -237,6 +252,16 @@ accept them, do not install or use the Software.
 2.3 The Software is licensed, not sold. All rights not expressly granted
     in this license are reserved by Rafael Eduardo Aguirre Gonzalez.
 
+2.4 Rafael Eduardo Aguirre Gonzalez publishes the source code of the
+    Software in its official repository
+    (https://github.com/Rafael088/cotejo) so that it can be read,
+    reviewed and audited, and to report bugs. Publishing it does not
+    make the Software free or open-source software: reading that code
+    grants You no rights other than those in this license, and the
+    restrictions in section 3 also apply to it, except the one on
+    attempting to obtain the source code (item d), which does not apply
+    to the code published in that repository.
+
 
 3. RESTRICTIONS
 
@@ -297,6 +322,11 @@ the property of Rafael Eduardo Aguirre Gonzalez or his licensors. If You
 send feedback or suggestions about the Software,
 Rafael Eduardo Aguirre Gonzalez may use them freely and without any
 obligation to You.
+If You submit code or any other contribution (for example, a pull
+request), You represent that You have the right to do so and You grant
+Rafael Eduardo Aguirre Gonzalez a perpetual, worldwide, royalty-free,
+irrevocable, transferable and sublicensable license to use, modify and
+distribute it, as part of the Software or otherwise.
 
 
 6. UPDATES AND SUPPORT

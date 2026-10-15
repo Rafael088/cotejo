@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#0A0B0D;color:#fff;font-family:Inter,sans-serif;-webkit-font-smoothing:antialiased}a{color:#16C98D}a:hover{color:#5FE3B5}</style>
+</helmet>
+
+<section id="1a" style="padding:64px;display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap">
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;gap:10px;align-items:center">
+      <span style="font:500 11px 'IBM Plex Mono';background:#16C98D;color:#101114;padding:3px 8px;border-radius:6px">1a</span>
+      <span style="font:600 15px Sora;color:#fff">CotejoBoard · propuesta</span>
+      <span style="font:400 11px 'IBM Plex Mono';color:#A8ACB6;letter-spacing:.06em">1280 × 820</span>
+    </div>
+
+    <div style="width:1280px;height:820px;background:#101114;border-radius:16px;border:1px solid #2A2C33;overflow:hidden;display:flex;flex-direction:column;position:relative;box-shadow:0 40px 120px rgba(0,0,0,.55)">
+      <!-- Header -->
+      <div style="height:52px;flex:none;display:flex;align-items:center;gap:12px;padding:0 10px 0 16px;border-bottom:1px solid #3A3D45">
+        <div style="width:22px;height:22px;border-radius:7px;background:#2A2C33;display:grid;place-items:center">
+          <span style="width:8px;height:8px;border-radius:50%;background:#16C98D"></span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:1px">
+          <span style="font:600 15px Sora;letter-spacing:-.01em">CotejoBoard</span>
+          <span style="font:400 11px 'IBM Plex Mono';letter-spacing:.06em;color:#16C98D">2 ESPERANDO QUE LAS COMPRUEBES · COTEJO</span>
+        </div>
+        <div style="flex:1"></div>
+        <div style="display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border-radius:10px;background:#2A2C33;width:220px;color:#A8ACB6">
+          <span style="width:16px;height:16px;flex:none;background:currentColor;-webkit-mask:url(iconos/cotejo-buscar.svg) center/contain no-repeat;mask:url(iconos/cotejo-buscar.svg) center/contain no-repeat"></span>
+          <span style="font:400 13px Inter;flex:1">Buscar tareas</span>
+          <span style="font:400 10px 'IBM Plex Mono';border:1px solid #3A3D45;border-radius:5px;padding:1px 5px">Ctrl F</span>
+        </div>
+        <div style="display:flex;gap:2px;position:relative">
+          <div title="Recargar (Ctrl+R)" style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#A8ACB6;cursor:pointer" style-hover="background:rgba(255,255,255,.06);color:#fff">
+            <span style="width:18px;height:18px;background:currentColor;-webkit-mask:url(iconos/cotejo-recargar.svg) center/contain no-repeat;mask:url(iconos/cotejo-recargar.svg) center/contain no-repeat"></span>
+          </div>
+          <div title="Más opciones" style="width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#fff;background:rgba(255,255,255,.08);cursor:pointer">
+            <span style="width:18px;height:18px;background:currentColor;-webkit-mask:url(iconos/cotejo-mas.svg) center/contain no-repeat;mask:url(iconos/cotejo-mas.svg) center/contain no-repeat"></span>
+          </div>
+          <sc-if value="{{ menuCabecera }}" hint-placeholder-val="{{ true }}">
+            <div style="position:absolute;top:42px;right:0;width:236px;background:#2A2C33;border:1px solid #3A3D45;border-radius:12px;padding:6px;z-index:5;box-shadow:0 18px 40px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:1px">
+              <sc-for list="{{ opcionesCabecera }}" as="o" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:7px;font:400 13px Inter;color:#fff" style-hover="background:rgba(255,255,255,.06)">
+                  <span style="width:16px;height:16px;flex:none;color:#A8ACB6;background:currentColor;-webkit-mask:url({{ o.icono }}) center/contain no-repeat;mask:url({{ o.icono }}) center/contain no-repeat"></span>
+                  <span style="flex:1">{{ o.texto }}</span>
+                  <span style="font:400 10px 'IBM Plex Mono';color:#A8ACB6">{{ o.atajo }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+
+      <div style="flex:1;display:flex;min-height:0">
+        <!-- Lateral -->
+        <div style="width:232px;flex:none;border-right:1px solid #1E2025;display:flex;flex-direction:column;padding-top:14px">
+          <span style="font:500 10px 'IBM Plex Mono';letter-spacing:.1em;color:#A8ACB6;padding:0 18px 8px">PROYECTOS</span>
+          <sc-for list="{{ proyectos }}" as="p" hint-placeholder-count="5">
+            <div style="display:flex;align-items:center;gap:8px;margin:1px 6px;padding:7px 10px;border-radius:8px;background:{{ p.fondo }}">
+              <span style="font:{{ p.peso }} 13px Inter;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff">{{ p.nombre }}</span>
+              <sc-if value="{{ p.esperando }}" hint-placeholder-val="{{ false }}">
+                <span title="Esperando que las compruebes" style="display:flex;align-items:center;gap:4px;font:500 10px 'IBM Plex Mono';color:#101114;background:#16C98D;border-radius:10px;padding:1px 6px">{{ p.esperando }}</span>
+              </sc-if>
+              <span style="font:400 11px 'IBM Plex Mono';color:#A8ACB6;min-width:16px;text-align:right">{{ p.pendientes }}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <!-- Tablero -->
+        <div style="flex:1;min-width:0;display:flex;gap:10px;padding:14px">
+          <sc-for list="{{ columnas }}" as="c" hint-placeholder-count="4">
+            <div style="flex:{{ c.flex }};min-width:196px;display:flex;flex-direction:column;gap:10px;background:#15161A;border-radius:12px;padding:10px 8px 8px">
+              <div style="display:flex;align-items:center;gap:8px;padding:0 4px">
+                <span style="width:15px;height:15px;flex:none;color:{{ c.color }};background:currentColor;-webkit-mask:url({{ c.icono }}) center/contain no-repeat;mask:url({{ c.icono }}) center/contain no-repeat"></span>
+                <span style="font:600 13px Sora;color:{{ c.color }};flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.nombre }}</span>
+                <span style="font:500 11px 'IBM Plex Mono';color:{{ c.cuentaColor }};background:{{ c.cuentaFondo }};border-radius:10px;padding:1px 7px">{{ c.cuenta }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <sc-for list="{{ c.cartas }}" as="t" hint-placeholder-count="3">
+                  <div style="position:relative;background:#2A2C33;border:1px solid {{ t.borde }};border-radius:10px;padding:10px 10px 10px 12px;display:flex;flex-direction:column;gap:8px" style-hover="border-color:#16C98D;background:#31343C">
+                    <div style="display:flex;gap:6px;align-items:flex-start">
+                      <span style="font:400 13px/1.4 Inter;color:#fff;flex:1;text-wrap:pretty">{{ t.texto }}</span>
+                      <span style="width:24px;height:24px;flex:none;margin:-3px -4px 0 0;border-radius:6px;display:grid;place-items:center;color:{{ t.menuColor }};background:{{ t.menuFondo }}">
+                        <span style="width:16px;height:16px;background:currentColor;-webkit-mask:url(iconos/cotejo-mas.svg) center/contain no-repeat;mask:url(iconos/cotejo-mas.svg) center/contain no-repeat"></span>
+                      </span>
+                    </div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                      <sc-if value="{{ t.agente }}" hint-placeholder-val="{{ false }}">
+                        <span title="Asignada a {{ t.agente }}" style="display:flex;align-items:center;gap:4px;font:400 10px 'IBM Plex Mono';color:#D6D9DF;border:1px solid #474A53;border-radius:6px;padding:1px 6px 1px 4px">
+                          <span style="width:12px;height:12px;background:currentColor;-webkit-mask:url({{ t.agenteIcono }}) center/contain no-repeat;mask:url({{ t.agenteIcono }}) center/contain no-repeat"></span>{{ t.agente }}
+                        </span>
+                      </sc-if>
+                      <sc-if value="{{ t.dif }}" hint-placeholder-val="{{ false }}">
+                        <span title="Dificultad: {{ t.dif }}" style="display:flex;align-items:center;gap:4px;font:400 10px 'IBM Plex Mono';color:#A8ACB6;background:rgba(255,255,255,.05);border-radius:6px;padding:1px 6px 1px 4px">
+                          <span style="width:12px;height:12px;background:currentColor;-webkit-mask:url({{ t.difIcono }}) center/contain no-repeat;mask:url({{ t.difIcono }}) center/contain no-repeat"></span>{{ t.dif }}
+                        </span>
+                      </sc-if>
+                      <sc-if value="{{ t.sub }}" hint-placeholder-val="{{ false }}">
+                        <span style="font:400 10px 'IBM Plex Mono';color:#A8ACB6;background:rgba(255,255,255,.05);border-radius:6px;padding:1px 6px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.sub }}</span>
+                      </sc-if>
+                    </div>
+                    <sc-if value="{{ t.anot }}" hint-placeholder-val="{{ false }}">
+                      <div style="background:{{ t.anot.fondo }};border-radius:7px;padding:7px 8px;display:flex;flex-direction:column;gap:3px">
+                        <span style="display:flex;align-items:center;gap:5px;font:500 9.5px 'IBM Plex Mono';letter-spacing:.08em;color:{{ t.anot.color }}">
+                          <span style="width:11px;height:11px;background:currentColor;-webkit-mask:url({{ t.anot.icono }}) center/contain no-repeat;mask:url({{ t.anot.icono }}) center/contain no-repeat"></span>{{ t.anot.titulo }}
+                        </span>
+                        <span style="font:400 10.5px/1.45 'IBM Plex Mono';color:#A8ACB6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">{{ t.anot.texto }}</span>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ t.menu }}" hint-placeholder-val="{{ false }}">
+                      <div style="position:absolute;top:26px;right:-8px;transform:translateX(100%);width:228px;background:#2A2C33;border:1px solid #3A3D45;border-radius:12px;padding:8px;z-index:6;box-shadow:0 18px 40px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:1px">
+                        <span style="font:500 10px 'IBM Plex Mono';letter-spacing:.08em;color:#A8ACB6;padding:2px 8px 4px">MOVER A</span>
+                        <sc-for list="{{ menuMover }}" as="m" hint-placeholder-count="3">
+                          <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:7px;font:400 13px Inter;background:{{ m.fondo }}">
+                            <span style="width:15px;height:15px;flex:none;color:#A8ACB6;background:currentColor;-webkit-mask:url({{ m.icono }}) center/contain no-repeat;mask:url({{ m.icono }}) center/contain no-repeat"></span>
+                            <span style="flex:1">{{ m.texto }}</span>
+                            <span style="font:400 10px 'IBM Plex Mono';color:#A8ACB6">{{ m.atajo }}</span>
+                          </div>
+                        </sc-for>
+                        <div style="height:1px;background:#3A3D45;margin:5px 0"></div>
+                        <span style="font:500 10px 'IBM Plex Mono';letter-spacing:.08em;color:#A8ACB6;padding:2px 8px 4px">ASIGNAR A</span>
+                        <sc-for list="{{ menuAsignar }}" as="m" hint-placeholder-count="3">
+                          <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:7px;font:400 13px Inter">
+                            <span style="width:15px;height:15px;flex:none;color:#A8ACB6;background:currentColor;-webkit-mask:url({{ m.icono }}) center/contain no-repeat;mask:url({{ m.icono }}) center/contain no-repeat"></span>
+                            <span style="flex:1">{{ m.texto }}</span>
+                          </div>
+                        </sc-for>
+                        <div style="height:1px;background:#3A3D45;margin:5px 0"></div>
+                        <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:7px;font:400 13px Inter">
+                          <span style="width:15px;height:15px;flex:none;color:#A8ACB6;background:currentColor;-webkit-mask:url(iconos/cotejo-evidencia.svg) center/contain no-repeat;mask:url(iconos/cotejo-evidencia.svg) center/contain no-repeat"></span>
+                          <span style="flex:1">Ver la evidencia</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:7px;font:400 13px Inter">
+                          <span style="width:15px;height:15px;flex:none;color:#A8ACB6;background:currentColor;-webkit-mask:url(iconos/cotejo-abrir.svg) center/contain no-repeat;mask:url(iconos/cotejo-abrir.svg) center/contain no-repeat"></span>
+                          <span style="flex:1">Abrir en Obsidian</span>
+                          <span style="font:400 10px 'IBM Plex Mono';color:#A8ACB6">Enter</span>
+                        </div>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ c.vacio }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:18px 6px">
+                    <span style="width:20px;height:20px;color:#5A5E68;background:currentColor;-webkit-mask:url(iconos/cotejo-vacio.svg) center/contain no-repeat;mask:url(iconos/cotejo-vacio.svg) center/contain no-repeat"></span>
+                    <span style="font:500 13px Inter;color:#fff">{{ c.vacio.titulo }}</span>
+                    <span style="font:400 10.5px/1.45 'IBM Plex Mono';color:#A8ACB6">{{ c.vacio.pista }}</span>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- Toast acumulado -->
+      <sc-if value="{{ toast }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;left:50%;bottom:22px;transform:translateX(calc(-50% + 116px));display:flex;align-items:center;gap:14px;background:#2A2C33;border:1px solid #3A3D45;border-radius:12px;padding:8px 8px 8px 14px;box-shadow:0 18px 40px rgba(0,0,0,.5)">
+          <svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="#16C98D"></circle><path d="M8.25 12.25l2.5 2.5 5-5.25" fill="none" stroke="#101114" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          <div style="display:flex;flex-direction:column">
+            <span style="font:500 13px Inter">3 tareas finalizadas</span>
+            <span style="font:400 10px 'IBM Plex Mono';color:#A8ACB6;letter-spacing:.04em">SE DESHACEN UNA A UNA · CTRL Z</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.07);font:500 13px Inter">
+            <span style="width:15px;height:15px;background:currentColor;-webkit-mask:url(iconos/cotejo-deshacer.svg) center/contain no-repeat;mask:url(iconos/cotejo-deshacer.svg) center/contain no-repeat"></span>Deshacer
+          </div>
+          <div style="height:22px;width:22px;display:grid;place-items:center;color:#A8ACB6">
+            <span style="width:14px;height:14px;background:currentColor;-webkit-mask:url(iconos/cotejo-cerrar.svg) center/contain no-repeat;mask:url(iconos/cotejo-cerrar.svg) center/contain no-repeat"></span>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <!-- Notas de cambios -->
+  <div style="width:300px;display:flex;flex-direction:column;gap:18px;padding-top:40px">
+    <span style="font:500 11px 'IBM Plex Mono';letter-spacing:.1em;color:#A8ACB6">QUÉ CAMBIA</span>
+    <sc-for list="{{ notas }}" as="n" hint-placeholder-count="6">
+      <div style="display:grid;grid-template-columns:22px 1fr;gap:10px">
+        <span style="font:500 11px 'IBM Plex Mono';color:#16C98D">{{ n.n }}</span>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font:600 13px Sora">{{ n.t }}</span>
+          <span style="font:400 13px/1.5 Inter;color:#A8ACB6;text-wrap:pretty">{{ n.d }}</span>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+
+<section id="1b" style="padding:0 64px 80px;display:flex;flex-direction:column;gap:16px">
+  <div style="display:flex;gap:10px;align-items:center">
+    <span style="font:500 11px 'IBM Plex Mono';background:#16C98D;color:#101114;padding:3px 8px;border-radius:6px">1b</span>
+    <span style="font:600 15px Sora">Iconos · estilo iOS</span>
+    <span style="font:400 11px 'IBM Plex Mono';color:#A8ACB6;letter-spacing:.06em">24 PX · TRAZO 1.75 · PUNTAS REDONDAS · /iconos</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(7,150px);gap:10px">
+    <sc-for list="{{ iconos }}" as="i" hint-placeholder-count="28">
+      <div style="height:118px;background:#15161A;border:1px solid #1F2126;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px">
+        <span style="width:28px;height:28px;color:{{ i.color }};background:currentColor;-webkit-mask:url({{ i.src }}) center/contain no-repeat;mask:url({{ i.src }}) center/contain no-repeat"></span>
+        <span style="font:400 10px 'IBM Plex Mono';color:#A8ACB6">{{ i.nombre }}</span>
+      </div>
+    </sc-for>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;columnas&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;proporcionales&quot;,&quot;iguales&quot;],&quot;default&quot;:&quot;proporcionales&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;menuTarjeta&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;menuCabecera&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;toast&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props;
+    const menuTarjeta = p.menuTarjeta ?? true;
+    const proporcional = (p.columnas ?? 'proporcionales') === 'proporcionales';
+    const ic = (n) => `iconos/cotejo-${n}.svg`;
+    const difIc = { 'fácil': ic('dificultad-facil'), medio: ic('dificultad-medio'), 'difícil': ic('dificultad-dificil') };
+    const card = (texto, o = {}) => ({
+      texto, agente: o.a || '', agenteIcono: o.a === 'persona' ? ic('persona') : ic('agente'),
+      dif: o.d || '', difIcono: difIc[o.d] || '', sub: o.s || '', menu: !!o.menu,
+      borde: o.menu ? '#16C98D' : '#3A3D45',
+      menuColor: o.menu ? '#fff' : '#A8ACB6', menuFondo: o.menu ? 'rgba(255,255,255,.1)' : 'transparent',
+      anot: o.ev ? { titulo: 'EVIDENCIA', texto: o.ev, icono: ic('evidencia'), color: '#A8ACB6', fondo: 'rgba(255,255,255,.04)' }
+          : o.dev ? { titulo: 'DEVUELTA', texto: o.dev, icono: ic('devuelta'), color: '#F0C987', fondo: 'rgba(240,201,135,.08)' } : null,
+    });
+    const cols = [
+      { clave: 'pendiente', nombre: 'Pendiente', icono: ic('estado-pendiente'), cartas: [
+        card('Separar la lectura del vault de la escritura de tags', { d: 'medio', s: 'fuentes' }),
+        card('Documentar el contrato de tags para agentes', { d: 'fácil', s: 'docs' }),
+        card('Atajo global para abrir el board', { d: 'fácil' }),
+        card('Recordar el scroll de cada columna entre sesiones', { d: 'medio', dev: 'Pierde la posición al cambiar de proyecto. Reprodúcelo con dos vaults abiertos.' }),
+        card('Tema claro opcional', { d: 'difícil', s: 'app.py' }),
+      ]},
+      { clave: 'en-curso', nombre: 'Haciéndola', icono: ic('estado-en-curso'), cartas: [
+        card('Toasts de deshacer acumulados al completar en cadena', { a: 'opus', d: 'difícil', menu: menuTarjeta }),
+        card('Íconos por opción en el menú de la carta', { a: 'sonnet', d: 'fácil' }),
+        card('Revisar textos de columnas vacías', { a: 'persona', d: 'fácil' }),
+      ]},
+      { clave: 'por-validar', nombre: 'En espera de comprobación', icono: ic('estado-por-validar'), cartas: [
+        card('Columnas con ancho proporcional a su carga', { a: 'sonnet', d: 'medio', ev: 'Box homogeneous=False; hexpand por cuenta de cartas, mínimo 196 px. pytest tests/test_board.py → 14 passed.' }),
+        card('Chip de agente en neutro, verde solo para atención', { a: 'haiku', d: 'fácil', ev: 'Nueva clase .chip-agente con borde plata #474A53. Capturas en bitácora.' }),
+      ]},
+      { clave: 'hecha', nombre: 'Finalizada', icono: ic('estado-hecha'), cartas: [
+        card('Navegación completa por teclado', { d: 'medio' }),
+        card('Motivo obligatorio al devolver', { d: 'fácil' }),
+      ]},
+    ];
+    const pesos = { pendiente: 1.25, 'en-curso': 1.05, 'por-validar': 1.1, hecha: 0.75 };
+    const columnas = cols.map(c => {
+      const atencion = c.clave === 'por-validar';
+      return { ...c, cuenta: c.cartas.length, vacio: null,
+        flex: proporcional ? `${pesos[c.clave]} 1 0` : '1 1 0',
+        color: atencion ? '#16C98D' : c.clave === 'hecha' ? '#A8ACB6' : '#fff',
+        cuentaColor: atencion ? '#101114' : '#A8ACB6', cuentaFondo: atencion ? '#16C98D' : 'rgba(255,255,255,.06)' };
+    });
+    const sel = 'Cotejo';
+    const proyectos = [['Todos los proyectos', 18, 3], ['Cotejo', 10, 2], ['Atlas · sistema', 4, 1], ['Second Brain', 3, 0], ['Portafolio 2026', 1, 0]]
+      .map(([nombre, pendientes, esperando]) => ({ nombre, pendientes, esperando: esperando || '',
+        fondo: nombre === sel ? 'rgba(255,255,255,.08)' : 'transparent', peso: nombre === sel ? '500' : '400' }));
+    const iconos = ['recargar','mas','buscar','tablero','lateral','contraer','cerrar','chevron-derecha','chevron-abajo','flecha-izquierda','flecha-derecha','agente','persona','sin-agente','dificultad-facil','dificultad-medio','dificultad-dificil','estado-pendiente','estado-en-curso','estado-por-validar','estado-hecha','evidencia','devuelta','abrir','deshacer','teclado','tema','vacio']
+      .map(n => ({ nombre: n, src: ic(n), color: n === 'estado-por-validar' ? '#16C98D' : n === 'devuelta' ? '#F0C987' : '#fff' }));
+    return {
+      columnas, proyectos, iconos,
+      toast: p.toast ?? true,
+      menuCabecera: p.menuCabecera ?? false,
+      opcionesCabecera: [
+        { texto: 'Contraer todas las columnas', icono: ic('contraer'), atajo: '' },
+        { texto: 'Ocultar proyectos', icono: ic('lateral'), atajo: 'F9' },
+        { texto: 'Tema claro', icono: ic('tema'), atajo: '' },
+        { texto: 'Atajos de teclado', icono: ic('teclado'), atajo: 'Ctrl ?' },
+      ],
+      menuMover: [
+        { texto: 'Pendiente', icono: ic('flecha-izquierda'), atajo: 'Ctrl ←', fondo: 'transparent' },
+        { texto: 'En espera de comprobación', icono: ic('flecha-derecha'), atajo: 'Ctrl →', fondo: 'rgba(255,255,255,.06)' },
+        { texto: 'Finalizada', icono: ic('estado-hecha'), atajo: '', fondo: 'transparent' },
+      ],
+      menuAsignar: [
+        { texto: 'sonnet', icono: ic('agente') }, { texto: 'haiku', icono: ic('agente') },
+        { texto: 'persona', icono: ic('persona') }, { texto: 'Sin agente', icono: ic('sin-agente') },
+      ],
+      notas: [
+        { n: '01', t: 'Verde = atención, nada más', d: 'El chip de agente pasa a contorno plata con icono. El verde queda para "En espera de comprobación", su contador y el aviso del lateral.' },
+        { n: '02', t: 'Columnas proporcionales', d: 'Cada columna crece según su carga, con mínimo de 196 px. Finalizada se estrecha; Pendiente gana aire.' },
+        { n: '03', t: 'Dificultad legible de un vistazo', d: 'Tres barras de señal (1/2/3) delante del texto: se escanea sin leer.' },
+        { n: '04', t: 'Menú de carta con iconos y atajos', d: 'Cada acción lleva símbolo y su atajo de teclado visible; la opción siguiente natural va resaltada.' },
+        { n: '05', t: 'Cabecera más limpia', d: 'Búsqueda visible, Recargar como única acción directa y el resto en el menú de más opciones.' },
+        { n: '06', t: 'Deshacer acumulado', d: 'Completar en cadena agrupa los toasts en uno ("3 tareas finalizadas") en vez de reemplazarlos y perder el deshacer.' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

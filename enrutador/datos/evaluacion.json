@@ -1,0 +1,289 @@
+{
+  "esquema": 1,
+  "que_es": "Tareas de referencia con el nivel que les corresponde, para medir si las reglas deterministas aciertan sin necesidad de un clasificador. Los casos con origen «tag» llevan el nivel que una persona ya había escrito en la nota (#facil/#medio/#dificil): son etiquetas externas a las reglas y por eso son la verdad de referencia. Los de origen «revisado» se etiquetaron leyendo la tarea, y son sobre todo las que ningún modelo puede hacer, que no llevan tag porque el tag de dificultad no contempla ese caso.",
+  "como_se_usa": "`tareas-obsidian evaluar`. Los casos no llevan agente ni dificultad a propósito: lo que se mide son las reglas, y una tarea con #agente/opus o con #medio ni siquiera llega a ellas. Si cambias una regla, vuelve a medir antes de darla por buena.",
+  "casos": [
+    {
+      "texto": "`claude-voz estado` imprime un dict de Python (comillas simples), no JSON: cambiar el print por json.dumps para que un agente no tenga que arreglar las comillas",
+      "esperado": "n1",
+      "origen": "tag",
+      "proyecto": "Proyecto Externo 3"
+    },
+    {
+      "texto": "`claude-voz texto` solo devuelve el acuse, no la respuesta de Claude: quien quiera saber qué contestó tiene que ir a leer el historial, una ronda entera de más",
+      "esperado": "n2",
+      "origen": "tag",
+      "proyecto": "Proyecto Externo 3"
+    },
+    {
+      "texto": "El historial es prosa en Markdown: exponer la última respuesta en formato de máquina (o un `claude-voz ultima`) para no obligar a parsearlo",
+      "esperado": "n2",
+      "origen": "tag",
+      "proyecto": "Proyecto Externo 3"
+    },
+    {
+      "texto": "Temas para Cotejo: un botón a la izquierda de recargar en CotejoBoard abre un modal donde se elige el tema (oscuro, claro y los que haya), y el elegido vale también para CotejoList. Un tema es un archivo de tokens de color que un agente crea y comprueba por CLI; en la interfaz solo se elige, nunca se edita ni se crea",
+      "esperado": "n3",
+      "origen": "tag",
+      "proyecto": "Cotejo"
+    },
+    {
+      "texto": "El medidor de ahorro infla la razón cuando se filtra: escanear lee el vault entero aunque se pida --proyecto, así que la mitad cara cuenta todas las notas contra una respuesta de un solo proyecto. Contar solo las notas de los proyectos que pasaron el filtro",
+      "esperado": "n2",
+      "origen": "tag",
+      "proyecto": "Cotejo"
+    },
+    {
+      "texto": "Subir el contrato del agente a la CLI de Cotejo y meter el vault de Obsidian detrás de una capa Fuente intercambiable (hallazgo 3 de [[Revisión AX de Cotejo]])",
+      "esperado": "n3",
+      "origen": "tag",
+      "proyecto": "Cotejo"
+    },
+    {
+      "texto": "entregar exige evidencia y cada operación se anexa a un bitacora.jsonl (hallazgo 5)",
+      "esperado": "n2",
+      "origen": "tag",
+      "proyecto": "Cotejo"
+    },
+    {
+      "texto": "Poner esquema: 1 en estado.json antes de que haya más consumidores del contrato (hallazgo 6)",
+      "esperado": "n1",
+      "origen": "tag",
+      "proyecto": "Cotejo"
+    },
+    {
+      "texto": "Que las notas ilegibles y los fallos al escribir estado.json dejen de desaparecer en silencio: exponerlos como avisos (hallazgo 7)",
+      "esperado": "n2",
+      "origen": "tag",
+      "proyecto": "Cotejo"
+    },
+    {
+      "texto": "Pruebas de vault.py con un vault de mentira: línea cambiada por fuera, bloque de código, tags en cualquier orden, sangría, CRLF, marcar dos veces (hallazgo 8)",
+      "esperado": "n2",
+      "origen": "tag",
+      "proyecto": "Cotejo"
+    },
+    {
+      "texto": "CLI para agentes: tareas filtrado en JSON y los verbos tomar, entregar y asignar, sin verbo para finalizar (hallazgos 1 y 2)",
+      "esperado": "n2",
+      "origen": "tag",
+      "proyecto": "Cotejo"
+    },
+    {
+      "texto": "Identificador estable por tarea (^cotejo-a1b2) en vez de nota más número de línea (hallazgo 4)",
+      "esperado": "n2",
+      "origen": "tag",
+      "proyecto": "Cotejo"
+    },
+    {
+      "texto": "Verbo bloquear con motivo: quedó fuera de la CLI porque necesita dónde guardar texto libre en la línea, que es lo mismo que resuelve la evidencia del hallazgo 5",
+      "esperado": "n2",
+      "origen": "tag",
+      "proyecto": "Cotejo"
+    },
+    {
+      "texto": "Medidor de ahorro: contar lo que costó de verdad el camino barato (lo que devuelve la CLI) contra lo que habría costado leer las notas enteras, que la fuente ya sabe porque las leyó. Fuera de la barra",
+      "esperado": "n2",
+      "origen": "tag",
+      "proyecto": "Cotejo"
+    },
+    {
+      "texto": "Escribir el set de ~30 frases reales con el nivel esperado, antes de programar las reglas",
+      "esperado": "n2",
+      "origen": "tag",
+      "proyecto": "Enrutador"
+    },
+    {
+      "texto": "Crear el repo `enrutador` con las reglas, los niveles y el CLI",
+      "esperado": "n2",
+      "origen": "tag",
+      "proyecto": "Enrutador"
+    },
+    {
+      "texto": "Partir `preguntar()` de Eco en decidir + ejecutar, con una sesión por nivel",
+      "esperado": "n3",
+      "origen": "tag",
+      "proyecto": "Enrutador"
+    },
+    {
+      "texto": "Override por voz (\"con opus, …\") y pegajoso (`claude-voz modelo opus` / `auto`)",
+      "esperado": "n1",
+      "origen": "tag",
+      "proyecto": "Enrutador"
+    },
+    {
+      "texto": "Mostrar en la notificación qué cerebro contestó (`💭 Pensando… · haiku`)",
+      "esperado": "n1",
+      "origen": "tag",
+      "proyecto": "Enrutador"
+    },
+    {
+      "texto": "Medir con el set de evaluación si las reglas solas alcanzan, antes de agregar el clasificador Haiku",
+      "esperado": "n2",
+      "origen": "tag",
+      "proyecto": "Enrutador"
+    },
+    {
+      "texto": "Parsear `#facil` / `#medio` / `#dificil` en `tareas/vault.py` y mostrarlas como chip en Cotejo",
+      "esperado": "n1",
+      "origen": "tag",
+      "proyecto": "Enrutador"
+    },
+    {
+      "texto": "Sacar los precios exactos por modelo de la skill `claude-api` al implementar, no de memoria",
+      "esperado": "n1",
+      "origen": "tag",
+      "proyecto": "Enrutador"
+    },
+    {
+      "texto": "Comprar el dominio miempresa.co y definir NEXT_PUBLIC_SITIO_URL en Vercel",
+      "esperado": "n0",
+      "origen": "revisado",
+      "proyecto": "Proyecto Externo 1"
+    },
+    {
+      "texto": "Que un abogado revise los textos de garantia, terminos y tratamiento de datos antes de vender en serio",
+      "esperado": "n0",
+      "origen": "revisado",
+      "proyecto": "Proyecto Externo 1"
+    },
+    {
+      "texto": "Registrar la marca Ejemplo ante la SIC: el dominio no protege el nombre legalmente",
+      "esperado": "n0",
+      "origen": "revisado",
+      "proyecto": "Proyecto Externo 1"
+    },
+    {
+      "texto": "Sacar la API key de Anthropic en console.anthropic.com",
+      "esperado": "n0",
+      "origen": "revisado",
+      "proyecto": "Proyecto Externo 2"
+    },
+    {
+      "texto": "Crear el bot en @BotFather y guardar el token",
+      "esperado": "n0",
+      "origen": "revisado",
+      "proyecto": "Proyecto Externo 2"
+    },
+    {
+      "texto": "En Google Cloud Console: crear proyecto y habilitar Google Drive API y Google Sheets API",
+      "esperado": "n0",
+      "origen": "revisado",
+      "proyecto": "Proyecto Externo 2"
+    },
+    {
+      "texto": "Comprar 3 tarjetas de muestra y verificar que el chip NFC lea bien con el diseño impreso encima",
+      "esperado": "n0",
+      "origen": "revisado",
+      "proyecto": "Proyecto Externo 1"
+    },
+    {
+      "texto": "Confirmar con el contador la figura y el documento de venta, y meter el recibo al proceso",
+      "esperado": "n0",
+      "origen": "revisado",
+      "proyecto": "Proyecto Externo 1"
+    },
+    {
+      "texto": "Dejar los dos formularios como acceso directo en la pantalla de inicio del celular",
+      "esperado": "n0",
+      "origen": "revisado",
+      "proyecto": "Proyecto Externo 1"
+    },
+    {
+      "texto": "Escoger la voz definitiva entre las tres descargadas",
+      "esperado": "n0",
+      "origen": "revisado",
+      "proyecto": "Proyecto Externo 3"
+    },
+    {
+      "texto": "Usar el board unos días y ver si la columna Pendiente con 60+ tareas satura, o si hace falta filtrar por proyecto",
+      "esperado": "n0",
+      "origen": "revisado",
+      "proyecto": "Cotejo"
+    },
+    {
+      "texto": "Decidir si los estados de tarjeta se construyen de verdad o se borran del diseño",
+      "esperado": "n0",
+      "origen": "revisado",
+      "proyecto": "Proyecto Externo 1"
+    },
+    {
+      "texto": "Verificar la web en Google Search Console y enviar el sitemap",
+      "esperado": "n0",
+      "origen": "revisado",
+      "proyecto": "Proyecto Externo 1"
+    },
+    {
+      "texto": "Convertir los logotipos a curvas antes de mandar a imprenta o grabado",
+      "esperado": "n0",
+      "origen": "revisado",
+      "proyecto": "Proyecto Externo 1"
+    },
+    {
+      "texto": "Cambiar el redirector para leer las columnas por nombre de encabezado en vez de por posición",
+      "esperado": "n2",
+      "origen": "revisado",
+      "proyecto": "Proyecto Externo 1"
+    },
+    {
+      "texto": "Agregar páginas de cortesía en el redirector en vez del 404 en JSON crudo",
+      "esperado": "n2",
+      "origen": "revisado",
+      "proyecto": "Proyecto Externo 1"
+    },
+    {
+      "texto": "Documentar el paso fijo para obtener el link directo de reseñas de Google",
+      "esperado": "n1",
+      "origen": "revisado",
+      "proyecto": "Proyecto Externo 1"
+    },
+    {
+      "texto": "Construir la skill del agente que genera el PDF de estrategia del Plan B",
+      "esperado": "n3",
+      "origen": "revisado",
+      "proyecto": "Proyecto Externo 1"
+    },
+    {
+      "texto": "Leer también tareas de `00-Inbox` y `06-Diario`",
+      "esperado": "n2",
+      "origen": "revisado",
+      "proyecto": "Cotejo"
+    },
+    {
+      "texto": "Vigilar que la instancia de Evolution siga en «open»: desconectada, el bot deja de contestar en silencio",
+      "esperado": "n2",
+      "origen": "revisado",
+      "proyecto": "Proyecto Externo 4"
+    },
+    {
+      "texto": "Verificar Turnstile en `/api/debate/start` antes de emitir el token",
+      "esperado": "n2",
+      "origen": "revisado",
+      "proyecto": "Agent Debate"
+    },
+    {
+      "texto": "Pantalla de configuración con tres modos (Gratis / Conectar OpenRouter / Mi key) y contador de debates que quedan hoy",
+      "esperado": "n2",
+      "origen": "revisado",
+      "proyecto": "Agent Debate"
+    },
+    {
+      "texto": "Botón «Conectar con OpenRouter» con OAuth PKCE: redirigir, recibir el `code` y cambiarlo por la key del usuario",
+      "esperado": "n2",
+      "origen": "revisado",
+      "proyecto": "Agent Debate"
+    },
+    {
+      "texto": "Crear la base de Upstash Redis y el sitio de Cloudflare Turnstile, y pasar sus variables a `.env.local` y Vercel",
+      "esperado": "n0",
+      "origen": "revisado",
+      "proyecto": "Agent Debate"
+    },
+    {
+      "texto": "Decidir los paquetes de créditos y su precio en COP, con el costo real de un debate con los modelos de pago elegidos",
+      "esperado": "n0",
+      "origen": "revisado",
+      "proyecto": "Agent Debate"
+    }
+  ]
+}

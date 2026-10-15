@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Cotejo">
+  <title>Cotejo</title>
+  <!-- Un solo tono: el widget lo tiñe con el color que toque (barra, aviso o error). -->
+  <g transform="translate(2.11 89.88) scale(0.09200)"><g><path d="M800.27 -200.25A407.5 407.5 0 1 1 647.87 -709.10L518.14 -569.42A222.5 222.5 0 1 0 576.44 -200.25Z" fill="#FFFFFF"/><polyline points="277,-357 393,-240 928,-816" fill="none" stroke="#FFFFFF" stroke-width="185" stroke-linecap="round" stroke-linejoin="round"/></g></g>
+</svg>

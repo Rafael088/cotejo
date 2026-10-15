@@ -1,0 +1,61 @@
+# web/public/install.ps1 corrido como lo corre la gente (`irm … | iex`, aquí con el archivo del
+# repo en vez de la URL) contra la release publicada, en Windows PowerShell 5.1 y en PowerShell 7:
+# primero con una suma falsa (no puede instalar nada), luego de verdad, y otra vez (actualizar).
+name: install.ps1
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["**"]
+    paths:
+      - "web/public/install.ps1"
+      - ".github/workflows/install-ps1.yml"
+
+jobs:
+  probar:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shell: [powershell, pwsh]
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Una suma que no coincide no instala nada
+        run: |
+          $version = (Invoke-RestMethod https://api.github.com/repos/Rafael088/cotejo/releases/latest -Headers @{ Authorization = "Bearer $env:GH_TOKEN" }).tag_name.TrimStart('v')
+          $falsa = Join-Path $env:RUNNER_TEMP 'falsa'
+          New-Item -ItemType Directory $falsa | Out-Null
+          $nombre = "Cotejo-$version-windows-x64-instalador.exe"
+          Invoke-WebRequest -UseBasicParsing "https://github.com/Rafael088/cotejo/releases/download/v$version/$nombre" -OutFile "$falsa\$nombre"
+          "$('0' * 64)  $nombre" | Set-Content "$falsa\SHA256SUMS"
+          $env:COTEJO_DESCARGAS = $falsa
+          $salida = Get-Content web/public/install.ps1 -Raw | Invoke-Expression *>&1 | Out-String
+          Write-Host $salida
+          if ($salida -notmatch 'no coincide') { throw 'no dijo que la suma no coincide' }
+          if (Test-Path "$env:LOCALAPPDATA\Programs\Cotejo") { throw 'instaló con la suma mal' }
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Instalar la última
+        run: |
+          $salida = Get-Content web/public/install.ps1 -Raw | Invoke-Expression *>&1 | Out-String
+          Write-Host $salida
+          if ($salida -notmatch 'descarga comprobada') { throw 'no comprobó la descarga' }
+          if ($salida -notmatch 'cotejo doctor') { throw 'no terminó' }
+          $cotejo = "$env:LOCALAPPDATA\Programs\Cotejo\bin\cotejo.exe"
+          & $cotejo --version
+          if ($LASTEXITCODE) { throw 'cotejo --version falla' }
+          $path = [Environment]::GetEnvironmentVariable('Path', 'User')
+          if ($path -notlike "*Programs\Cotejo\bin*") { throw 'bin no quedó en el PATH del usuario' }
+
+      - name: Volver a correrlo actualiza (o reinstala la misma)
+        run: |
+          $salida = Get-Content web/public/install.ps1 -Raw | Invoke-Expression *>&1 | Out-String
+          Write-Host $salida
+          if ($salida -notmatch 'ya tienes la') { throw 'no vio la versión instalada' }
+          if ($salida -notmatch 'cotejo doctor') { throw 'no terminó' }

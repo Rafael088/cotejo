@@ -1,0 +1,27 @@
+# Paquete de pacman (Arch, Omarchy). No se construye a mano: `empaquetado/linux/construir.sh
+# --arch` rellena la versión y la suma del tarball y corre makepkg en dist/arch/.
+#
+# Instala con el mismo install.sh que la instalación de usuario, en /usr y sin tocar ningún
+# $HOME. El board va siempre; sus dependencias son opcionales porque la CLI no las usa.
+pkgname=cotejo
+pkgver=@VERSION@
+pkgrel=1
+pkgdesc="Las tareas de tus proyectos: CLI para agentes y CotejoBoard para revisarlas"
+arch=('any')
+url="https://github.com/Rafael088/cotejo"
+license=('LicenseRef-Cotejo-Proprietary')
+depends=('python')
+optdepends=('python-gobject: CotejoBoard'
+            'python-cairo: CotejoBoard (el arranque y el dot dibujan con cairo)'
+            'gtk4: CotejoBoard'
+            'libadwaita: CotejoBoard')
+install=cotejo.install
+source=("cotejo-$pkgver-linux.tar.gz")
+sha256sums=('@SHA256@')
+
+package() {
+  cd "cotejo-$pkgver"
+  sh install.sh --prefijo /usr --destdir "$pkgdir"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 THIRD-PARTY-NOTICES "$pkgdir/usr/share/licenses/$pkgname/THIRD-PARTY-NOTICES"
+}

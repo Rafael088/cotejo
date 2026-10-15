@@ -1,0 +1,239 @@
+{
+  "esquema": 1,
+  "que_es": "Los patrones y la lista blanca que usa `herramientas/purga.py` para revisar el árbol antes de que se arme un bundle público. No hay nada aquí que dependa de una decisión de identidad todavía sin tomar: los nombres de marca que sí dependen de eso (id de la app, id del widget, nombre de la persona, los assets de Atlas) están en «marcas» y se editan aquí, sin tocar el código, el día que esa decisión se cierre.",
+  "patrones": [
+    {
+      "id": "home_absoluto",
+      "categoria": "ruta",
+      "regex": "/home/[A-Za-z0-9_.-]+",
+      "motivo": "ruta absoluta de este equipo (carpeta personal de un usuario)"
+    },
+    {
+      "id": "ruta_absoluta_otro_sistema",
+      "categoria": "ruta",
+      "regex": "(?:/Users/|/root/)[A-Za-z0-9_.-]+",
+      "motivo": "ruta absoluta local (macOS o root) que no debería viajar en el bundle"
+    },
+    {
+      "id": "usuario_rafael088",
+      "categoria": "identidad",
+      "regex": "rafael088",
+      "motivo": "usuario/handle personal"
+    },
+    {
+      "id": "nombre_rafael",
+      "categoria": "identidad",
+      "regex": "(?i)\\brafael\\b",
+      "motivo": "nombre de pila de una persona"
+    },
+    {
+      "id": "id_reverso_github",
+      "categoria": "identidad",
+      "regex": "io\\.github\\.(?!cotejoapp\\.)[A-Za-z0-9_.-]+",
+      "motivo": "app id con un usuario de GitHub incrustado (el del producto, io.github.cotejoapp, cuelga de su organización y no cuenta)"
+    },
+    {
+      "id": "url_github_usuario",
+      "categoria": "identidad",
+      "regex": "github\\.com/rafael088",
+      "motivo": "URL a un perfil o repositorio personal de GitHub"
+    },
+    {
+      "id": "token_notion",
+      "categoria": "secreto",
+      "regex": "\\b(?:secret_[A-Za-z0-9]{43}|ntn_[A-Za-z0-9]{20,60})\\b",
+      "motivo": "token de integración de Notion"
+    },
+    {
+      "id": "token_github",
+      "categoria": "secreto",
+      "regex": "\\bgh[pousr]_[A-Za-z0-9]{20,}\\b",
+      "motivo": "token de GitHub"
+    },
+    {
+      "id": "clave_estilo_api",
+      "categoria": "secreto",
+      "regex": "\\bsk-[A-Za-z0-9]{20,}\\b",
+      "motivo": "clave con forma de API key (estilo OpenAI/Anthropic)"
+    },
+    {
+      "id": "clave_aws",
+      "categoria": "secreto",
+      "regex": "\\bAKIA[0-9A-Z]{16}\\b",
+      "motivo": "clave de acceso de AWS"
+    },
+    {
+      "id": "clave_privada_pem",
+      "categoria": "secreto",
+      "regex": "-----BEGIN [A-Z ]*PRIVATE KEY-----",
+      "motivo": "bloque de clave privada incrustado"
+    },
+    {
+      "id": "credencial_en_url",
+      "categoria": "secreto",
+      "regex": "://[^/\\s:@\"']+:[^/\\s:@\"']+@",
+      "motivo": "usuario y contraseña embebidos en una URL"
+    }
+  ],
+  "marcas": [
+    "rafael.foco",
+    "io.github.rafael088.tareasobsidian"
+  ],
+  "directorios_prohibidos": [
+    ".git",
+    "__pycache__",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".cache",
+    "node_modules",
+    "worktrees"
+  ],
+  "lista_blanca": [
+    {
+      "ruta": "herramientas/purga_config.json",
+      "patron": "*",
+      "motivo": "es la propia configuración: declara los patrones y nombres a buscar, no los comete"
+    },
+    {
+      "ruta": "install.sh",
+      "patron": "marca:rafael.foco",
+      "motivo": "migración desde los nombres de antes: el instalador quita el lanzador, el ícono y el widget con el id viejo, y renombra el widget en shell.json; sin nombrarlos no podría encontrarlos"
+    },
+    {
+      "ruta": "install.sh",
+      "patron": "marca:io.github.rafael088.tareasobsidian",
+      "motivo": "migración desde los nombres de antes: el instalador quita el lanzador, el ícono y el widget con el id viejo, y renombra el widget en shell.json; sin nombrarlos no podría encontrarlos"
+    },
+    {
+      "ruta": "install.sh",
+      "patron": "nombre_rafael",
+      "motivo": "migración desde los nombres de antes: el instalador quita el lanzador, el ícono y el widget con el id viejo, y renombra el widget en shell.json; sin nombrarlos no podría encontrarlos"
+    },
+    {
+      "ruta": "install.sh",
+      "patron": "usuario_rafael088",
+      "motivo": "migración desde los nombres de antes: el instalador quita el lanzador, el ícono y el widget con el id viejo, y renombra el widget en shell.json; sin nombrarlos no podría encontrarlos"
+    },
+    {
+      "ruta": "install.sh",
+      "patron": "id_reverso_github",
+      "motivo": "migración desde los nombres de antes: el instalador quita el lanzador, el ícono y el widget con el id viejo, y renombra el widget en shell.json; sin nombrarlos no podría encontrarlos"
+    },
+    {
+      "ruta": "uninstall.sh",
+      "patron": "marca:rafael.foco",
+      "motivo": "migración desde los nombres de antes: el instalador quita el lanzador, el ícono y el widget con el id viejo, y renombra el widget en shell.json; sin nombrarlos no podría encontrarlos"
+    },
+    {
+      "ruta": "uninstall.sh",
+      "patron": "marca:io.github.rafael088.tareasobsidian",
+      "motivo": "migración desde los nombres de antes: el instalador quita el lanzador, el ícono y el widget con el id viejo, y renombra el widget en shell.json; sin nombrarlos no podría encontrarlos"
+    },
+    {
+      "ruta": "uninstall.sh",
+      "patron": "nombre_rafael",
+      "motivo": "migración desde los nombres de antes: el instalador quita el lanzador, el ícono y el widget con el id viejo, y renombra el widget en shell.json; sin nombrarlos no podría encontrarlos"
+    },
+    {
+      "ruta": "uninstall.sh",
+      "patron": "usuario_rafael088",
+      "motivo": "migración desde los nombres de antes: el instalador quita el lanzador, el ícono y el widget con el id viejo, y renombra el widget en shell.json; sin nombrarlos no podría encontrarlos"
+    },
+    {
+      "ruta": "uninstall.sh",
+      "patron": "id_reverso_github",
+      "motivo": "migración desde los nombres de antes: el instalador quita el lanzador, el ícono y el widget con el id viejo, y renombra el widget en shell.json; sin nombrarlos no podría encontrarlos"
+    },
+    {
+      "ruta": "pruebas/test_purga.py",
+      "patron": "home_absoluto",
+      "motivo": "las pruebas de la herramienta escriben datos sintéticos (rutas, nombres, marcas de mentira) para probar la detección de cada patrón; no es contenido real del repo"
+    },
+    {
+      "ruta": "pruebas/test_purga.py",
+      "patron": "nombre_rafael",
+      "motivo": "las pruebas de la herramienta escriben datos sintéticos (rutas, nombres, marcas de mentira) para probar la detección de cada patrón; no es contenido real del repo"
+    },
+    {
+      "ruta": "pruebas/test_purga.py",
+      "patron": "id_reverso_github",
+      "motivo": "las pruebas de la herramienta escriben datos sintéticos (rutas, nombres, marcas de mentira) para probar la detección de cada patrón; no es contenido real del repo"
+    },
+    {
+      "ruta": "empaquetado/linux/widget.py",
+      "patron": "nombre_rafael",
+      "motivo": "el script que maneja el widget de la barra define VIEJO = \"rafael.foco\" para documentar el nombre anterior del widget y poder quitarlo en la migración; es plomería del sistema de instalación, igual que install.sh/uninstall.sh, no contenido del proyecto"
+    },
+    {
+      "ruta": "empaquetado/linux/widget.py",
+      "patron": "marca:rafael.foco",
+      "motivo": "el script que maneja el widget de la barra define VIEJO = \"rafael.foco\" para documentar el nombre anterior del widget y poder quitarlo en la migración; es plomería del sistema de instalación, igual que install.sh/uninstall.sh, no contenido del proyecto"
+    },
+    {
+      "ruta": "docs/v1.0.md",
+      "patron": "nombre_rafael",
+      "motivo": "nota interna de planificación (alcance de la 1.0, cotejo-z6s1ue): no viaja en ningún bundle, y cita textualmente el código y los nombres de migración de esta misma tarea"
+    },
+    {
+      "ruta": "docs/v1.0.md",
+      "patron": "usuario_rafael088",
+      "motivo": "nota interna de planificación (alcance de la 1.0, cotejo-z6s1ue): no viaja en ningún bundle, y cita textualmente el código y los nombres de migración de esta misma tarea"
+    },
+    {
+      "ruta": "docs/v1.0.md",
+      "patron": "id_reverso_github",
+      "motivo": "nota interna de planificación (alcance de la 1.0, cotejo-z6s1ue): no viaja en ningún bundle, y cita textualmente el código y los nombres de migración de esta misma tarea"
+    },
+    {
+      "ruta": "docs/v1.0.md",
+      "patron": "marca:rafael.foco",
+      "motivo": "nota interna de planificación (alcance de la 1.0, cotejo-z6s1ue): no viaja en ningún bundle, y cita textualmente el código y los nombres de migración de esta misma tarea"
+    },
+    {
+      "ruta": "docs/releases/README.md",
+      "patron": "nombre_rafael",
+      "motivo": "plantilla para el README de un repositorio de releases aparte, que no arma ni copia ningún script de empaquetado; pendiente de la decisión de identidad pública que cierre la URL final del repo"
+    },
+    {
+      "ruta": "pruebas/test_fuente_externa.py",
+      "patron": "nombre_rafael",
+      "motivo": "dato sintético de prueba: una tarea o un agente de mentira para probar el enrutador o la fuente, no contenido real del repo"
+    },
+    {
+      "ruta": "pruebas/test_notion.py",
+      "patron": "nombre_rafael",
+      "motivo": "dato sintético de prueba: una tarea o un agente de mentira para probar el enrutador o la fuente, no contenido real del repo"
+    },
+    {
+      "ruta": "LICENSE",
+      "patron": "nombre_rafael",
+      "motivo": "el titular de los derechos (Rafael Eduardo Aguirre Gonzalez) va en la licencia y en los avisos de terceros a propósito, decidido el 2026-09-30 (cotejo-82rbs4)"
+    },
+    {
+      "ruta": "THIRD-PARTY-NOTICES",
+      "patron": "nombre_rafael",
+      "motivo": "el titular de los derechos (Rafael Eduardo Aguirre Gonzalez) va en la licencia y en los avisos de terceros a propósito, decidido el 2026-09-30 (cotejo-82rbs4)"
+    },
+    {
+      "ruta": "usr/share/tareas-obsidian/linux/widget.py",
+      "patron": "nombre_rafael",
+      "motivo": "mismo archivo que empaquetado/linux/widget.py, pero en su ruta ya instalada dentro del paquete de pacman (install.sh lo copia a $DESTINO/linux/widget.py, y $DESTINO es usr/share/tareas-obsidian con --prefijo /usr): el VIEJO = \"rafael.foco\" de la migración sigue siendo plomería de instalación, no contenido del proyecto, aquí también"
+    },
+    {
+      "ruta": "usr/share/tareas-obsidian/linux/widget.py",
+      "patron": "marca:rafael.foco",
+      "motivo": "mismo archivo que empaquetado/linux/widget.py, pero en su ruta ya instalada dentro del paquete de pacman (install.sh lo copia a $DESTINO/linux/widget.py, y $DESTINO es usr/share/tareas-obsidian con --prefijo /usr): el VIEJO = \"rafael.foco\" de la migración sigue siendo plomería de instalación, no contenido del proyecto, aquí también"
+    },
+    {
+      "ruta": "usr/share/licenses/cotejo/LICENSE",
+      "patron": "nombre_rafael",
+      "motivo": "mismo archivo que LICENSE, en su ruta ya instalada dentro del paquete de pacman (PKGBUILD lo copia a usr/share/licenses/cotejo/LICENSE): la misma excepción de identidad del titular de los derechos, decidida el 2026-09-30 (cotejo-82rbs4), vale aquí también"
+    },
+    {
+      "ruta": "usr/share/licenses/cotejo/THIRD-PARTY-NOTICES",
+      "patron": "nombre_rafael",
+      "motivo": "mismo archivo que THIRD-PARTY-NOTICES, en su ruta ya instalada dentro del paquete de pacman (PKGBUILD lo copia a usr/share/licenses/cotejo/THIRD-PARTY-NOTICES): la misma excepción de identidad del titular de los derechos, decidida el 2026-09-30 (cotejo-82rbs4), vale aquí también"
+    }
+  ]
+}

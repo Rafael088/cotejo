@@ -1,0 +1,461 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-01T03:58:11+00:00",
+  "title": "Design System: Cotejo (web)",
+  "extensions": {
+    "colorMeta": {
+      "fondo": {
+        "role": "neutral",
+        "displayName": "Fondo Noche",
+        "canonical": "oklch(17.8% 0.006 271.0)",
+        "tonalRamp": [
+          "oklch(15.0% 0.006 271.0)",
+          "oklch(26.4% 0.006 271.0)",
+          "oklch(37.9% 0.006 271.0)",
+          "oklch(49.3% 0.006 271.0)",
+          "oklch(60.7% 0.006 271.0)",
+          "oklch(72.1% 0.006 271.0)",
+          "oklch(83.6% 0.006 271.0)",
+          "oklch(95.0% 0.006 271.0)"
+        ]
+      },
+      "columna": {
+        "role": "neutral",
+        "displayName": "Columna",
+        "canonical": "oklch(20.1% 0.008 274.5)",
+        "tonalRamp": [
+          "oklch(15.0% 0.008 274.5)",
+          "oklch(26.4% 0.008 274.5)",
+          "oklch(37.9% 0.008 274.5)",
+          "oklch(49.3% 0.008 274.5)",
+          "oklch(60.7% 0.008 274.5)",
+          "oklch(72.1% 0.008 274.5)",
+          "oklch(83.6% 0.008 274.5)",
+          "oklch(95.0% 0.008 274.5)"
+        ]
+      },
+      "superficie": {
+        "role": "neutral",
+        "displayName": "Superficie",
+        "canonical": "oklch(29.4% 0.013 272.9)",
+        "tonalRamp": [
+          "oklch(15.0% 0.013 272.9)",
+          "oklch(26.4% 0.013 272.9)",
+          "oklch(37.9% 0.013 272.9)",
+          "oklch(49.3% 0.013 272.9)",
+          "oklch(60.7% 0.013 272.9)",
+          "oklch(72.1% 0.013 272.9)",
+          "oklch(83.6% 0.013 272.9)",
+          "oklch(95.0% 0.013 272.9)"
+        ]
+      },
+      "superficie-alta": {
+        "role": "neutral",
+        "displayName": "Superficie Alta",
+        "canonical": "oklch(32.5% 0.015 269.2)",
+        "tonalRamp": [
+          "oklch(15.0% 0.015 269.2)",
+          "oklch(26.4% 0.015 269.2)",
+          "oklch(37.9% 0.015 269.2)",
+          "oklch(49.3% 0.015 269.2)",
+          "oklch(60.7% 0.015 269.2)",
+          "oklch(72.1% 0.015 269.2)",
+          "oklch(83.6% 0.015 269.2)",
+          "oklch(95.0% 0.015 269.2)"
+        ]
+      },
+      "borde": {
+        "role": "neutral",
+        "displayName": "Borde",
+        "canonical": "oklch(36.0% 0.014 269.3)",
+        "tonalRamp": [
+          "oklch(15.0% 0.014 269.3)",
+          "oklch(26.4% 0.014 269.3)",
+          "oklch(37.9% 0.014 269.3)",
+          "oklch(49.3% 0.014 269.3)",
+          "oklch(60.7% 0.014 269.3)",
+          "oklch(72.1% 0.014 269.3)",
+          "oklch(83.6% 0.014 269.3)",
+          "oklch(95.0% 0.014 269.3)"
+        ]
+      },
+      "borde-hondo": {
+        "role": "neutral",
+        "displayName": "Borde Hondo",
+        "canonical": "oklch(24.4% 0.01 268.3)",
+        "tonalRamp": [
+          "oklch(15.0% 0.01 268.3)",
+          "oklch(26.4% 0.01 268.3)",
+          "oklch(37.9% 0.01 268.3)",
+          "oklch(49.3% 0.01 268.3)",
+          "oklch(60.7% 0.01 268.3)",
+          "oklch(72.1% 0.01 268.3)",
+          "oklch(83.6% 0.01 268.3)",
+          "oklch(95.0% 0.01 268.3)"
+        ]
+      },
+      "borde-chip": {
+        "role": "neutral",
+        "displayName": "Borde Chip",
+        "canonical": "oklch(41.0% 0.016 271.0)",
+        "tonalRamp": [
+          "oklch(15.0% 0.016 271.0)",
+          "oklch(26.4% 0.016 271.0)",
+          "oklch(37.9% 0.016 271.0)",
+          "oklch(49.3% 0.016 271.0)",
+          "oklch(60.7% 0.016 271.0)",
+          "oklch(72.1% 0.016 271.0)",
+          "oklch(83.6% 0.016 271.0)",
+          "oklch(95.0% 0.016 271.0)"
+        ]
+      },
+      "texto": {
+        "role": "neutral",
+        "displayName": "Blanco",
+        "canonical": "oklch(100.0% 0.0 89.9)",
+        "tonalRamp": [
+          "oklch(15.0% 0.0 89.9)",
+          "oklch(26.4% 0.0 89.9)",
+          "oklch(37.9% 0.0 89.9)",
+          "oklch(49.3% 0.0 89.9)",
+          "oklch(60.7% 0.0 89.9)",
+          "oklch(72.1% 0.0 89.9)",
+          "oklch(83.6% 0.0 89.9)",
+          "oklch(95.0% 0.0 89.9)"
+        ]
+      },
+      "texto-chip": {
+        "role": "neutral",
+        "displayName": "Plata",
+        "canonical": "oklch(88.5% 0.009 264.5)",
+        "tonalRamp": [
+          "oklch(15.0% 0.009 264.5)",
+          "oklch(26.4% 0.009 264.5)",
+          "oklch(37.9% 0.009 264.5)",
+          "oklch(49.3% 0.009 264.5)",
+          "oklch(60.7% 0.009 264.5)",
+          "oklch(72.1% 0.009 264.5)",
+          "oklch(83.6% 0.009 264.5)",
+          "oklch(95.0% 0.009 264.5)"
+        ]
+      },
+      "tenue": {
+        "role": "neutral",
+        "displayName": "Tenue",
+        "canonical": "oklch(74.4% 0.015 268.4)",
+        "tonalRamp": [
+          "oklch(15.0% 0.015 268.4)",
+          "oklch(26.4% 0.015 268.4)",
+          "oklch(37.9% 0.015 268.4)",
+          "oklch(49.3% 0.015 268.4)",
+          "oklch(60.7% 0.015 268.4)",
+          "oklch(72.1% 0.015 268.4)",
+          "oklch(83.6% 0.015 268.4)",
+          "oklch(95.0% 0.015 268.4)"
+        ]
+      },
+      "tenue-hondo": {
+        "role": "neutral",
+        "displayName": "Tenue Hondo",
+        "canonical": "oklch(63.7% 0.016 268.4)",
+        "tonalRamp": [
+          "oklch(15.0% 0.016 268.4)",
+          "oklch(26.4% 0.016 268.4)",
+          "oklch(37.9% 0.016 268.4)",
+          "oklch(49.3% 0.016 268.4)",
+          "oklch(60.7% 0.016 268.4)",
+          "oklch(72.1% 0.016 268.4)",
+          "oklch(83.6% 0.016 268.4)",
+          "oklch(95.0% 0.016 268.4)"
+        ],
+        "note": "Desviación deliberada del tema Oscuro del board (#6A6E78): en la web lleva texto de cuerpo y pasa 4,5:1 sobre fondo (5,5:1) y columna (5,3:1)."
+      },
+      "senal": {
+        "role": "primary",
+        "displayName": "Verde Hecho",
+        "canonical": "oklch(74.1% 0.158 162.6)",
+        "tonalRamp": [
+          "oklch(15.0% 0.158 162.6)",
+          "oklch(26.4% 0.158 162.6)",
+          "oklch(37.9% 0.158 162.6)",
+          "oklch(49.3% 0.158 162.6)",
+          "oklch(60.7% 0.158 162.6)",
+          "oklch(72.1% 0.158 162.6)",
+          "oklch(83.6% 0.158 162.6)",
+          "oklch(95.0% 0.158 162.6)"
+        ]
+      },
+      "sobre-senal": {
+        "role": "primary",
+        "displayName": "Sobre Verde",
+        "canonical": "oklch(17.8% 0.006 271.0)",
+        "tonalRamp": [
+          "oklch(15.0% 0.006 271.0)",
+          "oklch(26.4% 0.006 271.0)",
+          "oklch(37.9% 0.006 271.0)",
+          "oklch(49.3% 0.006 271.0)",
+          "oklch(60.7% 0.006 271.0)",
+          "oklch(72.1% 0.006 271.0)",
+          "oklch(83.6% 0.006 271.0)",
+          "oklch(95.0% 0.006 271.0)"
+        ]
+      },
+      "ambar": {
+        "role": "secondary",
+        "displayName": "Ámbar Devuelta",
+        "canonical": "oklch(85.5% 0.095 80.1)",
+        "tonalRamp": [
+          "oklch(15.0% 0.095 80.1)",
+          "oklch(26.4% 0.095 80.1)",
+          "oklch(37.9% 0.095 80.1)",
+          "oklch(49.3% 0.095 80.1)",
+          "oklch(60.7% 0.095 80.1)",
+          "oklch(72.1% 0.095 80.1)",
+          "oklch(83.6% 0.095 80.1)",
+          "oklch(95.0% 0.095 80.1)"
+        ]
+      },
+      "velo": {
+        "role": "neutral",
+        "displayName": "Velo",
+        "canonical": "rgba(255, 255, 255, 0.05)"
+      },
+      "velo-fuerte": {
+        "role": "neutral",
+        "displayName": "Velo Fuerte",
+        "canonical": "rgba(255, 255, 255, 0.08)"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Solo el H1 del hero; la segunda frase en tenue."
+      },
+      "cifra": {
+        "displayName": "Cifra",
+        "purpose": "La razón medida del medidor (19,7×), en blanco, cifras tabulares."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Un H2 por sección, text-wrap balance."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "H3 dentro de una sección."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Párrafos en texto-chip, máximo 62ch; 16px en móvil."
+      },
+      "body-lead": {
+        "displayName": "Bajada",
+        "purpose": "La bajada del hero, máximo 54ch."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Comandos, JSON, contadores y cifras medidas."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Mayúsculas espaciadas solo dentro del cromo del board y en la etiqueta de una devuelta."
+      }
+    },
+    "shadows": [
+      {
+        "name": "board-fondo",
+        "value": "0 40px 120px rgba(0, 0, 0, 0.55)",
+        "purpose": "La ventana del board detrás del hero."
+      },
+      {
+        "name": "carta-movimiento",
+        "value": "0 10px 30px rgba(0, 0, 0, 0.35)",
+        "purpose": "La carta que viaja entre columnas en el trato."
+      },
+      {
+        "name": "centro-orbita",
+        "value": "0 0 0 10px var(--fondo), 0 24px 60px rgba(0, 0, 0, 0.5)",
+        "purpose": "Separa la marca del centro de la órbita de sus radios."
+      }
+    ],
+    "motion": [
+      {
+        "name": "curva",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Curva de salida para transiciones CSS y entradas de motion."
+      },
+      {
+        "name": "transicion-estado",
+        "value": "0.2s var(--curva)",
+        "purpose": "Color, fondo y borde de controles."
+      },
+      {
+        "name": "muelle-pestana",
+        "value": "spring bounce 0.15, duration 0.4",
+        "purpose": "Píldora activa de las pestañas (layoutId)."
+      },
+      {
+        "name": "muelle-carta",
+        "value": "spring bounce 0.18, duration 0.7",
+        "purpose": "Carta que cambia de columna en el trato."
+      },
+      {
+        "name": "entrada-hero",
+        "value": "0.8s curva, opacity + y 14px + blur 6px, escalonado 0.12s",
+        "purpose": "Aparición del contenido del hero."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "MotionConfig reducedMotion=user + media query",
+        "purpose": "Todo estático con prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "tableta",
+        "value": "960px"
+      },
+      {
+        "name": "movil",
+        "value": "720px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón verde",
+      "kind": "button",
+      "refersTo": "boton-senal",
+      "description": "Solo la acción de comprobar («Marcar como hecha»).",
+      "html": "<button class=\"ds-boton ds-boton-senal\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 12.5l4.5 4.5L19 7\"/></svg>Marcar como hecha</button>",
+      "css": ".ds-boton{display:inline-flex;align-items:center;gap:10px;min-height:46px;padding:0 20px;border-radius:12px;border:1px solid transparent;font:600 15px/1 var(--inter);cursor:pointer;transition:background-color .2s var(--curva),transform .2s var(--curva)} .ds-boton:active{transform:translateY(1px) scale(.99)} .ds-boton:focus-visible{outline:2px solid var(--senal);outline-offset:3px} .ds-boton-senal{background:var(--senal);color:var(--sobre-senal)} .ds-boton-senal:hover{background:#3fd9a4} .ds-boton-senal:disabled{background:var(--superficie);color:var(--tenue);cursor:not-allowed}"
+    },
+    {
+      "name": "Botón fantasma",
+      "kind": "button",
+      "refersTo": "boton-fantasma",
+      "description": "Acciones secundarias: devolver con motivo, repetir.",
+      "html": "<button class=\"ds-boton-f\">Devolver con motivo</button>",
+      "css": ".ds-boton-f{display:inline-flex;align-items:center;gap:10px;min-height:46px;padding:0 20px;border-radius:12px;border:1px solid var(--borde);background:transparent;color:var(--texto);font:600 15px/1 var(--inter);cursor:pointer;transition:background-color .2s var(--curva)} .ds-boton-f:hover{background:var(--velo-fuerte)} .ds-boton-f:focus-visible{outline:2px solid var(--senal);outline-offset:3px}"
+    },
+    {
+      "name": "Botón claro",
+      "kind": "button",
+      "refersTo": "boton-claro",
+      "description": "Acción principal fuera del ciclo de tareas (donar).",
+      "html": "<a class=\"ds-boton-c\" href=\"#\">Donar con Mercado Pago</a>",
+      "css": ".ds-boton-c{display:inline-flex;align-items:center;min-height:46px;padding:0 20px;border-radius:12px;background:var(--texto);color:var(--fondo);font:600 15px/1 var(--inter);text-decoration:none;transition:background-color .2s var(--curva)} .ds-boton-c:hover{background:var(--texto-chip)} .ds-boton-c:focus-visible{outline:2px solid var(--senal);outline-offset:3px}"
+    },
+    {
+      "name": "Comando",
+      "kind": "custom",
+      "refersTo": "comando",
+      "description": "La acción principal: una línea de terminal con botón copiar que se vuelve verde al copiar.",
+      "html": "<div class=\"ds-comando\"><code class=\"ds-comando-linea\"><span class=\"ds-comando-prompt\">$</span><span>curl -fsSL https://&lt;dominio&gt;/install.sh | sh</span></code><button class=\"ds-comando-boton\">Copiar</button></div>",
+      "css": ".ds-comando{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 16px;border-radius:12px;background:var(--columna);border:1px solid var(--borde);transition:border-color .25s var(--curva)} .ds-comando:hover,.ds-comando:focus-within{border-color:var(--borde-chip)} .ds-comando-linea{display:flex;gap:10px;flex:1;min-width:0;font:14px/1.5 var(--mono);white-space:pre;overflow-x:auto;padding-block:8px;color:var(--texto)} .ds-comando-prompt{color:var(--tenue-hondo)} .ds-comando-boton{min-width:112px;height:40px;padding:0 14px;border:0;border-radius:8px;background:var(--superficie);color:var(--texto);font:500 14px/1 var(--inter);cursor:pointer;transition:background-color .2s var(--curva)} .ds-comando-boton:hover{background:var(--superficie-alta)} .ds-comando-boton:focus-visible{outline:2px solid var(--senal);outline-offset:3px} .ds-comando-boton:active{background:var(--senal);color:var(--sobre-senal)}"
+    },
+    {
+      "name": "Pestañas",
+      "kind": "nav",
+      "refersTo": "pestanas",
+      "description": "Segmentado Linux/Windows con píldora activa.",
+      "html": "<div class=\"ds-pestanas\" role=\"tablist\"><button class=\"ds-pestana\" aria-selected=\"true\">Linux</button><button class=\"ds-pestana\" aria-selected=\"false\">Windows</button></div>",
+      "css": ".ds-pestanas{display:inline-flex;padding:3px;border-radius:10px;background:var(--columna);border:1px solid var(--borde-hondo)} .ds-pestana{border:0;background:none;padding:7px 14px;border-radius:8px;color:var(--tenue);font:500 14px/1 var(--inter);cursor:pointer;transition:color .2s var(--curva)} .ds-pestana:hover{color:var(--texto)} .ds-pestana[aria-selected=true]{background:var(--superficie);color:var(--texto)} .ds-pestana:focus-visible{outline:2px solid var(--senal);outline-offset:3px}"
+    },
+    {
+      "name": "Carta del board",
+      "kind": "card",
+      "refersTo": "carta",
+      "description": "La carta de CotejoBoard; borde verde cuando espera comprobación.",
+      "html": "<div class=\"ds-carta ds-carta-espera\"><div class=\"ds-carta-texto\">Probar install.ps1 en Windows</div><div class=\"ds-evidencia\">entregada: corre en Windows 11, log adjunto</div><div class=\"ds-chips\"><span class=\"ds-chip\">#cotejo</span><span class=\"ds-chip ds-chip-borde\">claude</span></div></div>",
+      "css": ".ds-carta{display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:10px;background:var(--superficie);border:1px solid var(--borde);color:var(--texto);max-width:280px} .ds-carta-espera{border-color:var(--senal)} .ds-carta-texto{font:14px/1.4 var(--inter)} .ds-evidencia{font:400 11.5px/1.45 var(--mono);color:var(--tenue);padding:7px 8px;border-radius:6px;background:var(--velo)} .ds-chips{display:flex;gap:6px;flex-wrap:wrap} .ds-chip{font:400 10.5px/1.5 var(--mono);color:var(--tenue);background:var(--velo);border-radius:6px;padding:1px 6px} .ds-chip-borde{color:var(--texto-chip);background:transparent;border:1px solid var(--borde-chip)}"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Contenedor de terminales, JSON y bloques de instalación.",
+      "html": "<div class=\"ds-panel\"><div class=\"ds-panel-barra\"><span>cotejo tareas --proyecto Cotejo</span><span>480 tokens</span></div><pre class=\"ds-panel-json\">{ \"pendientes\": 3 }</pre></div>",
+      "css": ".ds-panel{border-radius:14px;background:var(--columna);border:1px solid var(--borde-hondo);overflow:hidden} .ds-panel-barra{display:flex;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--borde-hondo);font:400 12.5px/1.4 var(--mono);color:var(--tenue)} .ds-panel-json{margin:0;padding:18px;font:12px/1.6 var(--mono);color:var(--texto-chip)}"
+    },
+    {
+      "name": "Filtro",
+      "kind": "chip",
+      "refersTo": "filtro",
+      "description": "Pastilla de selección (fuentes de la órbita); seleccionada se invierte a blanco.",
+      "html": "<button class=\"ds-filtro\" aria-selected=\"true\">Obsidian</button><button class=\"ds-filtro\" aria-selected=\"false\">Notion</button>",
+      "css": ".ds-filtro{padding:8px 14px;border-radius:999px;border:1px solid var(--borde);background:transparent;color:var(--tenue);font:500 14px/1 var(--inter);cursor:pointer;transition:all .2s var(--curva);margin-right:6px} .ds-filtro:hover{color:var(--texto)} .ds-filtro[aria-selected=true]{color:var(--fondo);background:var(--texto);border-color:var(--texto)} .ds-filtro:focus-visible{outline:2px solid var(--senal);outline-offset:3px}"
+    },
+    {
+      "name": "Navegación",
+      "kind": "nav",
+      "refersTo": "nav",
+      "description": "Enlaces de la cabecera; el CTA con borde es lo único que queda en móvil.",
+      "html": "<nav class=\"ds-nav\"><a href=\"#\">Ahorro</a><a href=\"#\">El trato</a><a class=\"ds-nav-cta\" href=\"#\">Instalar</a></nav>",
+      "css": ".ds-nav{display:flex;align-items:center;gap:4px} .ds-nav a{padding:8px 12px;border-radius:9px;color:var(--tenue);font:500 15px/1.6 var(--inter);text-decoration:none;transition:color .2s var(--curva),background-color .2s var(--curva)} .ds-nav a:hover{color:var(--texto);background:var(--velo)} .ds-nav a:focus-visible{outline:2px solid var(--senal);outline-offset:3px} .ds-nav .ds-nav-cta{color:var(--texto);border:1px solid var(--borde);margin-left:8px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "El board, tal cual",
+    "overview": "La página no inventa un mundo de marketing: usa el material de CotejoBoard sin traducirlo. Fondo casi negro, columnas un punto más claras, cartas grises con borde de 1px y radio de 10px, texto blanco y un solo acento que significa una sola cosa. Lo que la página enseña (la nota entera contra la respuesta de la CLI, el board vivo detrás del titular, el ciclo tomar-entregar-comprobar) se dibuja con esas mismas piezas, en HTML, a escala real. Quien instala Cotejo debería reconocer la ventana que va a abrir.\n\nLa densidad es de herramienta, no de folleto: paneles oscuros que contienen terminales, JSON y cifras en mono, separados por huecos grandes entre secciones. La persuasión viene de la cifra medida y del material que la produce, no de decoración. La paleta, el reparto del verde y las tres familias tipográficas son compromisos de marca; la web los hereda del tema Oscuro (`../data/temas/oscuro.json`) con una sola desviación deliberada (ver Colors).\n\nEl movimiento es el del board: muelles cortos y una curva de salida rápida (`cubic-bezier(0.16, 1, 0.3, 1)`). Todo respeta `prefers-reduced-motion`: `MotionConfig reducedMotion=\"user\"` en la raíz, y las animaciones CSS (deriva del board de fondo, flecha que baja) se apagan con la media query.",
+    "keyCharacteristics": [
+      "Neutros del negro al blanco y un único acento, Verde Hecho, con significado fijo.",
+      "Superficies planas en tres escalones (fondo, columna, superficie); la profundidad es tonal.",
+      "Sora para titulares, Inter para texto, IBM Plex Mono para comandos, cifras y JSON.",
+      "Las piezas son las del board: columnas, cartas, chips, comandos con botón de copiar.",
+      "Iconos dibujados a mano en SVG, trazo 1,75 sobre caja de 24."
+    ],
+    "rules": [
+      {
+        "name": "The Un Solo Verde Rule",
+        "body": "El verde significa «espera que lo compruebes / hecho / foco». Si algo es verde y no es eso, está mal. El verde nunca es el único portador de significado: va con texto («Copiado», «Para comprobar») o con el check.",
+        "section": "colors"
+      },
+      {
+        "name": "The Medidor en Plata Rule",
+        "body": "El medidor de ahorro va en blanco y plata, nunca en verde: la barra de la CLI es blanca y la de la nota `tenue-hondo`. Ahorrar no es «hecho».",
+        "section": "colors"
+      },
+      {
+        "name": "The Ámbar Es Devuelta Rule",
+        "body": "El ámbar solo aparece en una tarea devuelta o bloqueada.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tema Manda Rule",
+        "body": "Un color nuevo sale del tema Oscuro de CotejoBoard con su nombre; una desviación se declara en un comentario junto al token y dice por qué.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono Es Máquina Rule",
+        "body": "Lo que escribe o devuelve la CLI, y toda cifra medida, va en IBM Plex Mono con `tabular-nums`. El texto que habla con la persona va en Inter.",
+        "section": "typography"
+      },
+      {
+        "name": "The Mayúsculas Del Board Rule",
+        "body": "Las etiquetas mono en mayúsculas espaciadas son cromo del board, no titulares de sección: viven dentro de una réplica del board o de una carta.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tonal Antes Que Sombra Rule",
+        "body": "Un panel nuevo se separa con un escalón de tono y un borde de 1px; la sombra queda para lo que se mueve o flota sobre todo lo demás.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** sacar cada color del tema Oscuro de CotejoBoard con su nombre, y declarar junto al token cualquier desviación y su motivo (como `tenue-hondo`).",
+      "**Do** reservar `senal` para el check, lo que espera comprobación, lo hecho, el «Copiado» y el foco, y acompañarlo siempre de texto o del check.",
+      "**Do** dibujar las pruebas con piezas del board (columna, carta, chip, evidencia, comando) en HTML, no con capturas.",
+      "**Do** poner comandos, JSON y cifras en IBM Plex Mono con `tabular-nums`.",
+      "**Do** usar los muelles cortos y la curva `cubic-bezier(0.16, 1, 0.3, 1)`, y dejar todo estático con `prefers-reduced-motion`.",
+      "**Do** dibujar iconos en SVG con trazo 1,75 sobre caja de 24, `stroke-linecap: round`."
+    ],
+    "donts": [
+      "**Don't** pintar de verde el medidor de ahorro, una cifra, un enlace o un botón que no sea comprobar.",
+      "**Don't** usar ámbar fuera de una tarea devuelta o bloqueada.",
+      "**Don't** separar la C de «otejo», rotar, sombrear o degradar el logo, ni poner el check en otro color que `senal`.",
+      "**Don't** poner etiquetas mono en mayúsculas como titulillo encima de un H2; esas etiquetas son cromo del board.",
+      "**Don't** usar texto de cuerpo en un gris más oscuro que `tenue-hondo` (#878B95).",
+      "**Don't** construir grids de features con iconos, capturas flotantes ni testimonios."
+    ]
+  }
+}

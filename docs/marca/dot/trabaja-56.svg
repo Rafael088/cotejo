@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="56" height="56" role="img" aria-label="dot de Cotejo: trabaja">
+  <title>dot · trabaja</title>
+  <!-- Pose en t = 0 de tareas/dot.py: no se edita a mano, sale de generar.py. -->
+  <defs><radialGradient id="g-dot" cx="0.38" cy="0.3" r="0.95"><stop offset="0" stop-color="#7ef0c4"/><stop offset="0.55" stop-color="#16c98d"/><stop offset="1" stop-color="#0c7d58"/></radialGradient><linearGradient id="g-pluma" gradientUnits="userSpaceOnUse" x1="0" y1="16" x2="0" y2="56"><stop offset="0" stop-color="#7ef0c4"/><stop offset="1" stop-color="#16c98d"/></linearGradient></defs>
+  <circle cx="100" cy="112" r="78" fill="none" stroke="#16c98d" stroke-width="3" stroke-linecap="butt" stroke-dasharray="64 426" opacity="0.7"/>
+  <polyline points="86,34 104,54 132,18" fill="none" stroke="url(#g-pluma)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" transform="matrix(0.9976 0.0698 -0.0698 0.9976 4.0202 -7.1231)"/>
+  <circle cx="100" cy="112" r="64" fill="url(#g-dot)"/>
+  <rect x="74.5" y="89" width="11" height="26" rx="5.5" fill="#08120e" transform="matrix(0.9903 -0.1002 0.1392 0.713 -13.4171 39.8511)"/>
+  <rect x="114.5" y="89" width="11" height="26" rx="5.5" fill="#08120e" transform="matrix(0.9903 -0.1002 0.1392 0.713 -13.0278 43.8593)"/>
+  <path d="M90 131Q100 131 110 131" fill="none" stroke="#08120e" stroke-width="6.5" stroke-linecap="round"/>
+</svg>

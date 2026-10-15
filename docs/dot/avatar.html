@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="es" data-tema="oscuro">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cotejo — el dot (laboratorio)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="avatar.css" />
+  </head>
+  <body class="avu-pantalla">
+    <!-- el material del dot, compartido por todas las tallas -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <radialGradient id="g-dot" cx="0.38" cy="0.3" r="0.95">
+          <stop offset="0" stop-color="#7ef0c4" />
+          <stop offset="0.55" stop-color="#16c98d" />
+          <stop offset="1" stop-color="#0c7d58" />
+        </radialGradient>
+        <!-- el mechón: punta menta, base verde señal -->
+        <linearGradient id="g-pluma" gradientUnits="userSpaceOnUse" x1="0" y1="16" x2="0" y2="56">
+          <stop offset="0" stop-color="#7ef0c4" />
+          <stop offset="1" stop-color="#16c98d" />
+        </linearGradient>
+      </defs>
+    </svg>
+
+    <!-- EL DOT · ojos de píldora finos, boca mínima y el check del logo como mechón.
+         Las tallas pequeñas son clones de esta misma plantilla. -->
+    <template id="plantilla-dot">
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <g class="mundo">
+          <circle class="halo h1" cx="100" cy="112" r="78" />
+          <circle class="halo h2" cx="100" cy="112" r="78" />
+          <g class="piel">
+            <polyline class="pluma" points="86,34 104,54 132,18" pathLength="1" />
+            <g class="cuerpo">
+              <circle cx="100" cy="112" r="64" fill="url(#g-dot)" />
+              <g class="ojos" fill="#08120e">
+                <rect x="74.5" y="89" width="11" height="26" rx="5.5" transform="rotate(-8 80 102)" />
+                <rect x="114.5" y="89" width="11" height="26" rx="5.5" transform="rotate(-8 120 102)" />
+              </g>
+              <g class="felices">
+                <path d="M73 104q7 -10 14 0" />
+                <path d="M113 104q7 -10 14 0" />
+              </g>
+              <path class="boca" />
+            </g>
+          </g>
+          <!-- puntos ámbar (piensa) -->
+          <g class="ideas">
+            <circle cx="150" cy="44" r="5" />
+            <circle cx="164" cy="32" r="6" />
+            <circle cx="180" cy="18" r="7" />
+          </g>
+          <!-- chispas ámbar (celebra) -->
+          <g class="chispas">
+            <path d="M36 50v16M28 58h16" />
+            <path d="M168 64v12M162 70h12" />
+            <path d="M150 22v12M144 28h12" />
+          </g>
+        </g>
+      </svg>
+    </template>
+
+    <div class="avu-escena">
+      <div class="avatar" id="dot" data-estado="idle" aria-label="dot de Cotejo"></div>
+      <div class="avu-linea"></div>
+    </div>
+
+    <p class="avu-estado" id="etiqueta">idle <span>· nada en juego: respira, parpadea, ojea a los lados</span></p>
+
+    <nav class="avu-botones" id="botones">
+      <button data-e="idle" class="activo">idle</button>
+      <button data-e="trabaja">trabaja</button>
+      <button data-e="piensa">piensa</button>
+      <button data-e="comprobar">comprobar</button>
+      <button data-e="celebra">celebra</button>
+      <button data-e="falla">falla</button>
+      <span class="avu-sep"></span>
+      <button data-accion="entrar">↻ entrar</button>
+      <button data-accion="secuencia" id="btn-secuencia">▶ secuencia del board</button>
+    </nav>
+
+    <div class="avu-tallas">
+      <div class="avu-talla"><div class="dot-mini" data-estado="idle"></div>56 px · board</div>
+      <div class="avu-talla"><div class="dot-mini t24" data-estado="idle"></div>24 px · barra</div>
+    </div>
+
+    <p class="avu-nota tenue">
+      Seis estados, uno por evento del board. Solo <code>comprobar</code> llama a la persona;
+      lo ámbar son los puntos de piensa y las chispas de celebra.
+    </p>
+
+    <script>
+      const plantilla = document.getElementById("plantilla-dot");
+      const todos = [document.getElementById("dot"), ...document.querySelectorAll(".dot-mini")];
+      todos.forEach((el) => el.appendChild(plantilla.content.cloneNode(true)));
+
+      const QUE_HACE = {
+        idle: "nada en juego: respira, parpadea, ojea a los lados",
+        trabaja: "hay carta en Haciéndola: ojos entornados, anillo orbitando",
+        piensa: "decidiendo: mira arriba, se ladea, tres puntos ámbar",
+        comprobar: "te toca a ti: se asoma hacia la columna y late",
+        celebra: "carta a Finalizada: un salto, chispas, el check se firma",
+        falla: "algo volvió con error: se hunde, pierde color, el mechón se marchita",
+      };
+      const etiqueta = document.getElementById("etiqueta");
+
+      function ponerEstado(estado) {
+        todos.forEach((el) => (el.dataset.estado = estado));
+        etiqueta.innerHTML = `${estado} <span>· ${QUE_HACE[estado]}</span>`;
+        document.querySelectorAll(".avu-botones button[data-e]").forEach((b) =>
+          b.classList.toggle("activo", b.dataset.e === estado)
+        );
+      }
+      function entrar() {
+        todos.forEach((el) => {
+          el.classList.remove("entra");
+          void el.offsetWidth;
+          el.classList.add("entra");
+        });
+        setTimeout(() => todos.forEach((el) => el.classList.remove("entra")), 800);
+      }
+
+      // la historia de una tarea en el board
+      const SECUENCIA = [
+        ["idle", 2600], ["trabaja", 3600], ["piensa", 2600], ["trabaja", 2400],
+        ["comprobar", 3400], ["celebra", 3600], ["falla", 2800], ["idle", 2000],
+      ];
+      const btnSecuencia = document.getElementById("btn-secuencia");
+      let reloj = null;
+      function parar() {
+        clearTimeout(reloj);
+        reloj = null;
+        btnSecuencia.textContent = "▶ secuencia del board";
+        btnSecuencia.classList.remove("activo");
+      }
+      function secuencia(i = 0) {
+        if (i === 0) entrar();
+        const [estado, ms] = SECUENCIA[i % SECUENCIA.length];
+        ponerEstado(estado);
+        reloj = setTimeout(() => secuencia(i + 1), ms);
+      }
+
+      document.getElementById("botones").addEventListener("click", (e) => {
+        const b = e.target.closest("button");
+        if (!b) return;
+        if (b.dataset.e) { parar(); ponerEstado(b.dataset.e); }
+        else if (b.dataset.accion === "entrar") entrar();
+        else if (b.dataset.accion === "secuencia") {
+          if (reloj) parar();
+          else { btnSecuencia.textContent = "■ parar"; btnSecuencia.classList.add("activo"); secuencia(0); }
+        }
+      });
+
+      const inicial = new URLSearchParams(location.search).get("estado");
+      if (inicial && QUE_HACE[inicial]) ponerEstado(inicial);
+      else entrar();
+    </script>
+  </body>
+</html>

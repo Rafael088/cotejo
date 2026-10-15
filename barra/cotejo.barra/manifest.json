@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "cotejo.barra",
+  "name": "Cotejo",
+  "version": "1.2.5",
+  "author": "Cotejo",
+  "license": "LicenseRef-Cotejo-Proprietary",
+  "description": "Abre y cierra Cotejo desde la barra, y avisa cuando hay tareas esperando que las valides.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {
+    "barWidget": "Widget.qml"
+  },
+  "barWidget": {
+    "displayName": "Cotejo",
+    "description": "Tareas pendientes de los proyectos del vault; el número solo aparece cuando algo te espera.",
+    "category": "Productividad",
+    "allowMultiple": false,
+    "defaults": {
+      "intervaloSeg": 300,
+      "mostrarPendientes": false,
+      "colorAviso": "#16C98D"
+    }
+  }
+}

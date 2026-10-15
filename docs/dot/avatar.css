@@ -1,0 +1,219 @@
+/* El dot, solo — laboratorio de fases. Este mundo es suyo.
+   Ojos de píldora finos, mechón-check degradado, seis estados + la entrada. */
+
+:root {
+  --tinta: #08120e;
+  --halo: rgba(22, 201, 141, 0.35);
+}
+[data-tema="claro"] { --halo: rgba(22, 201, 141, 0.18); }
+
+.avu-pantalla {
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(22, 201, 141, 0.06), transparent 60%),
+    var(--fondo);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  min-height: 100vh;
+  padding: 24px 16px;
+}
+
+.avu-escena {
+  position: relative;
+  width: 340px;
+  max-width: 100%;
+  height: 340px;
+  display: grid;
+  place-items: center;
+}
+.avu-linea {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--borde) 20%, var(--borde) 80%, transparent);
+}
+
+.avu-estado {
+  font-family: var(--f-mono);
+  font-size: 13px;
+  color: var(--senal);
+  letter-spacing: 0.06em;
+}
+.avu-estado span { color: var(--tenue); letter-spacing: 0; font-family: var(--f-cuerpo); }
+
+.avu-botones {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  max-width: 680px;
+}
+.avu-botones button {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  color: var(--texto-suave);
+  border: 1px solid var(--borde-chip);
+  background: var(--carta);
+  border-radius: var(--r-chip);
+  padding: 7px 13px;
+  transition: all var(--t-suave);
+}
+.avu-botones button:hover { border-color: var(--senal); color: var(--senal); }
+.avu-botones button:active { transform: scale(0.97); }
+.avu-botones button.activo {
+  background: var(--senal);
+  color: var(--sobre-senal);
+  border-color: var(--senal);
+  font-weight: 500;
+}
+.avu-sep { width: 1px; height: 22px; background: var(--borde-chip); margin-inline: 4px; }
+
+/* las tallas reales: board y barra */
+.avu-tallas { display: flex; gap: 12px; }
+.avu-talla {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--columna);
+  border: 1px solid var(--borde-hondo);
+  border-radius: var(--r-carta);
+  padding: 8px 12px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--tenue);
+}
+.avu-talla .dot-mini { width: 56px; }
+.avu-talla .dot-mini.t24 { width: 24px; }
+
+.avu-nota { font-size: 12.5px; max-width: 460px; text-align: center; }
+
+/* ===================== EL DOT ===================== */
+
+.avatar { position: relative; width: 250px; }
+.avatar svg, .dot-mini svg { display: block; overflow: visible; width: 100%; height: auto; }
+.avatar svg *, .dot-mini svg * { transform-box: view-box; }
+.avatar .piel { filter: drop-shadow(0 0 22px var(--halo)); }
+
+.mundo { transform-origin: 100px 176px; }
+.halo { fill: none; stroke: var(--senal); stroke-width: 3; opacity: 0; transform-origin: 100px 112px; }
+.cuerpo { transform-origin: 100px 176px; animation: respira 3.6s ease-in-out infinite; transition: filter 400ms; }
+.ojos { transform-origin: 100px 104px; animation: mirar 7s ease-in-out infinite; transition: opacity 160ms; }
+.felices { opacity: 0; transition: opacity 160ms; }
+.felices path { fill: none; stroke: var(--tinta); stroke-width: 6; stroke-linecap: round; }
+.boca {
+  fill: none;
+  stroke: var(--tinta);
+  stroke-width: 6.5;
+  stroke-linecap: round;
+  d: path("M88 128q12 8 24 0");
+  transition: d 260ms cubic-bezier(0.3, 0, 0.2, 1);
+}
+/* el mechón: el check del logo, del mismo material que el cuerpo */
+.pluma {
+  fill: none;
+  stroke: url(#g-pluma);
+  stroke-width: 10;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform-origin: 104px 54px;
+  animation: mecer 3.6s ease-in-out infinite;
+}
+.ideas, .chispas { opacity: 0; }
+.ideas circle { fill: var(--ambar); }
+.chispas path { stroke: var(--ambar); stroke-width: 4; stroke-linecap: round; transform-origin: center; transform-box: fill-box; }
+
+@keyframes respira { 50% { transform: scale(1.022); } }
+@keyframes mirar {
+  0%, 36% { transform: translate(0, 0); }
+  44%, 58% { transform: translate(5px, 0); }
+  66%, 80% { transform: translate(-5px, 1px); }
+  88% { transform: translate(0, 0); }
+  91% { transform: scaleY(0.1); }
+  94%, 100% { transform: scaleY(1); }
+}
+@keyframes mecer { 50% { transform: rotate(-5deg); } }
+
+/* ============ TRABAJA ============ hay carta en Haciéndola */
+[data-estado="trabaja"] .halo.h1 { opacity: 0.7; stroke-dasharray: 64 426; animation: orbita 1.4s linear infinite; }
+[data-estado="trabaja"] .ojos { animation: oficio 2.8s infinite; }
+[data-estado="trabaja"] .boca { d: path("M90 131q10 0 20 0"); }
+[data-estado="trabaja"] .mundo { animation: tecleo 0.9s ease-in-out infinite; }
+[data-estado="trabaja"] .pluma { animation: tic 0.9s ease-in-out infinite; }
+@keyframes orbita { to { transform: rotate(360deg); } }
+@keyframes oficio { 0%, 92%, 100% { transform: translateY(2px) scaleY(0.72); } 96% { transform: translateY(2px) scaleY(0.1); } }
+@keyframes tecleo { 50% { transform: translateY(-1.5px); } }
+@keyframes tic { 0%, 100% { transform: rotate(4deg); } 50% { transform: rotate(-4deg); } }
+
+/* ============ PIENSA ============ refresco, el Maestro decidiendo */
+[data-estado="piensa"] .ojos { animation: none; transform: translate(6px, -8px); transition: transform 260ms cubic-bezier(0.3, 0, 0.2, 1); }
+[data-estado="piensa"] .boca { d: path("M94 132q8 -2 16 0"); }
+[data-estado="piensa"] .cuerpo { animation: ladeo 3.2s ease-in-out infinite; }
+[data-estado="piensa"] .ideas { opacity: 1; }
+[data-estado="piensa"] .ideas circle { animation: idea 1.2s infinite; opacity: 0.25; }
+[data-estado="piensa"] .ideas circle:nth-child(2) { animation-delay: 0.2s; }
+[data-estado="piensa"] .ideas circle:nth-child(3) { animation-delay: 0.4s; }
+@keyframes ladeo { 50% { transform: rotate(3deg); } }
+@keyframes idea { 30% { opacity: 1; } 0%, 60%, 100% { opacity: 0.25; } }
+
+/* ============ COMPROBAR ============ el único estado que llama a la persona */
+[data-estado="comprobar"] .halo { opacity: 0.8; animation: latido 1.6s ease-out infinite; }
+[data-estado="comprobar"] .halo.h2 { animation-delay: 0.8s; }
+[data-estado="comprobar"] .ojos { animation: none; transform: scale(1.14); transition: transform 200ms cubic-bezier(0.3, 0, 0.2, 1); }
+[data-estado="comprobar"] .boca { d: path("M93 130q7 9 14 0"); }
+[data-estado="comprobar"] .cuerpo { animation: asomarse 1.6s ease-in-out infinite; }
+[data-estado="comprobar"] .pluma { animation: erguir 1.6s ease-in-out infinite; }
+@keyframes latido { 0% { transform: scale(0.86); opacity: 0.8; } 100% { transform: scale(1.18); opacity: 0; } }
+@keyframes asomarse { 0%, 100% { transform: rotate(4deg) translateX(3px); } 50% { transform: rotate(6deg) translateX(5px); } }
+@keyframes erguir { 0%, 100% { transform: rotate(-10deg) scale(1.06); } 50% { transform: rotate(-16deg) scale(1.1); } }
+
+/* ============ CELEBRA ============ un salto con aplaste, luego descansa */
+[data-estado="celebra"] .mundo { animation: salto 2.4s infinite; }
+[data-estado="celebra"] .ojos { opacity: 0; animation: none; }
+[data-estado="celebra"] .felices { opacity: 1; }
+[data-estado="celebra"] .boca { d: path("M82 124q18 20 36 0"); }
+[data-estado="celebra"] .chispas { opacity: 1; }
+[data-estado="celebra"] .chispas path { animation: chispa 2.4s infinite; }
+[data-estado="celebra"] .chispas path:nth-child(2) { animation-delay: 0.08s; }
+[data-estado="celebra"] .chispas path:nth-child(3) { animation-delay: 0.16s; }
+[data-estado="celebra"] .pluma { stroke-dasharray: 1; animation: firmar 2.4s infinite; }
+@keyframes salto {
+  0% { transform: translateY(0) scale(1, 1); animation-timing-function: cubic-bezier(0.3, 0, 0.6, 1); }
+  6% { transform: translateY(2px) scale(1.05, 0.95); animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1); }
+  20% { transform: translateY(-18px) scale(0.98, 1.03); animation-timing-function: cubic-bezier(0.5, 0, 0.8, 0.6); }
+  32% { transform: translateY(0) scale(1.04, 0.96); animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1); }
+  40%, 100% { transform: translateY(0) scale(1, 1); }
+}
+@keyframes chispa {
+  0%, 14% { transform: scale(0); opacity: 0; }
+  22% { transform: scale(1.15); opacity: 1; }
+  30% { transform: scale(1); }
+  55% { opacity: 1; }
+  70%, 100% { transform: scale(0.6); opacity: 0; }
+}
+@keyframes firmar { 0%, 12% { stroke-dashoffset: 1; } 30%, 100% { stroke-dashoffset: 0; } }
+
+/* ============ FALLA ============ se hunde, pierde color, el mechón se marchita */
+[data-estado="falla"] .cuerpo { animation: respira 5.2s ease-in-out infinite; filter: saturate(0.4) brightness(0.82); }
+[data-estado="falla"] .mundo { transform: translateY(6px); transition: transform 400ms cubic-bezier(0.3, 0, 0.2, 1); }
+[data-estado="falla"] .ojos { animation: none; transform: translate(-2px, 8px) scaleY(0.85); transition: transform 400ms cubic-bezier(0.3, 0, 0.2, 1); }
+[data-estado="falla"] .boca { d: path("M88 138q12 -9 24 0"); }
+[data-estado="falla"] .pluma { animation: none; transform: rotate(58deg); filter: saturate(0.4) brightness(0.82); transition: transform 600ms cubic-bezier(0.3, 0, 0.2, 1); }
+
+/* ============ ENTRAR ============ transición del home, no estado: sube y queda en idle */
+.entra .mundo { animation: entrar 760ms cubic-bezier(0.3, 1.35, 0.5, 1) both; }
+@keyframes entrar {
+  0% { transform: translateY(46px) scale(0.55); opacity: 0; }
+  40% { opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+
+/* con movimiento reducido el dot se queda quieto y solo cambia la cara */
+@media (prefers-reduced-motion: reduce) {
+  .avatar *, .dot-mini * { animation: none !important; transition: opacity 200ms !important; }
+  [data-estado="trabaja"] .halo.h1, [data-estado="comprobar"] .halo.h1 { opacity: 0.6; }
+}

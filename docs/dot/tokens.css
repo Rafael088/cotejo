@@ -1,0 +1,69 @@
+/* CotejoBoard 7.3.2 — tokens
+   Sacados de la captura del board real y de cotejo/web/DESIGN.md
+   ("la página pública, dibujada con el mismo material que CotejoBoard"). */
+
+:root {
+  /* color */
+  --fondo: #101114;
+  --columna: #15161a;
+  --carta: #17181c;
+  --carta-hover: #1c1e23;
+  --superficie: #2a2c33;
+  --superficie-alta: #31343c;
+  --borde: #3a3d45;
+  --borde-hondo: #1e2025;
+  --borde-chip: #474a53;
+  --texto: #ffffff;
+  --texto-suave: #d6d9df;
+  --tenue: #a8acb6;
+  --tenue-hondo: #878b95;
+  --senal: #16c98d;
+  --sobre-senal: #101114;
+  --senal-velo: rgba(22, 201, 141, 0.12);
+  --ambar: #f0c987;
+  --rosa: #f06ca8;
+  --velo: rgba(255, 255, 255, 0.05);
+  --velo-fuerte: rgba(255, 255, 255, 0.08);
+
+  /* tipografia */
+  --f-display: "Sora", "Sora Variable", system-ui, sans-serif;
+  --f-cuerpo: "Inter", "Inter Variable", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "JetBrains Mono", monospace;
+
+  /* radio */
+  --r-chip: 6px;
+  --r-control: 8px;
+  --r-carta: 10px;
+  --r-boton: 12px;
+  --r-panel: 14px;
+  --r-pastilla: 999px;
+
+  /* huecos */
+  --hueco-columnas: 14px;
+  --hueco-cartas: 12px;
+
+  /* movimiento */
+  --t-suave: 180ms cubic-bezier(0.4, 0.1, 0.2, 1);
+  --t-medio: 320ms cubic-bezier(0.4, 0.1, 0.2, 1);
+  --t-avatar: 900ms cubic-bezier(0.33, 0, 0.15, 1);
+}
+
+/* el board real solo tiene modo oscuro; ☾ deja un claro esbozado para probar */
+[data-tema="claro"] {
+  --fondo: #f2f3f5;
+  --columna: #e9eaee;
+  --carta: #ffffff;
+  --carta-hover: #f7f8fa;
+  --superficie: #dfe1e6;
+  --superficie-alta: #d3d6dc;
+  --borde: #c3c7ce;
+  --borde-hondo: #d8dbe0;
+  --borde-chip: #b4b9c2;
+  --texto: #16181d;
+  --texto-suave: #34383f;
+  --tenue: #5c616b;
+  --tenue-hondo: #7d828c;
+  --senal-velo: rgba(22, 201, 141, 0.16);
+  --velo: rgba(0, 0, 0, 0.05);
+  --velo-fuerte: rgba(0, 0, 0, 0.08);
+}
