@@ -2886,3 +2886,133 @@ strong {
     animation: none;
   }
 }
+
+/* ---------- /primerospasos (paginas/PrimerosPasos.jsx, components/Frase.jsx) ---------- */
+
+.seccion--dia {
+  padding-top: 64px;
+}
+.dia {
+  display: grid;
+  border-top: 1px solid var(--borde-hondo);
+}
+.dia__fila {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 24px;
+  padding-block: 32px;
+  border-bottom: 1px solid var(--borde-hondo);
+}
+.dia__cuando {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+.dia__cuando .titulo-3 {
+  margin: 0;
+}
+.dia__mono {
+  font: 500 13px/1.4 var(--mono);
+  color: var(--tenue-hondo);
+}
+.dia__cuerpo {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  align-content: start;
+}
+.dia__cuerpo > p {
+  margin: 0;
+  color: var(--tenue);
+  max-width: 56ch;
+}
+.dia__cuerpo code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  color: var(--texto-chip);
+}
+.frase {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 6px 6px 16px;
+  border-radius: 14px;
+  background: var(--columna);
+  border: 1px solid var(--borde);
+  max-width: 560px;
+  min-width: 0;
+  transition: border-color 0.25s var(--curva);
+}
+.frase:hover,
+.frase:focus-within {
+  border-color: var(--borde-chip);
+}
+.frase[data-estado='copiado'] {
+  border-color: var(--senal);
+}
+.frase[data-estado='copiado'] .comando__boton {
+  background: var(--senal);
+  color: var(--sobre-senal);
+}
+.frase .comando__boton {
+  height: 44px;
+  min-width: 124px;
+}
+.frase__t {
+  flex: 1;
+  min-width: 0;
+  padding-block: 8px;
+  font: 500 16px/1.4 var(--inter);
+  color: var(--texto);
+  overflow-wrap: anywhere;
+}
+.frase__t::before {
+  content: '«';
+  color: var(--tenue-hondo);
+}
+.frase__t::after {
+  content: '»';
+  color: var(--tenue-hondo);
+}
+.mensaje {
+  display: grid;
+  gap: 10px;
+  max-width: 620px;
+  padding: 18px 20px;
+  border-radius: 14px;
+  background: var(--columna);
+  border: 1px solid var(--borde-hondo);
+}
+.mensaje__quien {
+  font: 500 12px/1 var(--mono);
+  color: var(--tenue-hondo);
+}
+.mensaje ol {
+  margin: 0;
+  padding-left: 22px;
+  display: grid;
+  gap: 8px;
+  color: var(--texto-chip);
+  font-size: 15.5px;
+}
+.mensaje ol li::marker {
+  font-family: var(--mono);
+  color: var(--tenue-hondo);
+  font-size: 13px;
+}
+.mensaje__def {
+  color: var(--tenue-hondo);
+}
+@media (max-width: 760px) {
+  .dia__fila {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+@media (max-width: 560px) {
+  .frase .comando__boton {
+    min-width: 0;
+    width: 44px;
+    padding: 0;
+  }
+}
