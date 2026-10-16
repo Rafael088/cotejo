@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import { Logo } from './Logo.jsx'
 import Tablero from './Tablero.jsx'
@@ -6,19 +6,17 @@ import Comando from './Comando.jsx'
 import Icono from './Icono.jsx'
 import { COMANDOS } from '../config.js'
 
-function sistemaInicial() {
-  if (typeof navigator === 'undefined') return 'linux'
-  return /Win/i.test(navigator.userAgent) ? 'windows' : 'linux'
-}
-
-const aparecer = (retraso) => ({
-  initial: { opacity: 0, y: 14, filter: 'blur(6px)' },
-  animate: { opacity: 1, y: 0, filter: 'blur(0px)' },
-  transition: { delay: retraso, duration: 0.8, ease: [0.16, 1, 0.3, 1] },
-})
+// La entrada es CSS (.aparece en styles.css, con su retraso en --retraso), no motion: el HTML
+// prerenderizado llega visible y la animación solo corre si index.html marcó <html class="js">
+// antes de pintar. Así, sin JavaScript, nada arriba del pliegue arranca en opacity:0.
 
 export default function Hero() {
-  const [sistema, setSistema] = useState(sistemaInicial)
+  // El prerender no sabe el sistema: arranca en Linux (igual en el servidor y al hidratar)
+  // y cambia a Windows después de montar, para no descuadrar la hidratación.
+  const [sistema, setSistema] = useState('linux')
+  useEffect(() => {
+    if (/Win/i.test(navigator.userAgent)) setSistema('windows')
+  }, [])
 
   return (
     <section className="hero" aria-labelledby="hero-titulo">
@@ -28,18 +26,18 @@ export default function Hero() {
       <div className="hero__velo" aria-hidden="true" />
 
       <div className="hero__centro">
-        <motion.div {...aparecer(0)}>
+        <div className="aparece" style={{ '--retraso': '0s' }}>
           <Logo alto={72} animado className="hero__logo" />
-        </motion.div>
-        <motion.h1 id="hero-titulo" className="hero__titulo" {...aparecer(0.12)}>
+        </div>
+        <h1 id="hero-titulo" className="hero__titulo aparece" style={{ '--retraso': '0.12s' }}>
           Tus agentes entregan. <span className="hero__titulo-tu">Tú compruebas.</span>
-        </motion.h1>
-        <motion.p className="hero__bajada" {...aparecer(0.22)}>
+        </h1>
+        <p className="hero__bajada aparece" style={{ '--retraso': '0.22s' }}>
           Cotejo es el tablero de control para hacer vibe coding profesional. Tus agentes escriben
           el código; Cotejo organiza el proyecto y verifica lo que entregan. El check lo pones tú.
-        </motion.p>
+        </p>
 
-        <motion.div className="instalar-rapido" {...aparecer(0.34)}>
+        <div className="instalar-rapido aparece" style={{ '--retraso': '0.34s' }}>
           <div className="instalar-rapido__cabeza">
             <span className="instalar-rapido__titulo" id="instalar-rapido">Instálalo: pega un comando en una terminal</span>
             <div className="pestanas" role="tablist" aria-labelledby="instalar-rapido">
@@ -68,11 +66,11 @@ export default function Hero() {
             {sistema === 'windows' ? 'Windows 10 y 11, en PowerShell.' : 'Cualquier distribución. En Arch y Omarchy, también con pacman.'}{' '}
             Gratis, versión beta. ¿No usas la terminal? Pídele a tu agente que lo instale.
           </p>
-        </motion.div>
+        </div>
 
-        <motion.a href="#ahorro" className="hero__seguir" {...aparecer(0.5)}>
+        <a href="#ahorro" className="hero__seguir aparece" style={{ '--retraso': '0.5s' }}>
           Mira cuánto ahorra <Icono nombre="abajo" tam={16} />
-        </motion.a>
+        </a>
       </div>
     </section>
   )
