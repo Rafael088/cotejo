@@ -89,6 +89,50 @@ Cierre en una línea: **Hecho es cuando alguien lo revisó. Ese alguien eres tú
 
 ---
 
+## Fase 1 B · Beneficios
+
+Va justo debajo del hero y antes de las secciones por público. Tres columnas en escritorio, una debajo de otra en móvil. Cada beneficio lleva su línea «Se apoya en» en mono pequeño, para que quien programa vea el verbo o el archivo real detrás de la frase.
+
+**Etiqueta de sección:** Por qué Cotejo
+
+**Titular:** Proyectos hechos con IA que pueden crecer.
+
+**Subtítulo:** Gestiona tus proyectos de vibe coding de forma profesional: un plan escrito desde el primer día, un tablero con versiones y nada dado por hecho sin evidencia y sin tu revisión.
+
+### Beneficio 1 · Estructura desde el primer día
+
+**Título:** Empieza con un plan, no con un chat suelto.
+
+**Texto:** Tu agente prepara el repo y te hace cinco preguntas en un solo mensaje. Queda escrito el objetivo, el siguiente paso y las tareas de la 0.1.0, y todo vive en `.cotejo/`, dentro de tu repo, un archivo por entrada: viaja con el código y cualquier agente nuevo se entera en menos de mil tokens.
+
+**Se apoya en:** `cotejo init` · la entrevista de inicio (`cotejo protocolo`) · `.cotejo/proyecto.md` · `cotejo contexto`
+
+**Si hace falta la palabra «escalable», siempre con su porqué:** «Es escalable porque el conocimiento no está en tu cabeza ni en el historial del chat: está en `.cotejo/`, dentro del repo, un archivo por entrada, y cada versión cierra con sus notas de release.»
+
+### Beneficio 2 · Gestiona el proyecto en un tablero
+
+**Título:** Sabes qué falta y en qué versión va.
+
+**Texto:** Cada tarea pasa por cuatro columnas en CotejoBoard: Pendiente, Haciéndola, Para comprobar y Finalizada. Las tareas se agrupan por versión, y las notas de release salen solo cuando todas las de esa versión están aprobadas.
+
+**Se apoya en:** CotejoBoard · `cotejo version` · `cotejo crear --version` · `cotejo release` (ensayo; `--aplicar` escribe `.cotejo/releases/vX.Y.Z.md`)
+
+### Beneficio 3 · Nada se da por hecho sin pruebas
+
+**Título:** Hecho es cuando alguien lo revisó.
+
+**Texto:** Cada entrega llega con evidencia (archivos, commit y pruebas que se pueden repetir) y un resumen en lenguaje llano. Tú la apruebas o la devuelves con un motivo: ningún agente puede darla por hecha.
+
+**Se apoya en:** `cotejo entregar --evidencia --prueba --resumen` · `cotejo comprobar` · columna «Para comprobar» de CotejoBoard
+
+#### Notas
+
+- Los tres beneficios siguen el orden del enunciado: proyectos que pueden crecer (1), gestionar el proyecto de vibe coding (2), de forma profesional (3).
+- No se dice «automático», «productividad» ni «10x». Cotejo no escribe el código: el sujeto de «prepara», «entrega» y «trabaja» es siempre tu agente.
+- El titular no repite la frase del hero («Tus agentes entregan. Tú compruebas.»); el beneficio 3 cierra con la frase de apoyo de la marca.
+
+---
+
 ## Afirmaciones y de dónde salen
 
 | Afirmación | Respaldo |
@@ -110,3 +154,10 @@ Cierre en una línea: **Hecho es cuando alguien lo revisó. Ese alguien eres tú
 | `contexto` cabe en menos de mil tokens | protocolo (almacén) |
 | `importar` trae un proyecto de Obsidian o Notion, con ensayo por defecto | `web/PRODUCT.md` (Operating Context); protocolo (inicio) |
 | Cotejo 1.2 es beta y se ofrece sin garantías | `README.md` (aviso de beta) |
+| (B) Con `init` y la entrevista queda escrito el objetivo, el siguiente paso y las tareas de la 0.1.0 | `cotejo init --help`; `cotejo protocolo --completo` (referencias/inicio.md) |
+| (B) El conocimiento vive en `.cotejo/` dentro del repo, un archivo por entrada | `cotejo protocolo --completo` (almacén); `web/PRODUCT.md` (Operating Context); `dec-22dl` |
+| (B) «Escalable» se justifica por `.cotejo/` en el repo y las notas de release por versión | protocolo (almacén y referencias/versiones.md); `cotejo release --help` |
+| (B) Cuatro columnas en CotejoBoard: Pendiente, Haciéndola, Para comprobar, Finalizada | `web/PRODUCT.md` (Operating Context) |
+| (B) Las tareas se agrupan por versión y las notas salen solo con todas aprobadas | `cotejo version --help`; `cotejo release --help`; protocolo (referencias/versiones.md) |
+| (B) Cada entrega trae evidencia, pruebas repetibles y resumen en lenguaje llano; se aprueba o se devuelve con motivo | `cotejo entregar --help`; `cotejo comprobar --help`; protocolo (referencias/entrega.md) |
+| (B) Ningún agente puede dar una tarea por hecha | protocolo (Reglas duras); `web/PRODUCT.md` (Positioning) |
