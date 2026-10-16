@@ -3,8 +3,10 @@
 // trae `curl https://cotejo.dev/`, y falla si:
 //   - #root llega vacío o no hay un <h1> con texto;
 //   - alguna <section> no tiene su título (el elemento de su aria-labelledby, con texto);
-//   - el <h1> o algo de la sección del h1 (lo de arriba del pliegue) llega con opacity:0 en línea.
-// No conoce los textos: vale igual cuando cambien o lleguen maquetaciones nuevas.
+//   - el <h1> o algo de la sección del h1 (lo de arriba del pliegue) llega con opacity:0 en línea;
+//   - falta alguna de las secciones exigidas (EXIGIDAS, por id) con su titular, o llega con
+//     opacity:0 en línea.
+// Fuera de EXIGIDAS no conoce los textos: vale igual cuando lleguen maquetaciones nuevas.
 import { readFileSync } from 'node:fs'
 
 const ruta = process.argv[2] || new URL('../dist/index.html', import.meta.url)
@@ -15,6 +17,12 @@ try {
   console.error(`No encuentro ${ruta}: corre antes «npm --prefix web run build».`)
   process.exit(1)
 }
+
+// Las secciones por público (textos aprobados en web/textos-fase1.md, «Fase 1 A»).
+const EXIGIDAS = [
+  ['no-programo', 'Tu agente construye. Tú decides si está bien.'],
+  ['programo', 'Del repo vacío a la versión etiquetada, con evidencia en cada paso.'],
+]
 
 const fallos = []
 const texto = (s) => s.replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim()
@@ -50,6 +58,18 @@ if (h1) {
   const fin = pagina.indexOf('</section>', pagina.indexOf(h1[0]))
   const pliegue = inicio >= 0 && fin > 0 ? pagina.slice(inicio, fin) : h1[0]
   if (opacidadCero.test(pliegue)) fallos.push('Algo de la sección del <h1> arranca en opacity:0 en línea')
+}
+
+// Secciones exigidas: presentes, con su titular exacto y sin nada en opacity:0 en línea.
+for (const [id, titular] of EXIGIDAS) {
+  const seccion = pagina.match(new RegExp(`<section\\b[^>]*\\bid="${id}"[^>]*>([\\s\\S]*?)</section>`))
+  if (!seccion) {
+    fallos.push(`Falta la sección «${id}» en el HTML`)
+    continue
+  }
+  const h2 = seccion[1].match(/<h2\b[^>]*>([\s\S]*?)<\/h2>/)
+  if (!h2 || texto(h2[1]) !== titular) fallos.push(`La sección «${id}» no trae su titular «${titular}»`)
+  if (opacidadCero.test(seccion[0])) fallos.push(`Algo de la sección «${id}» arranca en opacity:0 en línea`)
 }
 
 if (fallos.length) {

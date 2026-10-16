@@ -1554,6 +1554,224 @@ strong {
   color: var(--texto);
 }
 
+/* ---------- Por público: «Si no programas» y «Si programas» ----------
+   Sin animación de entrada ni opacity inicial: lo que llega en el HTML es lo que se ve. Sin
+   verde: aquí nada espera comprobación. La etiqueta de sección va en Inter, no en mono
+   mayúsculas (eso es cromo del board). */
+
+.publicos-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.publicos-selector__opcion {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--borde);
+  color: var(--tenue);
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s var(--curva), background-color 0.2s var(--curva);
+}
+.publicos-selector__opcion:hover {
+  color: var(--texto);
+  background: var(--velo-fuerte);
+}
+
+.publicos-selector + .publico {
+  padding-top: clamp(40px, 6vw, 72px);
+}
+
+.publico__etiqueta {
+  margin: 0 0 14px;
+  color: var(--tenue);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.publico__bajada {
+  font-size: clamp(17px, 1.7vw, 20px);
+  line-height: 1.55;
+}
+
+.publico code {
+  overflow-wrap: anywhere;
+}
+
+.publico__bloque + .publico__bloque {
+  margin-top: clamp(56px, 7vw, 96px);
+}
+
+.publico__bloque--doble {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 16px 32px;
+  align-items: start;
+}
+
+.necesitas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--borde-hondo);
+  border: 1px solid var(--borde-hondo);
+}
+
+.necesitas li {
+  padding: clamp(18px, 2.4vw, 24px);
+  background: var(--columna);
+  color: var(--texto-chip);
+  font-size: 15.5px;
+  text-wrap: pretty;
+}
+
+.pasos {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.paso {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 0 8px;
+  padding-block: 24px;
+  border-top: 1px solid var(--borde-hondo);
+}
+
+.paso__numero {
+  padding-top: 3px;
+  font: 500 14px/1.5 var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--tenue-hondo);
+}
+
+.paso__cuerpo {
+  min-width: 0;
+}
+
+.paso__titulo {
+  margin: 0 0 8px;
+  font-family: var(--sora);
+  font-weight: 600;
+  font-size: 19px;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.paso .parrafo {
+  margin: 0;
+}
+
+.paso__instalar {
+  margin-top: 24px;
+}
+
+.paso__instalar .comando {
+  background: var(--columna);
+}
+
+.pasos--rejilla {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.pasos--rejilla .paso {
+  grid-template-columns: 44px minmax(0, 1fr);
+  padding: clamp(20px, 2.6vw, 28px);
+  border: 1px solid var(--borde-hondo);
+  border-radius: 14px;
+  background: var(--columna);
+}
+
+.pasos--rejilla .parrafo {
+  font-size: 15.5px;
+}
+
+.pasos--verbos .paso__cuerpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr);
+  gap: 8px 32px;
+}
+
+.pasos--verbos .paso__titulo {
+  font: 500 16px/1.5 var(--mono);
+  letter-spacing: 0;
+  color: var(--tenue);
+}
+
+.pasos--verbos .paso__titulo code {
+  color: var(--texto);
+}
+
+.publico__cierre {
+  margin: 40px 0 0;
+  font-family: var(--sora);
+  font-weight: 600;
+  font-size: clamp(22px, 2.6vw, 30px);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.publico__cierre span {
+  color: var(--tenue);
+}
+
+.publico__notas {
+  margin-top: clamp(48px, 6vw, 72px);
+  padding-top: 24px;
+  border-top: 1px solid var(--borde-hondo);
+  max-width: 820px;
+}
+
+.publico__notas-titulo {
+  margin: 0 0 12px;
+  font-family: var(--sora);
+  font-weight: 600;
+  font-size: 17px;
+  color: var(--tenue);
+}
+
+.publico__notas-lista {
+  margin: 0;
+  padding-left: 1.1em;
+  display: grid;
+  gap: 10px;
+  color: var(--texto-chip);
+  font-size: 15.5px;
+}
+
+.publico__notas-lista li::marker {
+  color: var(--tenue-hondo);
+}
+
+.publico__notas-lista code {
+  font-size: 0.88em;
+  padding: 0.1em 0.4em;
+  border-radius: 6px;
+  background: var(--superficie);
+}
+
+.publico__llamada {
+  margin-top: 40px;
+  height: auto;
+  padding-block: 12px;
+  line-height: 1.3;
+}
+
+.publico__llamada code {
+  font-size: 0.92em;
+}
+
 /* ---------- Pie ---------- */
 
 .pie {
@@ -1615,7 +1833,18 @@ strong {
 
 /* ---------- Responsive ---------- */
 
+@media (max-width: 1100px) {
+  .cabecera__secundario {
+    display: none;
+  }
+}
+
 @media (max-width: 960px) {
+  .publico__bloque--doble,
+  .pasos--verbos .paso__cuerpo {
+    grid-template-columns: 1fr;
+  }
+
   .comparar,
   .medido,
   .orbita__grid,
@@ -1726,6 +1955,19 @@ strong {
 
   .instalar__sistema {
     grid-template-columns: 1fr;
+  }
+
+  .necesitas,
+  .pasos--rejilla {
+    grid-template-columns: 1fr;
+  }
+
+  .paso {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  .pasos--rejilla .paso {
+    grid-template-columns: 32px minmax(0, 1fr);
   }
 
   .instalar__sistema .comando,

@@ -9,9 +9,11 @@ export default function Cabecera() {
         <span className="cabecera__version">{VERSION} beta</span>
       </a>
       <nav className="cabecera__nav" aria-label="Secciones">
-        <a href="#ahorro">Ahorro</a>
+        <a href="#no-programo">No programo</a>
+        <a href="#programo">Programo</a>
+        <a className="cabecera__secundario" href="#ahorro">Ahorro</a>
         <a href="#trato">Cómo funciona</a>
-        <a href="#fuentes">Con qué funciona</a>
+        <a className="cabecera__secundario" href="#fuentes">Con qué funciona</a>
         <a className="cabecera__cta" href="#instalar">Instalar</a>
       </nav>
     </header>
