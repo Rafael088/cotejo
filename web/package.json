@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build && vite build --ssr src/entrada-servidor.jsx --outDir .prerender --emptyOutDir && node scripts/prerender.mjs",
     "preview": "vite preview",
-    "comprobar": "node scripts/comprobar-prerender.mjs"
+    "comprobar": "node scripts/comprobar-prerender.mjs && node scripts/comprobar-meta.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

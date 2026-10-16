@@ -1,0 +1,40 @@
+<!doctype html>
+<!--
+  Fuente de web/public/og.png (la imagen que sale al compartir cotejo.dev), 1200×630.
+  Solo piezas del kit de marca: fondo #101114, el logo de docs/marca/logo-full-oscuro.svg
+  (sale de docs/marca/generar.py), Sora de data/fonts/ y un único verde: el check del logo.
+  Regenerar desde la raíz del repo (un Chromium, se cierra solo al acabar):
+
+    chromium --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 \
+      --window-size=1200,630 --screenshot=web/public/og.png "file://$PWD/web/scripts/og.html"
+    python3 -c "from PIL import Image; Image.open('web/public/og.png').convert('RGB').quantize(64).save('web/public/og.png', optimize=True)"
+
+  El segundo paso es opcional (deja el PNG por debajo de ~100 KB). Después:
+  node web/scripts/comprobar-meta.mjs (mide la cabecera del PNG: 1200×630).
+-->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>og:image de Cotejo</title>
+<style>
+  @font-face { font-family: "Sora"; src: url("../../data/fonts/Sora[wght].ttf"); font-weight: 100 800; }
+  @font-face { font-family: "Plex"; src: url("../../data/fonts/IBMPlexMono-Regular.ttf"); }
+  * { margin: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; background: #101114; }
+  body { position: relative; padding: 84px 96px; color: #ffffff; font-family: "Sora", system-ui, sans-serif; }
+  .logo { display: block; height: 92px; width: auto; }
+  h1 { position: absolute; left: 96px; bottom: 132px; font-weight: 600; font-size: 84px;
+       line-height: 1.04; letter-spacing: -0.04em; max-width: 1000px; }
+  h1 span { color: #a8acb6; }
+  .pie { position: absolute; left: 96px; bottom: 76px; font: 22px/1 "Plex", ui-monospace, monospace;
+         color: #878b95; letter-spacing: 0.02em; }
+  .raya { position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: #2a2c33; }
+</style>
+</head>
+<body>
+  <img class="logo" src="../../docs/marca/logo-full-oscuro.svg" alt="Cotejo">
+  <h1>Tus agentes entregan.<br><span>Tú compruebas.</span></h1>
+  <div class="pie">cotejo.dev</div>
+  <div class="raya"></div>
+</body>
+</html>
