@@ -18,6 +18,8 @@ const TRAZOS = {
       <circle cx="12" cy="18.5" r="1" />
     </>
   ),
+  menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  cerrar: <path d="M6 6l12 12M18 6L6 18" />,
   buscar: <path d="M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zm4.6-1.9L20 20" />,
 }
 
