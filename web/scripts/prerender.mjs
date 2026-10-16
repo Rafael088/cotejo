@@ -4,6 +4,7 @@
 // No hay textos copiados a mano: lo que haya en src es lo que sale.
 import { readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { cspPortada, csp404, meterCsp } from './csp.mjs'
 
 const web = fileURLToPath(new URL('..', import.meta.url))
 const indice = `${web}dist/index.html`
@@ -16,6 +17,13 @@ if (!pagina.includes('<h1')) throw new Error('El prerender no produjo ningún <h
 const html = readFileSync(indice, 'utf8')
 const vacio = '<div id="root"></div>'
 if (!html.includes(vacio)) throw new Error(`No encontré ${vacio} en dist/index.html`)
-writeFileSync(indice, html.replace(vacio, () => `<div id="root">${pagina}</div>`))
+const final = html.replace(vacio, () => `<div id="root">${pagina}</div>`)
 rmSync(servidor, { recursive: true, force: true })
 console.log(`prerender: dist/index.html con ${pagina.length} caracteres de HTML`)
+
+// Último paso: la CSP, con los hashes calculados sobre el HTML ya terminado (scripts/csp.mjs).
+writeFileSync(indice, meterCsp(final, cspPortada(final)))
+const pagina404 = `${web}dist/404.html`
+const html404 = readFileSync(pagina404, 'utf8')
+writeFileSync(pagina404, meterCsp(html404, csp404(html404)))
+console.log('prerender: CSP puesta en dist/index.html y dist/404.html')
