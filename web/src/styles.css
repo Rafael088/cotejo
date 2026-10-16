@@ -2349,3 +2349,162 @@ strong {
     animation: none;
   }
 }
+
+/* ---------- Portada: pasos, escala, puertas y cierre (rediseño) ---------- */
+
+.ini-pasos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--borde-hondo);
+}
+.ini-pasos li {
+  list-style: none;
+  padding: 28px 28px 8px 0;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+.ini-pasos li + li {
+  padding-left: 28px;
+  border-left: 1px solid var(--borde-hondo);
+}
+.ini-pasos__marca {
+  font: 500 13px/1.4 var(--mono);
+  color: var(--tenue);
+}
+.ini-pasos .titulo-3,
+.ini-pasos p {
+  margin: 0;
+}
+.ini-pasos p {
+  color: var(--tenue);
+  max-width: 34ch;
+}
+.ini-enlace {
+  margin: 28px 0 0;
+}
+@media (max-width: 760px) {
+  .ini-pasos {
+    grid-template-columns: 1fr;
+  }
+  .ini-pasos li,
+  .ini-pasos li + li {
+    padding: 24px 0;
+    border-left: 0;
+    border-bottom: 1px solid var(--borde-hondo);
+  }
+}
+
+.ini-escala {
+  display: grid;
+  gap: 18px;
+}
+.ini-escala__fila {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr) 96px;
+  align-items: center;
+  gap: 16px;
+}
+.ini-escala__nombre {
+  font: 400 13px/1.35 var(--mono);
+  color: var(--tenue);
+}
+.ini-escala__barra {
+  height: 30px;
+  border-radius: 6px;
+  background: var(--tenue-hondo);
+}
+.ini-escala__barra--cli {
+  background: var(--texto);
+}
+.ini-escala__cifra {
+  font: 500 15px/1 var(--mono);
+  color: var(--texto);
+  text-align: right;
+}
+.ini-escala__fila:first-child .ini-escala__cifra {
+  color: var(--tenue);
+}
+@media (max-width: 760px) {
+  .ini-escala__fila {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .ini-escala__barra {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+.ini-puertas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.ini-puerta {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  padding: clamp(24px, 3vw, 36px);
+  background: var(--columna);
+  border: 1px solid var(--borde-hondo);
+  border-radius: 16px;
+  color: var(--texto);
+  text-decoration: none;
+  transition: border-color 0.25s, background 0.25s;
+}
+.ini-puerta:hover {
+  border-color: var(--borde);
+  background: #17181d;
+}
+.ini-puerta .titulo-3,
+.ini-puerta p {
+  margin: 0;
+}
+.ini-puerta p {
+  color: var(--tenue);
+  max-width: 40ch;
+}
+.ini-puerta .enlace-flecha {
+  margin-top: 8px;
+  color: var(--texto);
+}
+@media (max-width: 760px) {
+  .ini-puertas {
+    grid-template-columns: 1fr;
+  }
+}
+.ini-agentes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  margin-top: 28px;
+  color: var(--tenue);
+  font-size: 15px;
+}
+.ini-agentes__chip {
+  font: 400 13px/1.5 var(--mono);
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--borde-chip);
+  color: var(--texto-chip);
+}
+
+.ini-cierre {
+  display: grid;
+  gap: 28px;
+  justify-items: start;
+  padding: clamp(28px, 5vw, 56px);
+  background: var(--columna);
+  border: 1px solid var(--borde-hondo);
+  border-radius: 16px;
+}
+.ini-cierre .titulo-2 {
+  max-width: 16ch;
+  margin: 0;
+}
+.ini-cierre .instalar-rapido {
+  width: 100%;
+}

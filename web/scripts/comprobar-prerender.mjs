@@ -11,12 +11,12 @@
 import { readFileSync } from 'node:fs'
 import { RUTAS } from '../src/rutas.js'
 
-// Los beneficios y las secciones por público (textos aprobados en web/textos-fase1.md,
-// «Fase 1 B» y «Fase 1 A»).
+// Las cuatro secciones de la portada tras la demo (rediseño: pasos, ahorro, puertas y cierre).
 const EXIGIDAS = [
-  ['por-que', 'Proyectos hechos con IA que pueden crecer.'],
-  ['no-programo', 'Tu agente construye. Tú decides si está bien.'],
-  ['programo', 'Del repo vacío a la versión etiquetada, con evidencia en cada paso.'],
+  ['pasos', 'De cero a tu primera entrega.'],
+  ['ahorro-inicio', 'Tu agente lee 480 tokens, no 4.700.'],
+  ['puertas', 'Programes o no, el check es tuyo.'],
+  ['cierre', 'Instálalo y pregúntale a tu agente qué falta.'],
 ]
 
 const texto = (s) => s.replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim()
