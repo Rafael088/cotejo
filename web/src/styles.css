@@ -594,6 +594,41 @@ strong {
   }
 }
 
+/* ---------- Entrada del hero ----------
+   El HTML llega prerenderizado y visible. La animación solo corre con <html class="js">, que
+   pone un script en línea de index.html antes de pintar: sin JavaScript no hay nada en
+   opacity:0. Termina en el estado normal (fill backwards), así que si el bundle falla el texto
+   queda igual de visible. Con movimiento reducido no se anima. */
+
+@media (prefers-reduced-motion: no-preference) {
+  .js .aparece {
+    animation: aparecer 0.8s cubic-bezier(0.16, 1, 0.3, 1) var(--retraso, 0s) backwards;
+  }
+  .js .logo-anima .logo-anima__c {
+    animation: trazar 0.4s cubic-bezier(0.33, 1, 0.68, 1) 0.1s backwards;
+  }
+  .js .logo-anima .logo-anima__check {
+    animation: trazar 0.36s cubic-bezier(0.33, 1, 0.68, 1) 0.39s backwards;
+  }
+}
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(6px);
+  }
+}
+/* pathLength="1" en el trazo: dasharray 1 y offset de 1 a 0 lo dibuja desde su punta. */
+.logo-anima__c,
+.logo-anima__check {
+  stroke-dasharray: 1;
+}
+@keyframes trazar {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
 /* ---------- Tablero del fondo ---------- */
 
 .tablero {

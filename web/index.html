@@ -10,6 +10,9 @@
     <meta property="og:description" content="Tus agentes entregan. Tú compruebas." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- Antes de pintar: con JavaScript, la entrada del hero se anima (styles.css, .js .aparece).
+         Sin él, la página prerenderizada se ve tal cual. -->
+    <script>document.documentElement.classList.add('js')</script>
   </head>
   <body>
     <div id="root"></div>
