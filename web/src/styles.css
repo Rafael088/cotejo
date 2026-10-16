@@ -289,10 +289,10 @@ strong {
   min-width: 0;
   font-size: 14px;
   line-height: 1.5;
-  white-space: pre;
-  overflow-x: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--borde) transparent;
+  /* El comando se lee entero: si no cabe, salta de línea (primero en los espacios, luego en las
+     barras de la URL que marca Comando.jsx con <wbr>) en vez de cortarse con scroll interno. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   padding-block: 8px;
 }
 
@@ -1953,6 +1953,15 @@ strong {
     order: -1;
   }
 
+  /* .orbita__giro es un cuadrado que gira: en diagonal su caja mide hasta 1,41 veces el escenario
+     y, en una sola columna, sus esquinas pasaban el borde de la pantalla y ensanchaban la página
+     (391–437 px a 390, 771 a 768, según el ángulo del giro). Lo que dibuja es un círculo (radios,
+     nodos y etiquetas de agentes caben dentro de la sección), así que recortar de lado a la
+     sección solo quita esquinas vacías. overflow-x: clip, no hidden: no crea scroll ni corta en
+     vertical. */
+  .orbita {
+    overflow-x: clip;
+  }
 }
 
 @media (max-width: 720px) {
@@ -2039,6 +2048,7 @@ strong {
   .orbita__anillo--fuera {
     display: none;
   }
+
 
   .orbita__vacio {
     white-space: nowrap;
