@@ -2,6 +2,8 @@
 
 Borrador para maquetar. Voz de `web/PRODUCT.md`: español, tuteo, frases cortas, verbos fijos, sin promesas de productividad. Solo lo que trae la versión publicada (1.2.5). Cada bloque indica su rol: titular, subtítulo, pasos, notas.
 
+> Estado: este borrador es de la fase 1 y quedó atrás con el rediseño. Las secciones «Si no programas» / «Si programas» y los tres beneficios ya no existen como componentes: sus ideas viven ahora en las cuatro páginas (`/`, `/comofunciona`, `/primerospasos`, `/tokens`), y el texto vigente está en `src/components/` y `src/paginas/`. Se conserva como registro de redacción y, sobre todo, la sección «Afirmaciones y de dónde salen», que sigue sirviendo para comprobar cada afirmación contra la versión publicada.
+
 ## Fase 1 A · Secciones por público
 
 Orden en la página: primero «Si no programas», después «Si programas». Un selector o dos anclas arriba de ambas: «No programo» / «Programo».

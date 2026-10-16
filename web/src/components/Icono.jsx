@@ -7,18 +7,10 @@ const TRAZOS = {
     </>
   ),
   check: <path d="M5 12.5l4.5 4.5L19 7" />,
-  abajo: <path d="M12 5v14m-6-6l6 6 6-6" />,
   flecha: <path d="M5 12h14m-6-6l6 6-6 6" />,
-  descargar: <path d="M12 4v11m-5-5l5 5 5-5M5 20h14" />,
   repetir: <path d="M4 12a8 8 0 0 1 13.7-5.7L20 8.5M20 4v4.5h-4.5M20 12a8 8 0 0 1-13.7 5.7L4 15.5M4 20v-4.5h4.5" />,
-  mas: (
-    <>
-      <circle cx="12" cy="5.5" r="1" />
-      <circle cx="12" cy="12" r="1" />
-      <circle cx="12" cy="18.5" r="1" />
-    </>
-  ),
-  buscar: <path d="M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zm4.6-1.9L20 20" />,
+  menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  cerrar: <path d="M6 6l12 12M18 6L6 18" />,
 }
 
 export default function Icono({ nombre, tam = 18, className = '' }) {

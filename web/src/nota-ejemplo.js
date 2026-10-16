@@ -69,8 +69,16 @@ honesto, pero depende de que la máquina no esté despachando nada pesado en ese
 - Una galería de temas de color hechos por la comunidad, comprobados con cotejo temas comprobar.
 `
 
-export const RESPUESTA = `{"esquema": 1, "total": 3, "tareas": [
- {"id": "web-a1b2", "texto": "Comprar el dominio y apuntarlo a GitHub Pages", "estado": "pendiente", "agente": "persona", "dificultad": "facil"},
- {"id": "web-c3d4", "texto": "Servir install.sh e install.ps1 desde el dominio", "estado": "pendiente", "agente": "", "dificultad": "medio"},
- {"id": "web-e5f6", "texto": "Escribir el texto de la sección de fuentes", "estado": "pendiente", "agente": "", "dificultad": "facil"}
-]}`
+// Lo que devuelve `cotejo tareas --proyecto web --estado pendiente`, con las claves reales del verbo.
+const tarea = (id, texto, nombre, agente, dificultad) => ({
+  id, texto, nombre, version: '', proyecto: 'web', estado: 'pendiente', agente, dificultad, nota: 'web/.cotejo/tareas.md',
+})
+export const RESPUESTA_DATOS = {
+  esquema: 1,
+  total: 3,
+  tareas: [
+    tarea('web-a1b2', 'Comprar el dominio y apuntarlo a GitHub Pages', 'Comprar el dominio…', 'persona', 'facil'),
+    tarea('web-c3d4', 'Servir install.sh e install.ps1 desde el dominio', 'Servir install.sh…', '', 'medio'),
+    tarea('web-e5f6', 'Escribir el texto de la sección de fuentes', 'Escribir el texto…', '', 'facil'),
+  ],
+}

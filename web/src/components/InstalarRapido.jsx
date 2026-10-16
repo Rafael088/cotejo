@@ -14,10 +14,11 @@ const NOTAS = {
 }
 
 // El bloque de instalación con pestañas Linux / Windows: el del hero y el del primer paso de
-// «Si no programas». Los comandos salen de config.js, nunca escritos aquí.
+// «Si no programas». `nota` va a la derecha de las pestañas; `pie` sustituye a la nota por
+// sistema de debajo; `id` es el ancla (el hero lleva «instalar»). Los comandos salen de config.js, nunca escritos aquí.
 // El prerender no sabe el sistema: arranca en Linux (igual en el servidor y al hidratar) y
 // cambia a Windows después de montar, para no descuadrar la hidratación.
-export default function InstalarRapido({ titulo, coletilla, className = '', style }) {
+export default function InstalarRapido({ nota, pie, id: ancla, className = '', style }) {
   const [sistema, setSistema] = useState('linux')
   const id = useId()
   useEffect(() => {
@@ -25,10 +26,9 @@ export default function InstalarRapido({ titulo, coletilla, className = '', styl
   }, [])
 
   return (
-    <div className={`instalar-rapido ${className}`} style={style}>
+    <div className={`instalar-rapido ${className}`} style={style} id={ancla}>
       <div className="instalar-rapido__cabeza">
-        <span className="instalar-rapido__titulo" id={`${id}-titulo`}>{titulo}</span>
-        <div className="pestanas" role="tablist" aria-labelledby={`${id}-titulo`}>
+        <div className="pestanas" role="tablist" aria-label="Sistema">
           {SISTEMAS.map(([clave, nombre]) => (
             <button
               key={clave}
@@ -45,11 +45,11 @@ export default function InstalarRapido({ titulo, coletilla, className = '', styl
             </button>
           ))}
         </div>
+        {nota && <span className="instalar-rapido__aparte">{nota}</span>}
       </div>
       <Comando texto={COMANDOS[sistema]} prompt={sistema === 'windows' ? 'PS>' : '$'} grande />
       <p className="instalar-rapido__nota">
-        {NOTAS[sistema]}
-        {coletilla && <> {coletilla}</>}
+        {pie ?? NOTAS[sistema]}
       </p>
     </div>
   )

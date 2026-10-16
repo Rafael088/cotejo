@@ -16,7 +16,7 @@ Desarrolladores primero: personas que trabajan con agentes de código (Claude Co
 
 ## Product Purpose
 
-**Qué es:** el tablero de control para hacer vibe coding profesional. Tus agentes escriben el código; Cotejo organiza el proyecto y verifica lo que entregan. No escribe código por ti.
+**Qué es:** el tablero de control para tu vibe coding. Tus agentes escriben el código; Cotejo ordena el proyecto, reparte las tareas y no da nada por hecho hasta que tú lo revisas. No escribe código por ti.
 
 **Para qué sirve:** que cualquier persona, programe o no, construya software con IA de forma estructurada y que pueda crecer. Cada proyecto guarda su contexto, sus decisiones y su arquitectura en `.cotejo/`, dentro de su propio repo; cada tarea va al modelo adecuado (el enrutador); y nada se da por hecho sin evidencia y sin tu revisión.
 
@@ -46,7 +46,7 @@ Muchos tableros para agentes se venden como sacar a la persona del ciclo. Cotejo
 
 ## Brand Commitments
 
-- Nombre: **Cotejo**. Frase: **«Tus agentes entregan. Tú compruebas.»**; de apoyo: «Hecho es cuando alguien lo revisó.»
+- Nombre: **Cotejo**. Frase de pie: **«Tus agentes entregan. Tú compruebas.»** (firma en el footer y og:image). De apoyo: «Hecho es cuando alguien lo revisó.»
 - Logo: la palabra «Cotejo» con la C que se cierra con un check. Lo único verde es el check. No se separa la C de «otejo», no se rota, sombrea ni degrada, no se usa texto vivo en «otejo». Kit en `docs/marca/`.
 - Color: neutros del negro (`#101114`) al blanco y un único acento, **Verde Hecho** `#16C98D` (sobre claro, `#0E9F6E` en el logo y `#08734F` en texto). El verde significa «espera que lo compruebes / hecho»; no se pinta de verde otra cosa. Ámbar `#F0C987` = devuelta o bloqueada.
 - Tipografías: Sora (titulares, logo), Inter (texto), IBM Plex Mono (comandos, cifras). OFL, en `data/fonts/`.

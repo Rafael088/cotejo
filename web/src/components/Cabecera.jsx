@@ -1,20 +1,56 @@
-import { Marca } from './Logo.jsx'
+import { useState } from 'react'
+import { Logo } from './Logo.jsx'
+import Icono from './Icono.jsx'
 import { VERSION } from '../config.js'
+import { enlace } from '../paginas.js'
 
-export default function Cabecera() {
+const ENLACES = [
+  ['/comofunciona', 'Cómo funciona'],
+  ['/primerospasos', 'Primeros pasos'],
+  ['/tokens', 'Tokens'],
+]
+
+function Enlace({ ruta, actual, children }) {
   return (
-    <header className="cabecera">
-      <a className="cabecera__marca" href="#" aria-label="Cotejo, inicio">
-        <Marca tam={28} />
-        <span className="cabecera__version">{VERSION} beta</span>
-      </a>
-      <nav className="cabecera__nav" aria-label="Secciones">
-        <a href="#no-programo">No programo</a>
-        <a href="#programo">Programo</a>
-        <a className="cabecera__secundario" href="#ahorro">Ahorro</a>
-        <a href="#trato">Cómo funciona</a>
-        <a className="cabecera__secundario" href="#fuentes">Con qué funciona</a>
-        <a className="cabecera__cta" href="#instalar">Instalar</a>
+    <a href={enlace(ruta)} aria-current={actual === ruta ? 'page' : undefined}>
+      {children}
+    </a>
+  )
+}
+
+// Cerrado en el primer render (igual en servidor y cliente): sin JavaScript el panel queda
+// oculto y no tapa nada; la navegación de escritorio es la misma de siempre.
+export default function Cabecera({ ruta }) {
+  const [abierto, setAbierto] = useState(false)
+  return (
+    <header className="cab">
+      <div className="cab__fila">
+        <a className="cab__marca" href={enlace('/')} aria-label="Cotejo, inicio">
+          <Logo alto={28} />
+          <span className="cab__version">{VERSION} beta</span>
+        </a>
+        <nav className="cab__nav" aria-label="Principal">
+          {ENLACES.map(([r, texto]) => (
+            <Enlace key={r} ruta={r} actual={ruta}>{texto}</Enlace>
+          ))}
+        </nav>
+        <a className="cab__cta" href={`${enlace('/')}#instalar`}>Instalar</a>
+        <button
+          className="cab__menu"
+          type="button"
+          aria-expanded={abierto}
+          aria-controls="menu-movil"
+          aria-label={abierto ? 'Cerrar menú' : 'Abrir menú'}
+          onClick={() => setAbierto(!abierto)}
+        >
+          <Icono nombre={abierto ? 'cerrar' : 'menu'} tam={22} />
+        </button>
+      </div>
+      <nav className="cab__panel" id="menu-movil" aria-label="Menú" hidden={!abierto}>
+        <Enlace ruta="/" actual={ruta}>Inicio</Enlace>
+        {ENLACES.map(([r, texto]) => (
+          <Enlace key={r} ruta={r} actual={ruta}>{texto}</Enlace>
+        ))}
       </nav>
     </header>
   )

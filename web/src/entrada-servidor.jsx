@@ -1,7 +1,9 @@
 import { renderToString } from 'react-dom/server'
 import Raiz from './Raiz.jsx'
 
-// Lo usa scripts/prerender.mjs en el build: la página entera a HTML, sin navegador.
-export function renderizar() {
-  return renderToString(<Raiz />)
+export { RUTAS, SITIO, canonical } from './rutas.js'
+
+// Lo usa scripts/prerender.mjs en el build: la página de una ruta a HTML, sin navegador.
+export function renderizar(ruta) {
+  return renderToString(<Raiz ruta={ruta} />)
 }

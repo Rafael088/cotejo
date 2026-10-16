@@ -3,10 +3,12 @@
 // Lee dist/ (lo que acaba en gh-pages) y falla si:
 //   - dist/robots.txt no permite rastrear o no apunta a Sitemap: https://cotejo.dev/sitemap.xml;
 //   - dist/sitemap.xml no es XML bien formado (declaración, etiquetas que cierran en orden,
-//     una sola raíz <urlset> del espacio de sitemaps) o no trae <loc>https://cotejo.dev/</loc>;
+//     una sola raíz <urlset> del espacio de sitemaps) o sus <loc> no son exactamente las rutas
+//     de src/rutas.js (lo escribe scripts/prerender.mjs), o falta el HTML de alguna;
 //   - dist/404.html no existe, no es <html lang="es">, no lleva noindex, no enlaza a la
 //     portada («/») o depende de JavaScript (<script>).
 import { readFileSync } from 'node:fs'
+import { RUTAS, canonical } from '../src/rutas.js'
 
 const dist = new URL('../dist/', import.meta.url)
 const fallos = []
@@ -72,8 +74,12 @@ const sitemap = leer('sitemap.xml')
 if (sitemap !== null) {
   const error = xmlBienFormado(sitemap)
   if (error) fallos.push(`sitemap.xml: ${error}`)
-  if (!sitemap.includes('<loc>https://cotejo.dev/</loc>')) fallos.push('sitemap.xml: falta <loc>https://cotejo.dev/</loc>')
+  const locs = [...sitemap.matchAll(/<loc>([^<]*)<\/loc>/g)].map((m) => m[1])
+  const esperadas = RUTAS.map((r) => canonical(r.ruta))
+  for (const url of esperadas) if (!locs.includes(url)) fallos.push(`sitemap.xml: falta <loc>${url}</loc>`)
+  for (const url of locs) if (!esperadas.includes(url)) fallos.push(`sitemap.xml: sobra <loc>${url}</loc>`)
 }
+for (const { archivo } of RUTAS) leer(archivo)
 
 // 404.html
 const pagina = leer('404.html')
@@ -91,4 +97,4 @@ if (fallos.length) {
   for (const f of fallos) console.error(`  - ${f}`)
   process.exit(1)
 }
-console.log('comprobar-public: robots.txt, sitemap.xml y 404.html en orden')
+console.log(`comprobar-public: robots.txt, sitemap.xml (${RUTAS.length} rutas), sus HTML y 404.html en orden`)

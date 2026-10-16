@@ -1,6 +1,6 @@
 // Comprueba que la web carga sin mensajes en la consola: `node web/scripts/comprobar-consola.mjs`
 // después de `npm --prefix web run build` (o `npm run comprobar:consola` en web/). Sirve dist/
-// con un servidor node mínimo, abre Chromium headless y carga la portada y la 404 a 1440×900
+// con un servidor node mínimo, abre Chromium headless y carga cada ruta de src/rutas.js y la 404 a 1440×900
 // (escritorio) y 390×844 (teléfono); en la portada recorre la página entera (para que corran
 // las animaciones de Motion al entrar cada sección) y elige Windows en los selectores. Falla si
 // sale cualquier cosa de nivel error o warning:
@@ -22,6 +22,7 @@ import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, extname, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { RUTAS } from '../src/rutas.js'
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url))
 
@@ -63,6 +64,8 @@ const TIPOS = {
 const servidor = createServer(async (pet, res) => {
   let ruta = decodeURIComponent(new URL(pet.url, 'http://x').pathname)
   if (ruta.endsWith('/')) ruta += 'index.html'
+  // Como GitHub Pages: /comofunciona se sirve desde comofunciona.html.
+  else if (!extname(ruta)) ruta += '.html'
   const archivo = normalize(join(dist, ruta))
   if (!archivo.startsWith(dist)) return res.writeHead(403).end()
   try {
@@ -172,6 +175,7 @@ document.addEventListener('securitypolicyviolation', (e) => {
 
 const PAGINAS = [
   ['portada', ''],
+  ...RUTAS.filter((r) => r.ruta !== '/').map((r) => [r.ruta, r.ruta.slice(1)]),
   ['404', '404.html'],
 ]
 const VISTAS = [
@@ -253,4 +257,4 @@ if (fallos.length) {
   for (const f of fallos) console.error(`  - ${f}`)
   process.exit(1)
 }
-console.log('comprobar-consola: portada y 404 sin errores, avisos ni violaciones de CSP a 1440 y 390 px')
+console.log(`comprobar-consola: las ${RUTAS.length} rutas y la 404 sin errores, avisos ni violaciones de CSP a 1440 y 390 px`)

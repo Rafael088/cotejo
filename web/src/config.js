@@ -3,7 +3,7 @@
 // Dominio propio (GitHub Pages con HTTPS forzado). install.sh e install.ps1 viven en
 // web/public/ y se sirven en la raíz: https://cotejo.dev/install.sh. publicar.sh escribe el
 // CNAME en gh-pages; sin él, el dominio se cae.
-export const DOMINIO = 'cotejo.dev'
+const DOMINIO = 'cotejo.dev'
 export const CONTACTO = 'soporte@cotejo.dev'
 const SERVIDOR = DOMINIO
 
@@ -30,9 +30,7 @@ export const AHORRO = {
   devuelto: 37098,
   leido: 730071,
   razon: 19.7,
-  tokensDevueltos: 10305,
   tokensAhorrados: 192492,
-  caracteresPorToken: 3.6,
 }
 
 // Estimación documentada para una consulta: las pendientes de un proyecto contra la nota entera.

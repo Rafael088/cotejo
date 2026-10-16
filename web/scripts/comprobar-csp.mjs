@@ -1,6 +1,6 @@
 // Comprueba la Content-Security-Policy del build sin navegador:
 // `node web/scripts/comprobar-csp.mjs` después de `npm --prefix web run build` (va en
-// `npm run comprobar`). Lee dist/index.html y dist/404.html y falla si:
+// `npm run comprobar`). Lee el HTML de cada ruta de src/rutas.js y dist/404.html y falla si:
 //   - no hay exactamente una <meta http-equiv="Content-Security-Policy">, o no va antes de
 //     cualquier <script>, <style> o <link> (por meta solo vale para lo que viene detrás);
 //   - script-src (o default-src, si falta script-src) admite 'unsafe-inline', 'unsafe-eval',
@@ -12,6 +12,7 @@
 // La política sale de scripts/csp.mjs; esta comprobación no la reconstruye: la lee del HTML.
 import { readFileSync } from 'node:fs'
 import { enLinea, hashDe } from './csp.mjs'
+import { RUTAS } from '../src/rutas.js'
 
 const dist = new URL('../dist/', import.meta.url)
 const fallos = []
@@ -70,7 +71,7 @@ function revisar(nombre, { estilosPorHash }) {
     console.log(`${nombre}: ${metas[0][1]}`)
 }
 
-revisar('index.html', { estilosPorHash: true })
+for (const { archivo } of RUTAS) revisar(archivo, { estilosPorHash: true })
 revisar('404.html', { estilosPorHash: true })
 
 if (fallos.length) {
@@ -78,4 +79,4 @@ if (fallos.length) {
   for (const f of fallos) console.error(`  - ${f}`)
   process.exit(1)
 }
-console.log('comprobar-csp: CSP por meta en la portada y la 404, sin \'unsafe-inline\' en script-src y con los hashes al día')
+console.log(`comprobar-csp: CSP por meta en las ${RUTAS.length} páginas y la 404, sin 'unsafe-inline' en script-src y con los hashes al día`)
