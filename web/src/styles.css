@@ -1772,6 +1772,94 @@ strong {
   font-size: 0.92em;
 }
 
+/* ---------- Beneficios ----------
+   Tres paneles planos (columna + borde hondo, como .pasos--rejilla), sin iconos ni verde.
+   El «Se apoya en» va en mono pequeño: es lo que escribe la CLI. Sin animación de entrada. */
+
+.beneficios__lista {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.beneficio {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: clamp(20px, 2.6vw, 28px);
+  border: 1px solid var(--borde-hondo);
+  border-radius: 14px;
+  background: var(--columna);
+}
+
+.beneficio__nombre {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 16px;
+  color: var(--tenue);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.beneficio__numero {
+  font: 500 13px/1.5 var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--tenue-hondo);
+}
+
+.beneficio__titulo {
+  margin: 0 0 12px;
+  font-family: var(--sora);
+  font-weight: 600;
+  font-size: clamp(20px, 1.9vw, 23px);
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+.beneficio__texto {
+  font-size: 15.5px;
+  margin-bottom: 20px;
+}
+
+.beneficio code {
+  overflow-wrap: anywhere;
+}
+
+.beneficio__apoyo {
+  margin: auto 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--borde-hondo);
+  font: 400 12px/1.6 var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--tenue-hondo);
+  overflow-wrap: break-word;
+}
+
+/* En la línea de apoyo el mono ya marca lo que es CLI: sin la pastilla de `code`, y sin partir
+   un verbo o una opción por la mitad (solo se parte si no cabe la palabra entera). */
+.beneficio__apoyo code {
+  padding: 0;
+  background: none;
+  font-size: inherit;
+  color: var(--texto-chip);
+  overflow-wrap: break-word;
+}
+
+.beneficio__palabra {
+  white-space: nowrap;
+}
+
+.beneficio__apoyo-rotulo {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--tenue);
+}
+
 /* ---------- Pie ---------- */
 
 .pie {
@@ -1840,6 +1928,10 @@ strong {
 }
 
 @media (max-width: 960px) {
+  .beneficios__lista {
+    grid-template-columns: 1fr;
+  }
+
   .publico__bloque--doble,
   .pasos--verbos .paso__cuerpo {
     grid-template-columns: 1fr;

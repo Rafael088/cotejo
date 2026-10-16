@@ -18,8 +18,10 @@ try {
   process.exit(1)
 }
 
-// Las secciones por público (textos aprobados en web/textos-fase1.md, «Fase 1 A»).
+// Los beneficios y las secciones por público (textos aprobados en web/textos-fase1.md,
+// «Fase 1 B» y «Fase 1 A»).
 const EXIGIDAS = [
+  ['por-que', 'Proyectos hechos con IA que pueden crecer.'],
   ['no-programo', 'Tu agente construye. Tú decides si está bien.'],
   ['programo', 'Del repo vacío a la versión etiquetada, con evidencia en cada paso.'],
 ]

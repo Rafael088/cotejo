@@ -1,5 +1,6 @@
 import Cabecera from './components/Cabecera.jsx'
 import Hero from './components/Hero.jsx'
+import Beneficios from './components/Beneficios.jsx'
 import Medidor from './components/Medidor.jsx'
 import Trato from './components/Trato.jsx'
 import Orbita from './components/Orbita.jsx'
@@ -15,6 +16,7 @@ export default function App() {
       <Cabecera />
       <main id="contenido">
         <Hero />
+        <Beneficios />
         <Medidor />
         <Publicos />
         <Trato />
