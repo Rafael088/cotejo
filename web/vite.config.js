@@ -9,10 +9,16 @@ const completa = init.match(/^__version__ = "([^"]+)"/m)?.[1]
 if (!completa) throw new Error('No encontré __version__ en tareas/__init__.py')
 const version = completa.split('.').slice(0, 2).join('.')
 
+// El JSON-LD de index.html lleva la versión completa (softwareVersion), de la misma fuente.
+const versionEnHtml = {
+  name: 'cotejo-version-en-html',
+  transformIndexHtml: (html) => html.replaceAll('__COTEJO_VERSION_COMPLETA__', completa),
+}
+
 // En GitHub Pages sin dominio la web vive en /cotejo/; con dominio propio, en la raíz.
 // publicar.sh pasa BASE según el caso.
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), versionEnHtml],
   base: process.env.BASE || '/',
   define: { __COTEJO_VERSION__: JSON.stringify(version) },
 })

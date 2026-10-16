@@ -21,6 +21,13 @@ async function copiar(texto) {
   }
 }
 
+// Puntos donde el comando puede saltar de línea sin que nadie lo lea mal: después de cada «/»
+// de la ruta (no en el «//» de https://, que partido se lee mal). <wbr> no añade caracteres: lo que se copia (y lo que se selecciona a mano) es el
+// comando exacto. Sin window ni navigator: igual en el prerender y al hidratar.
+function conCortes(texto) {
+  return texto.split(/(?<=[^/:]\/)(?!\/)/).flatMap((trozo, i) => (i ? [<wbr key={i} />, trozo] : [trozo]))
+}
+
 // Una línea de terminal con su botón de copiar. El verde aparece solo al copiar: es «hecho».
 export default function Comando({ texto, prompt = '$', grande = false }) {
   const [estado, setEstado] = useState('listo') // listo | copiado | error
@@ -38,7 +45,7 @@ export default function Comando({ texto, prompt = '$', grande = false }) {
     <div className={`comando ${grande ? 'comando--grande' : ''}`} data-estado={estado}>
       <code className="comando__linea">
         <span className="comando__prompt" aria-hidden="true">{prompt}</span>
-        <span className="comando__texto">{texto}</span>
+        <span className="comando__texto">{conCortes(texto)}</span>
       </code>
       <button type="button" className="comando__boton" onClick={alCopiar} aria-label={`Copiar: ${texto}`}>
         <AnimatePresence mode="wait" initial={false}>

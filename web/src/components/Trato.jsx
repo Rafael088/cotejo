@@ -45,11 +45,10 @@ export default function Trato() {
   return (
     <section className="seccion trato" id="trato" aria-labelledby="trato-titulo" ref={ref}>
       <div className="seccion__cabeza">
-        <h2 id="trato-titulo" className="titulo-2">Hecho es cuando alguien lo revisó.</h2>
+        <h2 id="trato-titulo" className="titulo-2">Una tarea, de Pendiente a Finalizada.</h2>
         <p className="parrafo">
-          Tus agentes toman, entregan y, si se atascan, bloquean con un motivo. Lo que no pueden
-          hacer es marcar su propia tarea como hecha: <strong>no hay verbo para finalizar, y esa
-          ausencia es el diseño.</strong> El check se pone en CotejoBoard, con la mano.
+          Lo de arriba, en marcha. Las tres primeras columnas las mueve el agente con un verbo y
+          deja su evidencia; la última la mueves tú, aquí mismo.
         </p>
       </div>
 

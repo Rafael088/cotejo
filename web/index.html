@@ -3,13 +3,50 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Cotejo · Tus agentes entregan. Tú compruebas.</title>
-    <meta name="description" content="El tablero de control para hacer vibe coding profesional. Tus agentes entregan con evidencia; tú compruebas. Gratis, para Linux y Windows." />
+    <!-- La CSP la mete el build (scripts/csp.mjs). El referrer: a otros sitios, solo el origen. -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <title>Cotejo · Vibe coding con Claude Code y proyectos que crecen</title>
+    <meta name="description" content="El tablero de control para vibe coding profesional: tus proyectos en orden, Claude Code u otro agente entrega y tú compruebas. Gratis en Linux y Windows." />
     <meta name="theme-color" content="#101114" />
-    <meta property="og:title" content="Cotejo" />
-    <meta property="og:description" content="Tus agentes entregan. Tú compruebas." />
+    <!-- Para compartir y buscar. URLs absolutas a cotejo.dev aunque el build use otra base.
+         og.png sale de scripts/og.html; lo vigila scripts/comprobar-meta.mjs. -->
+    <link rel="canonical" href="https://cotejo.dev/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Cotejo" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:url" content="https://cotejo.dev/" />
+    <meta property="og:title" content="Cotejo · Vibe coding con Claude Code y proyectos que crecen" />
+    <meta property="og:description" content="El tablero de control para vibe coding profesional: tus proyectos en orden, Claude Code u otro agente entrega y tú compruebas. Gratis en Linux y Windows." />
+    <meta property="og:image" content="https://cotejo.dev/og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Cotejo. Tus agentes entregan. Tú compruebas." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Cotejo · Vibe coding con Claude Code y proyectos que crecen" />
+    <meta name="twitter:description" content="El tablero de control para vibe coding profesional: tus proyectos en orden, Claude Code u otro agente entrega y tú compruebas. Gratis en Linux y Windows." />
+    <meta name="twitter:image" content="https://cotejo.dev/og.png" />
+    <meta name="twitter:image:alt" content="Cotejo. Tus agentes entregan. Tú compruebas." />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Cotejo",
+        "url": "https://cotejo.dev/",
+        "image": "https://cotejo.dev/og.png",
+        "description": "El tablero de control para vibe coding profesional: tus proyectos en orden, Claude Code u otro agente entrega y tú compruebas. Gratis en Linux y Windows.",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Linux, Windows",
+        "softwareVersion": "__COTEJO_VERSION_COMPLETA__",
+        "inLanguage": "es",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- Antes de pintar: con JavaScript, la entrada del hero se anima (styles.css, .js .aparece).
+         Sin él, la página prerenderizada se ve tal cual. -->
+    <script>document.documentElement.classList.add('js')</script>
   </head>
   <body>
     <div id="root"></div>

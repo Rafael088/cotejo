@@ -8,8 +8,7 @@ export default function Instalar() {
       <div className="seccion__cabeza">
         <h2 id="instalar-titulo" className="titulo-2">Instálalo y pregúntale qué falta.</h2>
         <p className="parrafo">
-          Instalar pide pegar un comando en una terminal; si no te manejas con ella, pídele a tu
-          agente que lo corra por ti. Un comando por sistema. Baja la última versión de GitHub, comprueba su checksum, deja{' '}
+          Un comando por sistema. Baja la última versión de GitHub, comprueba su checksum, deja{' '}
           <code>cotejo</code> en tu PATH y crea el acceso en el menú. Volver a correrlo actualiza.
         </p>
       </div>

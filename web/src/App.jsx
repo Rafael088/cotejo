@@ -1,9 +1,11 @@
 import Cabecera from './components/Cabecera.jsx'
 import Hero from './components/Hero.jsx'
+import Beneficios from './components/Beneficios.jsx'
 import Medidor from './components/Medidor.jsx'
 import Trato from './components/Trato.jsx'
 import Orbita from './components/Orbita.jsx'
 import Instalar from './components/Instalar.jsx'
+import Publicos from './components/Publicos.jsx'
 import ConCualquierAgente from './components/ConCualquierAgente.jsx'
 import Pie from './components/Pie.jsx'
 
@@ -14,10 +16,12 @@ export default function App() {
       <Cabecera />
       <main id="contenido">
         <Hero />
+        <Beneficios />
         <Medidor />
+        <Publicos />
         <Trato />
-        <Orbita />
         <Instalar />
+        <Orbita />
         <ConCualquierAgente />
       </main>
       <Pie />
