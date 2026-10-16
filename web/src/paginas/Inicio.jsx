@@ -1,4 +1,5 @@
 import Hero from '../components/Hero.jsx'
+import Demo from '../components/Demo.jsx'
 import Beneficios from '../components/Beneficios.jsx'
 import Medidor from '../components/Medidor.jsx'
 import Trato from '../components/Trato.jsx'
@@ -12,6 +13,7 @@ export default function Inicio() {
   return (
     <>
       <Hero />
+      <Demo />
       <Beneficios />
       <Medidor />
       <Publicos />

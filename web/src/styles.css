@@ -8,6 +8,8 @@
   --borde: #3a3d45;
   --borde-hondo: #1e2025;
   --borde-chip: #474a53;
+  /* Las columnas del board en la demo: un punto más claras que la tarjeta que las contiene. */
+  --columna-board: #18191e;
   --texto: #ffffff;
   --texto-chip: #d6d9df;
   --tenue: #a8acb6;
@@ -15,6 +17,7 @@
   --tenue-hondo: #878b95;
   --senal: #16c98d;
   --senal-suave: rgba(22, 201, 141, 0.14);
+  --senal-claro: #3fdcaa;
   --sobre-senal: #101114;
   --ambar: #f0c987;
   --velo: rgba(255, 255, 255, 0.05);
@@ -2057,5 +2060,292 @@ strong {
   .orbita__centro svg {
     width: 38px;
     height: 38px;
+  }
+}
+
+/* ---------- Demo de la portada (components/Demo.jsx) ---------- */
+/* La terminal del agente junto a CotejoBoard, con los colores del board (tema Oscuro). */
+
+.demo-marco {
+  width: min(var(--ancho), 100% - 2 * var(--margen));
+  margin: clamp(40px, 6vw, 72px) auto 0;
+}
+.demo {
+  border: 1px solid var(--borde);
+  border-radius: 16px;
+  background: var(--columna);
+  box-shadow: 0 40px 120px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+.demo__barra {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--borde-hondo);
+  font: 500 12px/1 var(--mono);
+  color: var(--tenue-hondo);
+}
+.demo__lado {
+  flex: 1;
+  min-width: 0;
+}
+.demo__lado--der {
+  text-align: right;
+}
+.demo__repetir {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--borde);
+  background: var(--velo);
+  color: var(--texto);
+  font: 600 13px/1 var(--inter);
+  cursor: pointer;
+}
+.demo__cuerpo {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.5fr);
+  min-height: 420px;
+}
+.demo-term {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 18px 18px 20px;
+  background: var(--fondo);
+  border-right: 1px solid var(--borde-hondo);
+  font: 400 13px/1.65 var(--mono);
+  color: var(--texto-chip);
+}
+.demo-term__l {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.demo-term__l--yo {
+  color: var(--texto);
+}
+.demo-term__l--yo::before {
+  content: '› ';
+  color: var(--tenue-hondo);
+}
+.demo-term__l--cmd {
+  color: var(--tenue);
+}
+.demo-term__l--cmd::before {
+  content: '$ ';
+  color: var(--tenue-hondo);
+}
+.demo-term__l--sal {
+  padding-left: 14px;
+  color: var(--tenue-hondo);
+}
+.demo-term__l--ok {
+  padding-left: 14px;
+  color: var(--texto-chip);
+}
+.demo-term__l--aviso {
+  margin-top: 8px;
+  color: var(--texto);
+}
+.demo-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 1.1em;
+  margin-left: 2px;
+  vertical-align: -2px;
+  background: var(--senal);
+  animation: demo-parpadeo 1s steps(1) infinite;
+}
+@keyframes demo-parpadeo {
+  50% {
+    opacity: 0;
+  }
+}
+.demo-board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 10px;
+  align-items: start;
+  padding: 14px;
+  overflow-x: auto;
+}
+.demo-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 360px;
+  padding: 12px 10px 10px;
+  border-radius: 12px;
+  background: var(--columna-board);
+}
+.demo-col__cab {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-inline: 4px;
+}
+.demo-col__nombre {
+  font: 600 14px/1.2 var(--sora);
+  color: var(--texto);
+}
+.demo-col__n {
+  font: 500 12px/1 var(--mono);
+  color: var(--tenue-hondo);
+}
+.demo-col--comprobar .demo-col__nombre,
+.demo-col--comprobar .demo-col__n {
+  color: var(--senal);
+}
+.demo-col__cartas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 40px;
+}
+.demo-carta {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--borde);
+  background: var(--superficie);
+  transition:
+    border-color 0.3s,
+    opacity 0.4s;
+}
+.demo-carta--entregada {
+  border-color: var(--senal);
+}
+.demo-carta--devuelta {
+  border-color: var(--ambar);
+}
+.demo-carta--hecha {
+  opacity: 0.55;
+}
+.demo-carta__t {
+  margin: 0;
+  padding-right: 18px;
+  font: 500 13.5px/1.35 var(--inter);
+  color: var(--texto);
+}
+.demo-carta__check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: var(--senal);
+}
+.demo-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.demo-chip {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--velo);
+  font: 400 10.5px/1.5 var(--mono);
+  color: var(--tenue);
+}
+.demo-chip--borde {
+  background: transparent;
+  border: 1px solid var(--borde-chip);
+  color: var(--texto-chip);
+}
+.demo-carta__ev {
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--velo);
+  font: 400 11px/1.45 var(--mono);
+  color: var(--tenue);
+}
+.demo-carta__motivo {
+  font: 500 10px/1.3 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ambar);
+}
+.demo-carta__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.demo-mini {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--borde);
+  background: transparent;
+  color: var(--texto);
+  font: 600 12.5px/1 var(--inter);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.demo-mini:hover {
+  background: var(--velo-fuerte);
+}
+.demo-mini--senal {
+  border-color: var(--senal);
+  background: var(--senal);
+  color: var(--sobre-senal);
+}
+.demo-mini--senal:hover {
+  background: var(--senal-claro);
+}
+.demo-carta--tuturno .demo-mini--senal {
+  animation: demo-llamar 1.8s var(--curva) infinite;
+}
+@keyframes demo-llamar {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(22, 201, 141, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(22, 201, 141, 0.18);
+  }
+}
+.demo__pie {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--borde-hondo);
+}
+.demo__pie p {
+  margin: 0;
+  font: 500 15px/1.4 var(--inter);
+  color: var(--texto);
+}
+.demo__paso {
+  flex: none;
+  font: 500 12px/1 var(--mono);
+  color: var(--tenue-hondo);
+}
+@media (max-width: 860px) {
+  .demo__cuerpo {
+    grid-template-columns: 1fr;
+  }
+  .demo-term {
+    min-height: 190px;
+    border-right: 0;
+    border-bottom: 1px solid var(--borde-hondo);
+  }
+  .demo-board {
+    grid-template-columns: repeat(4, 172px);
+  }
+  .demo-col {
+    min-height: 300px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .demo-cursor,
+  .demo-carta--tuturno .demo-mini--senal {
+    animation: none;
   }
 }
