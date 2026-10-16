@@ -463,90 +463,27 @@ strong {
 /* ---------- Hero ---------- */
 
 .hero {
-  position: relative;
-  min-height: 100svh;
+  width: min(var(--ancho), 100% - 2 * var(--margen));
+  margin-inline: auto;
+  padding-top: clamp(56px, 9vw, 112px);
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  place-items: center;
-  padding: 112px var(--margen) 72px;
-  overflow: hidden;
-  isolation: isolate;
+  gap: clamp(28px, 4vw, 40px);
 }
 
-.hero__fondo {
-  position: absolute;
-  inset: 0;
-  z-index: -2;
-  perspective: 1400px;
-  perspective-origin: 50% 20%;
-  -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 50%, #000 40%, transparent 100%);
-  mask-image: radial-gradient(ellipse 90% 80% at 50% 50%, #000 40%, transparent 100%);
+.hero__texto {
+  display: grid;
+  gap: 20px;
+  max-width: 900px;
 }
 
-.hero__fondo .tablero {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -44%) rotateX(32deg) scale(1.42);
-  transform-origin: 50% 50%;
-  opacity: 0.5;
-  animation: deriva 26s ease-in-out infinite alternate;
-}
-
-@keyframes deriva {
-  from {
-    transform: translate(-51.5%, -44%) rotateX(32deg) scale(1.42);
-  }
-  to {
-    transform: translate(-48.5%, -41%) rotateX(30deg) scale(1.46);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero__fondo .tablero {
-    animation: none;
-  }
-}
-
-.hero__velo {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background:
-    linear-gradient(to bottom, var(--fondo) 0, rgba(16, 17, 20, 0.85) 90px, rgba(16, 17, 20, 0) 180px),
-    radial-gradient(ellipse 52% 50% at 50% 50%, rgba(16, 17, 20, 0.95) 0%, rgba(16, 17, 20, 0.88) 50%, rgba(16, 17, 20, 0.3) 100%),
-    linear-gradient(to bottom, rgba(16, 17, 20, 0) 70%, var(--fondo) 100%);
-}
-
-.hero__centro {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  width: min(960px, 100%);
-}
-
-.hero__logo {
-  display: block;
-  height: clamp(52px, 7vw, 76px);
-  width: auto;
-  margin-bottom: clamp(28px, 4vw, 40px);
-}
-
-.hero__titulo {
+.hero__titular {
   font-family: var(--sora);
   font-weight: 600;
-  font-size: clamp(38px, 6.4vw, 78px);
-  line-height: 1.02;
+  font-size: clamp(42px, 7vw, 88px);
+  line-height: 1;
   letter-spacing: -0.04em;
-  margin: 0 0 22px;
+  margin: 0;
   text-wrap: balance;
-}
-
-.hero__titulo-tu {
-  display: block;
-  color: var(--tenue);
 }
 
 .hero__bajada {
@@ -554,7 +491,7 @@ strong {
   font-size: clamp(17px, 1.7vw, 20px);
   line-height: 1.55;
   max-width: 54ch;
-  margin: 0 0 clamp(36px, 5vw, 52px);
+  margin: 0;
   text-wrap: pretty;
 }
 
@@ -570,6 +507,11 @@ strong {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+.instalar-rapido__aparte {
+  font-size: 14px;
+  color: var(--tenue);
 }
 
 .instalar-rapido__titulo {
@@ -619,34 +561,6 @@ strong {
   margin: 12px 0 0;
   font-size: 14px;
   color: var(--tenue);
-}
-
-.hero__seguir {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: clamp(40px, 6vw, 64px);
-  color: var(--tenue);
-  font-size: 15px;
-  font-weight: 500;
-  text-decoration: none;
-  transition: color 0.2s var(--curva);
-}
-.hero__seguir:hover {
-  color: var(--texto);
-}
-.hero__seguir .icono {
-  animation: bajar 2.4s var(--curva) infinite;
-}
-@keyframes bajar {
-  0%,
-  60%,
-  100% {
-    transform: translateY(0);
-  }
-  30% {
-    transform: translateY(4px);
-  }
 }
 
 /* ---------- Entrada del hero ----------
@@ -2016,15 +1930,6 @@ strong {
 @media (max-width: 720px) {
   body {
     font-size: 16px;
-  }
-
-  .hero {
-    padding-top: 96px;
-  }
-
-  .hero__fondo .tablero {
-    transform: translate(-50%, -46%) rotateX(26deg) scale(0.9);
-    animation: none;
   }
 
   .instalar-rapido__cabeza {

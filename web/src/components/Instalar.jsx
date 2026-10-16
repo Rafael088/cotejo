@@ -4,7 +4,7 @@ import { COMANDOS, RELEASES, VERSION } from '../config.js'
 
 export default function Instalar() {
   return (
-    <section className="seccion instalar" id="instalar" aria-labelledby="instalar-titulo">
+    <section className="seccion instalar" aria-labelledby="instalar-titulo">
       <div className="seccion__cabeza">
         <h2 id="instalar-titulo" className="titulo-2">Instálalo y pregúntale qué falta.</h2>
         <p className="parrafo">
