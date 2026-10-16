@@ -170,11 +170,12 @@ La densidad es de herramienta, no de folleto: paneles oscuros que contienen term
 El movimiento es el del board: muelles cortos y una curva de salida rápida (`cubic-bezier(0.16, 1, 0.3, 1)`). Todo respeta `prefers-reduced-motion`: `MotionConfig reducedMotion="user"` en la raíz, y las animaciones CSS (deriva del board de fondo, flecha que baja) se apagan con la media query.
 
 **Key Characteristics:**
-- Neutros del negro al blanco y un único acento, Verde Hecho, con significado fijo.
+- Neutros del negro al blanco y un único acento, Verde Hecho, con significado fijo (check, comprobación, «Copiado»).
 - Superficies planas en tres escalones (fondo, columna, superficie); la profundidad es tonal.
 - Sora para titulares, Inter para texto, IBM Plex Mono para comandos, cifras y JSON.
-- Las piezas son las del board: columnas, cartas, chips, comandos con botón de copiar.
+- Las piezas son las del board: columnas, cartas, chips, comandos con botón de copiar, terminal.
 - Iconos dibujados a mano en SVG, trazo 1,75 sobre caja de 24.
+- Cuatro páginas estáticas (rutas reales, no hash): /, /comofunciona, /primerospasos, /tokens. Navegación sin JavaScript.
 
 ## Colors
 
@@ -234,9 +235,9 @@ Neutros fríos del negro al blanco, heredados nombre por nombre del tema Oscuro 
 
 ## Layout
 
-Una columna central de `ancho` (1180px) con `margen` lateral fluido; cada sección abre con `hueco-seccion` arriba y una cabeza de hasta 760px (H2 + párrafo) separada del contenido por clamp 40–72px. El hero ocupa `100svh` con el contenido centrado (ancho máximo 960px; el bloque de instalación 640px) sobre el board dibujado a 1280×820, inclinado (`rotateX(32deg)`), al 50% de opacidad y enmascarado por un velo radial.
+Una columna central de `ancho` (1180px) con `margen` lateral fluido; cada sección abre con `hueco-seccion` arriba. El hero contiene el titular, una bajada de 56ch máximo, y el bloque InstalarRapido (2 tablas Linux/Windows, comando con botón de copiar); todo centrado al 100svh. La Demo a continuación (fullwidth, margen incluido) dibuja el board vivo de verdad con una terminal y las 4 columnas de Cotejo.
 
-Dentro de las secciones, rejillas de dos columnas desiguales (1,25fr/1fr en el medidor, 1,4fr/1fr en la consola, 1fr/1,5fr en instalar) con 16px entre paneles; las cuatro columnas del board van a 10px, como en la app. Puntos de corte: a 960px todo pasa a una columna y el trato a 2×2; a 720px el trato a una sola columna (solo la actual conserva su hueco), la navegación queda en el CTA, el botón de copiar se reduce a icono de 44px y la órbita pierde su anillo exterior.
+Cuatro páginas: `/` (Inicio, hero + demo + pasos + ahorro + puertas + cierre), `/comofunciona` (selector No programo / Programo con historia o ciclo real), `/primerospasos` (primer día y cada día con frases copiables), `/tokens` (nota entera contra CLI con medidor). Los puntos de corte son a 820px (estructura de 2 columnas a 1), 760px (móvil completo) y 520px (botón de copiar solo icono).
 
 ## Elevation & Depth
 
@@ -254,7 +255,40 @@ Plano por defecto: la profundidad se lee por tono (fondo → columna → superfi
 
 Esquinas suaves y escalonadas por tamaño: 6px en chips, evidencias y `code` en línea; 8px en controles internos (botón de copiar, pestaña); 10px en cartas (el radio del board); 12px en botones, comandos y columnas del board; 14px en paneles y columnas del trato; 16px en bloques grandes y la ventana del board. Pastilla completa (999px) para filtros y etiquetas de agente; círculos para nodos y anillos de la órbita. Bordes siempre de 1px; el punteado marca lo que todavía no existe (nodo vacío, anillo de agentes, radio vacío).
 
-## Components
+## Componentes
+
+### Hero
+Sección de entrada con titular H1 en clamp 42–88px (segunda línea en `tenue`), bajada de máximo 56ch, e InstalarRapido con tablas Linux/Windows y comando con botón copiar. Sin background decorativo ni animación del logo.
+
+### Demo
+El board vivo: terminal a la izquierda (historial de agente con `.yo`, `.cmd`, `.ok`) y tablero a la derecha (4 columnas: Pendiente, Haciéndola, Para comprobar, Finalizada) con cartas animadas. Cambia de vista a 860px a dos bloques apilados (terminal arriba). Respeta `prefers-reduced-motion`.
+
+### InicioPasos
+Tres pasos: instalar, arrancar, revisar. Grid a 3 columnas con línea superior de `borde-hondo` y separadores entre. A 820px pasa a 1 columna con bordes inferiores.
+
+### InicioAhorro
+Escala de dos barras: la nota entera (~4.700 tokens) vs. respuesta de CLI (~480), a escala y con cifras. Solo mono y `tenue-hondo` para la nota, blanco para la CLI. Responsivo en 2 columnas a 1.
+
+### InicioPuertas
+Dos puertas (paneles enlazados): «No programo» y «Programo» que llevan a `/comofunciona` con parámetro `?publico=no|si`. A 760px pasan a 1 columna.
+
+### ComoFunciona
+Selector de dos tabs: No Programo (CfHistoria, 4 pasos) y Programo (CfCiclo, 6 verbos). El contenido cambia con `aria-selected`.
+
+### CfHistoria
+Cuatro pasos: Pides, Se planea, Te entrega, Decides. Cada uno muestra una escena con globos de diálogo (usuario a la derecha, agente a la izquierda).
+
+### CfCiclo
+Seis verbos de la CLI (init, plan, despachar, entregar, comprobar, release) con salida real en una consola a la derecha. Selector vertical a la izquierda.
+
+### PrimerosPasos
+Dos secciones: El primer día (4 filas) y Cada día (4 frases copiables). Cada fila es una rejilla de `dia__cuando` (cuando) y `dia__cuerpo` (descripción + componente).
+
+### Tokens
+Hero nuevo, luego un versus (nota entera vs. respuesta) a 2 columnas, medidor de ahorro (cifra grande + datos, a 2 columnas), y flujo (repo → .cotejo → contexto) que se apila en móvil.
+
+### Cierre
+Panel con H2, texto y InstalarRapido. Reutilizable con props: `titulo`, `nota`, `pie`.
 
 ### Buttons
 Directos y compactos, de herramienta.
