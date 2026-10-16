@@ -4,20 +4,46 @@
 //   - #root llega vacío o no hay un <h1> con texto;
 //   - alguna <section> no tiene su título (el elemento de su aria-labelledby, con texto);
 //   - el <h1> o algo de la sección del h1 (lo de arriba del pliegue) llega con opacity:0 en línea;
-//   - en la portada, falta alguna de las secciones exigidas (EXIGIDAS, por id) con su titular, o
-//     llega con opacity:0 en línea;
+//   - en cualquier ruta, el h1 no es el de EXIGIDAS o falta alguna de sus secciones exigidas con
+//     su titular exacto, o llega con opacity:0 en línea;
 //   - dos rutas traen el mismo <h1> (el prerender pintó la misma página en todas).
-// Fuera de EXIGIDAS no conoce los textos: vale igual cuando lleguen maquetaciones nuevas.
+// Fuera de EXIGIDAS no conoce los textos.
 import { readFileSync } from 'node:fs'
 import { RUTAS } from '../src/rutas.js'
 
-// Las cuatro secciones de la portada tras la demo (rediseño: pasos, ahorro, puertas y cierre).
-const EXIGIDAS = [
-  ['pasos', 'De cero a tu primera entrega.'],
-  ['ahorro-inicio', 'Tu agente lee 480 tokens, no 4.700.'],
-  ['puertas', 'Programes o no, el check es tuyo.'],
-  ['cierre', 'Instálalo y pregúntale a tu agente qué falta.'],
-]
+// Lo que cada ruta tiene que traer en el HTML: su h1 y sus secciones (por id de la <section> o,
+// si no lleva, por el id de su aria-labelledby) con el h2 exacto. Los textos son los de dist/.
+const EXIGIDAS = {
+  '/': {
+    h1: 'El tablero de control para tu vibe coding.',
+    secciones: [
+      ['pasos', 'De cero a tu primera entrega.'],
+      ['ahorro-inicio', 'Tu agente lee 480 tokens, no 4.700.'],
+      ['puertas', 'Programes o no, el check es tuyo.'],
+      ['cierre', 'Instálalo y pregúntale a tu agente qué falta.'],
+    ],
+  },
+  '/comofunciona': {
+    h1: 'Cómo funciona.',
+    secciones: [['empieza', 'Empieza con un comando.']],
+  },
+  '/primerospasos': {
+    h1: 'Primeros pasos.',
+    secciones: [
+      ['t-dia1', 'El primer día.'],
+      ['t-cada', 'Cada día.'],
+    ],
+  },
+  '/tokens': {
+    h1: 'Tu agente lee 480 tokens, no 4.700.',
+    secciones: [
+      ['t-versus', 'La nota entera contra la respuesta de Cotejo'],
+      ['t-medido', 'menos texto leído, medido con cotejo ahorro en la máquina del autor.'],
+      ['t-cerebro', '¿Tu proyecto vive en tu segundo cerebro?'],
+      ['cierre-tokens', 'Mídelo en tu propio proyecto.'],
+    ],
+  },
+}
 
 const texto = (s) => s.replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim()
 const opacidadCero = /style="[^"]*opacity:\s*0(?:\.0+)?(?![.\d])/
@@ -57,8 +83,13 @@ function revisar(ruta, html, fallos) {
   }
 
   // Secciones exigidas: presentes, con su titular exacto y sin nada en opacity:0 en línea.
-  for (const [id, titular] of ruta === '/' ? EXIGIDAS : []) {
-    const seccion = pagina.match(new RegExp(`<section\\b[^>]*\\bid="${id}"[^>]*>([\\s\\S]*?)</section>`))
+  const exigidas = EXIGIDAS[ruta]
+  if (!exigidas) fallos.push(`La ruta ${ruta} no tiene fila en EXIGIDAS`)
+  else if (h1 && texto(h1[2]) !== exigidas.h1) fallos.push(`El <h1> no es «${exigidas.h1}»`)
+  for (const [id, titular] of exigidas?.secciones ?? []) {
+    const seccion = pagina.match(
+      new RegExp(`<section\\b[^>]*(?:\\bid="${id}"|aria-labelledby="${id}(?:-titulo)?")[^>]*>([\\s\\S]*?)</section>`),
+    )
     if (!seccion) {
       fallos.push(`Falta la sección «${id}» en el HTML`)
       continue

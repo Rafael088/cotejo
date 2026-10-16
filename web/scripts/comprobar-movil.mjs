@@ -1,10 +1,12 @@
 // Comprueba la web en ancho de teléfono: `node web/scripts/comprobar-movil.mjs` después de
 // `npm --prefix web run build` (o `npm run comprobar:movil` en web/). Sirve dist/ con un servidor
-// node mínimo, abre Chromium headless a 390×844 y a 360×844, recorre la página entera (para que
-// salgan las secciones que aparecen al hacer scroll), con Linux y con Windows elegidos, y falla si:
+// node mínimo, abre Chromium headless a 390×844 y a 360×844, recorre cada una de las rutas de
+// src/rutas.js entera (para que salgan las secciones que aparecen al hacer scroll), con Linux y
+// con Windows elegidos, y falla si:
 //   - document.documentElement.scrollWidth pasa del ancho (la página se mueve de lado);
 //   - algún bloque de comando (.comando__linea) tiene scrollWidth > clientWidth (se corta y
-//     hay que deslizarlo para leerlo entero).
+//     hay que deslizarlo para leerlo entero). Los comandos de la instalación están en la portada
+//     y en /primerospasos; donde no hay ninguno, no hay nada que medir.
 // Cuando falla, lista los elementos que se salen por la derecha.
 //
 // Necesita un Chromium o Chrome instalado (no trae Playwright ni Puppeteer: habla con el
@@ -19,6 +21,7 @@ import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, extname, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { RUTAS } from '../src/rutas.js'
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url))
 const ANCHOS = process.env.ANCHOS ? process.env.ANCHOS.split(',').map(Number) : [390, 360]
@@ -191,7 +194,6 @@ const MEDIR = `(() => {
 
 const ELEGIR_WINDOWS = `(() => {
   for (const b of document.querySelectorAll('[role=tab]')) if (b.textContent.trim() === 'Windows') b.click()
-  for (const b of document.querySelectorAll('.instalar button, .instalar [role=tab]')) if (b.textContent.trim() === 'Windows') b.click()
 })()`
 
 // ---------- La prueba ----------
@@ -213,50 +215,52 @@ try {
   for (const ancho of ANCHOS) {
     await s('Emulation.setDeviceMetricsOverride', { width: ancho, height: ALTO, deviceScaleFactor: 2, mobile: true })
     await s('Emulation.setTouchEmulationEnabled', { enabled: true })
-    const cargada = new Promise((ok) => {
-      const f = (m) => { if (m.method === 'Page.loadEventFired' && m.sessionId === sessionId) { oyentes.splice(oyentes.indexOf(f), 1); ok() } }
-      oyentes.push(f)
-    })
-    await s('Page.navigate', { url: base })
-    await cargada
-    await evaluar('document.fonts.ready.then(() => true)')
-    await espera(600)
+    for (const { ruta, archivo } of RUTAS) {
+      const cargada = new Promise((ok) => {
+        const f = (m) => { if (m.method === 'Page.loadEventFired' && m.sessionId === sessionId) { oyentes.splice(oyentes.indexOf(f), 1); ok() } }
+        oyentes.push(f)
+      })
+      await s('Page.navigate', { url: base + archivo })
+      await cargada
+      await evaluar('document.fonts.ready.then(() => true)')
+      await espera(600)
 
-    for (const sistema of ['Linux', 'Windows']) {
-      if (sistema === 'Windows') { await evaluar(ELEGIR_WINDOWS); await espera(500) }
-      await evaluar(RECORRER)
-      const m = await evaluar(MEDIR)
-      const etiqueta = `${ancho} px, ${sistema}`
-      console.log(`${etiqueta}: scrollWidth ${m.scrollWidth} (ancho ${m.ancho})`)
-      if (m.scrollWidth > m.ancho) {
-        fallos.push(`${etiqueta}: la página mide ${m.scrollWidth} px de ancho, más que ${m.ancho}`)
-        for (const f of m.fuera) console.log(`    se sale: ${f}`)
-      }
-      for (const c of m.comandos) {
-        if (c.scroll > c.visible) fallos.push(`${etiqueta}: el comando «${c.texto}» se corta (${c.scroll} px en ${c.visible})`)
-      }
+      for (const sistema of ['Linux', 'Windows']) {
+        if (sistema === 'Windows') { await evaluar(ELEGIR_WINDOWS); await espera(500) }
+        await evaluar(RECORRER)
+        const m = await evaluar(MEDIR)
+        const etiqueta = `${ancho} px, ${ruta}, ${sistema}`
+        console.log(`${etiqueta}: scrollWidth ${m.scrollWidth} (ancho ${m.ancho})`)
+        if (m.scrollWidth > m.ancho) {
+          fallos.push(`${etiqueta}: la página mide ${m.scrollWidth} px de ancho, más que ${m.ancho}`)
+          for (const f of m.fuera) console.log(`    se sale: ${f}`)
+        }
+        for (const c of m.comandos) {
+          if (c.scroll > c.visible) fallos.push(`${etiqueta}: el comando «${c.texto}» se corta (${c.scroll} px en ${c.visible})`)
+        }
 
-      if (capturas && ancho === 390 && sistema === 'Linux') {
-        await mkdir(capturas, { recursive: true })
-        const piezas = [
-          ['hero', '.hero'],
-          ['cierre', '#cierre .instalar-rapido'],
-          ['instalar', '#instalar'],
-        ]
-        for (const [nombre, selector] of piezas) {
-          const caja = await evaluar(`(() => {
-            const el = document.querySelector(${JSON.stringify(selector)})
-            if (!el) return null
-            el.scrollIntoView({ block: 'center' })
-            const r = el.getBoundingClientRect()
-            return { x: 0, y: Math.max(0, r.top + scrollY - 24), width: ${ancho}, height: Math.min(r.height + 48, 1600) }
-          })()`)
-          if (!caja) { console.log(`    (sin captura de ${nombre}: no hay ${selector})`); continue }
-          await espera(500)
-          const { data } = await s('Page.captureScreenshot', { format: 'png', clip: { ...caja, scale: 1 }, captureBeyondViewport: true })
-          const ruta = join(capturas, `movil-${nombre}.png`)
-          await writeFile(ruta, Buffer.from(data, 'base64'))
-          console.log(`    captura: ${ruta}`)
+        if (capturas && ancho === 390 && sistema === 'Linux' && ruta === '/') {
+          await mkdir(capturas, { recursive: true })
+          const piezas = [
+            ['hero', '.hero'],
+            ['cierre', '#cierre .instalar-rapido'],
+            ['instalar', '#instalar'],
+          ]
+          for (const [nombre, selector] of piezas) {
+            const caja = await evaluar(`(() => {
+              const el = document.querySelector(${JSON.stringify(selector)})
+              if (!el) return null
+              el.scrollIntoView({ block: 'center' })
+              const r = el.getBoundingClientRect()
+              return { x: 0, y: Math.max(0, r.top + scrollY - 24), width: ${ancho}, height: Math.min(r.height + 48, 1600) }
+            })()`)
+            if (!caja) { console.log(`    (sin captura de ${nombre}: no hay ${selector})`); continue }
+            await espera(500)
+            const { data } = await s('Page.captureScreenshot', { format: 'png', clip: { ...caja, scale: 1 }, captureBeyondViewport: true })
+            const ruta = join(capturas, `movil-${nombre}.png`)
+            await writeFile(ruta, Buffer.from(data, 'base64'))
+            console.log(`    captura: ${ruta}`)
+          }
         }
       }
     }
@@ -272,4 +276,4 @@ if (fallos.length) {
   for (const f of fallos) console.error(`  - ${f}`)
   process.exit(1)
 }
-console.log(`comprobar-movil: sin desborde horizontal y con los comandos enteros a ${ANCHOS.join(', ')} px`)
+console.log(`comprobar-movil: sin desborde horizontal y con los comandos enteros en ${RUTAS.length} rutas a ${ANCHOS.join(', ')} px`)

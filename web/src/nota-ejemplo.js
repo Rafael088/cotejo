@@ -82,4 +82,3 @@ export const RESPUESTA_DATOS = {
     tarea('web-e5f6', 'Escribir el texto de la sección de fuentes', 'Escribir el texto…', '', 'facil'),
   ],
 }
-export const RESPUESTA = JSON.stringify(RESPUESTA_DATOS)

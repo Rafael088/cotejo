@@ -5,9 +5,7 @@ import InicioAhorro from '../components/InicioAhorro.jsx'
 import InicioPuertas from '../components/InicioPuertas.jsx'
 import Cierre from '../components/Cierre.jsx'
 
-// La portada (/): hero, demo y cuatro secciones cortas. Los componentes viejos de la portada
-// (Beneficios, Medidor, Publicos, Trato, Instalar, Orbita, ConCualquierAgente) ya no se pintan;
-// su limpieza es de otra tarea.
+// La portada (/): hero, demo y cuatro secciones cortas.
 export default function Inicio() {
   return (
     <>

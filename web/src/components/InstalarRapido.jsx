@@ -18,7 +18,7 @@ const NOTAS = {
 // sistema de debajo; `id` es el ancla (el hero lleva «instalar»). Los comandos salen de config.js, nunca escritos aquí.
 // El prerender no sabe el sistema: arranca en Linux (igual en el servidor y al hidratar) y
 // cambia a Windows después de montar, para no descuadrar la hidratación.
-export default function InstalarRapido({ titulo, nota, pie, id: ancla, className = '', style }) {
+export default function InstalarRapido({ nota, pie, id: ancla, className = '', style }) {
   const [sistema, setSistema] = useState('linux')
   const id = useId()
   useEffect(() => {
@@ -28,8 +28,7 @@ export default function InstalarRapido({ titulo, nota, pie, id: ancla, className
   return (
     <div className={`instalar-rapido ${className}`} style={style} id={ancla}>
       <div className="instalar-rapido__cabeza">
-        {titulo && <span className="instalar-rapido__titulo" id={`${id}-titulo`}>{titulo}</span>}
-        <div className="pestanas" role="tablist" aria-label={titulo ? undefined : 'Sistema'} aria-labelledby={titulo ? `${id}-titulo` : undefined}>
+        <div className="pestanas" role="tablist" aria-label="Sistema">
           {SISTEMAS.map(([clave, nombre]) => (
             <button
               key={clave}
