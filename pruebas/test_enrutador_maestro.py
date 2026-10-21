@@ -5,10 +5,14 @@ Ninguna de estas pruebas lanza un cliente ni abre una terminal: `terminal.abrir`
 simulados. Una prueba que abre ventanas o gasta tokens se acaba desactivando.
 """
 
+import os
+import subprocess
+import sys
+import tempfile
 import unittest
 from unittest import mock
 
-from apoyo import PruebaDeEnrutador, proyecto
+from apoyo import RAIZ, PruebaDeEnrutador, proyecto
 
 from enrutador import clientes, config as cfg, maestro, motor, verbos
 from enrutador.motores import terminal
@@ -238,20 +242,63 @@ class Maestro(PruebaDeEnrutador):
         self.assertIn("no está instalado", datos["error"])
         abrir.assert_not_called()
 
-    def test_sin_ningun_agente_el_maestro_no_nombra_a_claude(self):
-        with mock.patch.object(terminal, "abrir") as abrir, \
-                mock.patch("enrutador.clientes.shutil.which", return_value=None):
-            codigo, datos = self.correr("maestro", "--proyecto", "Uno")
-        self.assertEqual(codigo, verbos.ERROR)
-        self.assertIn("No encontré ningún agente de terminal", datos["error"])
-        self.assertNotIn("«claude»", datos["error"])
-        abrir.assert_not_called()
+    def sin_clientes(self):
+        """Un PATH que existe pero está vacío: ningún agente, con el `which` de verdad."""
+        carpeta = tempfile.TemporaryDirectory()
+        self.addCleanup(carpeta.cleanup)
+        parche = mock.patch.dict(os.environ, {"PATH": carpeta.name})
+        parche.start()
+        self.addCleanup(parche.stop)
 
-    def test_sin_ningun_agente_el_ensayo_del_maestro_sigue_funcionando(self):
-        with mock.patch("enrutador.clientes.shutil.which", return_value=None):
-            codigo, datos = self.correr("maestro", "--proyecto", "Uno", "--simular")
-        self.assertEqual(codigo, verbos.OK)
-        self.assertFalse(datos["abierto"])
+    def test_sin_ningun_agente_el_maestro_dice_que_hacer_y_no_nombra_a_claude(self):
+        self.sin_clientes()
+        for extra in ((), ("--simular",)):
+            with self.subTest(extra=extra), mock.patch.object(terminal, "abrir") as abrir:
+                codigo, datos = self.correr("maestro", "--proyecto", "Uno", *extra)
+            self.assertEqual(codigo, verbos.ERROR)
+            self.assertEqual(datos["error"], clientes.SIN_AGENTE)
+            self.assertEqual(datos["salida"], clientes.SIN_AGENTE_SALIDA)
+            self.assertIn("MCP", datos["salida"])
+            self.assertNotIn("claude", datos["error"].lower())
+            self.assertNotIn("«claude»", datos["salida"])
+            self.assertNotIn("clientes_que_faltan", datos)
+            abrir.assert_not_called()
+
+    def test_el_mensaje_sin_agente_es_el_mismo_en_la_cli_y_en_el_board(self):
+        # El board muestra `SIN_AGENTE_TEXTO`: mensaje y salida de la CLI unidos.
+        self.sin_clientes()
+        _, datos = self.correr("maestro", "--proyecto", "Uno")
+        self.assertEqual(f"{datos['error']}. {datos['salida']}.", clientes.SIN_AGENTE_TEXTO)
+        self.assertIn("Claude Code, Codex, Gemini CLI u opencode", clientes.SIN_AGENTE_TEXTO)
+
+    def test_sin_ningun_agente_pedir_un_cliente_concreto_si_lo_nombra(self):
+        self.sin_clientes()
+        for extra in (("--cliente", "claude"), ("--cliente", "claude", "--simular")):
+            with self.subTest(extra=extra), mock.patch.object(terminal, "abrir") as abrir:
+                codigo, datos = self.correr("maestro", "--proyecto", "Uno", *extra)
+            if "--simular" in extra:
+                self.assertEqual(codigo, verbos.OK)
+                self.assertEqual(datos["cliente"], "claude")
+            else:
+                self.assertEqual(codigo, verbos.ERROR)
+                self.assertIn("«claude» no está instalado", datos["error"])
+            abrir.assert_not_called()
+
+    def test_el_verbo_maestro_de_punta_a_punta_sin_clientes_en_el_path(self):
+        # El programa de verdad, en otro proceso, con HOME y XDG aislados y un PATH sin agentes.
+        self.sin_clientes()
+        with tempfile.TemporaryDirectory() as casa:
+            entorno = {**os.environ, "HOME": casa, "XDG_CONFIG_HOME": casa + "/c",
+                       "XDG_STATE_HOME": casa + "/s", "XDG_DATA_HOME": casa + "/d",
+                       "DBUS_SESSION_BUS_ADDRESS": "", "COTEJO_MOTOR": "agente",
+                       "PYTHONPATH": str(RAIZ)}
+            hecho = subprocess.run([sys.executable, "-m", "tareas", "maestro", "--proyecto",
+                                    "Uno"], capture_output=True, text=True, env=entorno,
+                                   cwd=casa)
+        self.assertNotEqual(hecho.returncode, 0)
+        texto = hecho.stdout + hecho.stderr
+        self.assertIn(clientes.SIN_AGENTE, texto)
+        self.assertNotIn("claude", texto.lower())
 
     def test_sin_cliente_pedido_se_abre_con_el_primero_instalado(self):
         solo_codex = lambda nombre: "/usr/bin/codex" if nombre == "codex" else None
