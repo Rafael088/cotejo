@@ -298,7 +298,8 @@ class Maestro(PruebaDeEnrutador):
         self.assertNotEqual(hecho.returncode, 0)
         texto = hecho.stdout + hecho.stderr
         self.assertIn(clientes.SIN_AGENTE, texto)
-        self.assertNotIn("claude", texto.lower())
+        # «Claude Code» sale en la lista de agentes para instalar; claude como el elegido, no.
+        self.assertNotIn("claude", texto.lower().replace("claude code", ""))
 
     def test_sin_cliente_pedido_se_abre_con_el_primero_instalado(self):
         solo_codex = lambda nombre: "/usr/bin/codex" if nombre == "codex" else None
