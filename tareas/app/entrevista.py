@@ -5,13 +5,9 @@ y «Ver lo que se le enviará a tu agente». «Preparar proyecto» valida con `i
 lanza con `enrutador.preparar.lanzar`; la lógica del formulario (Respuestas, carpeta sugerida) es
 de `tareas/entrevista.py`, el prompt de `tareas/inicio.py`. Aquí solo se pinta.
 
-Enganche para la pantalla Preparando (cotejo-hiifrz):
-
-- `mostrar_preparando(estado)`: lo llama `preparar_proyecto` en el hilo de la interfaz con lo que
-  devolvió `preparar.lanzar` (un `preparacion.estado`). Hoy avisa y vuelve a Inicio; Preparando
-  lo reemplaza por su pantalla.
-- `preparacion_terminada(estado)`: la llama `preparar.vigilar` cuando el agente vuelve (ya en el
-  hilo de la interfaz, con `GLib.idle_add`). Hoy no hace nada; Preparando refresca ahí.
+Al lanzar, `preparar_proyecto` llama a `mostrar_preparando(estado)` y, cuando el agente vuelve,
+`GLib.idle_add` llama a `preparacion_terminada(estado)`: los dos son de la pantalla Preparando
+(`tareas/app/preparando.py`, cotejo-hiifrz).
 """
 
 import os
@@ -231,15 +227,3 @@ class PestanaEntrevista:
             return None
         self.mostrar_preparando(estado)
         return estado
-
-    # --- enganches para la pantalla Preparando (cotejo-hiifrz) ----------------------------------
-
-    def mostrar_preparando(self, estado):
-        """Recibe lo que devolvió `preparar.lanzar`. Preparando lo reemplaza por su pantalla;
-        mientras, avisa y vuelve a Inicio."""
-        self.aviso(f"Preparando {estado.get('proyecto', 'el proyecto')}…")
-        self.ver_pestana("inicio")
-
-    def preparacion_terminada(self, estado):
-        """El agente volvió (ya en el hilo de la interfaz). Preparando refresca aquí."""
-        return GLib.SOURCE_REMOVE

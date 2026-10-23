@@ -379,6 +379,12 @@ tooltip label { color: var(--k-texto); font-size: var(--k-dato); }
 /* La entrevista de «Nuevo proyecto» (cotejo-kf94so). */
 .entrevista-marco { background: var(--k-columna); border: 1px solid var(--k-borde); border-radius: 8px; }
 .entrevista-texto { background: transparent; color: var(--k-texto); font-size: var(--k-contenido); }
+/* La pantalla Preparando (cotejo-hiifrz): el verde queda para lo que espera a la persona. */
+.preparando-simbolo { font-size: var(--k-contenido); color: var(--k-tenue); }
+.preparando-simbolo.paso-en-curso, .paso-en-curso.carta-nombre { color: var(--k-texto); }
+.preparando-simbolo.paso-hecho { color: var(--k-texto); }
+.preparando-simbolo.paso-fallo, .paso-fallo.carta-nombre, .preparando-error { color: var(--k-ambar); }
+.paso-pendiente.carta-nombre { color: var(--k-tenue); }
 .constelacion-caja { background: var(--k-columna); border: 1px solid var(--k-borde); border-radius: 10px; padding: var(--k-espacio-md); }
 .constelacion-leyenda { padding-top: var(--k-espacio-sm); border-top: 1px solid var(--k-borde-hondo); }
 """
