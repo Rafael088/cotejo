@@ -39,16 +39,23 @@ class PestanaEntrevista:
         ej = entrevista.EJEMPLOS
         self.ent_que_es = self._pregunta(cuerpo, "1. ¿Qué quieres construir?",
                                          "En una frase, como se lo contarías a un amigo.",
-                                         Gtk.Entry(text=ej["que_es"], hexpand=True))
+                                         Gtk.Entry(placeholder_text=ej["que_es"], hexpand=True))
         self.ent_para_quien = self._pregunta(cuerpo, "2. ¿Quién la va a usar?", "",
-                                             Gtk.Entry(text=ej["para_quien"], hexpand=True))
+                                             Gtk.Entry(placeholder_text=ej["para_quien"], hexpand=True))
         self.ent_que_hace = Gtk.TextView(wrap_mode=Gtk.WrapMode.WORD_CHAR, top_margin=ESPACIADO_SM,
                                          bottom_margin=ESPACIADO_SM, left_margin=ESPACIADO_MD,
                                          right_margin=ESPACIADO_MD, css_classes=["entrevista-texto"])
-        self.ent_que_hace.get_buffer().set_text(ej["que_hace"])
         marco = Gtk.ScrolledWindow(child=self.ent_que_hace, min_content_height=84,
                                    hscrollbar_policy=Gtk.PolicyType.NEVER,
                                    css_classes=["entrevista-marco"])
+        # Los ejemplos van en gris y no como respuesta: si no, «Preparar proyecto» sin tocar
+        # nada prepararía el proyecto de ejemplo. Un TextView no tiene placeholder: va encima.
+        self.ent_que_hace_ejemplo = Gtk.Label(label=ej["que_hace"], xalign=0, yalign=0,
+                                              halign=Gtk.Align.START, valign=Gtk.Align.START,
+                                              margin_top=ESPACIADO_SM, margin_start=ESPACIADO_MD,
+                                              can_target=False, css_classes=["dim-label"])
+        marco = Gtk.Overlay(child=marco)
+        marco.add_overlay(self.ent_que_hace_ejemplo)
         self._pregunta(cuerpo, "3. ¿Qué tiene que hacer la primera versión?",
                        "Tres cosas como mucho, una por línea. Lo demás vendrá después.", marco)
         self.ent_donde = self._opciones(cuerpo, "4. ¿Dónde la van a usar?", "", entrevista.DONDE)
@@ -57,12 +64,12 @@ class PestanaEntrevista:
             "Marca lo que aplique. Con esto el agente elige la tecnología, sin preguntarte por ella.",
             entrevista.NECESITA)
         self.ent_fuera = self._pregunta(cuerpo, "6. ¿Qué dejamos para después? (opcional)", "",
-                                        Gtk.Entry(text=ej["fuera"], hexpand=True))
+                                        Gtk.Entry(placeholder_text=ej["fuera"], hexpand=True))
 
         # Carpeta y agente.
-        self.ent_carpeta = Gtk.Entry(hexpand=True)
+        self.ent_carpeta = Gtk.Entry(hexpand=True,
+                                     placeholder_text=entrevista.carpeta_sugerida(ej["que_es"]))
         self.ent_carpeta_a_mano = False   # si la persona la escribe, deja de seguir a la pregunta 1
-        self.ent_carpeta.set_text(entrevista.carpeta_sugerida(ej["que_es"]))
         self._pregunta(cuerpo, "Dónde se guarda",
                        "La carpeta del proyecto; si no existe, se crea.", self.ent_carpeta)
         self.ent_agentes = []            # nombres de cliente, en el orden del desplegable
@@ -169,6 +176,7 @@ class PestanaEntrevista:
     def actualizar_entrevista(self):
         """Repinta el avance, el prompt que se enviaría y si se puede preparar."""
         r = self.respuestas_entrevista()
+        self.ent_que_hace_ejemplo.set_visible(not self._texto_de(self.ent_que_hace))
         self.entrevista_avance.set_fraction(entrevista.rellenadas(r) / 6)
         prompt, motivo = entrevista.prompt_o_error(r)
         self.ent_prompt.get_buffer().set_text(prompt or f"(todavía no se puede armar: {motivo})")

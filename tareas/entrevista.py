@@ -15,7 +15,8 @@ import unicodedata
 
 from . import inicio
 
-# Valores de ejemplo: la persona los corrige. Son los del prototipo aprobado.
+# Valores de ejemplo: se ven en gris dentro de los campos vacíos, nunca como respuesta. Son los
+# del prototipo aprobado.
 EJEMPLOS = {
     "que_es": "Una app para que los clientes de la barbería reserven su turno",
     "para_quien": "Los clientes de la barbería y yo, que atiendo los turnos",
