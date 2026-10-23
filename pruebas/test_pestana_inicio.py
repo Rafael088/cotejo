@@ -127,18 +127,29 @@ class ConProyectos(PestanaInicio):
                          "4. ¿Dónde la van a usar?", "5. ¿Qué más necesita?",
                          "6. ¿Qué dejamos para después? (opcional)"):
             self.assertIn(pregunta, todo)
-        self.assertEqual(b.ent_que_es.get_text(), entrevista.EJEMPLOS["que_es"])
+        # Los ejemplos van en gris: vacía, no se puede preparar el proyecto de ejemplo.
+        self.assertEqual(b.ent_que_es.get_text(), "")
+        self.assertEqual(b.ent_que_es.get_placeholder_text(), entrevista.EJEMPLOS["que_es"])
+        self.assertTrue(b.ent_que_hace_ejemplo.get_visible())
+        self.assertFalse(b.ent_preparar.get_sensitive())
+        b.ent_que_hace.get_buffer().set_text("Ver citas")
+        self.assertFalse(b.ent_que_hace_ejemplo.get_visible())
         self.assertEqual(b.ent_ver.get_label(), "Ver lo que se le enviará a tu agente")
         self.assertEqual(b.agente_elegido(), "claude")
         self.assertEqual(b.ent_agente_pista.get_label(), "detectado")
-        self.assertTrue(b.ent_preparar.get_sensitive())
         b.cancelar_entrevista()
         self.assertEqual(b.pestana_actual(), pestana_inicio.INICIO)
 
     def abrir_entrevista(self, agentes=("claude",)):
         with mock.patch("enrutador.clientes.instalados", return_value=list(agentes)):
             self.board.nuevo_proyecto()
-        return self.board
+        # Llega vacía (los ejemplos son solo el texto en gris): se rellena con ellos.
+        b, ej = self.board, entrevista.EJEMPLOS
+        b.ent_que_es.set_text(ej["que_es"])
+        b.ent_para_quien.set_text(ej["para_quien"])
+        b.ent_que_hace.get_buffer().set_text(ej["que_hace"])
+        b.ent_fuera.set_text(ej["fuera"])
+        return b
 
     def test_el_formulario_arma_las_respuestas(self):
         b = self.abrir_entrevista()
