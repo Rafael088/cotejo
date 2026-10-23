@@ -19,6 +19,7 @@ import subprocess
 import unicodedata
 from pathlib import Path
 
+from . import bitacora as historial
 from . import (almacen, arquitectura, configuracion, importar_obsidian, modelo,
                version as version_proyecto)
 from .cli import ESQUEMA, ErrorCLI, imprimir, nucleo
@@ -489,6 +490,8 @@ def cmd_proponer_decision(args):
     nueva = alm.crear("decision", args.titulo, args.texto, temas=_temas_pedidos(args.temas),
                       autor=args.autor, reemplaza=vieja.id if vieja else None)
     datos = {"esquema": ESQUEMA, "id": nueva.id, "ruta": nueva.ruta, "version": nueva.version}
+    historial.anotar_verbo("proponer", alm.raiz, tipo="decision", entrada=nueva.id,
+                           titulo=nueva.titulo)
     if vieja is not None:
         try:
             actualizada = alm.poner_estado(vieja.id, vieja.version, "reemplazada",
@@ -529,6 +532,8 @@ def cmd_anotar(args):
              "version": entrada.version}
     if analisis is not None and analisis.dibujable:
         datos["piezas"] = len(analisis.piezas)
+    historial.anotar_verbo("anotar", alm.raiz, tipo=args.tipo, entrada=entrada.id,
+                           **({"piezas": datos["piezas"]} if "piezas" in datos else {}))
     imprimir(datos)
     return 0
 
@@ -617,6 +622,7 @@ def cmd_editar(args):
             f"«{error.entrada_id}» cambió desde que la leíste",
             f"`cotejo leer {error.entrada_id}` y reintenta. No se escribió nada.",
             reintentable=True, codigo=4) from error
+    historial.anotar_verbo("editar", alm.raiz, tipo=actual.tipo, entrada=actual.id)
     imprimir({"esquema": ESQUEMA, "id": actual.id, "ruta": actual.ruta,
              "version": actual.version})
     return 0

@@ -60,6 +60,27 @@ def anotar(operacion, proyecto, tarea, **extra):
     return True
 
 
+def anotar_verbo(operacion, carpeta, **extra):
+    """Deja constancia de un verbo del almacén de un repo (`init`, `editar`, `proponer`,
+    `anotar`): no es de una tarea, es del proyecto de `carpeta`. Es lo que la pantalla
+    Preparando (`tareas/progreso.py`) lee para saber en qué paso va el agente.
+
+    Va al mismo archivo, con `carpeta` en vez de `id`: así `ultimas`, `ultima_entrega` e
+    `ids_con` (que piden `id`) no la ven, y el historial de tareas queda como estaba. Que
+    falle no tumba el verbo, igual que `anotar`.
+    """
+    linea = {"cuando": int(time.time()), "operacion": operacion,
+             "proyecto": os.path.basename(os.path.normpath(str(carpeta))),
+             "carpeta": str(carpeta), **extra}
+    try:
+        ARCHIVO.parent.mkdir(parents=True, exist_ok=True)
+        with ARCHIVO.open("a", encoding="utf-8") as archivo:
+            archivo.write(json.dumps(linea, ensure_ascii=False) + "\n")
+    except OSError:
+        return False
+    return True
+
+
 def ultimas():
     """Por id de tarea, la última anotación que trae texto libre.
 
