@@ -26,7 +26,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from . import __version__, configuracion, fuente as f, modelo, usuario, version as _version
+from . import __version__, bitacora, configuracion, fuente as f, modelo, usuario, version as _version
 from .almacen import ARCHIVO_PROYECTO, Almacen, CARPETA as CARPETA_COTEJO, TIPOS
 from .cli import ESQUEMA, ErrorCLI, imprimir
 from .fuentes.obsidian import vault_valido
@@ -293,6 +293,7 @@ def cmd_init(args):
         salida += " " + aviso_commit
     # `creado` es el de siempre (solo `tareas.md`) y no se le cambia el sentido; lo nuevo va en
     # `creados`, con lo que esta vez se creó, vacío si ya estaba todo.
+    bitacora.anotar_verbo("init", raiz, git_init=git_init, creados=len(creados))
     imprimir({"esquema": ESQUEMA, "repo": str(raiz), "tareas": str(archivo_tareas),
               "creado": tareas_creado, "creados": creados, "git_init": git_init, "commit": commit,
               "version": version,
