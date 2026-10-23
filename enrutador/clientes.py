@@ -92,6 +92,15 @@ def esta_instalado(nombre):
     return cliente.instalado if cliente else shutil.which(nombre or "") is not None
 
 
+# Lo que dicen el board y `cotejo maestro` cuando no hay ningún agente de terminal: una sola
+# fuente para que digan lo mismo. No se inventa un comando de instalación: cada agente se
+# instala como dice su propia documentación.
+SIN_AGENTE = "El maestro necesita un agente de terminal y no encontré ninguno"
+SIN_AGENTE_SALIDA = ("Instala uno (Claude Code, Codex, Gemini CLI u opencode) y vuelve a probar; "
+                     "mientras tanto puedes trabajar las tareas desde cualquier agente con MCP")
+SIN_AGENTE_TEXTO = f"{SIN_AGENTE}. {SIN_AGENTE_SALIDA}."
+
+
 def aviso_sin_agentes():
     """El aviso de que esta máquina no tiene ningún agente de terminal, o "" si hay alguno.
 

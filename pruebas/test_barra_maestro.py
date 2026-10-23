@@ -10,6 +10,7 @@ import unittest
 from unittest import mock
 
 import apoyo  # noqa: F401  (pone la raíz del repo en sys.path)
+from enrutador import clientes
 
 try:
     from tareas import app
@@ -22,7 +23,7 @@ except (ImportError, ValueError):
 def board_falso(seleccion="Uno"):
     falso = types.SimpleNamespace(seleccion=seleccion, avisos=[],
                                   fuente=types.SimpleNamespace(problema=None))
-    falso.aviso = falso.avisos.append
+    falso.aviso = lambda texto, segundos=4: falso.avisos.append(texto)
     for metodo in ("barra_maestro", "al_ejecutar_maestro", "abrir_maestro", "poner_maestro",
                    "menu_maestro", "cliente_del_maestro"):
         setattr(falso, metodo, types.MethodType(getattr(app.Board, metodo), falso))
@@ -111,7 +112,7 @@ class BarraMaestro(unittest.TestCase):
                 mock.patch("enrutador.verbos.abrir_maestro") as abrir:
             falso.al_ejecutar_maestro()
         abrir.assert_not_called()
-        self.assertTrue(falso.avisos)
+        self.assertEqual(falso.avisos, [clientes.SIN_AGENTE_TEXTO])
 
 
 if __name__ == "__main__":
