@@ -103,9 +103,19 @@ pone encima la **constelación** (7wc9hb): cada proyecto un núcleo con sus piez
 por estado y con el verde solo para lo que espera comprobación. Su geometría y su dibujo con
 cairo son puros (`tareas/constelacion.py`, como `dot_dibujo.py`) y el widget
 (`tareas/app/constelacion.py`) solo pide fotogramas mapeado y con `gtk-enable-animations`
-encendido. Deja los enganches de lo que sigue: `nuevo_proyecto()` (la entrevista, kf94so; hoy
-un aviso) y `abrir_proyecto(nombre)` (el mapa, p86sa9; hoy el tablero con ese proyecto), que es
-lo que hacen tocar una tarjeta y tocar un núcleo. El dot entra al verse el tablero, no antes.
+encendido. `nuevo_proyecto()` abre la entrevista (kf94so) y `abrir_proyecto(nombre, carpeta=None)`
+el mapa del proyecto, que es lo que hacen tocar una tarjeta y tocar un núcleo. El dot entra al
+verse el tablero, no antes.
+
+`tareas/mapa.py` es el **mapa del proyecto** (v1.3.0, cotejo-p86sa9), sin GTK: las piezas de
+`conocimiento.piezas_del_repo` repartidas en las cuatro capas (qué ve la gente, qué hace, qué
+guarda, con qué se conecta) y la ficha de cada una (frase en llano, sus tareas con su columna y
+«Si programas: …» la tecnología), con los estados y nombres de la constelación. Lo pinta
+`tareas/app/mapa.py`, una página más de la pila (`"mapa"`): llegan ahí la tarjeta y el núcleo del
+Inicio y, desde «Revisar el plan», «Ver el mapa del proyecto» y «Empezar la 0.1.0», que pasan la
+carpeta porque un proyecto recién preparado vive en la fuente repo y no en la activa (sus tareas
+se leen entonces con `revisar_plan.fuente_del_proyecto`). Del mapa, «Ver el tablero»
+(`abrir_tablero`) lleva al tablero con ese proyecto elegido, y «Inicio» vuelve.
 
 `tareas/importar_obsidian.py` es el importador de la 1.2 (D1): `planear()` devuelve un `Plan` —las
 entradas que se crearían con su `origen` estable (`nota#sección:hash`)— sin escribir nada, y
@@ -152,7 +162,8 @@ obligatorio (estado `rechazada`, que ya no cuenta como vigente) y relanza la mis
 con `preparar.rehacer` y el prompt de `inicio.armar_rehacer`, de vuelta a Preparando. Las dos
 son de la persona, sin verbo de CLI. **Empezar la 0.1.0** reparte como `cotejo plan`: a lo
 pendiente sin dueño le pone el modelo propuesto (o `persona`), sin lanzar nada, y abre el
-proyecto (`abrir_proyecto`). Lee y escribe con la fuente repo apuntada solo a esa carpeta.
+mapa del proyecto (`abrir_proyecto` con la carpeta). Lee y escribe con la fuente repo
+apuntada solo a esa carpeta.
 
 Al lado, `enrutador/` decide **quién atiende cada tarea**: `niveles.py` es el catálogo;
 `reglas.py`, las expresiones regulares; `decision.py`, el orden en que se decide —y no hace

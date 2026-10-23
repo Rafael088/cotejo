@@ -391,4 +391,11 @@ tooltip label { color: var(--k-texto); font-size: var(--k-dato); }
 .chip.chip-tu { color: var(--k-texto); border: 1px solid var(--k-texto); background: transparent; }
 .constelacion-caja { background: var(--k-columna); border: 1px solid var(--k-borde); border-radius: 10px; padding: var(--k-espacio-md); }
 .constelacion-leyenda { padding-top: var(--k-espacio-sm); border-top: 1px solid var(--k-borde-hondo); }
+/* El mapa del proyecto (cotejo-p86sa9): cuatro capas sobre el fondo, piezas como cartas
+   pequeñas; la tocada, con el borde del texto (el verde solo en el punto de lo que espera). */
+.mapa-capa { background: var(--k-columna); border: 1px solid var(--k-borde); border-radius: 10px;
+             padding: var(--k-espacio-md); }
+.mapa-pieza { background: var(--k-superficie); border: 1px solid var(--k-borde); border-radius: 8px;
+              padding: var(--k-espacio-xs) var(--k-espacio-sm); font-weight: 400; }
+.mapa-pieza:hover, .mapa-pieza:checked { border-color: var(--k-texto); background: var(--k-superficie-alta); }
 """

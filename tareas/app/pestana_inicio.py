@@ -12,8 +12,8 @@ Es el contenedor de lo que viene en la 1.3.0, y deja los enganches a la vista:
   que tocar su tarjeta: `abrir_proyecto(nombre)`.
 - `nuevo_proyecto()`: lo que hace «Nuevo proyecto»: abre la entrevista (cotejo-kf94so,
   `tareas/app/entrevista.py`), una tercera página de la pila sin botón en el selector.
-- `abrir_proyecto(nombre)`: lo que hace tocar una tarjeta. De momento, el tablero con ese
-  proyecto elegido; el mapa del proyecto (cotejo-p86sa9) lo reemplaza.
+- `abrir_proyecto(nombre)`: lo que hace tocar una tarjeta: el mapa del proyecto
+  (cotejo-p86sa9, `tareas/app/mapa.py`), desde el que «Ver el tablero» lleva al tablero.
 
 Las dos pestañas viven en una `Gtk.Stack` (`self.pestanas`); el selector va en la cabecera.
 Con la fuente sin configurar (primer arranque) o rota, se abre en el tablero: ahí está la
@@ -48,6 +48,7 @@ class PestanaInicio:
         self.pestanas.add_named(self.crear_entrevista(), "entrevista")
         self.pestanas.add_named(self.crear_preparando(), "preparando")
         self.pestanas.add_named(self.crear_revisar_plan(), "plan")
+        self.pestanas.add_named(self.crear_mapa(), "mapa")
         self.inicio_al_dia = False   # se repinta al verse: fuera de vista no se lee nada
         return self.pestanas
 
@@ -210,15 +211,5 @@ class PestanaInicio:
         boton.connect("clicked", lambda *_: self.nuevo_proyecto())
         return boton
 
-    # --- enganches para las tareas que siguen ---------------------------------------------------
-
-    def abrir_proyecto(self, nombre):
-        """Tocar una tarjeta. El mapa del proyecto (cotejo-p86sa9) reemplaza esto; mientras,
-        lleva al tablero con ese proyecto elegido."""
-        chip_proyecto = getattr(self, "botones_chip", {}).get(nombre)
-        if chip_proyecto is not None:
-            self.al_elegir_chip(chip_proyecto)
-        else:
-            self.aviso(f"{nombre} todavía no tiene tareas")
-            return
-        self.ver_pestana(TABLERO)
+    # `abrir_proyecto(nombre)` (tocar una tarjeta o un núcleo) vive en `mapa.py` (cotejo-p86sa9):
+    # abre el mapa del proyecto, y de ahí «Ver el tablero» (`abrir_tablero`) lleva al tablero.
