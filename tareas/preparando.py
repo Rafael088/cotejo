@@ -59,6 +59,19 @@ class Vista:
     acciones: tuple = ()                        # "reintentar" y/o "abrir_en_terminal"
     puede_revisar: bool = False                 # «Revisar el plan»
     registro: str = ""                          # «Ver lo que hace el agente»
+    aviso: str = ""                             # otro Cotejo de otra versión en el equipo
+
+
+def aviso_otro_cotejo(otro):
+    """En llano, para quien no programa: hay otro Cotejo de otra versión, y no pasa nada
+    (`enrutador/mismo_cotejo.py` hace que el agente use el de esta ventana)."""
+    if not otro:
+        return ""
+    version = otro.get("version")
+    cual = f"la versión {version}" if version else "una versión que no supe leer"
+    return (f"En este equipo hay otro Cotejo instalado ({cual}), distinto del que tienes "
+            f"abierto (la versión {otro.get('esta') or '?'}). Tu agente usa el de esta ventana, "
+            "así que no tienes que hacer nada; el otro sigue donde estaba.")
 
 
 def _nombre_del_agente(cliente):
@@ -133,6 +146,7 @@ def vista(e, registro, seguimiento, ahora):
     v.pasos = [{"titulo": p["titulo"], "estado": p["estado"], "simbolo": SIMBOLOS[p["estado"]],
                 "tiempo": duracion(p["duracion"]), "detalle": p["detalle"]} for p in pasos]
     v.registro = texto_del_registro(seguimiento.crudo(registro))
+    v.aviso = aviso_otro_cotejo(registro.get("otro_cotejo"))
     rehacer = bool(registro.get("rehacer"))
     if rehacer:
         _pasos_de_rehacer(v.pasos, situacion)

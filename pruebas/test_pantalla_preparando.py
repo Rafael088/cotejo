@@ -119,6 +119,16 @@ class Preparando(base.PestanaInicio):
             p.en_terminal.emit("clicked")
         terminal.assert_called_once_with("turnos-abc123")
 
+    def test_otro_cotejo_de_otra_version_se_dice_en_llano(self):
+        b, p = self.abrir()
+        self.assertFalse(p.otro_cotejo.get_visible())
+        self.registrar(fase="lanzado", otro_cotejo={"ruta": "/usr/bin/cotejo",
+                                                     "version": "1.2.5", "esta": "1.3.0"})
+        b.refrescar_preparando()
+        self.assertTrue(p.otro_cotejo.get_visible())
+        self.assertIn("otro Cotejo instalado (la versión 1.2.5)", p.otro_cotejo.get_label())
+        self.assertFalse(p.mensaje.get_visible())  # es una nota, no un error
+
     def test_si_reintentar_no_puede_se_avisa(self):
         from enrutador import preparar
         self.registrar(fase="terminado", codigo=1)

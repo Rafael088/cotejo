@@ -8,6 +8,7 @@ inicio: lee la carpeta del prompt, escribe en `.cotejo/` y sale. Qué hace lo de
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -15,14 +16,25 @@ import textwrap
 import time
 import unittest
 from pathlib import Path
+import tareas
 from unittest import mock
 
 from apoyo import RAIZ  # noqa: F401
-from enrutador import clientes, config as cfg, preparar, procesos
-from tareas import estado, inicio, preparacion
+from enrutador import clientes, config as cfg, mismo_cotejo, preparar, procesos
+from tareas import __version__, estado, inicio, preparacion, preparando
+
+# Un Cotejo «instalado» de otra versión, primero en el PATH: el caso del dueño (el board del
+# repo con el 1.2.5 instalado, sin `anotar --pieza`).
+OTRO_COTEJO = textwrap.dedent('''\
+    #!/bin/sh
+    case "$1" in
+      --version) echo "cotejo 0.9.0" ;;
+      *) echo "usage: cotejo anotar [--tipo TIPO]" ;;
+    esac
+''')
 
 CLIENTE = textwrap.dedent('''
-    import os, re, sys, time
+    import json, os, re, shutil, subprocess, sys, time
     prompt = sys.argv[-1]
     carpeta = re.search(r"^Carpeta del proyecto: (.+)$", prompt, re.M).group(1)
     modo = open(os.path.join(os.path.dirname(carpeta), "modo")).read().strip()
@@ -30,6 +42,15 @@ CLIENTE = textwrap.dedent('''
     os.makedirs(os.path.join(carpeta, ".cotejo"), exist_ok=True)
     with open(os.path.join(carpeta, ".cotejo", "entorno"), "w") as f:
         f.write(os.environ.get("COTEJO_FUENTE", ""))
+    # Lo que el agente encuentra al llamar a `cotejo` por su nombre, como hace el de verdad.
+    ruta = shutil.which("cotejo")
+    def cotejo(*args):
+        r = subprocess.run(["cotejo", *args], capture_output=True, text=True, timeout=60)
+        return r.stdout + r.stderr
+    with open(os.path.join(carpeta, ".cotejo", "cotejo.json"), "w") as f:
+        json.dump({"ruta": ruta, "path": os.environ.get("PATH", ""),
+                   "version": cotejo("--version").strip(),
+                   "anotar": cotejo("anotar", "arquitectura", "--help")}, f)
     if modo == "ok":
         with open(os.path.join(carpeta, ".cotejo", "tareas.md"), "w") as f:
             f.write("# Tareas\\n- [ ] Primera: algo #v0.1.0\\n")
@@ -80,6 +101,16 @@ class Preparar(unittest.TestCase):
         parche.start()
         self.addCleanup(parche.stop)
         self.addCleanup(self._limpiar)
+        # El otro Cotejo, primero en el PATH de este proceso (el del board).
+        self.otro_bin = self.base / "instalado"
+        self.otro_bin.mkdir()
+        otro = self.otro_bin / "cotejo"
+        otro.write_text(OTRO_COTEJO)
+        otro.chmod(0o755)
+        parche = mock.patch.dict(os.environ, {
+            "PATH": str(self.otro_bin) + os.pathsep + os.environ.get("PATH", "")})
+        parche.start()
+        self.addCleanup(parche.stop)
 
     def _limpiar(self):
         for registro in preparacion.todas():
@@ -223,13 +254,81 @@ class Preparar(unittest.TestCase):
             hecho = preparar.abrir_en_terminal(salida["id"], config=self.config)
         self.assertTrue(hecho["abierto"])
         _argv, _dir, entorno = abrir.call_args.args
-        self.assertEqual(entorno, inicio.ENTORNO)
+        self.assertEqual({k: v for k, v in entorno.items() if k != "PATH"}, inicio.ENTORNO)
+        self.assertEqual(entorno["PATH"].split(os.pathsep)[0], str(mismo_cotejo.carpeta()))
         self.assertEqual(preparar.estado(salida["id"])["estado"], preparacion.EN_TERMINAL)
         for _ in range(50):
             if not procesos.vivo(salida["pid"]):
                 break
             time.sleep(0.1)
         self.assertFalse(procesos.vivo(salida["pid"]))
+
+    # --- el mismo cotejo que el board (cotejo-w7oeio) ------------------------------------
+
+    def visto_por_el_agente(self):
+        return json.loads((self.carpeta / ".cotejo" / "cotejo.json").read_text())
+
+    def test_el_agente_llama_al_cotejo_del_board_y_no_al_otro(self):
+        _salida, hilo = self.lanzar("ok")
+        hilo.join(30)
+        visto = self.visto_por_el_agente()
+        bin_ = mismo_cotejo.carpeta()
+        self.assertEqual(Path(visto["ruta"]).parent, bin_)
+        self.assertEqual(visto["path"].split(os.pathsep)[0], str(bin_))
+        self.assertIn(str(self.otro_bin), visto["path"])  # el otro sigue, solo que detrás
+        self.assertEqual(visto["version"], f"cotejo {__version__}")
+        self.assertIn("--pieza", visto["anotar"])  # el verbo que el instalado no tenía
+        # Y ese `cotejo` corre el código de este proceso, no otro paquete.
+        lanzador = (bin_ / "lanzador.py").read_text()
+        self.assertIn(repr(str(Path(tareas.__file__).resolve().parent.parent)), lanzador)
+        self.assertIn(sys.executable, (bin_ / "cotejo").read_text())
+
+    def test_el_otro_de_otra_version_queda_anotado_y_preparando_lo_dice(self):
+        salida, hilo = self.lanzar("ok")
+        hilo.join(30)
+        registro = preparacion.leer(salida["id"])
+        self.assertEqual(registro["otro_cotejo"]["version"], "0.9.0")
+        self.assertEqual(registro["otro_cotejo"]["ruta"], str(self.otro_bin / "cotejo"))
+        self.assertEqual(registro["otro_cotejo"]["esta"], __version__)
+        self.assertNotIn("PATH", registro["entorno"])  # el PATH se calcula al lanzar
+        vista = preparando.Preparando(salida["id"]).refrescar()
+        self.assertIn("otro Cotejo instalado (la versión 0.9.0)", vista.aviso)
+        self.assertIn("no tienes que hacer nada", vista.aviso)
+
+    def test_con_la_misma_version_no_hay_aviso(self):
+        (self.otro_bin / "cotejo").write_text(
+            OTRO_COTEJO.replace("0.9.0", __version__))
+        salida, hilo = self.lanzar("ok")
+        hilo.join(30)
+        self.assertNotIn("otro_cotejo", preparacion.leer(salida["id"]))
+        self.assertEqual(preparando.Preparando(salida["id"]).refrescar().aviso, "")
+
+    def test_reintentar_y_rehacer_tambien_usan_el_del_board(self):
+        salida, _hilo = self.lanzar("dormir")
+        self.modo("ok")
+        preparar.reintentar(salida["id"], config=self.config)
+        self.hilos[-1].join(30)
+        self.assertEqual(self.visto_por_el_agente()["version"], f"cotejo {__version__}")
+        (self.carpeta / ".cotejo" / "cotejo.json").unlink()
+        registro = preparacion.leer(salida["id"])
+        preparar.rehacer(salida["id"], registro["prompt"], config=self.config, motivo="otra")
+        self.hilos[-1].join(30)
+        self.assertEqual(self.visto_por_el_agente()["version"], f"cotejo {__version__}")
+
+    def test_abrir_en_terminal_resuelve_cotejo_al_del_board(self):
+        salida, _hilo = self.lanzar("dormir")
+        with mock.patch.object(preparar.terminal, "abrir") as abrir:
+            preparar.abrir_en_terminal(salida["id"], config=self.config)
+        _argv, _dir, entorno = abrir.call_args.args
+        env = {**os.environ, **entorno}
+        ruta = shutil.which("cotejo", path=env["PATH"])
+        self.assertEqual(Path(ruta).parent, mismo_cotejo.carpeta())
+        hecho = subprocess.run(["cotejo", "anotar", "arquitectura", "--help"], env=env, capture_output=True,
+                               text=True, timeout=60)
+        self.assertEqual(hecho.returncode, 0, hecho.stderr)
+        self.assertIn("--pieza", hecho.stdout)
+        # Sin el entorno del agente, el mismo PATH daría con el otro.
+        self.assertEqual(shutil.which("cotejo"), str(self.otro_bin / "cotejo"))
 
     # --- lo que se niega ----------------------------------------------------------------
 

@@ -155,7 +155,11 @@ salida durante `enrutador.preparar.minutos_sin_actividad`, 10 por defecto), `fal
 ≠ 0, o 0 sin tareas, o muerto sin volver y sin tareas) y `listo`; los dos primeros malos traen
 `reintentar` y `abrir_en_terminal`. El agente corre con `inicio.ENTORNO`
 (`COTEJO_FUENTE=repo`): `init` registra la carpeta sin activar la fuente repo, y así `crear` y
-`asignar` la encuentran aunque la persona use Obsidian, sin tocarle la config.
+`asignar` la encuentran aunque la persona use Obsidian, sin tocarle la config. Y con un PATH que lleva primero el
+lanzador `cotejo` de `enrutador/mismo_cotejo.py` (en `<estado>/agente/bin`, reescrito en cada
+lanzamiento): corre `sys.executable` con el paquete de este mismo proceso, así el agente usa el
+Cotejo del board y no otro instalado (el publicado mientras se prueba con `cotejo-dev`). Si el
+otro es de otra versión, queda en `otro_cotejo` del registro y Preparando lo dice en llano.
 
 `tareas/revisar_plan.py` es «Revisar el plan» (v1.3.0, cotejo-m195bn), sin GTK; la pinta
 `tareas/app/revisar_plan.py`, una página más de la pila (`"plan"`) a la que lleva el botón de
