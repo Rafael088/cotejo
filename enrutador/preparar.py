@@ -171,6 +171,28 @@ def reintentar(ident, al_terminar=None, config=None):
     return _arrancar(registro, config if config is not None else cfg.cargar(), al_terminar)
 
 
+def rehacer(ident, prompt, al_terminar=None, config=None, motivo=""):
+    """Relanza la misma preparación con otro prompt (v1.3.0, «Revisar el plan»): la persona
+    rechazó una decisión con un motivo y el agente tiene que proponer otra.
+
+    Mismo id, cliente, modelo y entorno; el prompt nuevo reemplaza al de inicio, así que un
+    `reintentar` o `abrir_en_terminal` posterior repite **esto**, no la preparación entera.
+    `desde` guarda cuándo empezó la primera vez, para que la pantalla Preparando siga viendo
+    los pasos ya hechos; `rehacer` lleva el motivo, para que diga qué está haciendo.
+    """
+    config = config if config is not None else cfg.cargar()
+    registro = _leer(ident)
+    elegido = _cliente(registro.get("cliente"))
+    argv = comando(config, elegido, registro.get("modelo") or "", prompt)
+    if shutil.which(argv[0]) is None:
+        raise NoSePuede(f"No encontré «{argv[0]}» en esta máquina, y es el cliente que elegiste "
+                        f"({elegido.titulo or elegido.nombre}). Instálalo o elige otro.")
+    _parar(registro)
+    registro.setdefault("desde", registro.get("ts"))
+    registro.update(prompt=prompt, comando=argv, rehacer={"motivo": motivo}, intentos=0)
+    return _arrancar(registro, config, al_terminar)
+
+
 def abrir_en_terminal(ident, config=None, simular=False):
     """El mismo prompt en una terminal que se ve, con el mismo cliente, modelo y entorno.
 
@@ -213,5 +235,5 @@ def estado(ident):
     return preparacion.estado(_leer(ident))
 
 
-__all__ = ["NoSePuede", "lanzar", "reintentar", "abrir_en_terminal", "descartar", "estados",
-           "estado", "comando", "vigilar"]
+__all__ = ["NoSePuede", "lanzar", "reintentar", "rehacer", "abrir_en_terminal", "descartar",
+           "estados", "estado", "comando", "vigilar"]

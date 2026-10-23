@@ -10,9 +10,8 @@ se enseña lo decide `tareas/preparando.py` (sin GTK) con `tareas/progreso.py` y
 nace en `do_map` y se quita en `do_unmap` (como el reloj de la constelación). No hay hilos que
 toquen GTK: el hilo que espera al agente solo avisa con `GLib.idle_add` (`preparacion_terminada`).
 
-Enganche para «Revisar el plan» (cotejo-m195bn): `revisar_plan(estado)` en `Board`. Hoy abre el
-proyecto en el tablero (`abrir_proyecto`); la pantalla de revisar el plan lo reemplaza. Recibe el
-dict de `preparacion.estado` (id, proyecto, carpeta, cliente…).
+«Revisar el plan» llama a `revisar_plan(estado)` de `Board`, con el dict de `preparacion.estado`
+(id, proyecto, carpeta, cliente…): la pantalla de `tareas/app/revisar_plan.py` (cotejo-m195bn).
 """
 
 from gi.repository import GLib, Gtk
@@ -215,14 +214,3 @@ class PestanaPreparando:
             self.aviso(str(error))
             return
         self.refrescar_preparando()
-
-    def revisar_plan(self, estado):
-        """«Revisar el plan». ENGANCHE de cotejo-m195bn: la pantalla de revisar el plan
-        reemplaza esto. Hoy: la preparación se da por vista y se abre el proyecto en el tablero."""
-        from enrutador import preparar
-        try:
-            preparar.descartar(estado["id"])
-        except (KeyError, ValueError):
-            pass
-        self.app.refrescar()
-        self.abrir_proyecto(estado.get("proyecto", ""))

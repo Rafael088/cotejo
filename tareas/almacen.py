@@ -63,7 +63,7 @@ class Tipo:
 TIPOS = {t.nombre: t for t in (
     Tipo("decision", "decisiones", "dec",
          ("id", "fecha", "temas", "estado", "autor", "reemplaza"),
-         estados=("propuesta", "aceptada", "reemplazada"), con_fecha=True),
+         estados=("propuesta", "aceptada", "reemplazada", "rechazada"), con_fecha=True),
     Tipo("problema", "problemas", "pro", ("id", "fecha", "temas", "estado"),
          estados=("abierto", "resuelto"), con_fecha=True),
     Tipo("arquitectura", "arquitectura", "arq", ("id", "temas", "actualizado"), editable=True),
@@ -80,10 +80,12 @@ POR_PREFIJO = {t.prefijo: t for t in TIPOS.values() if t.prefijo}
 POR_CARPETA = {t.carpeta: t for t in TIPOS.values() if t.carpeta}
 
 # Las únicas formas en que se mueve el estado de una entrada. Una decisión aceptada no vuelve a
-# propuesta: si estaba mal, se reemplaza. Un problema resuelto sí se reabre, sin costo.
+# propuesta: si estaba mal, se reemplaza. Una propuesta que la persona rechaza (con motivo, desde
+# «Revisar el plan» del board, v1.3.0) queda `rechazada` y no vuelve: el agente propone otra.
+# Un problema resuelto sí se reabre, sin costo.
 TRANSICIONES = {
     "decision": {("propuesta", "aceptada"), ("propuesta", "reemplazada"),
-                 ("aceptada", "reemplazada")},
+                 ("propuesta", "rechazada"), ("aceptada", "reemplazada")},
     "problema": {("abierto", "resuelto"), ("resuelto", "abierto")},
 }
 

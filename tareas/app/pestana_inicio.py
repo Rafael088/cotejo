@@ -47,6 +47,7 @@ class PestanaInicio:
         self.pestanas.add_named(tablero, TABLERO)
         self.pestanas.add_named(self.crear_entrevista(), "entrevista")
         self.pestanas.add_named(self.crear_preparando(), "preparando")
+        self.pestanas.add_named(self.crear_revisar_plan(), "plan")
         self.inicio_al_dia = False   # se repinta al verse: fuera de vista no se lee nada
         return self.pestanas
 

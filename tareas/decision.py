@@ -1,5 +1,5 @@
-"""Aceptar una decisión propuesta del almacén `.cotejo/` (C5, v1.2): la única transición que
-hace la persona, nunca un agente ni un verbo.
+"""Aceptar una decisión propuesta del almacén `.cotejo/` (C5, v1.2) —y, desde la 1.3.0,
+rechazarla con motivo—: las transiciones que hace la persona, nunca un agente ni un verbo.
 
 E2 (2026-10-04, «Carta propia + aviso») decidió dónde: la decisión propuesta sale como carta
 propia en *Para comprobar* y se abre con la misma vista de revisión que una entrega —su texto
@@ -94,3 +94,24 @@ def aceptar(alm, entrada_id, version):
             almacen.NoSeEdita) as error:
         raise AceptacionParcial(aceptada, error) from error
     return aceptada, reemplazada
+
+
+def rechazar(alm, entrada_id, version, motivo):
+    """Rechaza la decisión propuesta `entrada_id` con un motivo (v1.3.0, «Revisar el plan»).
+
+    Es la otra mitad de lo que hace la persona con una propuesta: «Cambiar» en la pantalla del
+    plan es rechazarla con motivo (decidido en el planning de la fase 2), y el motivo vuelve al
+    agente para que proponga otra. Pasa a `rechazada` con `motivo` y `rechazada_el` en la misma
+    escritura, verificado por versión. El motivo es obligatorio por la misma regla que devolver
+    o bloquear: un rechazo sin porqué hace que el siguiente se estrelle contra lo mismo.
+    Como `aceptar`, no tiene verbo de CLI ni tool de MCP: solo lo llama el board.
+    """
+    motivo = " ".join(str(motivo or "").split())
+    if not motivo:
+        raise ValueError("Rechazar una decisión exige un motivo: es lo que lee el agente para "
+                         "proponer otra.")
+    entrada = alm.leer(entrada_id)
+    if entrada.tipo != "decision":
+        raise NoEsDecision(entrada)
+    return alm.poner_estado(entrada.id, version, "rechazada",
+                            campos={"motivo": motivo, "rechazada_el": almacen._hoy()})
