@@ -1,6 +1,6 @@
 """El vacío del primer arranque: sin fuente configurada, qué es Cotejo y cómo empezar.
 
-Regla nueva (dec-hgq7, propuesta que reemplaza la del 2026-10-10; queda a la espera de que el
+Regla nueva (dec-hgq7, propuesta que revierte la del 2026-10-10; queda a la espera de que el
 dueño la acepte): el board tiene una pestaña Inicio que abre primero y crea proyectos de punta
 a punta, con un formulario sin IA y el agente lanzado por detrás (`headless` solo para preparar
 un proyecto, con progreso en vivo). Hasta que exista esa pestaña, esto es lo que hay: un vacío
