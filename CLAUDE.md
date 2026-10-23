@@ -99,9 +99,13 @@ su versión en curso y el avance en **piezas hechas** de la arquitectura (por
 `conocimiento.piezas_del_repo`); sin piezas dice «sin arquitectura todavía», nunca inventa un
 avance con las tareas. La pinta `tareas/app/pestana_inicio.py`, que abre antes que el tablero
 (salvo sin fuente configurada o rota: ahí va al tablero, con el vacío del primer arranque) y
-deja los enganches de lo que sigue: `area_constelacion`/`poner_constelacion` (7wc9hb),
-`nuevo_proyecto()` (la entrevista, kf94so; hoy un aviso) y `abrir_proyecto(nombre)` (el mapa,
-p86sa9; hoy el tablero con ese proyecto). El dot entra al verse el tablero, no antes.
+pone encima la **constelación** (7wc9hb): cada proyecto un núcleo con sus piezas alrededor,
+por estado y con el verde solo para lo que espera comprobación. Su geometría y su dibujo con
+cairo son puros (`tareas/constelacion.py`, como `dot_dibujo.py`) y el widget
+(`tareas/app/constelacion.py`) solo pide fotogramas mapeado y con `gtk-enable-animations`
+encendido. Deja los enganches de lo que sigue: `nuevo_proyecto()` (la entrevista, kf94so; hoy
+un aviso) y `abrir_proyecto(nombre)` (el mapa, p86sa9; hoy el tablero con ese proyecto), que es
+lo que hacen tocar una tarjeta y tocar un núcleo. El dot entra al verse el tablero, no antes.
 
 `tareas/importar_obsidian.py` es el importador de la 1.2 (D1): `planear()` devuelve un `Plan` —las
 entradas que se crearían con su `origen` estable (`nota#sección:hash`)— sin escribir nada, y

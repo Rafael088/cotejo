@@ -120,6 +120,8 @@ class App(Adw.Application):
         self.esquema = datos["esquema"]
         if self.board:
             pintar_logo(self.board.logo, self.colores)
+            if getattr(self.board, "constelacion", None) is not None:
+                self.board.constelacion.queue_draw()
             # El dot no cambia de color con el tema: en uno claro solo baja su brillo. Apagado
             # (lo normal desde la 1.2.4) no existe, y un error aquí dejaba a Adwaita en el
             # esquema anterior: diálogos y avisos oscuros sobre un board claro.

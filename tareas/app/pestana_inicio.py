@@ -6,8 +6,10 @@ decide `tareas/resumen_inicio.py`, sin GTK; aquí solo se pinta.
 
 Es el contenedor de lo que viene en la 1.3.0, y deja los enganches a la vista:
 
-- `area_constelacion`: una caja vacía y oculta entre el saludo y las tarjetas. La constelación
-  de proyectos (cotejo-7wc9hb) entra con `poner_constelacion(widget)`.
+- `area_constelacion`: la caja entre el saludo y las tarjetas. `pintar_inicio` pone ahí la
+  constelación de proyectos (cotejo-7wc9hb, `tareas/app/constelacion.py`) con
+  `poner_constelacion(widget)`, y la quita si no hay proyectos. Tocar un núcleo es lo mismo
+  que tocar su tarjeta: `abrir_proyecto(nombre)`.
 - `nuevo_proyecto()`: lo que hace «Nuevo proyecto». De momento, un aviso; la entrevista
   (cotejo-kf94so) lo reemplaza.
 - `abrir_proyecto(nombre)`: lo que hace tocar una tarjeta. De momento, el tablero con ese
@@ -25,6 +27,7 @@ from gi.repository import Adw, Gtk, Pango
 from .. import resumen_inicio
 from .comun import ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XL, ESPACIADO_XS
 from .comun import animaciones_activas
+from .constelacion import caja_constelacion
 from .piezas import chip, con_mano, etiquetar, vaciar
 
 INICIO, TABLERO = "inicio", "tablero"
@@ -115,7 +118,8 @@ class PestanaInicio:
         cabeza.append(nuevo)
         cuerpo.append(cabeza)
 
-        # Enganche de la constelación (cotejo-7wc9hb): vacía y oculta hasta que llegue.
+        # La constelación (cotejo-7wc9hb): oculta mientras no haya proyectos que dibujar.
+        self.constelacion = None
         self.area_constelacion = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
                                          css_classes=["inicio-constelacion"], visible=False)
         cuerpo.append(self.area_constelacion)
@@ -133,7 +137,7 @@ class PestanaInicio:
                                   css_classes=["inicio"])
 
     def poner_constelacion(self, widget):
-        """Enganche para cotejo-7wc9hb: pone `widget` en el hueco de la constelación."""
+        """Pone `widget` en el hueco de la constelación (o lo vacía y oculta con None)."""
         vaciar(self.area_constelacion)
         if widget is not None:
             self.area_constelacion.append(widget)
@@ -150,10 +154,23 @@ class PestanaInicio:
                     else resumen_inicio.tarjetas(self.app.proyectos, self.fuente))
         self.inicio_saludo.set_label(resumen_inicio.saludo(hora))
         self.inicio_titular.set_label(resumen_inicio.titular(tarjetas))
+        self.pintar_constelacion(tarjetas)
         vaciar(self.inicio_tarjetas)
         for uno in tarjetas:
             self.inicio_tarjetas.append(self.tarjeta_de_proyecto(uno))
         self.inicio_tarjetas.append(self.tarjeta_nuevo())
+
+    def pintar_constelacion(self, tarjetas):
+        """La constelación con las mismas tarjetas que se pintan debajo; sin ninguna, nada."""
+        if not tarjetas:
+            self.constelacion = None
+            self.poner_constelacion(None)
+            return
+        if self.constelacion is None:
+            caja, self.constelacion = caja_constelacion(lambda: self.app.colores,
+                                                        self.abrir_proyecto)
+            self.poner_constelacion(caja)
+        self.constelacion.poner(tarjetas)
 
     def tarjeta_de_proyecto(self, t):
         caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_SM)
