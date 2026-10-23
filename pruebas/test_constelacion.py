@@ -266,6 +266,8 @@ class Widget(unittest.TestCase):
 class EnElInicio(unittest.TestCase):
     """El board de verdad sobre una fuente de repos de prueba con un proyecto con arquitectura."""
 
+    apps = 0
+
     def setUp(self):
         temporal = tempfile.TemporaryDirectory()
         self.addCleanup(temporal.cleanup)
@@ -296,7 +298,9 @@ class EnElInicio(unittest.TestCase):
         con_animaciones(self, False)
 
         self.app = app.App()
-        self.app.set_application_id(f"io.github.cotejoapp.CotejoPruebaConstelacion{os.getpid()}")
+        EnElInicio.apps += 1   # un id por app: con un bus de sesión, dos iguales chocan
+        self.app.set_application_id(
+            f"io.github.cotejoapp.CotejoPruebaConstelacion{os.getpid()}n{self.apps}")
         self.app.set_flags(self.app.get_flags() | Gio.ApplicationFlags.NON_UNIQUE)
         self.app.register(None)
         self.addCleanup(self.cerrar)
