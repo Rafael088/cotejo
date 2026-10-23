@@ -61,6 +61,8 @@ class PestanaInicio:
             else:
                 boton.set_group(primero)
             boton.connect("toggled", self.al_alternar_pestana, clave)
+            # Con la entrevista a la vista «Inicio» sigue activo y no emite `toggled`.
+            boton.connect("clicked", self.al_alternar_pestana, clave)
             self.botones_pestana[clave] = boton
             caja.append(boton)
         return caja

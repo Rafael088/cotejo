@@ -193,6 +193,12 @@ class ConProyectos(PestanaInicio):
             self.assertIsNone(b.preparar_proyecto())
         lanzar.assert_not_called()
 
+    def test_el_boton_inicio_sale_de_la_entrevista(self):
+        b = self.abrir_entrevista()
+        self.assertTrue(b.botones_pestana["inicio"].get_active())
+        b.botones_pestana["inicio"].emit("clicked")
+        self.assertEqual(b.pestana_actual(), "inicio")
+
     def test_sin_agente_instalado_no_se_puede_preparar(self):
         b = self.abrir_entrevista(agentes=())
         self.assertIsNone(b.agente_elegido())
