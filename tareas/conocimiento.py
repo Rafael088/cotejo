@@ -372,7 +372,7 @@ def cmd_contexto(args):
     """Lo mínimo para empezar a trabajar en el repo sin leer sus notas.
 
     Objetivo, stack y siguiente paso de `proyecto.md`; cuántas tareas hay en cada columna;
-    las decisiones que siguen vigentes (no reemplazadas) y los problemas que siguen abiertos
+    las decisiones que siguen vigentes (ni reemplazadas ni rechazadas) y los problemas que siguen abiertos
     —las `--tope` más recientes de cada una, con su total real y, si se cortó, una pista a
     `buscar` para las demás—, solo por id y título; y los temas que existen con cuántas
     entradas tiene cada uno. Pensado para costar <1k tokens medido con `medir.py`
@@ -404,7 +404,8 @@ def cmd_contexto(args):
             temas[tema] = temas.get(tema, 0) + 1
 
     decisiones_entradas = [e for e in entradas
-                           if e.tipo == "decision" and e.estado != "reemplazada"]
+                           if e.tipo == "decision"
+                           and e.estado not in ("reemplazada", "rechazada")]
     problemas_entradas = [e for e in entradas
                           if e.tipo == "problema" and e.estado == "abierto"]
     # Las importadas sin revisar (`autor: importado`, v1.2.3) cuentan aparte y no ocupan el

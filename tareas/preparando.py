@@ -133,6 +133,9 @@ def vista(e, registro, seguimiento, ahora):
     v.pasos = [{"titulo": p["titulo"], "estado": p["estado"], "simbolo": SIMBOLOS[p["estado"]],
                 "tiempo": duracion(p["duracion"]), "detalle": p["detalle"]} for p in pasos]
     v.registro = texto_del_registro(seguimiento.crudo(registro))
+    rehacer = bool(registro.get("rehacer"))
+    if rehacer:
+        _pasos_de_rehacer(v.pasos, situacion)
     if situacion == preparacion.LISTO or situacion == preparacion.VISTO:
         v.eyebrow = "Listo"
         v.titulo = f"{proyecto} está listo"
@@ -151,8 +154,29 @@ def vista(e, registro, seguimiento, ahora):
         v.reloj = f"{tiempo(transcurrido)}"
         v.mensaje = ("Cotejo abrió tu agente en una terminal con las mismas respuestas. "
                      "Termina allí; los pasos se marcan solos.")
+    elif rehacer:
+        v.eyebrow = f"{v.cliente} está proponiendo otra decisión"
+        v.titulo = f"Rehaciendo el plan de {proyecto}"
+        v.reloj = tiempo(transcurrido)
+        v.mensaje = "Le pasé tu motivo: «%s»." % (registro["rehacer"].get("motivo") or "")
     else:
         v.eyebrow = f"{v.cliente} está preparando tu proyecto"
         v.titulo = f"Preparando {proyecto}"
         v.reloj = f"{tiempo(transcurrido)} · {SUELE_TARDAR}"
     return v
+
+
+def _pasos_de_rehacer(pasos, situacion):
+    """Relanzada para rehacer una decisión (`preparar.rehacer`): lo de la primera vez ya está
+    hecho, y lo único que vuelve a moverse es «Proponer las decisiones»."""
+    estado = {preparacion.LISTO: progreso.HECHO, preparacion.VISTO: progreso.HECHO,
+              preparacion.FALLO: progreso.FALLO,
+              preparacion.COLGADO: progreso.FALLO}.get(situacion, progreso.EN_CURSO)
+    proponer = [p.verbo for p in progreso.PASOS].index("proponer")
+    for i, paso in enumerate(pasos):
+        if i == proponer:
+            paso.update(estado=estado, simbolo=SIMBOLOS[estado])
+            if estado == progreso.EN_CURSO:
+                paso.update(detalle="Proponiendo otra", tiempo="")
+        else:
+            paso.update(estado=progreso.HECHO, simbolo=SIMBOLOS[progreso.HECHO])

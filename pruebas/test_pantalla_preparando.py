@@ -144,13 +144,14 @@ class Preparando(base.PestanaInicio):
         self.assertEqual([s for _t, s, _d in self.pasos(p)], ["✓"] * 5)
         self.assertTrue(p.revisar.get_visible())
         self.assertFalse(p.reintentar.get_visible())
-        # El enganche de m195bn: hoy descarta el aviso y abre el proyecto.
-        with mock.patch("enrutador.preparar.estado", return_value=self.estado), \
-                mock.patch("enrutador.preparar.descartar") as descartar, \
+        # «Revisar el plan» lleva a la pantalla del plan (m195bn) con el estado de esta.
+        estado = dict(self.estado, carpeta=self.carpeta)
+        with mock.patch("enrutador.preparar.estado", return_value=estado), \
                 mock.patch.object(b, "abrir_proyecto") as abrir:
             p.revisar.emit("clicked")
-        descartar.assert_called_once_with("turnos-abc123")
-        abrir.assert_called_once_with("turnos")
+        abrir.assert_not_called()
+        self.assertEqual(b.pestana_actual(), "plan")
+        self.assertEqual(b.plan_estado["id"], "turnos-abc123")
 
     def test_el_temporizador_existe_solo_con_la_pantalla_a_la_vista(self):
         b, p = self.abrir()

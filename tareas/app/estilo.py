@@ -385,6 +385,10 @@ tooltip label { color: var(--k-texto); font-size: var(--k-dato); }
 .preparando-simbolo.paso-hecho { color: var(--k-texto); }
 .preparando-simbolo.paso-fallo, .paso-fallo.carta-nombre, .preparando-error { color: var(--k-ambar); }
 .paso-pendiente.carta-nombre { color: var(--k-tenue); }
+/* «Revisar el plan» (cotejo-m195bn): las tareas de la persona, «tú», con el contorno del texto. */
+.plan-bloque { padding: var(--k-espacio-lg); }
+.plan-tarea { padding: var(--k-espacio-xs) 0; border-top: 1px solid var(--k-borde-hondo); }
+.chip.chip-tu { color: var(--k-texto); border: 1px solid var(--k-texto); background: transparent; }
 .constelacion-caja { background: var(--k-columna); border: 1px solid var(--k-borde); border-radius: 10px; padding: var(--k-espacio-md); }
 .constelacion-leyenda { padding-top: var(--k-espacio-sm); border-top: 1px solid var(--k-borde-hondo); }
 """

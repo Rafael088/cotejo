@@ -143,6 +143,17 @@ salida durante `enrutador.preparar.minutos_sin_actividad`, 10 por defecto), `fal
 (`COTEJO_FUENTE=repo`): `init` registra la carpeta sin activar la fuente repo, y así `crear` y
 `asignar` la encuentran aunque la persona use Obsidian, sin tocarle la config.
 
+`tareas/revisar_plan.py` es «Revisar el plan» (v1.3.0, cotejo-m195bn), sin GTK; la pinta
+`tareas/app/revisar_plan.py`, una página más de la pila (`"plan"`) a la que lleva el botón de
+Preparando (`Board.revisar_plan(estado)`). Enseña objetivo y siguiente paso (de `proyecto.md`),
+las decisiones y las tareas de la 0.1.0 con quién las haría según el enrutador (las del nivel
+humano, «tú»). **Aceptar** es `decision.aceptar`; **Cambiar** es `decision.rechazar` con motivo
+obligatorio (estado `rechazada`, que ya no cuenta como vigente) y relanza la misma preparación
+con `preparar.rehacer` y el prompt de `inicio.armar_rehacer`, de vuelta a Preparando. Las dos
+son de la persona, sin verbo de CLI. **Empezar la 0.1.0** reparte como `cotejo plan`: a lo
+pendiente sin dueño le pone el modelo propuesto (o `persona`), sin lanzar nada, y abre el
+proyecto (`abrir_proyecto`). Lee y escribe con la fuente repo apuntada solo a esa carpeta.
+
 Al lado, `enrutador/` decide **quién atiende cada tarea**: `niveles.py` es el catálogo;
 `reglas.py`, las expresiones regulares; `decision.py`, el orden en que se decide —y no hace
 entrada/salida, que es lo que lo deja probar entero sin vault y sin gastar—; `cotejo.py` es su

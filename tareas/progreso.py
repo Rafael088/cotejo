@@ -223,8 +223,12 @@ class Seguimiento:
 
 
 def de_preparacion(registro, archivo=None):
-    """Un `Seguimiento` para el registro de una preparación (`tareas.preparacion.leer`)."""
-    return Seguimiento(registro.get("carpeta", ""), registro.get("ts", 0), archivo)
+    """Un `Seguimiento` para el registro de una preparación (`tareas.preparacion.leer`).
+
+    Desde `desde` si lo tiene (una preparación relanzada para rehacer una decisión: los pasos
+    de la primera vez siguen contando) y si no, desde que se lanzó."""
+    return Seguimiento(registro.get("carpeta", ""),
+                       registro.get("desde") or registro.get("ts", 0), archivo)
 
 
 def crudo(crudas, registro=None, lineas=LINEAS_CRUDAS):
