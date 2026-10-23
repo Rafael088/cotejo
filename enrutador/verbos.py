@@ -635,11 +635,7 @@ def proceso_muerto(linea):
     Solo se puede saber en la máquina que lo lanzó: el vault puede estar sincronizado con otra,
     y allí ese pid es de cualquiera. Desde otra máquina no se da por muerto.
     """
-    if linea.get("fase") != "lanzado" or not linea.get("pid"):
-        return False
-    if linea.get("host") and linea["host"] != socket.gethostname():
-        return False
-    return not procesos.vivo(linea["pid"], linea.get("programa", ""))
+    return procesos.anotado_muerto(linea)  # también lo usa `preparar`, para el inicio
 
 
 def desenlace(linea, tarea, dias, umbral):

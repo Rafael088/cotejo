@@ -116,6 +116,19 @@ esto. El diff se pinta solo con GTK4 + Adwaita (sin GtkSourceView): una etiqueta
 con los colores de siempre (verde lo que entra, ámbar lo que sale) y recortado a
 `LINEAS_MAX` por archivo; lo grande, en la herramienta.
 
+`tareas/preparacion.py` y `enrutador/preparar.py` son el inicio en segundo plano de la 1.3.0:
+con las respuestas de la entrevista, `preparar.lanzar` arma el prompt (`tareas/inicio.py`) y
+lanza el cliente elegido sin interfaz (`motores/fondo.py`, con la tabla de `clientes.py` y los
+ajustes de `motores.headless`), anotado con pid como un despacho en
+`rutas.estado()/preparaciones/<id>.json`; un hilo del proceso que lo lanzó (en el board, el de
+`--fondo`) anota el código al volver y reescribe `estado.json`, que lleva `preparaciones` para
+la barra. Estados: `preparando`, `colgado` (vivo pero nada se movió en `.cotejo/` ni en su
+salida durante `enrutador.preparar.minutos_sin_actividad`, 10 por defecto), `fallo` (código
+≠ 0, o 0 sin tareas, o muerto sin volver y sin tareas) y `listo`; los dos primeros malos traen
+`reintentar` y `abrir_en_terminal`. El agente corre con `inicio.ENTORNO`
+(`COTEJO_FUENTE=repo`): `init` registra la carpeta sin activar la fuente repo, y así `crear` y
+`asignar` la encuentran aunque la persona use Obsidian, sin tocarle la config.
+
 Al lado, `enrutador/` decide **quién atiende cada tarea**: `niveles.py` es el catálogo;
 `reglas.py`, las expresiones regulares; `decision.py`, el orden en que se decide —y no hace
 entrada/salida, que es lo que lo deja probar entero sin vault y sin gastar—; `cotejo.py` es su
@@ -234,6 +247,10 @@ sea un verbo de la CLI no es una tool. Su única bandera, `--perfil nucleo|compl
 - **El motor por defecto es `agente`, que no lanza nada.** El trabajo lo hace un agente vivo.
   `headless` (`claude -p`) existe para lo desatendido y hay que pedirlo: que el defecto mande
   trabajo a un proceso que nadie ve es justo lo que no se quería.
+- **La única excepción es preparar un proyecto** (decisión del inicio en la app, v1.3.0):
+  `enrutador/preparar.py` lanza el agente sin interfaz solo para eso, con el progreso a la vista
+  en el board y aviso por la barra al terminar; si se cuelga o falla, se ofrece reintentar o
+  abrirlo en una terminal que se ve. Nada más usa `motores/fondo.py`.
 - **El maestro se abre en una terminal que se ve, y solo reparte lo asignado.** `maestro` (y el
   botón del board) abre un cliente con una instrucción que despacha las tareas con
   `#agente/<modelo>` puestas por una persona; ni `--auto` ni `--modelo`. Abrirlo en segundo

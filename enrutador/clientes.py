@@ -41,8 +41,11 @@ class Cliente:
         return modelo_id or modelo
 
     def argv_sin_interfaz(self, modelo, prompt, comando=None, extra=()):
+        # Sin modelo, el que el cliente tenga por defecto (lo usa el inicio, que no es una
+        # tarea con `#agente/<modelo>`): una bandera con el valor vacío no la entiende ninguno.
+        con_modelo = [self.bandera_modelo, modelo] if modelo else []
         return (list(comando or [self.ejecutable]) + list(self.sin_interfaz) +
-                [self.bandera_modelo, modelo] + list(extra) +
+                con_modelo + list(extra) +
                 list(self.prompt_sin_interfaz) + [prompt])
 
     def argv_interactivo(self, prompt, modelo="", comando=None, extra=()):
