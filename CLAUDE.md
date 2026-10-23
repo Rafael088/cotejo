@@ -85,6 +85,14 @@ rompe la lectura. Toda escritura pasa la `version` (hash del archivo) que se ley
 estado por `TRANSICIONES`. Quién puede pedir cada transición —aceptar es de la persona— lo
 deciden los verbos, no el almacén. Ningún verbo ni el importador abren `.cotejo/` por su cuenta.
 
+`tareas/arquitectura.py` es la arquitectura dibujable de la 1.3.0: la sección `## Piezas` de una
+entrada `arquitectura` (tabla de capa `ve|hace|guarda|conecta`, pieza, qué es, tecnología y
+tareas). Es puro —ni archivos ni GTK—: `analizar(cuerpo)` valida y da las piezas,
+`estado_pieza(columnas)` el estado (`por-comprobar` > `hecho` > `en-curso` > `falta`; sin tareas,
+`falta`), `con_estado` y `resumen_por_capa` lo que enseñan `leer` y `contexto`. La constelación y
+el mapa del board leen por `conocimiento.piezas_del_repo(alm)`, no por su cuenta. Una entrada sin
+la sección es texto libre, como antes.
+
 `tareas/importar_obsidian.py` es el importador de la 1.2 (D1): `planear()` devuelve un `Plan` —las
 entradas que se crearían con su `origen` estable (`nota#sección:hash`)— sin escribir nada, y
 `importar obsidian` lo enseña (`enrutador/verbos.py`). Es mecánico sobre la plantilla del

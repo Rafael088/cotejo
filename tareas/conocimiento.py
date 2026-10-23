@@ -1,5 +1,6 @@
 """Los verbos sobre el almacén `.cotejo/` que no son de instalación (v1.2): `buscar`, `leer`,
-`proponer`, `anotar`, `bitacora`, `contexto`, `editar` y `resolver`. Mismo patrón que
+`proponer`, `anotar`, `bitacora`, `contexto`, `editar` y `resolver`. La arquitectura dibujable
+(v1.3.0) la entiende `tareas/arquitectura.py`; aquí solo se le pasan cuerpos y tareas. Mismo patrón que
 `conexion.anadir` y `temas.anadir`: un módulo que cuelga sus verbos del analizador de `cli.py`
 y nunca abre `.cotejo/` por su cuenta, solo por `tareas/almacen.py`.
 
@@ -18,7 +19,8 @@ import subprocess
 import unicodedata
 from pathlib import Path
 
-from . import almacen, configuracion, importar_obsidian, modelo, version as version_proyecto
+from . import (almacen, arquitectura, configuracion, importar_obsidian, modelo,
+               version as version_proyecto)
 from .cli import ESQUEMA, ErrorCLI, imprimir, nucleo
 
 
@@ -145,6 +147,14 @@ def cmd_leer(args):
         ruta = f"{almacen.CARPETA}/{tipo_recurso.carpeta}/{archivo}" if archivo else None
         existe = bool(archivo and (alm.base / tipo_recurso.carpeta / archivo).is_file())
         datos["recurso"] = {"ruta": ruta, "existe": existe}
+    elif entrada.tipo == "arquitectura":
+        analisis = arquitectura.analizar(entrada.cuerpo)
+        datos["formato"] = "piezas" if analisis.dibujable else "libre"
+        if analisis.dibujable:
+            datos["piezas"] = arquitectura.con_estado(analisis.piezas, _columnas_por_id(alm.raiz))
+            if analisis.errores:
+                datos["avisos"] = [{"nota": f"{almacen.CARPETA}/{entrada.ruta}", "motivo": e}
+                                   for e in analisis.errores]
     imprimir(datos)
     return 0
 
@@ -187,7 +197,7 @@ def _secciones_proyecto(cuerpo):
     return campos
 
 
-def _tareas_por_estado(raiz):
+def _tareas_por_estado(raiz, columnas=None):
     """Cuántas tareas hay en cada columna de `.cotejo/tareas.md`, sin pasar por la config.
 
     `contexto` habla de un repo (`--repo`, o la raíz git de aquí), no de la lista de repos que
@@ -195,15 +205,51 @@ def _tareas_por_estado(raiz):
     truco que usa `importar_obsidian._tarea_de_revision` para crear la tarea de revisión—, en
     vez de duplicar el parser de líneas `- [ ]` que ya tiene `fuentes/obsidian.py`.
     """
+    conteo = {clave: 0 for clave, _ in modelo.COLUMNAS}
+    for columna in (_columnas_por_id(raiz) if columnas is None else columnas).values():
+        conteo[columna] = conteo.get(columna, 0) + 1
+    return conteo
+
+
+def _columnas_por_id(raiz):
+    """{id: columna} de cada tarea de `.cotejo/tareas.md` (las hechas también). Las sin id
+    llevan una clave propia para seguir contando en `_tareas_por_estado`."""
     from .fuentes.repo import Repo
     fuente = Repo({"repos": [str(raiz)]})
     fuente.repos, fuente.raiz = [raiz], None
     proyectos = fuente.escanear(incluir_hechas=True)
-    conteo = {clave: 0 for clave, _ in modelo.COLUMNAS}
+    columnas = {}
     if proyectos:
-        for tarea in [*proyectos[0].tareas, *proyectos[0].hechas]:
-            conteo[tarea.columna] = conteo.get(tarea.columna, 0) + 1
-    return conteo
+        for numero, tarea in enumerate([*proyectos[0].tareas, *proyectos[0].hechas]):
+            columnas[modelo.id_actual(tarea.id) or f"#{numero}"] = tarea.columna
+    return columnas
+
+
+def piezas_del_repo(alm, columnas=None, avisos=None, entradas=None):
+    """Las piezas de todas las entradas `arquitectura` del almacén, con su estado (v1.3.0).
+
+    Es la API para quien dibuje el proyecto (la constelación, el mapa): una lista de dicts de
+    `arquitectura.con_estado`, cada uno con `entrada` (el id de la entrada que la define). Las
+    entradas de texto libre no aportan piezas. Una pieza con el mismo id que otra de una entrada
+    anterior (por ruta) se deja fuera con un aviso, igual que las filas mal escritas.
+    `entradas` evita releer el almacén si ya se leyó (se filtran las de arquitectura).
+    """
+    columnas = _columnas_por_id(alm.raiz) if columnas is None else columnas
+    if entradas is None:
+        entradas = alm.entradas("arquitectura", avisos)
+    piezas, vistas = [], set()
+    for entrada in (e for e in entradas if e.tipo == "arquitectura"):
+        analisis = arquitectura.analizar(entrada.cuerpo)
+        for error in analisis.errores:
+            almacen._avisar(avisos, entrada.ruta, error)
+        for pieza in arquitectura.con_estado(analisis.piezas, columnas):
+            if pieza["id"] in vistas:
+                almacen._avisar(avisos, entrada.ruta, f"la pieza «{pieza['nombre']}» ya está "
+                                                      "en otra entrada de arquitectura")
+                continue
+            vistas.add(pieza["id"])
+            piezas.append({**pieza, "entrada": entrada.id})
+    return piezas
 
 
 def _linea_vigente(entrada):
@@ -369,12 +415,14 @@ def cmd_contexto(args):
     decisiones, total_decisiones = _acotar_vigentes(decisiones_entradas, args.tope)
     problemas, total_problemas = _acotar_vigentes(problemas_entradas, args.tope)
 
+    columnas = _columnas_por_id(alm.raiz)
+    piezas = piezas_del_repo(alm, columnas, avisos, entradas)
     en_curso = version_proyecto.estado(alm.raiz)["en_curso"]
     datos = {
         "esquema": ESQUEMA,
         "proyecto": proyecto,
         "version": en_curso,
-        "tareas": _tareas_por_estado(alm.raiz),
+        "tareas": _tareas_por_estado(alm.raiz, columnas),
         "decisiones_vigentes": decisiones,
         "decisiones_propuestas": [e.id for e in decisiones_entradas if e.estado == "propuesta"],
         "decisiones_vigentes_total": total_decisiones,
@@ -383,6 +431,9 @@ def cmd_contexto(args):
         "problemas_abiertos_total": total_problemas,
         "temas": dict(sorted(temas.items(), key=lambda par: (-par[1], par[0]))),
     }
+    if piezas:  # una línea por capa; el detalle, con `leer <arq-id>`
+        datos["arquitectura"] = {"entradas": sorted({p["entrada"] for p in piezas}),
+                                 **arquitectura.resumen_por_capa(piezas)}
     pistas = []
     if total_decisiones > len(decisiones):
         pistas.append(f"hay {total_decisiones} decisiones vigentes (mostrando "
@@ -468,10 +519,48 @@ def cmd_anotar(args):
     titulo = " ".join(args.titulo.split())
     if not titulo:
         raise ErrorCLI("Una entrada necesita título", "Repite con --titulo.")
-    entrada = alm.crear(args.tipo, titulo, args.texto, temas=_temas_pedidos(args.temas))
-    imprimir({"esquema": ESQUEMA, "id": entrada.id, "ruta": entrada.ruta,
-             "version": entrada.version})
+    texto = args.texto or ""
+    analisis = None
+    if args.tipo == "arquitectura":
+        texto = _texto_con_piezas(texto, getattr(args, "pieza", None) or [])
+        analisis = _validar_piezas(texto)
+    entrada = alm.crear(args.tipo, titulo, texto, temas=_temas_pedidos(args.temas))
+    datos = {"esquema": ESQUEMA, "id": entrada.id, "ruta": entrada.ruta,
+             "version": entrada.version}
+    if analisis is not None and analisis.dibujable:
+        datos["piezas"] = len(analisis.piezas)
+    imprimir(datos)
     return 0
+
+
+def _texto_con_piezas(texto, crudas):
+    """El texto de una arquitectura con la tabla de `--pieza` al final, si se pasó alguna."""
+    if not crudas:
+        if not texto.strip():
+            raise ErrorCLI("Una arquitectura necesita texto o piezas",
+                           'Repite con --texto, o con --pieza "capa|nombre|frase|tecnología|'
+                           'tareas" una vez por pieza.')
+        return texto
+    if arquitectura.analizar(texto).dibujable:
+        raise ErrorCLI(f"El texto ya trae una sección «## {arquitectura.TITULO_SECCION}» y "
+                       "además pasaste --pieza", "Usa una de las dos, no las dos.")
+    try:
+        piezas = [arquitectura.pieza_de_texto(c) for c in crudas]
+    except ValueError as error:
+        raise ErrorCLI(f"--pieza: {error}", "Las capas son: " + ", ".join(arquitectura.CAPAS)
+                       + ". No se escribió nada.") from error
+    tabla = arquitectura.tabla(piezas)
+    return f"{texto.rstrip()}\n\n{tabla}" if texto.strip() else tabla
+
+
+def _validar_piezas(texto):
+    """El análisis de `texto`, o ErrorCLI con sus errores si su tabla de piezas tiene alguno."""
+    analisis = arquitectura.analizar(texto)
+    if analisis.errores:
+        raise ErrorCLI("La tabla de piezas tiene errores: " + "; ".join(analisis.errores),
+                       "Corrígelos y repite; cada fila es capa (" + "|".join(arquitectura.CAPAS)
+                       + "), pieza, qué es, tecnología y tareas. No se escribió nada.")
+    return analisis
 
 
 # --- bitacora --------------------------------------------------------------------------------
@@ -505,6 +594,8 @@ def cmd_editar(args):
     con el error, igual que `TareaCambiada` con las tareas.
     """
     alm = _abrir(args)
+    if almacen.Almacen._tipo_de_id(args.id.strip()) is almacen.TIPOS["arquitectura"]:
+        _validar_piezas(args.texto)
     try:
         actual = alm.reescribir(args.id, args.version, texto=args.texto)
     except almacen.EntradaNoExiste as error:
@@ -581,7 +672,7 @@ def anadir(sub):
         "buscar", help="Una línea por entrada (id, tipo, título, resumen); barato"))
     buscar.add_argument("--repo", metavar="CARPETA",
                         help="El repo donde buscar. Por defecto, su raíz git desde aquí")
-    buscar.add_argument("--tipo", choices=sorted(almacen.TIPOS), help="Tipo de entrada")
+    buscar.add_argument("--tipo", choices=sorted(almacen.TIPOS))
     buscar.add_argument("--temas", help="Coma-separados; las que tengan todos")
     buscar.add_argument("--estado", help="Estado de la entrada")
     buscar.add_argument("--desde", metavar="AAAA-MM-DD",
@@ -600,12 +691,11 @@ def anadir(sub):
 
     contexto = nucleo(sub.add_parser(
         "contexto", help="Objetivo, tareas por estado, decisiones vigentes, problemas "
-                         "abiertos y temas; <1k tokens"))
+                         "abiertos, temas y arquitectura; <1k tokens"))
     contexto.add_argument("--repo", metavar="CARPETA",
                           help="El repo del que enterarse. Por defecto, su raíz git desde aquí")
     contexto.add_argument("--tope", type=int, default=TOPE_VIGENTES,
-                          help="Máximo de decisiones y problemas, los más recientes; el resto, "
-                               "con `buscar`")
+                          help="Máximo de decisiones y problemas (los más recientes)")
     contexto.set_defaults(funcion=cmd_contexto)
 
     proponer = sub.add_parser(
@@ -631,10 +721,14 @@ def anadir(sub):
     for tipo in ("problema", "aprendizaje", "referencia", "arquitectura"):
         carpeta = almacen.TIPOS[tipo].carpeta
         accion = acciones_anotar.add_parser(
-            tipo, help=f"Una entrada «{tipo}» nueva, en {almacen.CARPETA}/{carpeta}/")
+            tipo, help=f"Una entrada nueva en {almacen.CARPETA}/{carpeta}/")
         accion.add_argument("--titulo", required=True)
         accion.add_argument("--temas", help="Coma-separados")
-        accion.add_argument("--texto", required=True)
+        accion.add_argument("--texto", required=tipo != "arquitectura")
+        if tipo == "arquitectura":
+            accion.add_argument(
+                "--pieza", action="append", metavar="CAPA|NOMBRE|FRASE|TECNOLOGIA|TAREAS",
+                help="capa|nombre|frase|tecnología|tareas")
         accion.add_argument("--repo", metavar="CARPETA",
                             help="El repo donde escribir. Por defecto, su raíz git desde aquí")
         accion.set_defaults(funcion=cmd_anotar, tipo=tipo)

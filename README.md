@@ -175,6 +175,7 @@ Los tres aceptan `--repo <carpeta>`; por defecto es la raíz git desde donde se 
 | --- | --- |
 | `cotejo proponer decision --titulo --temas --texto [--reemplaza <dec-id>] [--autor]` | Crea una decisión en `propuesta`. Con `--reemplaza`, al crearla deja la vieja en `reemplazada` |
 | `cotejo anotar <problema\|aprendizaje\|referencia\|arquitectura> --titulo --temas --texto` | Una entrada nueva de ese tipo, con su id |
+| `cotejo anotar arquitectura --titulo --pieza "capa\|nombre\|frase\|tecnología\|tareas"` | La arquitectura dibujable: una pieza por `--pieza`, en las capas `ve`, `hace`, `guarda` o `conecta`; `leer` le pone a cada una su estado según sus tareas |
 | `cotejo bitacora "texto"` | Añade al final del archivo del día; nunca reescribe |
 | `cotejo editar <id> --version <hash> --texto` | Cambia el texto de una arquitectura, una referencia o `proyecto.md`. Se niega si `--version` no coincide con la que tiene ahora, igual que `TareaCambiada` con las tareas |
 | `cotejo resolver <pro-id> --solucion "..."` | Problema `abierto` → `resuelto`, con la solución que lo cerró |
