@@ -10,8 +10,9 @@ qué se enseña y qué hace cada botón está en `tareas/revisar_plan.py`, sin G
 - **Cambiar** abre un campo para el motivo, que es obligatorio (el botón no se activa vacío):
   la decisión queda `rechazada` y el agente se relanza con ese motivo
   (`enrutador.preparar.rehacer`); la pantalla vuelve a Preparando.
-- **Empezar la 0.1.0** reparte como `cotejo plan` (asigna, no lanza) y abre el proyecto
-  (`abrir_proyecto`, el enganche del mapa de p86sa9).
+- **Empezar la 0.1.0** reparte como `cotejo plan` (asigna, no lanza) y abre el mapa del
+  proyecto (`abrir_proyecto`, cotejo-p86sa9); **Ver el mapa del proyecto** lo abre sin repartir.
+  Las dos pasan la carpeta: un proyecto recién preparado vive en la fuente repo, no en la activa.
 """
 
 from gi.repository import GLib, Gtk
@@ -138,9 +139,10 @@ class PantallaRevisarPlan(Gtk.ScrolledWindow):
 
         pie = Gtk.Box(spacing=ESPACIADO_SM, halign=Gtk.Align.END)
         self.boton_inicio = con_mano(Gtk.Button(label="Volver al Inicio"))
+        self.ver_mapa = con_mano(Gtk.Button(label="Ver el mapa del proyecto"))
         self.empezar = con_mano(Gtk.Button(label="Empezar la 0.1.0",
                                            css_classes=["suggested-action"]))
-        for b in (self.boton_inicio, self.empezar):
+        for b in (self.boton_inicio, self.ver_mapa, self.empezar):
             etiquetar(b, b.get_label())
             pie.append(b)
         cuerpo.append(pie)
@@ -200,7 +202,13 @@ class PestanaRevisarPlan:
         p = self.pantalla_plan
         p.boton_inicio.connect("clicked", lambda *_: self.ver_pestana("inicio"))
         p.empezar.connect("clicked", lambda *_: self.empezar_version())
+        p.ver_mapa.connect("clicked", lambda *_: self.mapa_del_plan())
         return p
+
+    def mapa_del_plan(self):
+        """El mapa del proyecto del plan, con su carpeta (vive en la fuente repo)."""
+        estado = self.plan_estado or {}
+        self.abrir_proyecto(estado.get("proyecto", ""), estado.get("carpeta") or None)
 
     def revisar_plan(self, estado):
         """«Revisar el plan» (desde Preparando): la pantalla con el plan de ese proyecto."""
@@ -247,7 +255,7 @@ class PestanaRevisarPlan:
         self.mostrar_preparando(estado)
 
     def empezar_version(self):
-        """«Empezar la 0.1.0»: reparte como `cotejo plan` y abre el proyecto en el tablero."""
+        """«Empezar la 0.1.0»: reparte como `cotejo plan` y abre el mapa del proyecto."""
         from .. import cli
         try:
             asignadas = revisar_plan.empezar(self.plan_estado)
@@ -258,4 +266,4 @@ class PestanaRevisarPlan:
             self.aviso(f"{len(asignadas)} tareas repartidas; nada se lanzó todavía"
                        if len(asignadas) != 1 else "1 tarea repartida; nada se lanzó todavía")
         self.app.refrescar()
-        self.abrir_proyecto(self.plan_estado.get("proyecto", ""))
+        self.mapa_del_plan()

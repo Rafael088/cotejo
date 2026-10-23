@@ -2,8 +2,8 @@
 
 Prueba de humo con GTK y pantalla (sin ellas se salta), sobre un vault de mentira: el board
 abre en Inicio con el titular y una tarjeta por proyecto; «Nuevo proyecto» de momento avisa;
-una tarjeta lleva al tablero con su proyecto elegido; y sin de dónde leer abre en el tablero,
-donde está la explicación del primer arranque. La lógica de lo que se enseña se prueba sin
+una tarjeta lleva al mapa y de ahí al tablero con su proyecto elegido; y sin de dónde leer
+abre en el tablero, donde está la explicación del primer arranque. La lógica de lo que se enseña se prueba sin
 GTK en `test_resumen_inicio.py`.
 """
 
@@ -61,6 +61,7 @@ class PestanaInicio(unittest.TestCase):
             entorno["COTEJO_VAULT"] = str(raiz / "vault")
         else:
             entorno["COTEJO_FUENTE"] = "repo"   # una fuente de repos sin ninguno: primer arranque
+        entorno.update(self.entorno_extra(raiz))
         parche = mock.patch.dict(os.environ)
         parche.start()
         self.addCleanup(parche.stop)
@@ -86,6 +87,10 @@ class PestanaInicio(unittest.TestCase):
         self.app.abrir_board()
         self.board = self.app.board
         girar()
+
+    def entorno_extra(self, raiz):
+        """Lo que una subclase añade al entorno antes de abrir el board (p. ej. sus repos)."""
+        return {}
 
     def cerrar(self):
         for monitor in self.app.monitores:
@@ -247,9 +252,13 @@ class ConProyectos(PestanaInicio):
         aviso.assert_called_once_with("No encontré «claude»")
         self.assertEqual(b.pestana_actual(), "entrevista")
 
-    def test_una_tarjeta_lleva_al_tablero_con_su_proyecto(self):
+    def test_una_tarjeta_lleva_al_mapa_y_de_ahi_al_tablero_con_su_proyecto(self):
         b = self.board
         b.abrir_proyecto("Horizonte")
+        girar()
+        self.assertEqual(b.pestana_actual(), "mapa")   # sin arquitectura: el mapa lo dice
+        self.assertTrue(b.pantalla_mapa.vacio.get_visible())
+        b.pantalla_mapa.boton_tablero.emit("clicked")
         girar()
         self.assertEqual(b.pestana_actual(), pestana_inicio.TABLERO)
         self.assertEqual(b.seleccion, "Horizonte")

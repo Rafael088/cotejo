@@ -20,6 +20,7 @@ from .columnas import Columnas
 from .decisiones import Decisiones
 from .detalle import Detalle
 from .maestro import Maestro
+from .mapa import PestanaMapa
 from .movimientos import Movimientos
 from .entrevista import PestanaEntrevista
 from .pestana_inicio import PestanaInicio
@@ -31,8 +32,8 @@ from .vista_resumen import Resumen
 from .vista_revision import Revision
 
 
-class Board(PestanaInicio, PestanaEntrevista, PestanaPreparando, PestanaRevisarPlan, Maestro,
-            Columnas, Banda, Pie, Cartas, Detalle, Decisiones, Revision, Resumen, Teclado,
+class Board(PestanaInicio, PestanaEntrevista, PestanaPreparando, PestanaRevisarPlan, PestanaMapa,
+            Maestro, Columnas, Banda, Pie, Cartas, Detalle, Decisiones, Revision, Resumen, Teclado,
             Movimientos, CapaDot, Adw.ApplicationWindow):
     """Las tareas en sus cuatro estados, un proyecto a la vez.
 
@@ -342,6 +343,7 @@ class Board(PestanaInicio, PestanaEntrevista, PestanaPreparando, PestanaRevisarP
         self.pintar_ahorro()
         self.inicio_al_dia = False
         self.pintar_inicio()
+        self.repintar_mapa_si_se_ve()
 
     def poner_subtitulo(self, proyectos, todos):
         esperando = sum(1 for p in proyectos for t in p.tareas if t.estado == "por-validar")

@@ -146,7 +146,7 @@ class RevisarPlan(base.PestanaInicio):
                 mock.patch.object(b, "abrir_proyecto") as abrir:
             p.empezar.emit("clicked")
         lanzar.assert_not_called()
-        abrir.assert_called_once_with("turnos")
+        abrir.assert_called_once_with("turnos", str(self.carpeta))
         texto = (self.carpeta / ".cotejo" / "tareas.md").read_text(encoding="utf-8")
         self.assertIn("libres #v0.1.0 #agente/sonnet ^cotejo-aaa111", texto)
         self.assertIn("#dificil #agente/opus ^cotejo-ccc333", texto)

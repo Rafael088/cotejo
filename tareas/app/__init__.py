@@ -12,7 +12,8 @@ clase con los métodos de una parte (la banda, las columnas, la revisión…) qu
 - Una mezcla por parte: `banda`, `columnas`, `cartas`, `detalle`, `decisiones`,
   `vista_revision`, `teclado`, `movimientos`, `maestro`, `pie`, `capa_dot`, y
   `pestana_inicio` (las pestañas Inicio | Tablero y lo que se pinta en Inicio), y las
-  páginas del inicio sin botón en el selector: `entrevista`, `preparando` y `revisar_plan`.
+  páginas del inicio sin botón en el selector: `entrevista`, `preparando`, `revisar_plan` y
+  `mapa` (el mapa del proyecto, al que lleva `abrir_proyecto`).
 - `constelacion.py`: el widget de la constelación de proyectos del Inicio (no es una mezcla).
 - `aplicacion.py`: `App` y `main`.
 
