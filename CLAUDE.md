@@ -160,6 +160,14 @@ lanzador `cotejo` de `enrutador/mismo_cotejo.py` (en `<estado>/agente/bin`, rees
 lanzamiento): corre `sys.executable` con el paquete de este mismo proceso, así el agente usa el
 Cotejo del board y no otro instalado (el publicado mientras se prueba con `cotejo-dev`). Si el
 otro es de otra versión, queda en `otro_cotejo` del registro y Preparando lo dice en llano.
+Sin nadie delante cada cliente se niega a escribir fuera de donde arrancó, así que el agente
+recibe permiso solo para `preparar.carpetas_de_escritura` (la carpeta del proyecto —o la de
+arriba si aún no existe— y su `.git`, la de la config de Cotejo y la de estado), cada uno a su
+manera (`clientes.Cliente.permisos`, cotejo-p0fybl): Codex `exec --sandbox workspace-write
+--skip-git-repo-check --add-dir …`; OpenCode `permission.external_directory` por
+`OPENCODE_CONFIG_CONTENT`; Gemini `GEMINI_CLI_TRUST_WORKSPACE` y `--allowed-tools
+run_shell_command(cotejo)`; Claude nada más que su `Bash(cotejo:*)`, con un `--` antes del prompt
+porque `--allowedTools` se come lo que venga detrás.
 
 `tareas/revisar_plan.py` es «Revisar el plan» (v1.3.0, cotejo-m195bn), sin GTK; la pinta
 `tareas/app/revisar_plan.py`, una página más de la pila (`"plan"`) a la que lleva el botón de

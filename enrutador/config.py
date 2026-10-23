@@ -70,11 +70,13 @@ DEFECTOS = {
     "maestro": {"terminal": None, "modelos": {"claude": "opus"}},
     # Preparar un proyecto nuevo en segundo plano (`enrutador/preparar.py`, v1.3.0). Corre con
     # los ajustes de `motores.headless` y además con estos argumentos por cliente: Claude sin
-    # interfaz no puede pedir permiso, así que se le da solo el de correr `cotejo`. Pasados
+    # interfaz no puede pedir permiso, así que se le da solo el de correr `cotejo` (y lo mismo a
+    # Gemini, que sin interfaz niega todo comando que pediría confirmación). Pasados
     # `minutos_sin_actividad` sin que nada se mueva en `.cotejo/` del proyecto, cuenta como
     # colgado y la pantalla ofrece reintentar o abrirlo en una terminal.
     "preparar": {"minutos_sin_actividad": 10,
-                 "argumentos_extra": {"claude": ["--allowedTools", "Bash(cotejo:*)"]}},
+                 "argumentos_extra": {"claude": ["--allowedTools", "Bash(cotejo:*)"],
+                                      "gemini": ["--allowed-tools", "run_shell_command(cotejo)"]}},
     # Dónde corre el agente para cada proyecto de Cotejo. Sin entrada, corre donde estés.
     "proyectos": {},
     # Un worktree por despacho (`tareas/worktrees.py`): si la tarea es de un repo de git,

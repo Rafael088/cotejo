@@ -32,8 +32,18 @@ publicado mientras se prueba el board del repo, o uno viejo), el agente ya no ll
 podía no tener los verbos del prompt ni escribir los pasos donde los lee Preparando. Se calcula
 al lanzar cada vez (`lanzar`, `reintentar`, `rehacer`, `abrir_en_terminal`), no se guarda en el
 registro. Si el otro es de otra versión, queda en `otro_cotejo` y Preparando lo dice en llano.
+
+**Dónde puede escribir** (`carpetas_de_escritura`, cotejo-p0fybl). Sin nadie delante, cada
+cliente se niega a su manera a escribir fuera de donde arrancó: `codex exec` corre en solo
+lectura y `init` fallaba con `Errno 30`; OpenCode rechaza `external_directory`. Se le da permiso
+solo para lo que tocan los verbos del prompt: la carpeta del proyecto (o la primera de arriba
+que exista, donde `init` la crea) y su `.git`, la carpeta de la config de Cotejo (donde `init`
+registra el repo) y la de estado (bitácora, ahorro, el lanzador). Cómo se pide en cada cliente
+es de `clientes.Cliente.permisos`: banderas en el argv (Codex) o variables en el entorno, que se
+calculan al lanzar, como el PATH.
 """
 
+import os
 import shutil
 import subprocess
 import threading
@@ -67,13 +77,16 @@ def _propios(config, cliente):
         (headless.get("clientes") or {}).get(cliente.nombre) or {})
 
 
-def comando(config, cliente, modelo, prompt):
+def comando(config, cliente, modelo, prompt, carpeta=None):
     """El argv sin interfaz, como lo arma el motor `headless` para ese cliente, más los
-    `preparar.argumentos_extra.<cliente>` (el permiso de usar `cotejo`, en Claude)."""
+    `preparar.argumentos_extra.<cliente>` (el permiso de usar `cotejo`, en Claude y Gemini) y,
+    con `carpeta`, las banderas que le dejan escribir donde hace falta (`carpetas_de_escritura`)."""
     propios = _propios(config, cliente)
     extra = (list(propios.get("argumentos_extra") or ()) +
              list(((config.get("preparar") or {}).get("argumentos_extra") or {})
                   .get(cliente.nombre) or ()))
+    if carpeta:
+        extra += cliente.permisos(carpetas_de_escritura(carpeta))[0]
     return cliente.argv_sin_interfaz(cliente.modelo_de(modelo, ""), prompt,
                                      comando=propios.get("comando"), extra=extra)
 
@@ -85,6 +98,32 @@ def _donde(carpeta):
     while not ruta.is_dir() and ruta.parent != ruta:
         ruta = ruta.parent
     return ruta
+
+
+def carpetas_de_escritura(carpeta):
+    """Las carpetas donde el agente de preparar tiene que poder escribir, y ninguna más.
+
+    - Donde arranca (`_donde`): la del proyecto, o la primera de arriba que exista si aún no
+      existe —crear una carpeta es escribir en la de arriba—.
+    - El `.git` del proyecto si ya lo tiene: `init` hace ahí el commit inicial, y el sandbox de
+      Codex protege los `.git` de las carpetas que se le añaden.
+    - La carpeta de la config de Cotejo (la de `configuracion.ruta()`, que `COTEJO_CONFIG` puede
+      mover): `init` registra ahí el repo. Se crea si no está, porque es de Cotejo y un permiso
+      sobre una carpeta que no existe no sirve para nada.
+    - La de estado (`rutas.estado()`): bitácora, ahorro, preparaciones y el lanzador.
+    """
+    from tareas import configuracion, rutas
+    proyecto = Path(carpeta)
+    lista = [_donde(proyecto)]
+    if (proyecto / ".git").is_dir():
+        lista.append(proyecto / ".git")
+    config = Path(configuracion.ruta()).expanduser().parent
+    try:
+        config.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass  # sin ella, `init` dirá por qué; no es esto lo que tiene que fallar
+    lista += [config, rutas.estado()]
+    return [str(Path(os.path.abspath(c))) for c in dict.fromkeys(str(c) for c in lista)]
 
 
 def avisar_a_la_barra(_estado=None):
@@ -108,7 +147,7 @@ def lanzar(respuestas, cliente=None, modelo=None, al_terminar=None, config=None)
     if modelo is None:
         modelo = ((config.get("maestro") or {}).get("modelos") or {}).get(elegido.nombre, "")
     prompt = inicio.armar(r)
-    argv = comando(config, elegido, modelo, prompt)
+    argv = comando(config, elegido, modelo, prompt, carpeta=r.carpeta)
     if shutil.which(argv[0]) is None:
         raise NoSePuede(f"No encontré «{argv[0]}» en esta máquina, y es el cliente que elegiste "
                         f"({elegido.titulo or elegido.nombre}). Instálalo o elige otro.")
@@ -132,10 +171,16 @@ def _otro_cotejo():
 
 
 def entorno_del_agente(registro):
-    """Lo que se añade al entorno del agente: el del registro (`inicio.ENTORNO`) y el PATH
+    """Lo que se añade al entorno del agente: el del registro (`inicio.ENTORNO`), lo que su
+    cliente necesita para escribir donde hace falta (`clientes.Cliente.permisos`) y el PATH
     con el mismo `cotejo` que el board primero."""
+    extra = dict(registro.get("entorno") or {})
+    nombre = registro.get("cliente")
+    if nombre in clientes.CLIENTES and registro.get("carpeta"):
+        extra.update(clientes.de(nombre).permisos(
+            carpetas_de_escritura(registro["carpeta"]))[1])
     try:
-        return mismo_cotejo.entorno(registro.get("entorno"))
+        return mismo_cotejo.entorno(extra)
     except OSError as error:
         raise NoSePuede(f"No pude preparar el Cotejo que usará tu agente: {error}") from error
 
@@ -191,10 +236,19 @@ def _parar(registro):
 
 
 def reintentar(ident, al_terminar=None, config=None):
-    """Para el proceso si sigue vivo y lanza otra vez el mismo comando, con el mismo id."""
+    """Para el proceso si sigue vivo y lanza otra vez el mismo comando, con el mismo id.
+
+    El mismo cliente, modelo y prompt; el argv se rearma solo para poner al día dónde puede
+    escribir (`carpetas_de_escritura`): el primer intento pudo dejar creada la carpeta y su
+    `.git`, que entonces no existían."""
+    config = config if config is not None else cfg.cargar()
     registro = _leer(ident)
     _parar(registro)
-    return _arrancar(registro, config if config is not None else cfg.cargar(), al_terminar)
+    if registro.get("cliente") in clientes.CLIENTES and registro.get("prompt"):
+        registro["comando"] = comando(config, clientes.de(registro["cliente"]),
+                                      registro.get("modelo") or "", registro["prompt"],
+                                      carpeta=registro["carpeta"])
+    return _arrancar(registro, config, al_terminar)
 
 
 def rehacer(ident, prompt, al_terminar=None, config=None, motivo=""):
@@ -209,7 +263,8 @@ def rehacer(ident, prompt, al_terminar=None, config=None, motivo=""):
     config = config if config is not None else cfg.cargar()
     registro = _leer(ident)
     elegido = _cliente(registro.get("cliente"))
-    argv = comando(config, elegido, registro.get("modelo") or "", prompt)
+    argv = comando(config, elegido, registro.get("modelo") or "", prompt,
+                   carpeta=registro["carpeta"])
     if shutil.which(argv[0]) is None:
         raise NoSePuede(f"No encontré «{argv[0]}» en esta máquina, y es el cliente que elegiste "
                         f"({elegido.titulo or elegido.nombre}). Instálalo o elige otro.")
@@ -228,10 +283,12 @@ def abrir_en_terminal(ident, config=None, simular=False):
     config = config if config is not None else cfg.cargar()
     registro = _leer(ident)
     elegido = _cliente(registro.get("cliente"))
+    permisos = elegido.permisos(carpetas_de_escritura(registro["carpeta"]), interactivo=True)[0]
     argv = (list((config.get("maestro") or {}).get("terminal") or ()) +
             elegido.argv_interactivo(registro["prompt"],
                                      elegido.modelo_de(registro.get("modelo") or "", ""),
-                                     comando=_propios(config, elegido).get("comando")))
+                                     comando=_propios(config, elegido).get("comando"),
+                                     extra=permisos))
     directorio = _donde(registro["carpeta"])
     salida = {"id": ident, "comando": argv, "directorio": str(directorio), "abierto": False}
     if simular:
@@ -262,4 +319,4 @@ def estado(ident):
 
 
 __all__ = ["NoSePuede", "lanzar", "reintentar", "rehacer", "abrir_en_terminal", "descartar",
-           "estados", "estado", "comando", "vigilar"]
+           "estados", "estado", "comando", "carpetas_de_escritura", "vigilar"]

@@ -362,11 +362,14 @@ class Comando(unittest.TestCase):
         config = cfg._fundir(json.loads(json.dumps(cfg.DEFECTOS)), {})
         claude = preparar.comando(config, clientes.de("claude"), "opus", "P")
         self.assertEqual(claude, ["claude", "-p", "--model", "opus", "--allowedTools",
-                                  "Bash(cotejo:*)", "P"])
+                                  "Bash(cotejo:*)", "--", "P"])
         self.assertEqual(preparar.comando(config, clientes.de("codex"), "", "P"),
                          ["codex", "exec", "P"])
+        # Gemini sin interfaz niega todo comando que pediría confirmación: como a Claude, se le
+        # da solo el de correr `cotejo` (cotejo-p0fybl).
         self.assertEqual(preparar.comando(config, clientes.de("gemini"), "g-2", "P"),
-                         ["gemini", "-m", "g-2", "-p", "P"])
+                         ["gemini", "-m", "g-2", "--allowed-tools", "run_shell_command(cotejo)",
+                          "-p", "P"])
 
     def test_sin_modelo_no_hay_bandera_vacia(self):
         self.assertEqual(clientes.de("opencode").argv_sin_interfaz("", "P"),
