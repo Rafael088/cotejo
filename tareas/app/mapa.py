@@ -103,9 +103,11 @@ class PantallaMapa(Gtk.ScrolledWindow):
             self.ficha.append(w)
         cuerpo.append(self.ficha)
 
-        self.avisos = Gtk.Label(xalign=0, wrap=True, visible=False,
-                                css_classes=["preparando-error"])
-        cuerpo.append(self.avisos)
+        # Los avisos son para quien programa: plegados, sin color de error en el mapa.
+        self.avisos = Gtk.Label(xalign=0, wrap=True, selectable=True, css_classes=["dato"])
+        self.avisos_plegable = Gtk.Expander(label="Si programas", visible=False,
+                                            child=self.avisos)
+        cuerpo.append(self.avisos_plegable)
         cuerpo.append(leyenda(colores))
 
         self.set_child(Adw.Clamp(child=cuerpo, maximum_size=ANCHO_MAPA,
@@ -129,7 +131,8 @@ class PantallaMapa(Gtk.ScrolledWindow):
         self.avisos.set_label("\n".join(a if isinstance(a, str) else
                                         f"{a.get('nota', '')}: {a.get('motivo', '')}"
                                         for a in mapa.avisos))
-        self.avisos.set_visible(bool(mapa.avisos))
+        self.avisos_plegable.set_visible(bool(mapa.avisos))
+        self.avisos_plegable.set_expanded(False)
         anterior = self.ficha_actual.id if self.ficha_actual else None
         elegida = mapa.pieza(anterior) if anterior else None
         elegida = elegida or mapa.primera()

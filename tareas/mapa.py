@@ -213,5 +213,6 @@ def leer(nombre, carpeta, proyecto=None):
         avisos.append("Este repo todavía no tiene .cotejo/: no hay arquitectura que dibujar.")
         return armar(nombre, [], tareas, carpeta=carpeta, avisos=avisos)
     version = versiones.estado(carpeta).get("en_curso") or ""
-    piezas = conocimiento.piezas_del_repo(alm, columnas=columnas_de(tareas), avisos=avisos)
+    piezas = conocimiento.piezas_del_repo(alm, columnas=columnas_de(tareas), avisos=avisos,
+                                          textos={i: t["texto"] for i, t in tareas.items()})
     return armar(nombre, piezas, tareas, version=version, carpeta=carpeta, avisos=avisos)

@@ -20,6 +20,11 @@ class PromptDeInicio(unittest.TestCase):
     def test_determinista(self):
         self.assertEqual(armar(base()), armar(base()))
 
+    def test_la_columna_de_tareas_de_las_piezas_va_vacia_hasta_tener_ids(self):
+        texto = armar(base())
+        self.assertIn("Deja VACÍA la última columna (tareas)", texto)
+        self.assertIn("solo ids reales", texto)
+
     def test_los_cinco_pasos_en_orden_con_sus_verbos(self):
         self.assertEqual([p.verbo for p in PASOS],
                          ["init", "editar", "proponer", "anotar", "crear"])

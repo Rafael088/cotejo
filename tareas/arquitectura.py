@@ -16,7 +16,9 @@ Una entrada `arquitectura` del almacén puede llevar, además de su texto, una s
   el nombre hecho slug y no se repite dentro del proyecto.
 - **Qué es**: una frase en llano (≤ `LARGO_FRASE`), para alguien que no programa.
 - **Tecnología**: puede ir vacía (un proyecto que empieza aún no la sabe).
-- **Tareas**: ids de tareas separados por comas o espacios; puede ir vacía.
+- **Tareas**: ids de tareas separados por comas o espacios; puede ir vacía. Un texto que no es
+  un id («Crear el login») **no es error**: si coincide con el nombre de una tarea existente
+  se enlaza (`con_estado(..., textos_por_id)`) y si no se ignora sin avisar.
 
 Sin la sección, la entrada es texto libre, como antes de la 1.3.0, y se sigue leyendo igual:
 `analizar` dice `dibujable=False` y no hay nada que validar.
@@ -51,6 +53,7 @@ _SECCION_RE = re.compile(r"^#{2,3}\s+(.+?)\s*#*\s*$")
 _FILA_RE = re.compile(r"^\s*\|")
 _SEPARADOR_RE = re.compile(r"^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$")
 _TAREA_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]*$")
+_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9]*-[A-Za-z0-9][A-Za-z0-9-]*$")  # como cotejo-ab12cd
 _PREFIJO_VIEJO, _PREFIJO = "foco-", "cotejo-"  # como `modelo.id_actual`, sin importar el modelo
 
 
@@ -64,10 +67,12 @@ class Pieza:
     frase: str
     tecnologia: str = ""
     tareas: tuple = ()
+    textos: tuple = ()   # fragmentos de la celda de tareas que no son ids (texto libre)
 
     def como_dict(self):
         return {"id": self.id, "capa": self.capa, "nombre": self.nombre, "frase": self.frase,
-                "tecnologia": self.tecnologia, "tareas": list(self.tareas)}
+                "tecnologia": self.tecnologia, "tareas": list(self.tareas),
+                "textos": list(self.textos)}
 
 
 @dataclass(frozen=True)
@@ -129,7 +134,8 @@ def tabla(piezas):
     lineas = [f"## {TITULO_SECCION}", "", "| " + " | ".join(CABECERA) + " |",
               "| " + " | ".join("---" for _ in CABECERA) + " |"]
     for p in piezas:
-        celdas = (p.capa, p.nombre, p.frase, p.tecnologia, ", ".join(p.tareas))
+        celdas = (p.capa, p.nombre, p.frase, p.tecnologia,
+                  ", ".join([*p.tareas, *p.textos]))
         lineas.append("| " + " | ".join(_escapar(c) for c in celdas) + " |")
     return "\n".join(lineas) + "\n"
 
@@ -150,11 +156,38 @@ def estado_pieza(columnas):
     return "falta"
 
 
-def con_estado(piezas, columnas_por_id):
+def tarea_por_texto(texto, textos_por_id):
+    """El id de la tarea cuyo nombre coincide con `texto`, o None. Coincide si es igual o uno
+    contiene al otro (mínimo 4 letras); si hay varias, solo vale la igual o la única."""
+    buscado = _plano(texto)
+    if len(buscado) < 4:
+        return None
+    iguales, parecidas = [], []
+    for ident, nombre in (textos_por_id or {}).items():
+        plano = _plano(nombre)
+        if plano == buscado:
+            iguales.append(ident)
+        elif len(plano) >= 4 and (buscado in plano or plano in buscado):
+            parecidas.append(ident)
+    if iguales:
+        return iguales[0]
+    return parecidas[0] if len(parecidas) == 1 else None
+
+
+def con_estado(piezas, columnas_por_id, textos_por_id=None):
     """Cada pieza como dict, con `estado`, `total` (tareas que existen), `cuenta` por columna y
-    `desconocidas` (ids que no son de ninguna tarea; no cuentan para el estado)."""
+    `desconocidas` (ids que no son de ninguna tarea; no cuentan para el estado). El texto libre
+    de la celda de tareas se enlaza por nombre con `textos_por_id` ({id: texto}) o se ignora."""
     resultado = []
     for pieza in piezas:
+        enlazadas = []
+        for texto in pieza.textos:
+            ident = tarea_por_texto(texto, textos_por_id)
+            if ident and ident in columnas_por_id and ident not in pieza.tareas \
+                    and ident not in enlazadas:
+                enlazadas.append(ident)
+        pieza = Pieza(**{**pieza.__dict__, "tareas": (*pieza.tareas, *enlazadas)}) \
+            if enlazadas else pieza
         columnas = [columnas_por_id[t] for t in pieza.tareas if t in columnas_por_id]
         cuenta = {}
         for columna in columnas:
@@ -220,22 +253,26 @@ def _pieza(celdas):
         raise ValueError(f"«{nombre}» no tiene la frase en llano de qué es")
     if len(frase) > LARGO_FRASE:
         raise ValueError(f"la frase de «{nombre}» pasa de {LARGO_FRASE} caracteres")
-    ids = []
-    for crudo in re.split(r"[,\s]+", tareas):
-        tarea = crudo.strip().lstrip("^")
-        if not tarea:
+    ids, textos = [], []
+    for fragmento in re.split(r"[,;]", tareas):
+        fragmento = fragmento.strip()
+        palabras = [w.lstrip("^") for w in fragmento.split()]
+        if not palabras:
             continue
-        if not _TAREA_RE.match(tarea):
-            raise ValueError(f"«{crudo}» no es un id de tarea (como cotejo-ab12cd)")
-        if tarea.startswith(_PREFIJO_VIEJO):
-            tarea = _PREFIJO + tarea[len(_PREFIJO_VIEJO):]
-        if tarea not in ids:
-            ids.append(tarea)
+        if not all(_ID_RE.match(w) for w in palabras):
+            if fragmento not in textos:
+                textos.append(fragmento)   # texto libre: no es un error
+            continue
+        for tarea in palabras:
+            if tarea.startswith(_PREFIJO_VIEJO):
+                tarea = _PREFIJO + tarea[len(_PREFIJO_VIEJO):]
+            if tarea not in ids:
+                ids.append(tarea)
     pieza_id = _slug(nombre)
     if not pieza_id:
         raise ValueError(f"el nombre «{nombre}» no deja un id (usa letras o números)")
     return Pieza(id=pieza_id, capa=capa_normal, nombre=nombre, frase=frase,
-                 tecnologia=tecnologia, tareas=tuple(ids))
+                 tecnologia=tecnologia, tareas=tuple(ids), textos=tuple(textos))
 
 
 def _celdas(fila):
@@ -263,6 +300,11 @@ def _escapar(texto):
 def _normal(texto):
     plano = unicodedata.normalize("NFKD", str(texto))
     return "".join(c for c in plano if not unicodedata.combining(c)).strip().lower()
+
+
+def _plano(texto):
+    """Minúsculas, sin tildes ni signos, para comparar un texto con el nombre de una tarea."""
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", _normal(texto)).split())
 
 
 def _slug(texto):

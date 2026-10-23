@@ -62,6 +62,25 @@ class MapaDelProyecto(base.PestanaInicio):
         for nombre in c.NOMBRES.values():
             self.assertIn(nombre, todo)
 
+    def test_los_avisos_van_plegados_en_si_programas(self):
+        b, p = self.board, self.mapa()
+        b.abrir_proyecto("barberia")
+        base.girar()
+        pintado = pantalla.m.armar("barberia", [], avisos=[
+            "Este repo todavía no tiene .cotejo/",
+            {"nota": ".cotejo/arquitectura/x.md", "motivo": "pieza 1: la capa «x» no es válida"}])
+        p.pintar(pintado)
+        base.girar()
+        self.assertTrue(p.avisos_plegable.get_visible())
+        self.assertEqual(p.avisos_plegable.get_label(), "Si programas")
+        self.assertFalse(p.avisos_plegable.get_expanded())
+        # Fuera del plegable no hay ni rastro técnico.
+        visibles = [t for t in base.textos(p) if t not in base.textos(p.avisos)]
+        for tecnico in ("cotejo/", ".md", "capa", "pieza 1"):
+            self.assertFalse(any(tecnico in t for t in visibles), tecnico)
+        p.pintar(pantalla.m.armar("barberia", []))
+        self.assertFalse(p.avisos_plegable.get_visible())
+
     def test_desde_la_tarjeta_del_inicio(self):
         b = self.board
         self.assertEqual(b.pestana_actual(), "inicio")
