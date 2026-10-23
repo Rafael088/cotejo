@@ -225,10 +225,6 @@ list.columna, list.columna > row { background: transparent; }
 .vacio.roto { background: var(--k-ambar-velo); border-radius: 10px; padding: var(--k-espacio-md); }
 .vacio.roto .vacio-icono, .vacio.roto .vacio-titulo { color: var(--k-ambar); }
 .vacio.roto .vacio-pista { opacity: 1; }
-/* El comando que se copia: mono sobre la superficie alta, con su botón dentro de la misma caja. */
-.comando-copiable { background: var(--k-superficie-alta); border: 1px solid var(--k-borde);
-                    border-radius: 8px; padding: var(--k-espacio-xs) var(--k-espacio-xs) var(--k-espacio-xs) var(--k-espacio-sm); }
-.comando-texto { font-family: "IBM Plex Mono"; font-size: var(--k-dato); color: var(--k-texto); }
 /* Lo que te espera en ese proyecto: el número en verde y en negrita, sin pastilla. Es el único
    verde de la banda, y se lee igual en el chip abierto que en los demás. */
 .aviso-chip { color: var(--k-senal); font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta);

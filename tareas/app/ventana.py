@@ -23,6 +23,7 @@ from .maestro import Maestro
 from .mapa import PestanaMapa
 from .movimientos import Movimientos
 from .entrevista import PestanaEntrevista
+from .equipo import PestanaEquipo
 from .pestana_inicio import PestanaInicio
 from .preparando import PestanaPreparando
 from .revisar_plan import PestanaRevisarPlan
@@ -32,7 +33,7 @@ from .vista_resumen import Resumen
 from .vista_revision import Revision
 
 
-class Board(PestanaInicio, PestanaEntrevista, PestanaPreparando, PestanaRevisarPlan, PestanaMapa,
+class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, PestanaRevisarPlan, PestanaMapa,
             Maestro, Columnas, Banda, Pie, Cartas, Detalle, Decisiones, Revision, Resumen, Teclado,
             Movimientos, CapaDot, Adw.ApplicationWindow):
     """Las tareas en sus cuatro estados, un proyecto a la vez.
