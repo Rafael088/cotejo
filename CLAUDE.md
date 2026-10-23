@@ -160,7 +160,7 @@ sea un verbo de la CLI no es una tool. Su única bandera, `--perfil nucleo|compl
   arbitraria: apuntar trabajo no afirma que esté hecho. Crear un **proyecto** tampoco está, y
   por otra razón: es una nota nueva en el segundo cerebro, no una tarea. Ni se crea en una
   carpeta suelta (Inbox, Diario): no tiene nota principal y habría que inventarse dónde cae.
-  El inicio del board (dec-hgq7, a la espera de aceptación) tampoco añade un verbo: crea el
+  El inicio del board (dec-hgq7, aceptada el 2026-10-22) tampoco añade un verbo: crea el
   proyecto llamando a `init`, con un formulario sin IA y el agente lanzado por detrás.
 - **Todo lo que escriba en el vault pasa por `fuentes/obsidian.py`.** Verifica que la línea siga
   igual que cuando se leyó y reemplaza el archivo de forma atómica. Editar el Markdown con `sed`
