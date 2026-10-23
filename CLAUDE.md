@@ -129,6 +129,8 @@ sea un verbo de la CLI no es una tool. Su única bandera, `--perfil nucleo|compl
   arbitraria: apuntar trabajo no afirma que esté hecho. Crear un **proyecto** tampoco está, y
   por otra razón: es una nota nueva en el segundo cerebro, no una tarea. Ni se crea en una
   carpeta suelta (Inbox, Diario): no tiene nota principal y habría que inventarse dónde cae.
+  El inicio del board (dec-hgq7, a la espera de aceptación) tampoco añade un verbo: crea el
+  proyecto llamando a `init`, con un formulario sin IA y el agente lanzado por detrás.
 - **Todo lo que escriba en el vault pasa por `fuentes/obsidian.py`.** Verifica que la línea siga
   igual que cuando se leyó y reemplaza el archivo de forma atómica. Editar el Markdown con `sed`
   o con la herramienta de edición se salta esa protección, y la forma de fallar es pisar trabajo
@@ -225,7 +227,9 @@ sea un verbo de la CLI no es una tool. Su única bandera, `--perfil nucleo|compl
   existir es un `--forzar` que salte el veto «porque sí».
 - **El motor por defecto es `agente`, que no lanza nada.** El trabajo lo hace un agente vivo.
   `headless` (`claude -p`) existe para lo desatendido y hay que pedirlo: que el defecto mande
-  trabajo a un proceso que nadie ve es justo lo que no se quería.
+  trabajo a un proceso que nadie ve es justo lo que no se quería. Única excepción (propuesta en
+  dec-hgq7, a la espera de que el dueño la acepte): la pestaña Inicio del board puede lanzar
+  `headless` **solo para preparar un proyecto**, y siempre con el progreso en vivo en la app.
 - **El maestro se abre en una terminal que se ve, y solo reparte lo asignado.** `maestro` (y el
   botón del board) abre un cliente con una instrucción que despacha las tareas con
   `#agente/<modelo>` puestas por una persona; ni `--auto` ni `--modelo`. Abrirlo en segundo

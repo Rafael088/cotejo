@@ -2,9 +2,10 @@
 id: dec-22dl
 fecha: 2026-10-14
 temas: [vision, producto]
-estado: propuesta
+estado: reemplazada
 autor: agente
 reemplaza: dec-4dmg
+reemplazada_por: dec-hgq7
 ---
 # Visión: tablero de control para vibe coding profesional
 
