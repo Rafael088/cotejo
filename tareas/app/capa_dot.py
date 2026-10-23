@@ -78,6 +78,9 @@ class CapaDot:
         """La entrada: el dot sube hasta el pie, su casa, y de ahí sale a donde le toque."""
         if self.dot is None or self.dot_entrado:
             return
+        # Con Inicio delante (v1.3.0) no entra: lo hará al verse el tablero (`ver_pestana`).
+        if not self.tablero_a_la_vista():
+            return
         self.dot_entrado = True
         self.dot_ancla, self.dot_viaje = presencia.PIE, None
         self.dot.set_visible(True)

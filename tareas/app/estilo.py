@@ -38,6 +38,7 @@ CSS = """
   --k-contenido: 14px;   /* lo que se lee como contenido: el texto de una tarea, un nombre de fila */
   --k-encabezado: 15px;  /* encabezado de una sección: columna del board, grupo de proyecto */
   --k-ventana: 16px;     /* el título de la ventana, siempre el más grande */
+  --k-portada: 24px;     /* solo el titular de la pestaña Inicio (v1.3.0): es una portada, no una ventana */
 
   /* Escala de espaciado: cinco pasos en suma de 4px. Los valores 1, 2, 3 px (micro-ajustes
      de componentes como .boxed-list row padding, .menu-item padding)
@@ -357,4 +358,22 @@ tooltip { background: var(--k-superficie); border: 1px solid var(--k-borde); bor
 tooltip label { color: var(--k-texto); font-size: var(--k-dato); }
 /* Finalizada siempre plegada: el riel es un botón plano a todo lo alto, solo con el ícono. */
 .riel-finalizada { padding: var(--k-espacio-sm) 0; }
+
+/* Las pestañas Inicio | Tablero de la cabecera (v1.3.0): la elegida, en superficie alta. */
+.pestanas > button.pestana { font-size: var(--k-secundario); min-height: 30px;
+                             padding: 0 var(--k-espacio-md); color: var(--k-tenue);
+                             background: var(--k-superficie); }
+.pestanas > button.pestana:hover { background: var(--k-velo-fuerte); color: var(--k-texto); }
+.pestanas > button.pestana:checked { background: var(--k-superficie-alta); color: var(--k-texto);
+                                     font-weight: 600; }
+/* La pestaña Inicio: saludo en tenue, titular en Sora, tarjetas como las cartas del board.
+   El verde sigue siendo solo para lo que espera comprobación (el chip «N por comprobar»). */
+.inicio-saludo { color: var(--k-tenue); font-size: var(--k-contenido); }
+.inicio-titular { font-family: "Sora"; font-weight: 600; font-size: var(--k-portada); letter-spacing: -0.01em; }
+.inicio-tarjeta, .inicio-nuevo { padding: var(--k-espacio-lg); min-height: 112px; }
+.inicio-nuevo { border-style: dashed; background: transparent; }
+.inicio-nuevo:hover { background: var(--k-velo-sutil); }
+.inicio-mas { font-family: "Sora"; font-weight: 600; font-size: var(--k-portada); color: var(--k-tenue); }
+.inicio-avance trough { min-height: 4px; border-radius: 4px; background: var(--k-velo-fuerte); }
+.inicio-avance progress { min-height: 4px; border-radius: 4px; background: var(--k-tenue); }
 """
