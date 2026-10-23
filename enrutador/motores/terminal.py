@@ -6,6 +6,7 @@ pase ahí se ve ahí; lo que importa a Cotejo —qué se entregó— llega por e
 por delante al maestro que está trabajando.
 """
 
+import os
 import shutil
 import subprocess
 
@@ -23,12 +24,14 @@ class SinTerminal(Exception):
     pass
 
 
-def abrir(comando, directorio=None):
+def abrir(comando, directorio=None, entorno=None):
+    """`entorno`: variables que se añaden a las de ahora (el inicio pone `COTEJO_FUENTE`)."""
     if not comando or shutil.which(comando[0]) is None:
         ejemplo = EJEMPLO_TERMINAL.get(rutas.sistema(), EJEMPLO_TERMINAL_XDG)
         raise SinTerminal(
             f"No encontré la terminal «{comando[0] if comando else ''}». Pon la tuya en "
             f"enrutador.maestro.terminal de la config, por ejemplo {ejemplo}.")
-    subprocess.Popen(comando, cwd=str(directorio) if directorio else None,
+    env = {**os.environ, **entorno} if entorno else None
+    subprocess.Popen(comando, cwd=str(directorio) if directorio else None, env=env,
                      stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                      stderr=subprocess.DEVNULL, start_new_session=True)

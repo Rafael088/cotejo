@@ -31,10 +31,22 @@ BarWidget {
   property string error: ""
   // Notas que Cotejo no pudo leer. Sus tareas no están en el conteo, y eso hay que poder saberlo.
   property var avisos: []
+  // Proyectos que el agente prepara en segundo plano (v1.3.0): listos y fallidos avisan aunque
+  // la ventana esté cerrada, porque quien los termina de anotar es el proceso de fondo.
+  property var preparaciones: []
 
-  readonly property bool avisa: porValidar > 0
+  function cuantas(estados) {
+    var n = 0
+    for (var i = 0; i < preparaciones.length; i++)
+      if (estados.indexOf(preparaciones[i].estado) >= 0) n++
+    return n
+  }
+  readonly property int listos: cuantas(["listo"])
+  readonly property int fallidos: cuantas(["fallo", "colgado"])
+
+  readonly property bool avisa: porValidar > 0 || listos > 0
   readonly property color colorBase: bar ? bar.foreground : Color.foreground
-  readonly property color color: error !== "" ? (bar ? bar.urgent : Color.urgent)
+  readonly property color color: (error !== "" || fallidos > 0) ? (bar ? bar.urgent : Color.urgent)
                                               : (avisa ? colorAviso : colorBase)
   readonly property string etiqueta: {
     if (error !== "") return "!"
@@ -59,6 +71,7 @@ BarWidget {
       root.proyectos = datos.top || []
       root.error = datos.error ? String(datos.error) : ""
       root.avisos = datos.avisos || []
+      root.preparaciones = datos.preparaciones || []
     } catch (e) {
       root.error = "No pude leer el resumen de tareas"
     }
@@ -72,6 +85,11 @@ BarWidget {
                      + plural(cuantosProyectos, "proyecto", "proyectos"))
     if (porValidar > 0) lineas.push(plural(porValidar, "tarea espera", "tareas esperan") + " que la valides")
     if (enCurso > 0) lineas.push(plural(enCurso, "tarea en curso", "tareas en curso"))
+    var dice = {"preparando": "preparándose…", "listo": "listo, ábrelo en Cotejo",
+                "fallo": "no se pudo preparar, ábrelo en Cotejo",
+                "colgado": "parece colgado, ábrelo en Cotejo"}
+    for (var k = 0; k < preparaciones.length; k++)
+      lineas.push("«" + preparaciones[k].proyecto + "»: " + (dice[preparaciones[k].estado] || preparaciones[k].estado))
     for (var i = 0; i < proyectos.length; i++)
       lineas.push("· " + proyectos[i].nombre + ": " + proyectos[i].pendientes)
     if (avisos.length > 0) {

@@ -13,6 +13,8 @@ En Windows no se usa `os.kill(pid, 0)`: allí la señal 0 es CTRL_C_EVENT y la m
 """
 
 import os
+import signal
+import socket
 import sys
 from pathlib import Path
 
@@ -36,6 +38,39 @@ def vivo(pid, programa=""):
     except OSError:
         return False
     return _es_el_mismo(pid, programa)
+
+
+def anotado_muerto(linea):
+    """¿Una anotación con `fase: "lanzado"`, `pid`, `programa` y `host` (la de un despacho o la
+    de un inicio en segundo plano) es de un proceso que ya no está?
+
+    Solo se puede saber en la máquina que lo lanzó: el vault puede estar sincronizado con otra,
+    y allí ese pid es de cualquiera. Desde otra máquina no se da por muerto.
+    """
+    if linea.get("fase") != "lanzado" or not linea.get("pid"):
+        return False
+    if linea.get("host") and linea["host"] != socket.gethostname():
+        return False
+    return not vivo(linea["pid"], linea.get("programa", ""))
+
+
+def terminar(pid, programa=""):
+    """Para el proceso `pid` (y su grupo, si lo encabeza) si sigue siendo `programa`.
+
+    Devuelve True si había algo que parar. Comprueba antes con `vivo`: un pid reciclado es de
+    otro programa, y a ese no se le manda nada.
+    """
+    if not vivo(pid, programa):
+        return False
+    pid = int(pid)
+    try:
+        if sys.platform != "win32" and os.getpgid(pid) == pid:
+            os.killpg(pid, signal.SIGTERM)
+        else:
+            os.kill(pid, signal.SIGTERM)
+    except OSError:
+        return False
+    return True
 
 
 def _es_el_mismo(pid, programa):

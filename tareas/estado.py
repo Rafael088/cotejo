@@ -10,7 +10,7 @@ import os
 import sys
 import time
 
-from . import fuente as f, modelo, rutas
+from . import fuente as f, modelo, preparacion, rutas
 
 ARCHIVO = rutas.estado() / "estado.json"
 
@@ -29,6 +29,11 @@ def resumir(proyectos, problema=None, avisos=()):
         # Lo que Cotejo no pudo leer viaja con el resumen: una nota que desaparece del board
         # sin explicación se ve igual que una nota sin tareas.
         datos["avisos"] = list(avisos)
+    preparaciones = preparacion.para_la_barra()
+    if preparaciones:
+        # Los proyectos que el agente prepara en segundo plano (v1.3.0): la barra avisa cuando
+        # uno queda listo o falla, aunque la ventana de Cotejo esté cerrada.
+        datos["preparaciones"] = preparaciones
     if problema:
         # La clave se llama "error" desde el esquema 1 y así se queda: lo que cambió es que el
         # texto lo pone la fuente, que es quien sabe qué le falta para poder trabajar.

@@ -31,6 +31,12 @@ PASOS = (
     Paso("crear", "Crear las tareas de la 0.1.0"),
 )
 
+# El entorno con el que corre el agente (en segundo plano o en una terminal). `init` registra la
+# carpeta en la fuente repo sin activarla; con esto, `crear` y `asignar` —que escriben en la
+# fuente activa— encuentran el proyecto nuevo aunque la persona use Obsidian u otra fuente, y su
+# config no se toca. Es parte del contrato: el prompt lo nombra y `enrutador/preparar.py` lo pone.
+ENTORNO = {"COTEJO_FUENTE": "repo"}
+
 LARGO_MAXIMO = 2000       # por respuesta, en caracteres
 LARGO_CARPETA = 500
 
@@ -131,6 +137,9 @@ def armar(respuestas):
         "",
         "Antes de empezar, `cotejo protocolo --completo` si no lo conoces. Haz los cinco pasos, "
         "uno tras otro, sin saltarte ninguno; si uno falla, di cuál y por qué y no sigas.",
+        "Esta sesión corre con `COTEJO_FUENTE=repo`: así `crear` y `asignar` escriben en el "
+        "proyecto de esta carpeta aunque la persona use otra fuente. No cambies esa variable "
+        "ni la fuente activa.",
         "",
         paso["init"],
         "   `cotejo init --repo %s`. Si la carpeta no existe, la crea. No cambies la fuente "
