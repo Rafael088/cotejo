@@ -209,8 +209,12 @@ class ConBoardDot(unittest.TestCase):
         self.app.desde_cero = False      # sin el logo: la entrada va al abrir
         self.app.abrir_board()
         self.board = self.app.board
+        # El board abre en Inicio (v1.3.0); el dot vive en el tablero y entra al verlo. El
+        # tablero se mide un fotograma después de enseñarse: se espera también a su barra.
+        self.board.ver_pestana("tablero")
         if self.dot_encendido:
-            girar(5000, hasta=lambda: self.board.dot_entrado and self.board.dot.get_mapped())
+            girar(5000, hasta=lambda: self.board.dot_entrado and self.board.dot.get_mapped()
+                  and self.board.barra_del_maestro.get_width() > presencia.TALLA)
 
     def cerrar(self):
         for monitor in self.app.monitores:

@@ -21,13 +21,14 @@ from .decisiones import Decisiones
 from .detalle import Detalle
 from .maestro import Maestro
 from .movimientos import Movimientos
+from .pestana_inicio import PestanaInicio
 from .pie import Pie
 from .teclado import Teclado
 from .vista_resumen import Resumen
 from .vista_revision import Revision
 
 
-class Board(Maestro, Columnas, Banda, Pie, Cartas, Detalle, Decisiones, Revision, Resumen, Teclado,
+class Board(PestanaInicio, Maestro, Columnas, Banda, Pie, Cartas, Detalle, Decisiones, Revision, Resumen, Teclado,
             Movimientos, CapaDot, Adw.ApplicationWindow):
     """Las tareas en sus cuatro estados, un proyecto a la vez.
 
@@ -88,6 +89,7 @@ class Board(Maestro, Columnas, Banda, Pie, Cartas, Detalle, Decisiones, Revision
             "Board", con_botones_de_ventana=True)
         pintar_logo(self.logo, app.colores)
         cabecera.pack_start(caja_titulo)
+        cabecera.pack_start(self.selector_de_pestanas())
 
         # De derecha a izquierda: lo que se usa a diario queda suelto y lo demás se guarda.
         cabecera.pack_end(self.menu_cabecera())
@@ -101,13 +103,15 @@ class Board(Maestro, Columnas, Banda, Pie, Cartas, Detalle, Decisiones, Revision
         etiquetar(boton_tema, "Elegir el tema")
         boton_tema.connect("clicked", lambda *_: self.ver_temas())
         cabecera.pack_end(boton_tema)
-        cabecera.pack_end(self.caja_busqueda())
+        self.buscador = self.caja_busqueda()
+        cabecera.pack_end(self.buscador)
         vista.add_top_bar(cabecera)
         self.banda = banda_de_avisos()
         vista.add_top_bar(self.banda)
 
         # Banda de proyectos + columnas. Elegir proyecto es lo que hace humano el board.
-        vista.add_top_bar(self.crear_banda_proyectos())
+        self.banda_proyectos = self.crear_banda_proyectos()
+        vista.add_top_bar(self.banda_proyectos)
 
         # homogeneous=False: las columnas ya no miden lo mismo (ver ANCHO_COLUMNAS).
         self.tablero = Gtk.Box(spacing=ESPACIADO_SM, vexpand=True, halign=Gtk.Align.CENTER,
@@ -137,7 +141,8 @@ class Board(Maestro, Columnas, Banda, Pie, Cartas, Detalle, Decisiones, Revision
         # El dot (D5) va en un overlay sobre el tablero y el pie: no empuja ni tapa nada.
         self.encima = Gtk.Overlay(child=cuerpo)
         self.montar_dot()
-        vista.set_content(self.encima)
+        # Inicio y Tablero (v1.3.0): el tablero de siempre es una de las dos pestañas.
+        vista.set_content(self.crear_pestanas(self.encima))
 
         teclas = Gtk.EventControllerKey()
         teclas.connect("key-pressed", self.al_tecla)
@@ -149,6 +154,7 @@ class Board(Maestro, Columnas, Banda, Pie, Cartas, Detalle, Decisiones, Revision
         self.add_controller(teclas_dot)
         aplicar_clase_animaciones(self)
         self.pintar()
+        self.ver_pestana(self.pestana_inicial(), al_abrir=True)
 
     def ajustar_columnas(self):
         anchos = comun.anchos_columnas(int(self.scroll_tablero.get_hadjustment().get_page_size()))
@@ -330,6 +336,8 @@ class Board(Maestro, Columnas, Banda, Pie, Cartas, Detalle, Decisiones, Revision
         # que se refresca con lo demás —al recargar y en cada cambio— y no se vigila aparte:
         # es un número para consultar, no un aviso que tenga que llegar al instante.
         self.pintar_ahorro()
+        self.inicio_al_dia = False
+        self.pintar_inicio()
 
     def poner_subtitulo(self, proyectos, todos):
         esperando = sum(1 for p in proyectos for t in p.tareas if t.estado == "por-validar")

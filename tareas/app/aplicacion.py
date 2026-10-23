@@ -293,6 +293,7 @@ class App(Adw.Application):
         atienden antes: con la tecla en la ventana, el acelerador se la comía sin hacer nada.
         """
         if self.board is not None:
+            self.board.ver_pestana("tablero")   # buscar es del tablero, no del Inicio
             self.board.busqueda.grab_focus()
 
     def atajos(self):
