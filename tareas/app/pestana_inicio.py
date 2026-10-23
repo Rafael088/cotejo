@@ -10,8 +10,8 @@ Es el contenedor de lo que viene en la 1.3.0, y deja los enganches a la vista:
   constelación de proyectos (cotejo-7wc9hb, `tareas/app/constelacion.py`) con
   `poner_constelacion(widget)`, y la quita si no hay proyectos. Tocar un núcleo es lo mismo
   que tocar su tarjeta: `abrir_proyecto(nombre)`.
-- `nuevo_proyecto()`: lo que hace «Nuevo proyecto». De momento, un aviso; la entrevista
-  (cotejo-kf94so) lo reemplaza.
+- `nuevo_proyecto()`: lo que hace «Nuevo proyecto»: abre la entrevista (cotejo-kf94so,
+  `tareas/app/entrevista.py`), una tercera página de la pila sin botón en el selector.
 - `abrir_proyecto(nombre)`: lo que hace tocar una tarjeta. De momento, el tablero con ese
   proyecto elegido; el mapa del proyecto (cotejo-p86sa9) lo reemplaza.
 
@@ -34,7 +34,6 @@ INICIO, TABLERO = "inicio", "tablero"
 PESTANAS = ((INICIO, "Inicio"), (TABLERO, "Tablero"))
 ANCHO_INICIO = 1080      # el contenido no se estira más que esto en una ventana ancha
 CAMBIO_PESTANA_MS = 160
-AVISO_NUEVO = "Crear un proyecto desde aquí llega pronto. Mientras, pídeselo a tu agente."
 
 
 class PestanaInicio:
@@ -46,6 +45,7 @@ class PestanaInicio:
                                   transition_duration=CAMBIO_PESTANA_MS, vexpand=True)
         self.pestanas.add_named(self.crear_inicio(), INICIO)
         self.pestanas.add_named(tablero, TABLERO)
+        self.pestanas.add_named(self.crear_entrevista(), "entrevista")
         self.inicio_al_dia = False   # se repinta al verse: fuera de vista no se lee nada
         return self.pestanas
 
@@ -207,10 +207,6 @@ class PestanaInicio:
         return boton
 
     # --- enganches para las tareas que siguen ---------------------------------------------------
-
-    def nuevo_proyecto(self):
-        """«Nuevo proyecto». La entrevista (cotejo-kf94so) reemplaza este aviso."""
-        self.aviso(AVISO_NUEVO)
 
     def abrir_proyecto(self, nombre):
         """Tocar una tarjeta. El mapa del proyecto (cotejo-p86sa9) reemplaza esto; mientras,
