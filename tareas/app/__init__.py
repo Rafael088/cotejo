@@ -12,6 +12,7 @@ clase con los métodos de una parte (la banda, las columnas, la revisión…) qu
 - Una mezcla por parte: `banda`, `columnas`, `cartas`, `detalle`, `decisiones`,
   `vista_revision`, `teclado`, `movimientos`, `maestro`, `pie`, `capa_dot`, y
   `pestana_inicio` (las pestañas Inicio | Tablero y lo que se pinta en Inicio).
+- `constelacion.py`: el widget de la constelación de proyectos del Inicio (no es una mezcla).
 - `aplicacion.py`: `App` y `main`.
 
 Algo nuevo va en la parte a la que pertenece, o en un módulo nuevo si no es de ninguna; nunca

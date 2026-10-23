@@ -110,10 +110,11 @@ class ConProyectos(PestanaInicio):
         # Faro (con una entrega por comprobar) primero; «Nuevo proyecto» al final.
         nombres = [t for t in todo if t in ("Faro", "Horizonte")]
         self.assertEqual(nombres, ["Faro", "Horizonte"])
-        # El hueco de la constelación existe y está vacío hasta que llegue.
-        self.assertFalse(b.area_constelacion.get_visible())
-        b.poner_constelacion(Gtk.Label(label="constelación"))
+        # La constelación sale con los dos proyectos (sin arquitectura: dos núcleos huecos).
         self.assertTrue(b.area_constelacion.get_visible())
+        self.assertEqual([p.nombre for p in b.constelacion.proyectos], ["Faro", "Horizonte"])
+        b.poner_constelacion(None)
+        self.assertFalse(b.area_constelacion.get_visible())
 
     def test_nuevo_proyecto_de_momento_avisa(self):
         with mock.patch.object(self.board, "aviso") as aviso:
