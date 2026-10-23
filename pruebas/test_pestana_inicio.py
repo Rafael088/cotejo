@@ -3,7 +3,7 @@
 Prueba de humo con GTK y pantalla (sin ellas se salta), sobre un vault de mentira: el board
 abre en Inicio con el titular y una tarjeta por proyecto; «Nuevo proyecto» de momento avisa;
 una tarjeta lleva al mapa y de ahí al tablero con su proyecto elegido; y sin de dónde leer
-abre en el tablero, donde está la explicación del primer arranque. La lógica de lo que se enseña se prueba sin
+abre en «Revisar el equipo» (el primer arranque), que pasa al Inicio. La lógica de lo que se enseña se prueba sin
 GTK en `test_resumen_inicio.py`.
 """
 
@@ -277,7 +277,100 @@ class ConProyectos(PestanaInicio):
 class SinFuente(PestanaInicio):
     con_vault = False
 
-    def test_sin_de_donde_leer_abre_en_el_tablero(self):
+    def revisar(self, agentes, git=True):
+        with mock.patch("enrutador.clientes.instalados", return_value=list(agentes)), \
+                mock.patch("tareas.equipo.hay_git", return_value=git):
+            return self.board.revisar_equipo()
+
+    def filas(self):
+        """{titulo: estado} de lo que pinta la pantalla."""
+        resultado = {}
+        fila = self.board.equipo_filas.get_first_child()
+        while fila is not None:
+            t = textos(fila)
+            resultado[t[0]] = t[1]
+            fila = fila.get_next_sibling()
+        return resultado
+
+    def test_la_primera_vez_abre_revisar_el_equipo_y_no_el_primer_arranque_viejo(self):
+        b = self.board
+        self.assertIsNotNone(b.fuente.problema)
+        self.assertEqual(b.pestana_actual(), "equipo")
+        todo = " | ".join(textos(b.pestanas.get_child_by_name("equipo")))
+        self.assertIn("Antes de empezar, Cotejo revisa tu equipo", todo)
+        self.assertNotIn("Pídele a tu agente", todo)
+        self.assertNotIn("cotejo init --repo", todo)
+        self.assertFalse(b.banda_proyectos.get_visible())
+
+    def test_marca_cada_uno_con_todo_ninguno_o_algunos(self):
+        b = self.board
+        self.revisar(["claude", "opencode", "codex", "gemini"], git=True)
+        self.assertEqual(set(self.filas().values()), {"Listo"})
+        self.assertEqual(b.equipo_enlaces, {})
+        self.assertEqual(b.equipo_titular.get_label(), "Todo listo: tienes 4 agentes")
+
+        self.revisar([], git=False)
+        self.assertEqual(set(self.filas().values()), {"No instalado"})
+        self.assertEqual(set(b.equipo_enlaces), {"claude", "opencode", "codex", "gemini", "git"})
+        self.assertEqual(b.equipo_titular.get_label(), "Te falta un agente de IA")
+
+        self.revisar(["gemini"], git=True)
+        filas = self.filas()
+        self.assertEqual(filas["Gemini CLI"], "Listo")
+        self.assertEqual(filas["Claude Code"], "No instalado")
+        self.assertEqual(filas["git (para guardar versiones)"], "Listo")
+        self.assertNotIn("gemini", b.equipo_enlaces)
+        self.assertNotIn("git", b.equipo_enlaces)
+
+    def test_el_enlace_de_uno_que_falta_abre_su_pagina_oficial_y_no_instala(self):
+        from tareas import equipo as logica
+        b = self.board
+        self.revisar(["claude"], git=False)
+        with mock.patch.object(b, "abrir_pagina") as abrir, \
+                mock.patch("subprocess.run") as correr, mock.patch("subprocess.Popen") as popen:
+            b.equipo_enlaces["git"].emit("clicked")
+            b.equipo_enlaces["codex"].emit("clicked")
+        self.assertEqual([c.args[0] for c in abrir.call_args_list],
+                         [logica.PAGINAS["git"], logica.PAGINAS["codex"]])
+        correr.assert_not_called()
+        popen.assert_not_called()
+
+    def test_abrir_pagina_usa_el_lanzador_del_sistema(self):
+        with mock.patch("tareas.app.equipo.Gio.AppInfo.launch_default_for_uri") as lanzar:
+            self.board.abrir_pagina("https://ejemplo.org/x")
+        lanzar.assert_called_once_with("https://ejemplo.org/x", None)
+
+    def test_revisar_otra_vez_vuelve_a_detectar(self):
+        b = self.board
+        self.revisar([], git=True)
+        self.assertEqual(self.filas()["Claude Code"], "No instalado")
+        with mock.patch("enrutador.clientes.instalados", return_value=["claude"]), \
+                mock.patch("tareas.equipo.hay_git", return_value=True):
+            b.equipo_revisar.emit("clicked")
+        self.assertEqual(self.filas()["Claude Code"], "Listo")
+        self.assertEqual(b.equipo_titular.get_label(), "Todo listo para empezar con Claude Code")
+        self.assertNotIn("claude", b.equipo_enlaces)
+
+    def test_seguir_al_inicio_pasa_a_la_pestana_inicio(self):
+        b = self.board
+        b.equipo_seguir.emit("clicked")
+        self.assertEqual(b.pestana_actual(), pestana_inicio.INICIO)
+        self.assertTrue(b.botones_pestana[pestana_inicio.INICIO].get_active())
+
+    def test_el_tablero_sin_proyectos_manda_al_inicio(self):
+        b = self.board
+        b.ver_pestana(pestana_inicio.TABLERO)
+        self.assertEqual(b.pestana_actual(), pestana_inicio.TABLERO)
+        self.assertIn("Todavía no hay proyectos", textos(b.pestanas.get_child_by_name("tablero")))
+
+
+class FuenteRota(PestanaInicio):
+    con_vault = False
+
+    def entorno_extra(self, raiz):
+        return {"COTEJO_REPOS": str(raiz / "no-existe")}
+
+    def test_una_fuente_rota_sigue_abriendo_en_el_tablero(self):
         self.assertIsNotNone(self.board.fuente.problema)
         self.assertEqual(self.board.pestana_actual(), pestana_inicio.TABLERO)
 

@@ -16,15 +16,15 @@ Es el contenedor de lo que viene en la 1.3.0, y deja los enganches a la vista:
   (cotejo-p86sa9, `tareas/app/mapa.py`), desde el que «Ver el tablero» lleva al tablero.
 
 Las dos pestañas viven en una `Gtk.Stack` (`self.pestanas`); el selector va en la cabecera.
-Con la fuente sin configurar (primer arranque) o rota, se abre en el tablero: ahí está la
-tarjeta que explica qué hacer, y un Inicio vacío no diría nada.
+Sin fuente configurada (primer arranque) se abre en «Revisar el equipo» (`tareas/app/equipo.py`,
+cotejo-36mzm0), que pasa al Inicio; con la fuente rota, en el tablero, donde está la explicación.
 """
 
 import datetime
 
 from gi.repository import Adw, Gtk, Pango
 
-from .. import resumen_inicio
+from .. import equipo, resumen_inicio
 from .comun import ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XL, ESPACIADO_XS
 from .comun import animaciones_activas
 from .constelacion import caja_constelacion
@@ -45,6 +45,7 @@ class PestanaInicio:
                                   transition_duration=CAMBIO_PESTANA_MS, vexpand=True)
         self.pestanas.add_named(self.crear_inicio(), INICIO)
         self.pestanas.add_named(tablero, TABLERO)
+        self.pestanas.add_named(self.crear_equipo(), "equipo")
         self.pestanas.add_named(self.crear_entrevista(), "entrevista")
         self.pestanas.add_named(self.crear_preparando(), "preparando")
         self.pestanas.add_named(self.crear_revisar_plan(), "plan")
@@ -78,7 +79,10 @@ class PestanaInicio:
         return self.pestanas.get_visible_child_name()
 
     def pestana_inicial(self):
-        """Inicio, salvo que no haya de dónde leer: entonces el tablero, con su explicación."""
+        """Inicio. Sin nada configurado (primer arranque), «revisar el equipo»; con la fuente
+        rota, el tablero, con su explicación."""
+        if equipo.es_primer_arranque(self.fuente):
+            return "equipo"
         return TABLERO if self.fuente.problema else INICIO
 
     def ver_pestana(self, clave, al_abrir=False):
@@ -93,6 +97,8 @@ class PestanaInicio:
         en_tablero = clave == TABLERO
         for widget in (self.banda_proyectos, self.buscador):
             widget.set_visible(en_tablero)
+        if clave == "equipo":
+            self.revisar_equipo()
         if en_tablero and not al_abrir:
             self.entrar_dot()
         elif not self.inicio_al_dia:

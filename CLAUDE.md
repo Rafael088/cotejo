@@ -98,7 +98,11 @@ saludo, titular («Tienes 3 proyectos y 2 entregas por comprobar») y una tarjet
 su versión en curso y el avance en **piezas hechas** de la arquitectura (por
 `conocimiento.piezas_del_repo`); sin piezas dice «sin arquitectura todavía», nunca inventa un
 avance con las tareas. La pinta `tareas/app/pestana_inicio.py`, que abre antes que el tablero
-(salvo sin fuente configurada o rota: ahí va al tablero, con el vacío del primer arranque) y
+(salvo con la fuente rota: ahí va al tablero; y sin fuente configurada, la primera vez, abre en
+**revisar el equipo**, que reemplaza al viejo primer arranque: `tareas/equipo.py`, sin GTK, mira qué
+agentes (`clientes.instalados()`) y git hay y la página oficial de cada uno —las direcciones viven
+solo ahí—; `tareas/app/equipo.py` lo pinta, enlaza si falta (nunca instala), tiene «revisar otra
+vez» y «Seguir al Inicio») y
 pone encima la **constelación** (7wc9hb): cada proyecto un núcleo con sus piezas alrededor,
 por estado y con el verde solo para lo que espera comprobación. Su geometría y su dibujo con
 cairo son puros (`tareas/constelacion.py`, como `dot_dibujo.py`) y el widget

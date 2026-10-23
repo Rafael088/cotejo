@@ -4,9 +4,8 @@ import types
 
 from gi.repository import Adw, GLib, Gdk, Gtk
 
-from .. import fuente as f, marca, modelo
-from ..fuentes import obsidian
-from . import comun, primer_arranque
+from .. import equipo, fuente as f, marca, modelo
+from . import comun
 from .comun import (
     ANCHO_COLUMNAS, ANCHO_RIEL, ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XL,
     ESPACIADO_XS, ICONOS_COLUMNA, TODOS, VACIOS, VACIO_BUSQUEDA, id_corto, ordenar_por_version,
@@ -311,9 +310,9 @@ class Columnas:
             vaciar(lista)
             cuenta.set_label("0")
             if i == 0:
-                if primer_arranque.es_primer_arranque(self.fuente):
-                    caja = primer_arranque.vacio_de_arranque(self.aviso,
-                                                             obsidian.vault_valido())
+                if equipo.es_primer_arranque(self.fuente):
+                    caja = vacio("vacio", "Todavía no hay proyectos",
+                                 "Empieza uno desde Inicio, con «Nuevo proyecto».")
                 else:
                     caja = vacio("aviso", "No hay de dónde leer las tareas",
                                  self.fuente.problema, roto=True)
