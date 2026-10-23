@@ -44,14 +44,17 @@ cotejo editar proyecto --repo <carpeta> --version <hash> --texto "## Objetivo
 ## Siguiente paso
 ..."
 cotejo proponer decision --repo <carpeta> --titulo "..." --temas stack,datos --texto "qué y por qué"
-cotejo anotar arquitectura --repo <carpeta> --titulo "Arquitectura inicial" --temas arquitectura --texto "..."
+cotejo anotar arquitectura --repo <carpeta> --titulo "Arquitectura" --temas arquitectura --texto "..." \
+  --pieza "ve|Nombre|qué es, en llano|tecnología|<ids de tareas>"   # una por pieza
 cotejo crear "Nombre corto: qué hay que hacer" --proyecto <nombre> --version 0.1.0
 ```
 
 - **Decisiones**: solo las que condicionan lo demás (stack, dónde viven los datos, qué se deja
   fuera). Una por `proponer`. Quedan en `propuesta`; **aceptarlas es de la persona en CotejoBoard**.
   No las des por vigentes ni las simules editando el frontmatter.
-- **Arquitectura**: una entrada corta con las piezas y cómo se hablan, no un diagrama.
+- **Arquitectura**: una entrada con las piezas en cuatro capas (`ve`, `hace`, `guarda`,
+  `conecta`), una frase en llano cada una y, cuando ya existan, los ids de sus tareas; en `--texto`,
+  cómo se hablan. Es lo que el board dibuja. El formato, en `almacen.md`.
 - **Tareas**: las de la 0.1.0 y no más (entre 3 y 8), cada una acotada a una sesión de trabajo.
   Todas con `--version 0.1.0`; sin él caerían igual en la en curso, pero así queda a la vista.
   La primera es el «Siguiente paso» que escribiste. Una de cada tres puede ser de la persona (n0):
