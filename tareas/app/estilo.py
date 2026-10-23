@@ -376,6 +376,9 @@ tooltip label { color: var(--k-texto); font-size: var(--k-dato); }
 .inicio-mas { font-family: "Sora"; font-weight: 600; font-size: var(--k-portada); color: var(--k-tenue); }
 .inicio-avance trough { min-height: 4px; border-radius: 4px; background: var(--k-velo-fuerte); }
 .inicio-avance progress { min-height: 4px; border-radius: 4px; background: var(--k-tenue); }
+/* La entrevista de «Nuevo proyecto» (cotejo-kf94so). */
+.entrevista-marco { background: var(--k-columna); border: 1px solid var(--k-borde); border-radius: 8px; }
+.entrevista-texto { background: transparent; color: var(--k-texto); font-size: var(--k-contenido); }
 .constelacion-caja { background: var(--k-columna); border: 1px solid var(--k-borde); border-radius: 10px; padding: var(--k-espacio-md); }
 .constelacion-leyenda { padding-top: var(--k-espacio-sm); border-top: 1px solid var(--k-borde-hondo); }
 """
