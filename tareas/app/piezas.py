@@ -28,8 +28,13 @@ def poner_avisos(banda, avisos):
     if not avisos:
         banda.set_revealed(False)
         return
-    notas = [a for a in avisos if a.get("nota")]
-    if notas:
+    notas = [a for a in avisos if a.get("nota") and not a.get("repo_falta")]
+    faltan = [a for a in avisos if a.get("repo_falta")]
+    if faltan and not notas:
+        banda.set_title(f"{len(faltan)} repo{'s' if len(faltan) > 1 else ''} de tu lista "
+                        f"{'ya no existen' if len(faltan) > 1 else 'ya no existe'}: se "
+                        "salta y el resto sigue")
+    elif notas:
         banda.set_title(f"No pude leer {len(notas)} nota{'s' if len(notas) > 1 else ''}: "
                         "sus tareas no salen aquí")
     else:

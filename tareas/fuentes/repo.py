@@ -70,14 +70,32 @@ class Repo(Obsidian):
             return (f"No hay ningún repo configurado. Pon la lista en {configuracion.ruta()}, "
                     f'con la forma {{"fuentes": {{"repo": {{"repos": ["/ruta/al/repo"]}}}}}} '
                     f'o {{"raiz": "/carpeta/de/repos"}}')
-        for repo in self.repos:
-            if not repo.is_dir():
-                return (f"El repo {repo} no existe o no es una carpeta. Corrige «repos» en "
-                        f"{configuracion.ruta()} o en COTEJO_REPOS")
+        # Un repo de la lista que ya no existe NO tumba la fuente (v1.3.0): se salta con aviso
+        # (`faltantes`, y `escanear` lo deja en «avisos»). Solo es un problema si no queda
+        # ninguno con el que trabajar: entonces cero proyectos no sería «todo al día».
+        if self.faltantes and not any(r.is_dir() for r in self.repos) \
+                and not (self.raiz and self.raiz.is_dir()):
+            repo = self.faltantes[0]
+            return (f"El repo {repo} no existe o no es una carpeta. Corrige «repos» en "
+                    f"{configuracion.ruta()} o en COTEJO_REPOS")
         if self.raiz and not self.raiz.is_dir():
             return (f"La carpeta de repos {self.raiz} no existe. Corrige «raiz» en "
                     f"{configuracion.ruta()} o en COTEJO_RAIZ_REPOS")
         return None
+
+    @property
+    def faltantes(self):
+        """Los repos de la lista que ya no existen (o no son carpeta), en el orden de la lista."""
+        return [repo for repo in self.repos if not repo.is_dir()]
+
+    def aviso_de_faltante(self, repo):
+        """El aviso estructurado de un repo que falta: `nota` es la ruta, `motivo` lo explica en
+        llano con cómo arreglarlo, y `repo_falta` deja la ruta para quien quiera actuar."""
+        return {"nota": str(repo), "repo_falta": str(repo),
+                "motivo": (f"El repo «{repo}» ya no existe, así que se salta y los demás siguen "
+                           f"funcionando. Si lo borraste o lo moviste a propósito, quítalo de "
+                           f"«repos» en {configuracion.ruta()} (no hay un comando para quitarlo "
+                           f"todavía); si lo moviste, pon su ruta nueva.")}
 
     # --- qué repos hay ------------------------------------------------
 
@@ -132,6 +150,8 @@ class Repo(Obsidian):
         self._notas_por_proyecto = {}
         self._mapa = {}
         proyectos = []
+        if avisos is not None:
+            avisos.extend(self.aviso_de_faltante(repo) for repo in self.faltantes)
         for nombre, ruta, explicito in self._descubrir():
             donde = _donde(nombre)
             archivo = self._mapa[donde]
