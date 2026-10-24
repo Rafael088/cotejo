@@ -10,7 +10,8 @@ clase con los métodos de una parte (la banda, las columnas, la revisión…) qu
 - `estilo.py`: el CSS, sin un color.
 - `ventana.py`: `Board`, la cabecera, la búsqueda, los temas y `pintar`.
 - Una mezcla por parte: `banda`, `columnas`, `cartas`, `detalle`, `decisiones`,
-  `vista_revision`, `teclado`, `movimientos`, `maestro`, `pie`, `capa_dot`, y
+  `vista_revision`, `teclado`, `movimientos`, `lanzar` (mover a Haciendo lanza el agente y
+  su ficha lo sigue en vivo), `maestro`, `pie`, `capa_dot`, y
   `pestana_inicio` (las pestañas Inicio | Tablero y lo que se pinta en Inicio), y las
   páginas del inicio sin botón en el selector: `entrevista`, `preparando`, `revisar_plan` y
   `mapa` (el mapa del proyecto, al que lleva `abrir_proyecto`).

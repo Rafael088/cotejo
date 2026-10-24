@@ -107,6 +107,15 @@ class Detalle:
                                   css_classes=["anotacion-texto"]))
             cuerpo.append(caja)
 
+        # Lanzada desde el board (v1.3.0, `lanzar.py`): en Haciendo, lo que hace su agente en
+        # vivo; en Pendiente, por qué quedó en espera.
+        dialogo.en_vivo = self.seccion_en_vivo(tarea)
+        if dialogo.en_vivo is not None:
+            cuerpo.append(dialogo.en_vivo)
+        espera = self.motivo_en_espera(tarea)
+        if espera:
+            cuerpo.append(self.seccion_en_espera(espera))
+
         vista.set_content(Gtk.ScrolledWindow(child=cuerpo, propagate_natural_height=True,
                                              max_content_height=520,
                                              hscrollbar_policy=Gtk.PolicyType.NEVER))

@@ -277,6 +277,8 @@ list.columna, list.columna > row { background: transparent; }
    contorno plata, que se lee igual de bien y le devuelve el acento a lo que sí espera. */
 .chip-agente { color: var(--k-texto-chip); background: transparent;
                border: 1px solid var(--k-borde-chip); }
+/* En espera de hueco para su agente (v1.3.0): detenida, así que ámbar. */
+.chip-espera { color: var(--k-ambar); background: var(--k-ambar-velo); }
 /* Lo que alguien dejó dicho de la tarea: se lee dentro de la carta, sin abrir nada. Va en
    bloque y no colgando de un filete: dentro de una carta que ya tiene borde, un segundo
    borde se pierde, y lo que hay que distinguir es el texto de la tarea del texto sobre la

@@ -40,6 +40,10 @@ class Cartas:
         if completa and version:
             arriba.append(Gtk.Label(label=version, valign=Gtk.Align.CENTER,
                                     css_classes=["carta-version"]))
+        espera = self.motivo_en_espera(tarea)
+        if espera:
+            # Se pidió lanzarla y no había hueco (`lanzar.py`): sigue aquí hasta que se mueva otra vez.
+            arriba.append(chip("En espera", "aviso", "chip-espera", tooltip=espera))
         arriba.append(Gtk.Box(hexpand=True))
         etiqueta = Gtk.Label(label=texto_a_markup(nombre_corto), use_markup=True, xalign=0,
                              yalign=0, wrap=True, wrap_mode=Pango.WrapMode.WORD_CHAR,
@@ -80,6 +84,8 @@ class Cartas:
             nombre += f". Agente: {tarea.agente}"
         if tarea.dificultad:
             nombre += f". Dificultad: {tarea.dificultad}"
+        if espera:
+            nombre += ". En espera de hueco para su agente"
         etiquetar(fila, nombre)
         accion = "abre la revisión" if columna == "por-validar" else "abre la ficha"
         fila.set_tooltip_text("Arrástrala a otra columna (o Ctrl+← / Ctrl+→). "

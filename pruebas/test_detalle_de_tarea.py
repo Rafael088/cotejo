@@ -36,7 +36,8 @@ def dialogo(estado, texto="v1.2.4 · Banda de proyectos: una franja al 60 %", bi
         app=types.SimpleNamespace(bitacora=bitacora or {}),
         al_asignar=lambda p, t, agente, pop: asignadas.append(agente),
         mover=lambda p, t, destino: movidas.append(destino))
-    for nombre in ("selector_de_agente", "lista_de_agentes", "opcion"):
+    for nombre in ("selector_de_agente", "lista_de_agentes", "opcion", "motivo_en_espera",
+                   "seccion_en_espera", "seccion_en_vivo"):
         setattr(falso, nombre, types.MethodType(getattr(app.Board, nombre), falso))
     falso.dato_de_detalle = app.Board.dato_de_detalle
     hecha = estado == modelo.HECHA

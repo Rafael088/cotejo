@@ -169,6 +169,30 @@ manera (`clientes.Cliente.permisos`, cotejo-p0fybl): Codex `exec --sandbox works
 run_shell_command(cotejo)`; Claude nada más que su `Bash(cotejo:*)`, con un `--` antes del prompt
 porque `--allowedTools` se come lo que venga detrás.
 
+`enrutador/despacho_board.py` y `tareas/lanzados.py` son **mover a Haciendo lanza el agente**
+(v1.3.0, cotejo-7xsjb8). Pasar a mano una tarea de Pendiente a Haciendo —arrastrando, con el
+menú, Ctrl+→ o desde la ficha: todo pasa por `Movimientos.mover`— llama a `lanzar_al_mover`
+(`tareas/app/lanzar.py`), que llama a `despacho_board.lanzar`. Las reglas son las de `despachar`
+y con sus piezas: n0 no se lanza (`EsDeUnaPersona`: se mueve como siempre); sin modelo puesto por
+una persona se pregunta con la propuesta y su porqué (`FaltaModelo`; el board lo guarda con
+«asignar», y «La hago yo» la asigna a la persona sin lanzar); si `capacidad` da 0 no se lanza y
+queda **en espera** (`SinHueco`: sigue en Pendiente con un chip «En espera» y el motivo en su
+ficha, anotada `en-espera` en el registro; nada la relanza sola, se vuelve a mover cuando haya
+hueco); lo demás que impediría lanzar se dice antes de tomarla (`despacho.antes_de_tomar` con el
+motor `headless`). Luego toma, crea su worktree, arma el encargo de siempre y lanza el cliente
+sin interfaz (`motores/fondo.py`) con el mismo `cotejo` en el PATH y permiso de escribir solo en
+el worktree, el `.git` del repo, la config y el estado (`clientes.Cliente.permisos`), más
+`enrutador.lanzar.argumentos_extra.<cliente>` (Claude: `acceptEdits`, `stream-json` y Bash solo
+para `cotejo` y `git`). Toda decisión deja línea en `despachos.jsonl` con `motor: "board"`. El
+registro es uno por tarea en `<estado>/lanzados/<id>.json` (`pid`, `programa`, `host`, `log`,
+`log_desde`, `cliente`, `modelo`, `worktree`, `directorio`, `comando`, `prompt`) con fases
+`lanzado` / `terminado` / `en-espera` / `detenido`, y `lanzados.estado` da `trabajando`, `murio`,
+`terminado`, `en-espera` o `detenido`. `despacho_board.detener(id)` para el proceso sin tocar la
+tarea ni el worktree (lo usan pausar y retomar, y el fin y el rechazo). La ficha de una tarea en
+Haciendo lanzada así enseña «Lo que hace el agente» (`lanzar.EnVivo`): `lanzados.Seguimiento` lee
+solo lo nuevo del log y `lanzados.legible` pasa el `stream-json` a texto llano, con un
+temporizador que existe solo mientras la ficha se ve (`do_map`/`do_unmap`).
+
 `tareas/revisar_plan.py` es «Revisar el plan» (v1.3.0, cotejo-m195bn), sin GTK; la pinta
 `tareas/app/revisar_plan.py`, una página más de la pila (`"plan"`) a la que lleva el botón de
 Preparando (`Board.revisar_plan(estado)`). Enseña objetivo y siguiente paso (de `proyecto.md`),
@@ -301,10 +325,13 @@ sea un verbo de la CLI no es una tool. Su única bandera, `--perfil nucleo|compl
 - **El motor por defecto es `agente`, que no lanza nada.** El trabajo lo hace un agente vivo.
   `headless` (`claude -p`) existe para lo desatendido y hay que pedirlo: que el defecto mande
   trabajo a un proceso que nadie ve es justo lo que no se quería.
-- **La única excepción es preparar un proyecto** (dec-hgq7, decisión del inicio en la app, v1.3.0):
-  `enrutador/preparar.py` lanza el agente sin interfaz solo para eso, con el progreso a la vista
-  en el board y aviso por la barra al terminar; si se cuelga o falla, se ofrece reintentar o
-  abrirlo en una terminal que se ve. Nada más usa `motores/fondo.py`.
+- **Las excepciones son dos, y las pide una persona en el board.** Preparar un proyecto
+  (dec-hgq7, decisión del inicio en la app, v1.3.0): `enrutador/preparar.py` lanza el agente sin
+  interfaz solo para eso, con el progreso a la vista en el board y aviso por la barra al
+  terminar; si se cuelga o falla, se ofrece reintentar o abrirlo en una terminal que se ve. Y
+  mover a mano una tarea de Pendiente a Haciendo (cotejo-7xsjb8): `enrutador/despacho_board.py`
+  la lanza con su modelo asignado y lo que hace se ve en vivo en su ficha. Nada más usa
+  `motores/fondo.py`, y ninguna de las dos lanza nada que la persona no haya pedido.
 - **El maestro se abre en una terminal que se ve, y solo reparte lo asignado.** `maestro` (y el
   botón del board) abre un cliente con una instrucción que despacha las tareas con
   `#agente/<modelo>` puestas por una persona; ni `--auto` ni `--modelo`. Abrirlo en segundo

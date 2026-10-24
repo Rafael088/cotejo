@@ -217,6 +217,7 @@ class Columnas:
 
         todos = self.seleccion == TODOS
         proyectos = [p for p in self.proyectos_con_tareas() if todos or p.nombre == self.seleccion]
+        self.leer_en_espera()
         # Mover una tarea la borra y la vuelve a crear en otra columna: sin esto el foco se
         # perdería justo al moverla con el teclado, que es cuando más falta hace. Quien acaba
         # de escribir manda, porque al escribir la tarea puede haber ganado su marca y con
