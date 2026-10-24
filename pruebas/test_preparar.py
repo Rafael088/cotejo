@@ -236,6 +236,28 @@ class Preparar(unittest.TestCase):
             time.sleep(0.1)
         self.assertFalse(procesos.vivo(viejo))
 
+    def test_reintentar_apunta_las_propuestas_previas_y_avisa_en_el_prompt(self):
+        from tareas import almacen, reintento
+        salida, _hilo = self.lanzar("dormir")
+        self.assertNotIn(inicio.MARCA_REINTENTO, preparacion.leer(salida["id"])["prompt"])
+        alm = almacen.Almacen(self.carpeta)
+        propuesta = alm.crear("decision", "Stack", "x", temas=["stack"])
+        aceptada = alm.crear("decision", "Datos", "x", temas=["datos"])
+        alm.poner_estado(aceptada.id, aceptada.version, "aceptada")
+        self.modo("ok")
+        preparar.reintentar(salida["id"], config=self.config)
+        self.hilos[-1].join(20)
+        registro = preparacion.leer(salida["id"])
+        self.assertEqual(registro["entorno"][reintento.ENV_PROPUESTAS_PREVIAS], propuesta.id)
+        self.assertIn(inicio.MARCA_REINTENTO, registro["prompt"])
+        # rehacer no arrastra la variable ni el aviso: es otra cosa
+        preparar.rehacer(salida["id"], inicio.armar_rehacer(str(self.carpeta), "dec-aaaa", "T", "m"),
+                         config=self.config, motivo="m")
+        self.hilos[-1].join(20)
+        registro = preparacion.leer(salida["id"])
+        self.assertNotIn(reintento.ENV_PROPUESTAS_PREVIAS, registro["entorno"])
+        self.assertNotIn(inicio.MARCA_REINTENTO, registro["prompt"])
+
     def test_el_hilo_del_proceso_viejo_no_pisa_al_nuevo(self):
         registro = {"id": "turnos-abc123", "proyecto": "turnos", "carpeta": str(self.carpeta)}
         preparacion.anotar_lanzado(registro, 4242, "claude")
@@ -248,7 +270,8 @@ class Preparar(unittest.TestCase):
         ensayo = preparar.abrir_en_terminal(salida["id"], config=self.config, simular=True)
         self.assertEqual(ensayo["comando"][:4],
                          ["terminal-falsa", "-e", sys.executable, str(self.script)])
-        self.assertEqual(ensayo["comando"][-1], registro["prompt"])
+        # En terminal es otra pasada: lo mismo, con el aviso de mirar antes lo que ya hay.
+        self.assertEqual(ensayo["comando"][-1], inicio.para_reintento(registro["prompt"]))
         self.assertTrue(procesos.vivo(salida["pid"]))  # el ensayo no para nada
         with mock.patch.object(preparar.terminal, "abrir") as abrir:
             hecho = preparar.abrir_en_terminal(salida["id"], config=self.config)

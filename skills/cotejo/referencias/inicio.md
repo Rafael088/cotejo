@@ -52,6 +52,11 @@ cotejo crear "Nombre corto: qué hay que hacer" --proyecto <nombre> --version 0.
 - **Decisiones**: solo las que condicionan lo demás (stack, dónde viven los datos, qué se deja
   fuera). Una por `proponer`. Quedan en `propuesta`; **aceptarlas es de la persona en CotejoBoard**.
   No las des por vigentes ni las simules editando el frontmatter.
+- **Si repites el inicio** (reintento o rehacer): empieza por `cotejo contexto --repo <carpeta>` y
+  reutiliza lo que hay. `anotar arquitectura` actualiza la que ya existe (`--nueva` para una
+  segunda a propósito); `crear` no duplica tareas con el mismo texto; y en un reintento lanzado
+  por el board, `proponer decision` reemplaza la propuesta del intento anterior que repitas sobre
+  el mismo tema. Las decisiones aceptadas no se tocan nunca.
 - **Arquitectura**: una entrada con las piezas en cuatro capas (`ve`, `hace`, `guarda`,
   `conecta`), una frase en llano cada una y, cuando ya existan, los ids de sus tareas; en `--texto`,
   cómo se hablan. Es lo que el board dibuja. El formato, en `almacen.md`.
