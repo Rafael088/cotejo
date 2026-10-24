@@ -5,7 +5,7 @@ import sys
 
 from gi.repository import Adw, GLib, GObject, Gdk, Gtk, Pango
 
-from .. import estado, marca, temas
+from .. import estado, logo_dibujo, marca, temas
 from .comun import (
     DATOS, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XS, LADO_ARRANQUE, REVELAR_MS, SALIDA_CARTA_MS,
     animaciones_activas,
@@ -147,6 +147,9 @@ class Logo(GObject.Object, Gdk.Paintable):
         self.textura.snapshot(snapshot, ancho, alto)
 
 
+LADO_LOGO = 3.0   # proporción aproximada ancho/alto del logo (viewBox 3483×1171)
+
+
 def pintar_logo(logo, colores, alto=22):
     """El logo de Cotejo con los colores del tema: la palabra en el texto y el check en la señal.
 
@@ -158,11 +161,20 @@ def pintar_logo(logo, colores, alto=22):
     svg = (DATOS / "marca" / "cotejo-logo.svg").read_text()
     svg = svg.replace("#FFFFFF", colores["texto"]).replace("#16C98D", colores["senal"])
     try:
-        textura = Gdk.Texture.new_from_bytes(GLib.Bytes.new(svg.encode()))
-    except GLib.Error as error:
-        # Sin cargador de SVG (pasó en Windows sin loaders.cache) el board abre sin logo: el
-        # nombre del producto sigue en la cabecera, y una ventana sin logo es mejor que ninguna.
-        print(f"Cotejo: no pude dibujar el logo ({error.message})", file=sys.stderr)
+        # Nada de `Gdk.Texture.new_from_bytes(svg)`: pasa por el cargador de SVG de gdk-pixbuf,
+        # que al cerrar borra un temporal por gvfs/dbus y, si gvfsd no contesta, deja el board
+        # colgado sin ventana. Se rasteriza con cairo y se sube como textura de memoria.
+        superficie = logo_dibujo.rasterizar(svg, round(alto * 4 * LADO_LOGO))
+        formato = (Gdk.MemoryFormat.B8G8R8A8_PREMULTIPLIED if sys.byteorder == "little"
+                   else Gdk.MemoryFormat.A8R8G8B8_PREMULTIPLIED)
+        textura = Gdk.MemoryTexture.new(
+            superficie.get_width(), superficie.get_height(), formato,
+            GLib.Bytes.new(bytes(superficie.get_data())), superficie.get_stride())
+    except (ImportError, ValueError, GLib.Error) as error:
+        # Sin logo el board abre igual: el nombre del producto sigue en la cabecera, y una
+        # ventana sin logo es mejor que ninguna.
+        print(f"Cotejo: no pude dibujar el logo ({getattr(error, 'message', error)})",
+              file=sys.stderr)
         logo.set_paintable(None)
         return
     logo.set_paintable(Logo(textura, alto))
