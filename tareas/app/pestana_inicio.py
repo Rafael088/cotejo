@@ -129,6 +129,16 @@ class PestanaInicio:
         cabeza.append(nuevo)
         cuerpo.append(cabeza)
 
+        # Un repo de la lista que ya no existe (v1.3.0): se salta, y aquí se dice en llano.
+        self.inicio_aviso = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS,
+                                    css_classes=["vacio", "roto"], visible=False)
+        self.inicio_aviso_titulo = Gtk.Label(xalign=0, wrap=True, css_classes=["vacio-titulo"])
+        self.inicio_aviso_detalle = Gtk.Label(xalign=0, wrap=True, selectable=True,
+                                              css_classes=["vacio-pista"])
+        self.inicio_aviso.append(self.inicio_aviso_titulo)
+        self.inicio_aviso.append(self.inicio_aviso_detalle)
+        cuerpo.append(self.inicio_aviso)
+
         # La constelación (cotejo-7wc9hb): oculta mientras no haya proyectos que dibujar.
         self.constelacion = None
         self.area_constelacion = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
@@ -165,6 +175,11 @@ class PestanaInicio:
                     else resumen_inicio.tarjetas(self.app.proyectos, self.fuente))
         self.inicio_saludo.set_label(resumen_inicio.saludo(hora))
         self.inicio_titular.set_label(resumen_inicio.titular(tarjetas))
+        faltan = resumen_inicio.repos_que_faltan(getattr(self.app, "avisos", None))
+        if faltan:
+            self.inicio_aviso_titulo.set_label(faltan[0])
+            self.inicio_aviso_detalle.set_label("\n\n".join(faltan[1]))
+        self.inicio_aviso.set_visible(bool(faltan))
         self.pintar_constelacion(tarjetas)
         vaciar(self.inicio_tarjetas)
         for uno in tarjetas:

@@ -375,5 +375,31 @@ class FuenteRota(PestanaInicio):
         self.assertEqual(self.board.pestana_actual(), pestana_inicio.TABLERO)
 
 
+class UnRepoQueFalta(PestanaInicio):
+    """Un repo de la lista que ya no existe no tumba el Inicio: sale el bueno y el aviso en llano."""
+    con_vault = False
+
+    def entorno_extra(self, raiz):
+        bueno = raiz / "bueno"
+        (bueno / ".git").mkdir(parents=True)
+        (bueno / ".cotejo").mkdir()
+        (bueno / ".cotejo" / "tareas.md").write_text("# Tareas\n\n- [ ] Una ^b1\n", encoding="utf-8")
+        self.perdido = raiz / "perdido"
+        return {"COTEJO_REPOS": os.pathsep.join([str(self.perdido), str(bueno)])}
+
+    def test_inicio_enseña_el_proyecto_y_el_aviso_con_como_arreglarlo(self):
+        b = self.board
+        self.assertIsNone(b.fuente.problema)
+        self.assertEqual(b.pestana_actual(), pestana_inicio.INICIO)
+        todo = textos(b.pestanas.get_child_by_name(pestana_inicio.INICIO))
+        self.assertIn("Tienes 1 proyecto, todo al día", todo)
+        self.assertNotIn("Todavía no tienes proyectos", todo)
+        self.assertTrue(b.inicio_aviso.get_visible())
+        self.assertIn("1 repo de tu lista ya no existe", " ".join(todo))
+        detalle = b.inicio_aviso_detalle.get_label()
+        self.assertIn(str(self.perdido), detalle)
+        self.assertIn("quítalo", detalle)
+
+
 if __name__ == "__main__":
     unittest.main()
