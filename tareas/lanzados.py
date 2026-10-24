@@ -19,7 +19,9 @@ Las fases que se guardan y el `estado` que se lee de ellas:
   La tarea sigue en Pendiente y nada la lanza sola: se vuelve a arrastrar cuando haya hueco.
   El board lo enseña con un chip «En espera» en la carta y el motivo en su ficha.
 - `detenido` → `detenido`: alguien lo paró (`despacho_board.detener`); la tarea y su worktree
-  no se tocan.
+  no se tocan. Devolverla a Pendiente desde el board la deja así (`despacho_board.pausar`), y
+  volver a lanzarla es una reanudación: `reanudacion` dice qué vez es, de quién retoma y
+  cuántos commits y cambios encontró (la nota entera, de `retomar.py`, va en `prompt`).
 
 **La salida del agente en vivo.** El agente escribe a su `.log` (el de Claude va en
 `stream-json`, una línea por evento); `Seguimiento` lee solo lo nuevo en cada `nuevas()` y
@@ -106,9 +108,15 @@ def todos():
 def poner_en_espera(tarea, modelo, motivo):
     """Se pidió lanzarla y no cabe: queda anotada en espera, con el motivo en llano."""
     with _CANDADO:
-        return guardar({"id": tarea["id"], "proyecto": tarea.get("proyecto", ""),
-                        "modelo": modelo, "fase": EN_ESPERA, "motivo": motivo,
-                        "ts": int(time.time())})
+        # Si ya se lanzó antes (una tarea pausada que vuelve a moverse sin hueco), lo de aquel
+        # lanzamiento se queda: es lo que necesita la nota de retomar (`retomar.py`).
+        previo = leer(tarea["id"]) or {}
+        if previo.get("fase") == DETENIDO and previo.get("motivo"):
+            previo["motivo_antes"] = previo["motivo"]
+        previo.update({"id": tarea["id"], "proyecto": tarea.get("proyecto", ""),
+                       "modelo": modelo, "fase": EN_ESPERA, "motivo": motivo,
+                       "ts": int(time.time())})
+        return guardar(previo)
 
 
 def anotar_lanzado(registro, pid, programa):
@@ -116,7 +124,7 @@ def anotar_lanzado(registro, pid, programa):
     with _CANDADO:
         registro.update(fase=LANZADO, pid=pid, programa=programa, host=socket.gethostname(),
                         ts=int(time.time()))
-        for clave in ("codigo", "terminado_ts", "motivo", "detenido_ts"):
+        for clave in ("codigo", "terminado_ts", "motivo", "detenido_ts", "motivo_antes"):
             registro.pop(clave, None)
         return guardar(registro)
 
@@ -155,7 +163,7 @@ def estado(registro):
     fase = registro.get("fase")
     salida = {k: registro.get(k) for k in ("id", "proyecto", "cliente", "modelo", "pid", "log",
                                           "worktree", "directorio", "ts", "codigo",
-                                          "terminado_ts")}
+                                          "terminado_ts", "reanudacion")}
     salida["por_que"] = ""
     if fase == EN_ESPERA:
         cual = EN_ESPERA
@@ -284,8 +292,8 @@ def situacion(e, ahora=None):
     cual = e.get("estado")
     if cual == TRABAJANDO:
         minutos = max(0, ahora - int(e.get("ts") or ahora)) // 60
-        return f"{quien} está trabajando en ella" + (f" desde hace {minutos} min"
-                                                     if minutos else "")
+        haciendo = "retomándola" if e.get("reanudacion") else "trabajando en ella"
+        return f"{quien} está {haciendo}" + (f" desde hace {minutos} min" if minutos else "")
     if cual == TERMINADO:
         return (f"{quien} terminó" if e.get("codigo") == 0
                 else f"{quien} terminó con un error (código {e.get('codigo')})")

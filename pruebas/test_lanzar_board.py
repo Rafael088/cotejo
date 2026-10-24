@@ -21,11 +21,12 @@ import apoyo  # noqa: F401  (pone la raíz del repo en sys.path)
 
 import test_pestana_inicio as base
 from test_despacho_board import FALSO, FOTO_CON_HUECO, git
+from test_despacho_board import esperar as esperar_hilo
 
 if base.HAY_GTK:
     from gi.repository import Gtk
     from enrutador import bitacora as despachos, capacidad, despacho_board
-    from tareas import bitacora, estado, lanzados, preparacion, worktrees
+    from tareas import bitacora, estado, lanzados, preparacion, retomar, worktrees
     from tareas.app.piezas import TareaArrastrada
 
 HAY_GIT = shutil.which("git") is not None
@@ -218,6 +219,90 @@ class LanzarDesdeElBoard(base.PestanaInicio):
         quieto = vivo.refrescos
         base.girar(1300)
         self.assertEqual(vivo.refrescos, quieto)
+
+    def test_devolver_a_pendiente_pausa_y_volver_a_haciendo_retoma(self):
+        """cotejo-z7ma7r de punta a punta: pausar conserva worktree, rama y modelo; retomar
+        lanza otro agente en el mismo worktree con la nota, y la ficha dice que retoma."""
+        self.board.ver_pestana("tablero")
+        avisos = []
+        with mock.patch.object(type(self.board), "aviso", lambda _b, t: avisos.append(t)), \
+                mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):
+            self.arrastrar("parseo")
+            registro = lanzados.leer("cotejo-con")
+            primero = registro["pid"]
+            self.assertTrue(self.esperar(lambda: "git status" in Path(registro["log"]).read_text()))
+            ruta = Path(registro["worktree"]["ruta"])
+
+            # Haciendo → Pendiente, a mano: se para el agente; worktree, rama y modelo siguen.
+            fila = self.fila("parseo", "en-curso")
+            self.board.mover(fila.proyecto, fila.tarea, "pendiente")
+            base.girar(100)
+            self.assertNotIn("#en-curso", self.linea("^cotejo-con"))
+            self.assertIn("#agente/sonnet", self.linea("^cotejo-con"))
+            self.assertEqual(lanzados.leer("cotejo-con")["fase"], lanzados.DETENIDO)
+            self.assertTrue(esperar_hilo(lambda: not _vive(primero)), "el agente sigue vivo")
+            self.assertTrue(ruta.is_dir())
+            self.assertIsNotNone(worktrees.de_tarea("cotejo-con"))
+            self.assertIn("cotejo/cotejo-con", git(self.repo, "branch", "--list"))
+            self.assertTrue(any(a.startswith("Pausé a sonnet") for a in avisos), avisos)
+            # Su ficha en Pendiente dice que está pausada.
+            fila = self.fila("parseo", "pendiente")
+            ficha = self.board.dialogo_detalle(fila.proyecto, fila.tarea)
+            self.assertIsNotNone(ficha.pausada)
+            self.assertIn("PAUSADA", base.textos(ficha.get_child()))
+            self.assertIn("cotejo/cotejo-con", " ".join(base.textos(ficha.get_child())))
+
+            # Lo que dejó: un commit y un archivo sin commitear.
+            (ruta / "hecho.txt").write_text("listo\n")
+            git(ruta, "add", "hecho.txt")
+            git(ruta, "commit", "-q", "-m", "Primera mitad del arreglo")
+            (ruta / "a-medias.txt").write_text("falta\n")
+            self.argv_falso.unlink()
+
+            # Pendiente → Haciendo: un agente nuevo en el mismo worktree, con la nota.
+            self.arrastrar("parseo")
+            self.assertIn("#en-curso #agente/sonnet", self.linea("^cotejo-con"))
+            registro = lanzados.leer("cotejo-con")
+            self.assertNotEqual(registro["pid"], primero)
+            self.assertEqual(registro["worktree"]["ruta"], str(ruta))
+            self.assertTrue(self.esperar(lambda: self.argv_falso.exists()
+                                         and self.argv_falso.read_text().endswith("}")))
+            lanzado = json.loads(self.argv_falso.read_text())
+            self.assertEqual(Path(lanzado["cwd"]).resolve(), ruta.resolve())
+            prompt = lanzado["argv"][-1]
+            for dicho in ("cotejo entregar cotejo-con", retomar.TITULO,
+                          "Primera mitad del arreglo", "?? a-medias.txt",
+                          "> Voy a mirar el repo."):
+                self.assertIn(dicho, prompt)
+
+            # La ficha en Haciendo dice que es una reanudación.
+            fila = self.fila("parseo", "en-curso")
+            ficha = self.board.dialogo_detalle(fila.proyecto, fila.tarea)
+            vivo = ficha.en_vivo
+            self.assertIn("sonnet está retomándola", vivo.situacion.get_label())
+            self.assertTrue(vivo.reanudacion.get_visible())
+            self.assertIn("Es una reanudación (vez 2)", vivo.reanudacion.get_label())
+            self.assertIn("1 commit y 1 cambio sin commitear", vivo.reanudacion.get_label())
+
+    def test_devolver_lo_que_no_lanzo_el_board_retira_el_worktree_como_siempre(self):
+        self.board.ver_pestana("tablero")
+        self.arrastrar("contrato")                 # n0: se mueve sin lanzar
+        fila = self.fila("contrato", "en-curso")
+        self.assertFalse(self.board.es_pausable(fila.tarea))
+        self.board.mover(fila.proyecto, fila.tarea, "pendiente")
+        base.girar(100)
+        self.assertIsNone(lanzados.leer("cotejo-hum"))
+        ficha = self.board.dialogo_detalle(*(lambda f: (f.proyecto, f.tarea))(
+            self.fila("contrato", "pendiente")))
+        self.assertIsNone(ficha.pausada)
+
+
+def _vive(pid):
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
 
 
 if __name__ == "__main__":
