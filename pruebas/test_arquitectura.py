@@ -56,14 +56,32 @@ class FuncionPura(unittest.TestCase):
 
     def test_valida_capa_nombre_frase_tareas_y_repetidos(self):
         filas = ("| vista | A | b | | |", "| ve |  | b | | |", "| ve | B |  | | |",
-                 "| ve | C | d | | no/vale |", "| ve | " + "x" * 41 + " | d | | |",
+                 "| ve | " + "x" * 41 + " | d | | |",
                  "| ve | D | d | | |", "| hace | d | e | | |", "| ve | E | e | | | | |")
         cuerpo = "## Piezas\n\n" + "\n".join(filas) + "\n"
         analisis = arquitectura.analizar(cuerpo)
         self.assertEqual([p.nombre for p in analisis.piezas], ["D"])
-        self.assertEqual(len(analisis.errores), 7)
+        self.assertEqual(len(analisis.errores), 6)
         self.assertIn("vista", analisis.errores[0])
-        self.assertIn("repite el nombre", analisis.errores[5])
+        self.assertIn("repite el nombre", analisis.errores[4])
+
+    def test_texto_libre_en_tareas_no_es_error_y_se_enlaza_por_nombre(self):
+        cuerpo = ("## Piezas\n\n| Capa | Pieza | Qué es | Tecnología | Tareas |\n| --- | --- | --- | --- | --- |\n"
+                  "| ve | A | a | | Crear el login, cotejo-aaaaaa, algo que no existe |\n"
+                  "| hace | B | b | | Montar la base de datos |\n")
+        analisis = arquitectura.analizar(cuerpo)
+        self.assertEqual(analisis.errores, ())
+        a, b = analisis.piezas
+        self.assertEqual(a.tareas, ("cotejo-aaaaaa",))
+        self.assertEqual(a.textos, ("Crear el login", "algo que no existe"))
+        columnas = {"cotejo-aaaaaa": "hecha", "cotejo-zzzzzz": "en-curso", "cotejo-yyyyyy": "pendiente"}
+        textos = {"cotejo-zzzzzz": "Crear el login con Google", "cotejo-yyyyyy": "Otra cosa"}
+        con = {p["id"]: p for p in arquitectura.con_estado(analisis.piezas, columnas, textos)}
+        self.assertEqual(con["a"]["tareas"], ["cotejo-aaaaaa", "cotejo-zzzzzz"])
+        self.assertEqual(con["a"]["estado"], "en-curso")
+        # Sin coincidencia se ignora en silencio: ni estado raro ni ids desconocidos.
+        self.assertEqual((con["b"]["tareas"], con["b"]["estado"], con["b"]["desconocidas"]),
+                         ([], "falta", []))
 
     def test_seccion_sin_filas_es_un_error(self):
         analisis = arquitectura.analizar("## Piezas\n\nNada todavía.\n")
@@ -173,6 +191,21 @@ class Verbos(unittest.TestCase):
                                    "--pieza", "ve|B|c")
         self.assertNotEqual(codigo, 0)
         self.assertEqual(self.archivos(), [])
+
+    def test_con_varias_entradas_manda_la_mas_reciente_sin_error(self):
+        from tareas import conocimiento
+        carpeta = self.repo / ".cotejo" / "arquitectura"
+        tabla = lambda n: ("## Piezas\n\n| Capa | Pieza | Qué es | Tecnología | Tareas |\n"
+                           "| --- | --- | --- | --- | --- |\n"
+                           f"| ve | {n} | algo | | Texto suelto |\n")
+        (carpeta / "arquitectura.md").write_text(
+            "---\nid: arq-aaaa\ntemas: []\nactualizado: 2026-10-01\n---\n" + tabla("Vieja"))
+        (carpeta / "arquitectura-2.md").write_text(
+            "---\nid: arq-bbbb\ntemas: []\nactualizado: 2026-10-02\n---\n" + tabla("Nueva"))
+        avisos = []
+        piezas = conocimiento.piezas_del_repo(almacen.Almacen(self.repo), avisos=avisos)
+        self.assertEqual([p["nombre"] for p in piezas], ["Nueva"])
+        self.assertEqual(avisos, [])
 
     def test_la_arquitectura_en_texto_libre_se_sigue_leyendo(self):
         codigo, datos, _ = self.correr("anotar", "arquitectura", "--titulo", "Flujo de login",

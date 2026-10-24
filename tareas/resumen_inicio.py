@@ -151,7 +151,10 @@ def _del_almacen(carpeta, proyecto, avisos=None):
         objetivo = conocimiento._secciones_proyecto(entrada.cuerpo).get("objetivo", "")
     except (almacen.EntradaNoExiste, almacen.IdRepetido):
         pass
-    piezas = conocimiento.piezas_del_repo(alm, columnas=columnas_de(proyecto), avisos=avisos)
+    textos = {modelo.id_actual(t.id): getattr(t, "nombre_corto", "") or getattr(t, "texto", "")
+              for t in [*proyecto.tareas, *proyecto.hechas] if modelo.id_actual(t.id)}
+    piezas = conocimiento.piezas_del_repo(alm, columnas=columnas_de(proyecto), avisos=avisos,
+                                          textos=textos)
     return version, objetivo, piezas
 
 

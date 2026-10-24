@@ -162,8 +162,10 @@ def armar(respuestas):
         "--texto \"cómo se hablan las piezas\" --pieza \"capa|nombre|frase|tecnología|tareas\"`, "
         "un `--pieza` por pieza. La capa es una de cuatro: `ve` (lo que ve la gente), `hace` "
         "(lo que hace el sistema), `guarda` (lo que guarda) o `conecta` (con qué se conecta). "
-        "La frase, en llano; la tecnología puede ir vacía. Anota la arquitectura antes de crear "
-        "las tareas y después añade los ids a sus piezas con `cotejo editar` si hace falta." % c,
+        "La frase, en llano; la tecnología puede ir vacía. Deja VACÍA la última columna (tareas) "
+        "de cada pieza: nunca escribas ahí texto ni nombres de tarea, solo ids reales, y todavía "
+        "no los hay. Anota la arquitectura antes de crear las tareas y, cuando existan, añade "
+        "los ids a sus piezas con `cotejo editar`." % c,
         "",
         paso["crear"],
         "   `cotejo crear \"Nombre corto: qué hay que hacer\" --proyecto %s --version 0.1.0`, "

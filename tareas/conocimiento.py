@@ -152,7 +152,9 @@ def cmd_leer(args):
         analisis = arquitectura.analizar(entrada.cuerpo)
         datos["formato"] = "piezas" if analisis.dibujable else "libre"
         if analisis.dibujable:
-            datos["piezas"] = arquitectura.con_estado(analisis.piezas, _columnas_por_id(alm.raiz))
+            datos["piezas"] = arquitectura.con_estado(
+                analisis.piezas, _columnas_por_id(alm.raiz),
+                _textos_por_id(alm.raiz) if any(p.textos for p in analisis.piezas) else None)
             if analisis.errores:
                 datos["avisos"] = [{"nota": f"{almacen.CARPETA}/{entrada.ruta}", "motivo": e}
                                    for e in analisis.errores]
@@ -226,31 +228,56 @@ def _columnas_por_id(raiz):
     return columnas
 
 
-def piezas_del_repo(alm, columnas=None, avisos=None, entradas=None):
-    """Las piezas de todas las entradas `arquitectura` del almacén, con su estado (v1.3.0).
+def _textos_por_id(raiz):
+    """{id: texto} de cada tarea de `.cotejo/tareas.md`, para enlazar por nombre."""
+    from .fuentes.repo import Repo
+    fuente = Repo({"repos": [str(raiz)]})
+    fuente.repos, fuente.raiz = [raiz], None
+    textos = {}
+    for proyecto in fuente.escanear(incluir_hechas=True)[:1]:
+        for tarea in [*proyecto.tareas, *proyecto.hechas]:
+            ident = modelo.id_actual(tarea.id)
+            if ident:
+                textos[ident] = tarea.nombre_corto or tarea.texto
+    return textos
+
+
+def _marca_de(alm, entrada):
+    """Qué tan reciente es una entrada: su `actualizado` y, a igual fecha, su archivo."""
+    try:
+        mtime = (alm.base / entrada.ruta).stat().st_mtime_ns
+    except OSError:
+        mtime = 0
+    return (str(entrada.datos.get("actualizado") or ""), mtime)
+
+
+def piezas_del_repo(alm, columnas=None, avisos=None, entradas=None, textos=None):
+    """Las piezas de la arquitectura del almacén, con su estado (v1.3.0).
 
     Es la API para quien dibuje el proyecto (la constelación, el mapa): una lista de dicts de
-    `arquitectura.con_estado`, cada uno con `entrada` (el id de la entrada que la define). Las
-    entradas de texto libre no aportan piezas. Una pieza con el mismo id que otra de una entrada
-    anterior (por ruta) se deja fuera con un aviso, igual que las filas mal escritas.
+    `arquitectura.con_estado`, cada uno con `entrada` (el id de la entrada que la define). Si
+    hay varias entradas de arquitectura con tabla (un reintento deja dos), manda la más reciente
+    y las demás se ignoran sin error. Las de texto libre no aportan piezas. `textos` ({id:
+    nombre}) enlaza por nombre el texto libre de la columna de tareas.
     `entradas` evita releer el almacén si ya se leyó (se filtran las de arquitectura).
     """
     columnas = _columnas_por_id(alm.raiz) if columnas is None else columnas
     if entradas is None:
         entradas = alm.entradas("arquitectura", avisos)
-    piezas, vistas = [], set()
+    candidatas = []
     for entrada in (e for e in entradas if e.tipo == "arquitectura"):
         analisis = arquitectura.analizar(entrada.cuerpo)
-        for error in analisis.errores:
-            almacen._avisar(avisos, entrada.ruta, error)
-        for pieza in arquitectura.con_estado(analisis.piezas, columnas):
-            if pieza["id"] in vistas:
-                almacen._avisar(avisos, entrada.ruta, f"la pieza «{pieza['nombre']}» ya está "
-                                                      "en otra entrada de arquitectura")
-                continue
-            vistas.add(pieza["id"])
-            piezas.append({**pieza, "entrada": entrada.id})
-    return piezas
+        if analisis.dibujable:
+            candidatas.append((_marca_de(alm, entrada), entrada, analisis))
+    if not candidatas:
+        return []
+    _, entrada, analisis = max(candidatas, key=lambda c: c[0])
+    for error in analisis.errores:
+        almacen._avisar(avisos, entrada.ruta, error)
+    if textos is None and any(p.textos for p in analisis.piezas):
+        textos = _textos_por_id(alm.raiz)
+    return [{**pieza, "entrada": entrada.id}
+            for pieza in arquitectura.con_estado(analisis.piezas, columnas, textos)]
 
 
 def _linea_vigente(entrada):

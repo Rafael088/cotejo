@@ -136,6 +136,33 @@ class DeUnRepo(unittest.TestCase):
         self.assertFalse(m.con_arquitectura)
         self.assertTrue(m.avisos)
 
+    def test_caso_real_dos_entradas_y_texto_libre_en_tareas(self):
+        # Un reintento deja dos entradas de arquitectura; la columna de tareas trae texto libre.
+        alm = almacen.Almacen(self.carpeta)
+        for e in list(alm.entradas("arquitectura")):
+            (alm.base / e.ruta).unlink()
+        (self.carpeta / ".cotejo" / "tareas.md").write_text(
+            "# barberia\n\n- [ ] Ver el menú del cliente #v0.1.0 ^cotejo-aaa111\n",
+            encoding="utf-8")
+        tabla = ("# Arquitectura\n\n## Piezas\n| capa | pieza | qué es | tecnología | tareas |\n"
+                 "| ve | Pantalla | Lo que ve el cliente | | ver el menú; filtrar por categorías |\n"
+                 "| hace | Servicio | Sirve el menú | | ver el menú; ofertas |\n"
+                 "| guarda | Datos | Guarda los platos | | |\n"
+                 "| conecta | Navegador | Muestra la web | | ver el menú |\n")
+        carpeta = self.carpeta / ".cotejo" / "arquitectura"
+        carpeta.mkdir(exist_ok=True)
+        (carpeta / "arquitectura.md").write_text(
+            "---\nid: arq-aaaa\ntemas: []\nactualizado: 2026-10-23\n---\n" + tabla,
+            encoding="utf-8")
+        (carpeta / "arquitectura-2.md").write_text(
+            "---\nid: arq-bbbb\ntemas: []\nactualizado: 2026-10-23\n---\n# Arquitectura\n\n"
+            "ve|Pantalla|Lo que ve|| Ver el menú\n", encoding="utf-8")
+        m = mapa.leer("barberia", self.carpeta)
+        self.assertEqual(sum(len(c.piezas) for c in m.capas), 4)
+        self.assertEqual(m.avisos, [])
+        self.assertEqual(m.pieza("pantalla")["tareas"], ["cotejo-aaa111"])
+        self.assertEqual(m.pieza("datos")["tareas"], [])
+
 
 if __name__ == "__main__":
     unittest.main()
