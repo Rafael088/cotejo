@@ -22,7 +22,10 @@ from unittest import mock
 
 import apoyo  # noqa: F401  (pone la raíz del repo en sys.path)
 
-import cairo
+try:
+    import cairo
+except ImportError:  # el CI sin GTK no trae pycairo: el dibujo se salta, la geometría no
+    cairo = None
 
 from tareas import almacen, temas
 from tareas import constelacion as c
@@ -151,6 +154,7 @@ class Geometria(unittest.TestCase):
         self.assertIn("nuevo, sin arquitectura todavía", texto)
 
 
+@unittest.skipIf(cairo is None, "sin pycairo no se dibuja")
 class Dibujo(unittest.TestCase):
     """Con cairo de verdad: cada pieza sale del color de su estado."""
 
