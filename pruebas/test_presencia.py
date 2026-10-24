@@ -234,7 +234,10 @@ class ConBoardDot(unittest.TestCase):
 
     def mover(self, texto, destino):
         fila = self.fila(texto)
-        self.board.mover(fila.proyecto, fila.tarea, destino)
+        # Aquí se prueba el dot, no el lanzamiento (eso es `test_lanzar_board.py`): pasar a
+        # Haciendo mueve la carta sin lanzar ningún agente.
+        with mock.patch.object(self.board, "lanzar_al_mover", return_value=False):
+            self.board.mover(fila.proyecto, fila.tarea, destino)
         girar(60)
 
     def devolver(self, texto, destino):

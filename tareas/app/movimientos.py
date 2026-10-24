@@ -77,7 +77,7 @@ class Movimientos:
                 self.ver_detalle(fila.proyecto, fila.tarea)
 
     def mover(self, proyecto, tarea, destino):
-        """Único camino de escritura: lo usan el menú, el teclado y el arrastre.
+        """Único camino de escritura: lo usan el menú, el teclado, la ficha y el arrastre.
 
         Sacar una tarea de *Para comprobar* sin marcarla es rechazarla, y eso pide
         motivo antes de escribir nada. La evidencia es obligatoria al entregar por la misma
@@ -85,6 +85,12 @@ class Movimientos:
         """
         if tarea.columna == "por-validar" and destino != modelo.HECHA:
             self.preguntar_motivo(proyecto, tarea, destino)
+            return
+        # Pendiente → Haciendo a mano lanza su agente (v1.3.0, `lanzar.py`): con modelo, se
+        # lanza; sin él, se pregunta; sin hueco, queda en espera. Solo una tarea de persona
+        # sigue de largo y se mueve como siempre.
+        if (tarea.columna == modelo.PENDIENTE and destino == "en-curso"
+                and self.lanzar_al_mover(proyecto, tarea)):
             return
         self.escribir_movimiento(proyecto, tarea, destino)
 

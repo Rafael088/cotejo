@@ -34,6 +34,7 @@ def carta(estado, agente="opus"):
         arrastrable=lambda f: None, anotacion=lambda t: None,
         revision_en_carta=lambda p, t: Gtk.Label(label="revision"))
     falso.chip_agente = types.MethodType(app.Board.chip_agente, falso)
+    falso.motivo_en_espera = types.MethodType(app.Board.motivo_en_espera, falso)
     falso.detalles_de_carta = types.MethodType(app.Board.detalles_de_carta, falso)
     tarea = modelo.Tarea("v1.2.4 · Hacer algo: con su descripción", id="cotejo-8y7t68", donde="Uno.md",
                          estado="en-curso" if estado == "haciendo" else

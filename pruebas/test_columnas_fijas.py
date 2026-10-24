@@ -43,6 +43,7 @@ def tablero():
         revision_en_carta=lambda p, t: Gtk.Label(label="revision"))
     falso.poner_nombre_riel = lambda: app.Board.poner_nombre_riel(falso)
     falso.chip_agente = types.MethodType(app.Board.chip_agente, falso)
+    falso.motivo_en_espera = types.MethodType(app.Board.motivo_en_espera, falso)
     falso.detalles_de_carta = types.MethodType(app.Board.detalles_de_carta, falso)
     cajas = {clave: app.Board.columna(falso, i, clave, nombre)
              for i, (clave, nombre) in enumerate(modelo.COLUMNAS)}

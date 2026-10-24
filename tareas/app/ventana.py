@@ -19,6 +19,7 @@ from .cartas import Cartas
 from .columnas import Columnas
 from .decisiones import Decisiones
 from .detalle import Detalle
+from .lanzar import Lanzar
 from .maestro import Maestro
 from .mapa import PestanaMapa
 from .movimientos import Movimientos
@@ -35,7 +36,7 @@ from .vista_revision import Revision
 
 class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, PestanaRevisarPlan, PestanaMapa,
             Maestro, Columnas, Banda, Pie, Cartas, Detalle, Decisiones, Revision, Resumen, Teclado,
-            Movimientos, CapaDot, Adw.ApplicationWindow):
+            Movimientos, Lanzar, CapaDot, Adw.ApplicationWindow):
     """Las tareas en sus cuatro estados, un proyecto a la vez.
 
     Es el lado humano del flujo de agentes: el agente mueve de Pendiente a Haciéndola y de ahí
