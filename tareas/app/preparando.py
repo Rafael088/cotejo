@@ -53,6 +53,10 @@ class PantallaPreparando(Gtk.ScrolledWindow):
 
         self.mensaje = Gtk.Label(xalign=0, wrap=True, visible=False, css_classes=["preparando-error"])
         cuerpo.append(self.mensaje)
+        # Otro Cotejo de otra versión en el equipo: una nota, no un error.
+        self.otro_cotejo = Gtk.Label(xalign=0, wrap=True, visible=False,
+                                     css_classes=["carta-descripcion"])
+        cuerpo.append(self.otro_cotejo)
 
         self.registro = Gtk.TextView(editable=False, cursor_visible=False, monospace=True,
                                      wrap_mode=Gtk.WrapMode.WORD_CHAR,
@@ -104,6 +108,8 @@ class PantallaPreparando(Gtk.ScrolledWindow):
             etiquetar(nombre, f"{paso['titulo']}: {paso['estado']}")
         self.mensaje.set_label(v.mensaje)
         self.mensaje.set_visible(bool(v.mensaje))
+        self.otro_cotejo.set_label(v.aviso)
+        self.otro_cotejo.set_visible(bool(v.aviso))
         self.reintentar.set_visible("reintentar" in v.acciones)
         self.en_terminal.set_visible("abrir_en_terminal" in v.acciones)
         self.revisar.set_visible(v.puede_revisar)

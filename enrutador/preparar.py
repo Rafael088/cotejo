@@ -25,6 +25,13 @@ Cómo se sigue, reutilizando lo de los despachos:
 repo sin activarla, pero `crear` y `asignar` escriben en la fuente activa: con Obsidian activo,
 el agente no encontraría el proyecto que acaba de crear. El agente corre con la fuente repo
 fijada por entorno, así que esos verbos dan con él y la config de la persona no cambia.
+
+**El mismo `cotejo` que el board** (`mismo_cotejo.py`). Al entorno se le añade un PATH con un
+lanzador `cotejo` primero, que corre el código de este proceso: con otro Cotejo instalado (el
+publicado mientras se prueba el board del repo, o uno viejo), el agente ya no llama a ese, que
+podía no tener los verbos del prompt ni escribir los pasos donde los lee Preparando. Se calcula
+al lanzar cada vez (`lanzar`, `reintentar`, `rehacer`, `abrir_en_terminal`), no se guarda en el
+registro. Si el otro es de otra versión, queda en `otro_cotejo` y Preparando lo dice en llano.
 """
 
 import shutil
@@ -33,7 +40,7 @@ import threading
 from pathlib import Path
 
 from tareas import inicio, preparacion
-from . import clientes, config as cfg, procesos
+from . import clientes, config as cfg, mismo_cotejo, procesos
 from .motores import fondo, terminal
 
 
@@ -111,7 +118,26 @@ def lanzar(respuestas, cliente=None, modelo=None, al_terminar=None, config=None)
                 "cliente": elegido.nombre, "modelo": modelo, "prompt": prompt,
                 "comando": argv, "entorno": dict(inicio.ENTORNO), "intentos": 0,
                 "log": str(preparacion.CARPETA / f"{ident}.log")}
+    otro = _otro_cotejo()
+    if otro:
+        registro["otro_cotejo"] = otro
     return _arrancar(registro, config, al_terminar)
+
+
+def _otro_cotejo():
+    try:
+        return mismo_cotejo.otro()
+    except Exception:  # noqa: BLE001 - mirar el otro Cotejo es un aviso, nunca un impedimento
+        return None
+
+
+def entorno_del_agente(registro):
+    """Lo que se añade al entorno del agente: el del registro (`inicio.ENTORNO`) y el PATH
+    con el mismo `cotejo` que el board primero."""
+    try:
+        return mismo_cotejo.entorno(registro.get("entorno"))
+    except OSError as error:
+        raise NoSePuede(f"No pude preparar el Cotejo que usará tu agente: {error}") from error
 
 
 def _arrancar(registro, config, al_terminar):
@@ -119,7 +145,7 @@ def _arrancar(registro, config, al_terminar):
     registro["intentos"] = int(registro.get("intentos") or 0) + 1
     try:
         proceso = fondo.lanzar(registro["comando"], _donde(registro["carpeta"]),
-                               registro["log"], ajustes, registro.get("entorno"),
+                               registro["log"], ajustes, entorno_del_agente(registro),
                                etiqueta="inicio-" + registro["id"])
     except OSError as error:
         raise NoSePuede(f"No pude lanzar «{registro['comando'][0]}»: {error}") from error
@@ -212,7 +238,7 @@ def abrir_en_terminal(ident, config=None, simular=False):
         return salida
     _parar(registro)
     try:
-        terminal.abrir(argv, directorio, registro.get("entorno"))
+        terminal.abrir(argv, directorio, entorno_del_agente(registro))
     except terminal.SinTerminal as error:
         raise NoSePuede(str(error)) from error
     preparacion.cambiar_fase(ident, preparacion.EN_TERMINAL)
