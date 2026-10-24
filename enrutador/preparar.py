@@ -185,6 +185,25 @@ def entorno_del_agente(registro):
         raise NoSePuede(f"No pude preparar el Cotejo que usará tu agente: {error}") from error
 
 
+def marcar_propuestas_previas(registro):
+    """Al relanzar el inicio, apunta en el entorno del agente qué decisiones seguían en
+    `propuesta`: son las del intento anterior, y `cotejo proponer decision` reemplaza (en vez de
+    duplicar) la que el nuevo intento vuelva a proponer sobre lo mismo. Las aceptadas no entran.
+    Sin ninguna, quita la variable. Un fallo al leer el almacén no impide relanzar."""
+    from tareas import almacen, reintento
+    entorno = dict(registro.get("entorno") or {})
+    entorno.pop(reintento.ENV_PROPUESTAS_PREVIAS, None)
+    try:
+        ids = [e.id for e in almacen.Almacen(registro["carpeta"]).entradas("decision")
+               if e.estado == "propuesta"]
+    except Exception:  # noqa: BLE001 - es una defensa extra, nunca un impedimento
+        ids = []
+    if ids:
+        entorno[reintento.ENV_PROPUESTAS_PREVIAS] = ",".join(ids)
+    registro["entorno"] = entorno
+    return ids
+
+
 def _arrancar(registro, config, al_terminar):
     ajustes = (config.get("motores") or {}).get("headless") or {}
     registro["intentos"] = int(registro.get("intentos") or 0) + 1
@@ -244,6 +263,9 @@ def reintentar(ident, al_terminar=None, config=None):
     config = config if config is not None else cfg.cargar()
     registro = _leer(ident)
     _parar(registro)
+    marcar_propuestas_previas(registro)
+    if registro.get("prompt") and not registro.get("rehacer"):
+        registro["prompt"] = inicio.para_reintento(registro["prompt"])
     if registro.get("cliente") in clientes.CLIENTES and registro.get("prompt"):
         registro["comando"] = comando(config, clientes.de(registro["cliente"]),
                                       registro.get("modelo") or "", registro["prompt"],
@@ -269,6 +291,9 @@ def rehacer(ident, prompt, al_terminar=None, config=None, motivo=""):
         raise NoSePuede(f"No encontré «{argv[0]}» en esta máquina, y es el cliente que elegiste "
                         f"({elegido.titulo or elegido.nombre}). Instálalo o elige otro.")
     _parar(registro)
+    # Rehacer no reemplaza propuestas ajenas: la rechazada ya está rechazada y el resto sigue.
+    registro["entorno"] = {k: v for k, v in (registro.get("entorno") or {}).items()
+                           if k != "COTEJO_PROPUESTAS_PREVIAS"}
     registro.setdefault("desde", registro.get("ts"))
     registro.update(prompt=prompt, comando=argv, rehacer={"motivo": motivo}, intentos=0)
     return _arrancar(registro, config, al_terminar)
@@ -282,6 +307,9 @@ def abrir_en_terminal(ident, config=None, simular=False):
     """
     config = config if config is not None else cfg.cargar()
     registro = _leer(ident)
+    marcar_propuestas_previas(registro)
+    if not registro.get("rehacer"):
+        registro["prompt"] = inicio.para_reintento(registro["prompt"])
     elegido = _cliente(registro.get("cliente"))
     permisos = elegido.permisos(carpetas_de_escritura(registro["carpeta"]), interactivo=True)[0]
     argv = (list((config.get("maestro") or {}).get("terminal") or ()) +

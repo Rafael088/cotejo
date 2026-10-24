@@ -140,6 +140,9 @@ def armar(respuestas):
         "Esta sesión corre con `COTEJO_FUENTE=repo`: así `crear` y `asignar` escriben en el "
         "proyecto de esta carpeta aunque la persona use otra fuente. No cambies esa variable "
         "ni la fuente activa.",
+        "Si la carpeta ya tiene un `.cotejo/` de un intento anterior, no empieces de cero: "
+        "`cotejo contexto --repo %s` primero, y reutiliza lo que ya hay (ver «Si ya hay algo»)."
+        % c,
         "",
         paso["init"],
         "   `cotejo init --repo %s`. Si la carpeta no existe, la crea. No cambies la fuente "
@@ -175,6 +178,15 @@ def armar(respuestas):
         "`cotejo asignar <id> persona` con el id que devolvió `crear` (nivel n0, no se despacha)."
         % n,
         "",
+        "## Si ya hay algo",
+        "",
+        "Un inicio se puede repetir (la persona reintenta o rehace). Nada se duplica: "
+        "las tareas con el mismo texto no se crean dos veces; una decisión propuesta que ya "
+        "existe sobre lo mismo no se vuelve a proponer con otro título (si hay que cambiarla, "
+        "`cotejo proponer decision --reemplaza <dec-id> ...`); y la arquitectura que ya existe "
+        "se actualiza (`cotejo anotar arquitectura` lo hace solo) en vez de abrir otra. Las "
+        "decisiones aceptadas por la persona no se tocan nunca.",
+        "",
         "## Al terminar",
         "",
         "Corre `cotejo contexto --repo %s` y resume en pocas líneas lo que dejaste. Recuerda "
@@ -183,6 +195,31 @@ def armar(respuestas):
         "que no hayas comprobado.",
         "",
     ])
+
+
+MARCA_REINTENTO = "## Es un reintento"
+
+
+def para_reintento(prompt):
+    """El prompt de inicio con el aviso de que ya hubo un intento (idempotente).
+
+    Al reintentar, la carpeta puede traer decisiones propuestas, arquitectura y tareas del
+    intento anterior (o de la persona). El agente las mira primero y las reutiliza; el código
+    (`proponer decision`, `anotar arquitectura`, `crear`) además reemplaza o actualiza lo
+    repetido si el agente se equivoca.
+    """
+    if MARCA_REINTENTO in prompt:
+        return prompt
+    aviso = "\n".join([
+        MARCA_REINTENTO, "",
+        "Esta es otra pasada del mismo inicio: el intento anterior pudo dejar a medias la "
+        "carpeta (o terminarla). ANTES del primer paso corre `cotejo contexto --repo <carpeta>` "
+        "y mira qué hay: proyecto escrito, decisiones propuestas, arquitectura y tareas. "
+        "Lo que ya está bien, déjalo y salta ese paso; lo que está a medias, complétalo; lo "
+        "que está mal, corrígelo con `editar` o `proponer decision --reemplaza`. No crees "
+        "otra decisión, otra arquitectura ni otra tarea para lo mismo. Las decisiones "
+        "aceptadas por la persona no se tocan.", "", ""])
+    return aviso + prompt
 
 
 def armar_rehacer(carpeta, decision_id, titulo, motivo):
@@ -227,6 +264,9 @@ def armar_rehacer(carpeta, decision_id, titulo, motivo):
         "3. Si alguna tarea de la 0.1.0 dependía de lo rechazado, crea la que haga falta con "
         "`cotejo crear \"...\" --proyecto %s --version 0.1.0` (y `cotejo asignar <id> persona` "
         "si es de una persona). No borres ni marques nada." % n,
+        "4. No repitas lo que ya existe: si otra decisión propuesta ya cubre el motivo, no "
+        "propongas una igual con otro título; tampoco crees tareas ni arquitectura repetidas "
+        "(`contexto` te dice qué hay).",
         "",
         "Al terminar, resume en una o dos líneas qué propusiste. No marques nada como hecho y "
         "no entregues tareas.",

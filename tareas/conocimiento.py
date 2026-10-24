@@ -20,7 +20,7 @@ import unicodedata
 from pathlib import Path
 
 from . import bitacora as historial
-from . import (almacen, arquitectura, configuracion, importar_obsidian, modelo,
+from . import (almacen, arquitectura, configuracion, importar_obsidian, modelo, reintento,
                version as version_proyecto)
 from .cli import ESQUEMA, ErrorCLI, imprimir, nucleo
 
@@ -498,6 +498,8 @@ def cmd_proponer_decision(args):
     """
     alm = _abrir(args)
     vieja = None
+    if not args.reemplaza:  # en un reintento del inicio, repetir una propuesta previa la reemplaza
+        args.reemplaza = reintento.propuesta_previa_repetida(alm, args.titulo, args.temas)
     if args.reemplaza:
         try:
             vieja = alm.leer(args.reemplaza)
@@ -551,13 +553,14 @@ def cmd_anotar(args):
     if not titulo:
         raise ErrorCLI("Una entrada necesita título", "Repite con --titulo.")
     texto = args.texto or ""
-    analisis = None
+    analisis = previa = None
     if args.tipo == "arquitectura":
-        texto = _texto_con_piezas(texto, getattr(args, "pieza", None) or [])
+        previa = next(iter(alm.entradas("arquitectura")), None)
+        texto = _texto_con_piezas(texto, getattr(args, "pieza", None) or [], previa)
         analisis = _validar_piezas(texto)
-    entrada = alm.crear(args.tipo, titulo, texto, temas=_temas_pedidos(args.temas))
+    entrada = reintento.guardar(alm, args.tipo, previa, titulo, texto, _temas_pedidos(args.temas))
     datos = {"esquema": ESQUEMA, "id": entrada.id, "ruta": entrada.ruta,
-             "version": entrada.version}
+             "version": entrada.version, **reintento.aviso(previa)}
     if analisis is not None and analisis.dibujable:
         datos["piezas"] = len(analisis.piezas)
     historial.anotar_verbo("anotar", alm.raiz, tipo=args.tipo, entrada=entrada.id,
@@ -566,7 +569,7 @@ def cmd_anotar(args):
     return 0
 
 
-def _texto_con_piezas(texto, crudas):
+def _texto_con_piezas(texto, crudas, previa=None):
     """El texto de una arquitectura con la tabla de `--pieza` al final, si se pasó alguna."""
     if not crudas:
         if not texto.strip():
@@ -582,6 +585,7 @@ def _texto_con_piezas(texto, crudas):
     except ValueError as error:
         raise ErrorCLI(f"--pieza: {error}", "Las capas son: " + ", ".join(arquitectura.CAPAS)
                        + ". No se escribió nada.") from error
+    piezas = reintento.conservar_tareas(piezas, previa.cuerpo) if previa else piezas
     tabla = arquitectura.tabla(piezas)
     return f"{texto.rstrip()}\n\n{tabla}" if texto.strip() else tabla
 
