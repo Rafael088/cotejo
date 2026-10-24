@@ -199,9 +199,9 @@ class Verbos(unittest.TestCase):
                            "| --- | --- | --- | --- | --- |\n"
                            f"| ve | {n} | algo | | Texto suelto |\n")
         (carpeta / "arquitectura.md").write_text(
-            "---\nid: arq-aaaaaa\ntemas: []\nactualizado: 2026-10-01\n---\n" + tabla("Vieja"))
+            "---\nid: arq-aaaa\ntemas: []\nactualizado: 2026-10-01\n---\n" + tabla("Vieja"))
         (carpeta / "arquitectura-2.md").write_text(
-            "---\nid: arq-bbbbbb\ntemas: []\nactualizado: 2026-10-02\n---\n" + tabla("Nueva"))
+            "---\nid: arq-bbbb\ntemas: []\nactualizado: 2026-10-02\n---\n" + tabla("Nueva"))
         avisos = []
         piezas = conocimiento.piezas_del_repo(almacen.Almacen(self.repo), avisos=avisos)
         self.assertEqual([p["nombre"] for p in piezas], ["Nueva"])
