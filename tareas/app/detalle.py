@@ -155,7 +155,10 @@ class Detalle:
             cuerpo.append(dialogo.en_vivo)
         espera = self.motivo_en_espera(tarea)
         if espera:
-            cuerpo.append(self.seccion_en_espera(espera))
+            def quitar(proyecto=proyecto, tarea=tarea):
+                dialogo.close()
+                self.al_quitar_de_espera(proyecto, tarea)
+            cuerpo.append(self.seccion_en_espera(espera, quitar))
         dialogo.pausada = None if espera else self.seccion_pausada(tarea)
         if dialogo.pausada is not None:
             cuerpo.append(dialogo.pausada)

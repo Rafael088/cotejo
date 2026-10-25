@@ -190,6 +190,11 @@ class Cartas:
             caja.append(Gtk.Label(label="ASIGNAR A", xalign=0, css_classes=["menu-titulo"]))
             caja.append(self.lista_de_agentes(proyecto, tarea, popover))
 
+        if self.motivo_en_espera(tarea):
+            caja.append(Gtk.Separator(margin_top=px(ESPACIADO_SM), margin_bottom=px(ESPACIADO_XS)))
+            caja.append(self.opcion("Quitar de la espera", self.al_quitar_de_espera, proyecto,
+                                    tarea, None, popover, "aviso"))
+
         visible = anotacion_visible(tarea, self.app.bitacora.get(tarea.id))
         if visible is not None:
             clase, titulo, texto = visible
