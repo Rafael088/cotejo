@@ -164,10 +164,12 @@ def lanzar(tarea_id, al_terminar=None, config=None):
     return _lanzar(tarea_id, al_terminar, config, rechazada=False)
 
 
-def _lanzar(tarea_id, al_terminar, config, rechazada):
+def _lanzar(tarea_id, al_terminar, config, rechazada, rechazo_dado=None):
     """`lanzar`, y con `rechazada` el relanzamiento de `rechazar`: la tarea ya está en
     Haciendo a nombre de su modelo (se la devolvieron desde Para comprobar), así que no se
-    toma otra vez, y el agente nuevo recibe además lo que le pidieron cambiar."""
+    toma otra vez, y el agente nuevo recibe además lo que le pidieron cambiar. `rechazo_dado` es
+    ese rechazo cuando no hay registro de un lanzamiento anterior (la entregó otro camino, por
+    ejemplo `despachar`) y por tanto no hay dónde leerlo."""
     config = config if config is not None else cfg.cargar()
     cotejo = f.Cotejo()
     try:
@@ -224,7 +226,8 @@ def _lanzar(tarea_id, al_terminar, config, rechazada):
     # Lo que pidieron cambiar, si se la devolvieron desde Para comprobar y aún no volvió a
     # entregar (`retomar.rechazo_vigente`): va entero en la nota, así que el encargo no repite
     # el motivo ni la evidencia de la bitácora.
-    rechazo = retomar.rechazo_vigente(anterior, bitacora_cotejo.ultima_entrega(tarea["id"]))
+    rechazo = (retomar.rechazo_vigente(anterior, bitacora_cotejo.ultima_entrega(tarea["id"]))
+               or rechazo_dado)
 
     def armar(tarea_ahora, worktree, nota=NOTA):
         trabajo = Path(worktree["ruta"]) if worktree else directorio
@@ -298,6 +301,13 @@ def _lanzar(tarea_id, al_terminar, config, rechazada):
                        "sin_commitear": (len(datos_nota["sin_commitear"])
                                          if datos_nota["sin_commitear"] is not None else None),
                        "rechazo": (rechazo or {}).get("motivo"),
+                       "nota": prompt[len(encargo.prompt) + 2:]}
+    elif rechazo:
+        # Devuelta desde Para comprobar sin que el board la hubiera lanzado: no hay agente
+        # anterior del que retomar, pero sí lo que pidieron cambiar y su entrega.
+        prompt = encargo.prompt + "\n\n" + retomar.armar_rechazo(rechazo)
+        reanudacion = {"vez": 2, "anterior": asignada or None, "commits": None,
+                       "sin_commitear": None, "rechazo": rechazo.get("motivo"),
                        "nota": prompt[len(encargo.prompt) + 2:]}
     ramas = ramas_protegidas(directorio, worktree)
     argv = comando(config, cliente, elegida, prompt,
@@ -467,7 +477,7 @@ RECHAZO = "lo devolvieron desde Para comprobar para lanzar otro"
 
 
 def rechazar(tarea_id, motivo, mover, al_terminar=None, config=None):
-    """Para comprobar → Haciendo con motivo, de una tarea que lanzó el board: un agente
+    """Para comprobar → Haciendo con motivo, de una tarea asignada a un agente: un agente
     **nuevo** en el mismo worktree con el encargo, la nota de retomar y «Lo que te pidieron
     cambiar» (el motivo y la entrega anterior, `retomar.armar_rechazo`).
 
@@ -476,37 +486,64 @@ def rechazar(tarea_id, motivo, mover, al_terminar=None, config=None):
     la bitácora) la pase a Haciendo; así su fin no la toma por una que terminó sin entregar.
     Si después no se puede lanzar (sin hueco, sin cliente…), vuelve a Pendiente con su modelo y
     el rechazo guardado, y levanta el `NoSePuede`: al pasarla otra vez a Haciendo, el agente
-    nuevo lo recibe. Devuelve el estado, o None si no la lanzó el board (y `mover` no se llamó:
-    se mueve como siempre)."""
+    nuevo lo recibe. Si la lanzó otro camino (`despachar`, un agente a mano) y está asignada a
+    un agente, también se lanza: en la carpeta del proyecto o en su worktree si lo tiene, con
+    «Lo que te pidieron cambiar» pero sin nota de retomar (no hay registro del anterior).
+    Devuelve el estado, o None si es de una persona o no tiene agente (y `mover` no se
+    llamó: se mueve como siempre)."""
     anterior = lanzados.leer(tarea_id)
-    if not retomar.es_retomable(anterior):
-        return None
+    propia = retomar.es_retomable(anterior)
+    if not propia:
+        # No la lanzó el board (la entregó `despachar`, o un agente a mano): si está asignada
+        # a un agente, devolverla también lanza el suyo; si es de una persona, se mueve como
+        # siempre (cotejo-2sxw7p).
+        modelo = _agente_asignado(tarea_id, config)
+        if not modelo:
+            return None
+        anterior = None
+    else:
+        modelo = anterior.get("modelo")
     if not (motivo or "").strip():
         raise NoSePuede("Para devolverla hace falta un motivo.")
-    if anterior.get("fase") == lanzados.LANZADO:
-        detener(tarea_id, RECHAZO)
-    lanzados.actualizar(tarea_id, rechazo={
-        **retomar.rechazo(motivo, bitacora_cotejo.ultima_entrega(tarea_id)),
-        "de_pid": anterior.get("pid")})
+    dado = {**retomar.rechazo(motivo, bitacora_cotejo.ultima_entrega(tarea_id)),
+            "de_pid": (anterior or {}).get("pid")}
+    if propia:
+        if anterior.get("fase") == lanzados.LANZADO:
+            detener(tarea_id, RECHAZO)
+        lanzados.actualizar(tarea_id, rechazo=dado)
     if not mover():
         raise NoSePuede("No pude pasarla a Haciendo: cambió mientras tanto.")
     try:
-        return _lanzar(tarea_id, al_terminar, config, rechazada=True)
+        return _lanzar(tarea_id, al_terminar, config, rechazada=True, rechazo_dado=dado)
     except NoSePuede as error:
-        modelo = anterior.get("modelo")
+        asignada = (anterior or {}).get("asignada") or modelo or ""
         try:
             f.Cotejo().soltar(tarea_id, f"No se pudo lanzar otro agente: {error} Lo que pediste "
                               f"cambiar queda guardado para el siguiente.", agente=modelo,
-                              asignada=anterior.get("asignada") or modelo or "")
+                              asignada=asignada)
         except ErrorCLI:
             pass
+        # Sin lanzamiento anterior el registro puede ser solo el de «en espera»: el rechazo se
+        # guarda ahí para que el siguiente agente lo reciba.
+        lanzados.actualizar(tarea_id, rechazo=dado)
         registro = lanzados.leer(tarea_id) or {}
-        if registro.get("fase") not in (lanzados.EN_ESPERA, lanzados.DETENIDO):
+        if registro and registro.get("fase") not in (lanzados.EN_ESPERA, lanzados.DETENIDO):
             lanzados.cambiar_fase(tarea_id, lanzados.DETENIDO, motivo=RECHAZO,
                                   detenido_ts=int(time.time()))
         dicho = (f"{error} La devolví a Pendiente con lo que pediste cambiar: pásala a "
                  f"Haciendo cuando se pueda.")
         raise (SinHueco(dicho) if isinstance(error, SinHueco) else NoSePuede(dicho)) from error
+
+
+def _agente_asignado(tarea_id, config=None):
+    """El modelo al que está asignada la tarea, o "" si no tiene o es de una persona."""
+    config = config if config is not None else cfg.cargar()
+    try:
+        agente = (f.Cotejo().tarea(tarea_id).get("agente") or "").strip()
+    except ErrorCLI:
+        return ""
+    alias = tuple(config.get("alias_persona") or ("persona",))
+    return "" if not agente or agente in alias else agente
 
 
 # --- seguir y parar -----------------------------------------------------------------------------

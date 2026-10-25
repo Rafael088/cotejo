@@ -290,11 +290,56 @@ class FinYRechazo(ConClienteFalso):
         self.assertIn(retomar.TITULO_RECHAZO, prompt)
         self.assertIn("Falta el caso vacío.", prompt)
 
-    def test_rechazar_lo_que_no_lanzo_el_board_no_mueve_ni_lanza(self):
+    def poner_estado(self, tarea_id, estado):
+        for uno in self.fuente.escanear(incluir_hechas=True):
+            for tarea in uno.tareas:
+                if tarea.id == tarea_id:
+                    return self.fuente.poner_estado(tarea, estado)
+        self.fail(tarea_id)
+
+    def test_rechazar_una_de_una_persona_no_mueve_ni_lanza(self):
+        self.poner_estado("cotejo-hum", "por-validar")
         mover = self.mover_a_haciendo("x")
-        self.assertIsNone(despacho_board.rechazar(ID, "x", mover))
+        self.assertIsNone(despacho_board.rechazar("cotejo-hum", "x", mover))
         self.assertEqual(mover.llamadas, [])
+        self.assertIsNone(lanzados.leer("cotejo-hum"))
+
+    def test_rechazar_una_asignada_que_no_lanzo_el_board_tambien_lanza_a_su_agente(self):
+        # Entregada por otro camino (`despachar`, a mano): en Para comprobar, sin registro.
+        self.poner_estado(ID, "por-validar")
         self.assertIsNone(lanzados.leer(ID))
+        mover = self.mover_a_haciendo("Falta el caso vacío.")
+        segundos = []
+        with mock.patch.dict(os.environ, {"FALSO_ESPERA": "1"}):
+            estado = despacho_board.rechazar(ID, "Falta el caso vacío.", mover,
+                                             al_terminar=segundos.append)
+        self.assertEqual(mover.llamadas, [1])
+        self.assertEqual(estado["estado"], lanzados.TRABAJANDO)
+        self.assertEqual(estado["modelo"], "sonnet")
+        self.assertEqual(self.columna(), "en-curso")
+        self.assertIn("#agente/sonnet", self.linea())
+        prompt = self.argv()["argv"][-1]
+        self.assertIn("cotejo entregar cotejo-asig", prompt)
+        self.assertIn(retomar.TITULO_RECHAZO, prompt)
+        self.assertNotIn(retomar.TITULO, prompt.replace(retomar.TITULO_RECHAZO, ""))
+        self.assertEqual(prompt.count("Falta el caso vacío."), 1)
+        registro = lanzados.leer(ID)
+        self.assertEqual(registro["rechazo"]["motivo"], "Falta el caso vacío.")
+        self.assertEqual(registro["reanudacion"]["rechazo"], "Falta el caso vacío.")
+        self.assertTrue(esperar(lambda: segundos, 15))
+
+    def test_rechazar_sin_hueco_una_que_no_lanzo_el_board_guarda_el_rechazo(self):
+        self.poner_estado(ID, "por-validar")
+        self.configurar(capacidad={"mb_por_agente": 10 ** 9})
+        with self.assertRaises(despacho_board.SinHueco):
+            despacho_board.rechazar(ID, "Falta el caso vacío.", self.mover_a_haciendo("x"))
+        self.assertEqual(self.columna(), "pendiente")
+        self.assertEqual(lanzados.leer(ID)["rechazo"]["motivo"], "Falta el caso vacío.")
+        self.configurar()
+        self.lanzar(ID)
+        prompt = self.argv()["argv"][-1]
+        self.assertIn(retomar.TITULO_RECHAZO, prompt)
+        self.assertIn("Falta el caso vacío.", prompt)
 
 
 class RechazoVigente(unittest.TestCase):
