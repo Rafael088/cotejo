@@ -166,24 +166,28 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
 
     @staticmethod
     def tamano_inicial():
-        """1280 × 820 a la escala de ahora, sin pasar del 90 % de la pantalla: a 150 % serían
-        1920 × 1230, más alto que un portátil de 1080."""
+        """1280 × 820 a la escala de ahora. Lo que la escala añade no pasa del 90 % de la
+        pantalla (a 150 % serían 1920 × 1230, más alto que un portátil de 1080), pero nunca
+        queda por debajo de los 1280 × 820 de siempre: con escala 1, lo de antes."""
         ancho, alto = px(1280), px(820)
         monitores = Gdk.Display.get_default().get_monitors()
         if monitores.get_n_items():
             zona = monitores.get_item(0).get_geometry()
-            ancho, alto = min(ancho, int(zona.width * 0.9)), min(alto, int(zona.height * 0.9))
+            ancho = min(ancho, max(1280, int(zona.width * 0.9)))
+            alto = min(alto, max(820, int(zona.height * 0.9)))
         return ancho, alto
 
     @staticmethod
     def tamano_inicial():
-        """1280 × 820 a la escala de ahora, sin pasar del 90 % de la pantalla: a 150 % serían
-        1920 × 1230, más alto que un portátil de 1080."""
+        """1280 × 820 a la escala de ahora. Lo que la escala añade no pasa del 90 % de la
+        pantalla (a 150 % serían 1920 × 1230, más alto que un portátil de 1080), pero nunca
+        queda por debajo de los 1280 × 820 de siempre: con escala 1, lo de antes."""
         ancho, alto = px(1280), px(820)
         monitores = Gdk.Display.get_default().get_monitors()
         if monitores.get_n_items():
             zona = monitores.get_item(0).get_geometry()
-            ancho, alto = min(ancho, int(zona.width * 0.9)), min(alto, int(zona.height * 0.9))
+            ancho = min(ancho, max(1280, int(zona.width * 0.9)))
+            alto = min(alto, max(820, int(zona.height * 0.9)))
         return ancho, alto
 
     def ajustar_columnas(self):
