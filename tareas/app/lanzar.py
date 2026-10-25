@@ -63,18 +63,24 @@ class EnVivo(Gtk.Box):
                                 css_classes=["detalle-clave"]))
         self.append(cabeza)
         # La señal de vida (cotejo-21y2ah): un punto que late, cuánto lleva y cuánto hace que
-        # se movió; pasado el umbral, dice en llano qué hacer. Ver `senal_vida.py`.
+        # se movió y qué está haciendo; si el proceso murió, «Retomar». Ver `senal_vida.py`.
         self.vida_punto = Gtk.Label(label="●", css_classes=["vida-punto"], valign=Gtk.Align.START)
         self.vida_titulo = Gtk.Label(xalign=0, hexpand=True, css_classes=["detalle-valor"])
         self.vida_detalle = Gtk.Label(xalign=0, css_classes=["detalle-tenue"])
         self.vida_ayuda = Gtk.Label(xalign=0, wrap=True, visible=False,
                                     wrap_mode=Pango.WrapMode.WORD_CHAR,
+                                    ellipsize=Pango.EllipsizeMode.END, lines=2,
                                     css_classes=["vida-ayuda"])
+        self.al_retomar = None        # lo pone la ficha: lanza un agente nuevo que retoma
+        self.vida_retomar = Gtk.Button(label="Retomar", visible=False, halign=Gtk.Align.START,
+                                       css_classes=["suggested-action", "pill"])
+        self.vida_retomar.connect("clicked", self.al_pulsar_retomar)
         textos = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
                          hexpand=True)
         textos.append(self.vida_titulo)
         textos.append(self.vida_detalle)
         textos.append(self.vida_ayuda)
+        textos.append(self.vida_retomar)
         self.vida = Gtk.Box(spacing=px(ESPACIADO_SM), visible=False, css_classes=["vida"])
         self.vida.append(self.vida_punto)
         self.vida.append(textos)
@@ -124,6 +130,10 @@ class EnVivo(Gtk.Box):
             buffer.set_text("Todavía no ha dicho nada.")
         return nuevas
 
+    def al_pulsar_retomar(self, *_):
+        if self.al_retomar is not None:
+            self.al_retomar()
+
     def pintar_vida(self, registro):
         """Pone la señal de vida. El latido es una clase que alterna en cada tic y solo si las
         animaciones del sistema están activas; si no, el punto se queda fijo."""
@@ -139,8 +149,9 @@ class EnVivo(Gtk.Box):
             self.nivel_vida = senal["nivel"]
         self.vida_titulo.set_label(senal["titulo"])
         self.vida_detalle.set_label(senal["detalle"])
-        self.vida_ayuda.set_label(senal["ayuda"])
-        self.vida_ayuda.set_visible(bool(senal["ayuda"]))
+        self.vida_ayuda.set_label(senal["hace"])
+        self.vida_ayuda.set_visible(bool(senal["hace"]))
+        self.vida_retomar.set_visible(senal["retomar"] and self.al_retomar is not None)
         if senal["animar"] and animaciones_activas():
             if self.vida_punto.has_css_class("late"):
                 self.vida_punto.remove_css_class("late")
@@ -218,6 +229,24 @@ class Lanzar:
             self.aviso(f"Pausé a {estado.get('modelo') or 'su agente'}: su worktree y su rama "
                        f"se quedan. Pásala a Haciendo y otro agente la retoma donde quedó.")
         return estado
+
+    def retomar_la_caida(self, proyecto, tarea):
+        """«Retomar» de un agente que se cerró sin entregar: la tarea sigue en Haciendo a su
+        nombre, así que primero se anota parada y vuelve a Pendiente (como hace el fin, o
+        `recoger` al refrescar) y de ahí se lanza otro agente nuevo con la nota de retomar,
+        el camino de siempre (`lanzar_al_mover`). Si no hay hueco, queda en Pendiente, pausada,
+        y se vuelve a pasar a Haciendo cuando lo haya."""
+        from enrutador import despacho_board as db
+        try:
+            db.pausar(tarea.id, "se cerró sin entregar")
+            actual = self.fuente.poner_estado(tarea, modelo.PENDIENTE)
+        except (modelo.TareaCambiada, OSError) as error:
+            self.aviso(f"No pude retomarla: cambió en {error}")
+            self.app.refrescar()
+            return
+        bitacora.anotar("mover", proyecto, actual, de=tarea.columna, a=modelo.PENDIENTE)
+        if not self.lanzar_al_mover(proyecto, actual):
+            self.app.refrescar()
 
     def seccion_pausada(self, tarea):
         """En la ficha de una tarea pausada (en Pendiente, con un agente anterior): qué queda y
