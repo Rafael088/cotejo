@@ -295,7 +295,6 @@ def aviso_comprobar_a_mano(tarea, destino, alias_persona=("persona",)):
         return ""
     if not tarea.agente or tarea.agente in alias_persona:
         return ""
-    quien = alias_persona[0] if alias_persona else "persona"
     return (f"No se puede pasar a Para comprobar a mano: está asignada a {tarea.agente} y solo "
-            f"llega ahí cuando {tarea.agente} la entrega. Si la vas a hacer tú, asígnala a "
-            f"«{quien}» y luego muévela.")
+            f"llega ahí cuando {tarea.agente} la entrega. Si la vas a hacer tú, pulsa «La hago "
+            f"yo».")

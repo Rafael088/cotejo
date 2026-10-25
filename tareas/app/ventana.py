@@ -459,8 +459,13 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
         self.animacion.set_easing(Adw.Easing.EASE_OUT_CUBIC)
         self.animacion.play()
 
-    def aviso(self, texto, segundos=4):
-        """Un aviso que no se sale de la ventana: el texto largo se parte en líneas."""
+    def aviso(self, texto, segundos=4, boton="", al_pulsar=None):
+        """Un aviso que no se sale de la ventana: el texto largo se parte en líneas. Con `boton`,
+        lleva un botón que llama a `al_pulsar`."""
         etiqueta = Gtk.Label(label=texto, wrap=True, max_width_chars=48, xalign=0,
                              natural_wrap_mode=Gtk.NaturalWrapMode.WORD)
-        self.toasts.add_toast(Adw.Toast(custom_title=etiqueta, timeout=segundos))
+        toast = Adw.Toast(custom_title=etiqueta, timeout=segundos)
+        if boton and al_pulsar is not None:
+            toast.set_button_label(boton)
+            toast.connect("button-clicked", lambda *_: al_pulsar())
+        self.toasts.add_toast(toast)

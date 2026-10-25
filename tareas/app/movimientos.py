@@ -88,7 +88,8 @@ class Movimientos:
         # se pasa a mano, y se le dice a la persona por qué en vez de no hacer nada.
         bloqueo = modelo.aviso_comprobar_a_mano(tarea, destino, self.alias_persona)
         if bloqueo:
-            self.aviso(bloqueo, segundos=8)
+            self.aviso(bloqueo, segundos=8, boton="La hago yo",
+                       al_pulsar=lambda: self.hacerla_yo(proyecto, tarea, destino))
             self.app.refrescar()
             return
         if tarea.columna == "por-validar" and destino != modelo.HECHA:
@@ -105,6 +106,26 @@ class Movimientos:
         if tarea.columna == "en-curso" and destino == modelo.PENDIENTE:
             self.pausar_al_mover(tarea)
         self.escribir_movimiento(proyecto, tarea, destino)
+
+    def hacerla_yo(self, proyecto, tarea, destino):
+        """«La hago yo» del aviso de arriba: la persona se la queda y la mueve a donde quería.
+
+        Se asigna a la persona como en el diálogo de «¿Qué agente la hace?»; si su agente lo
+        lanzó el board, se para antes (su worktree y su rama se quedan, como al pausar, pero sin
+        el aviso de retomarla: ya no la hace un agente).
+        """
+        agente = self.alias_persona[0] if self.alias_persona else "persona"
+        if tarea.columna == "en-curso" and self.es_pausable(tarea):
+            from enrutador import despacho_board as db
+            db.pausar(tarea.id)
+        try:
+            actual = self.fuente.poner_agente(tarea, agente)
+            bitacora.anotar("asignar", proyecto, actual, de=tarea.agente, a=agente)
+        except (modelo.TareaCambiada, OSError) as error:
+            self.aviso(f"No pude asignarla: cambió en {error}")
+            self.app.refrescar()
+            return
+        self.escribir_movimiento(proyecto, actual, destino)
 
     def escribir_movimiento(self, proyecto, tarea, destino, motivo=""):
         # Aprobar una entrega ofrece integrar su rama (B4). Se mira antes de escribir porque

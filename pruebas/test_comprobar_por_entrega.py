@@ -11,6 +11,7 @@ from tareas import modelo
 from tareas.modelo import Tarea
 
 try:
+    from tareas.app import movimientos as movimientos_mod
     from tareas.app.movimientos import Movimientos
 except (ImportError, ValueError):
     Movimientos = None
@@ -28,7 +29,7 @@ class AvisoComprobarAMano(unittest.TestCase):
             aviso = modelo.aviso_comprobar_a_mano(tarea(estado, "sonnet"), "por-validar", PERSONA)
             self.assertIn("sonnet", aviso)
             self.assertIn("Para comprobar", aviso)
-            self.assertIn("«persona»", aviso)
+            self.assertIn("«La hago yo»", aviso)
 
     def test_las_de_una_persona_o_sin_asignar_si(self):
         for agente in ("persona", "yo", ""):
@@ -64,6 +65,39 @@ class EnElBoard(unittest.TestCase):
         self.assertIn("sonnet", board.aviso.call_args.args[0])
         board.escribir_movimiento.assert_not_called()
         board.lanzar_al_mover.assert_not_called()
+
+    def test_el_aviso_ofrece_la_hago_yo(self):
+        board = self.board()
+        board.hacerla_yo = mock.Mock()
+        t = tarea("pendiente", "sonnet")
+        Movimientos.mover(board, "P", t, "por-validar")
+        self.assertIn("La hago yo", board.aviso.call_args.args[0])
+        self.assertEqual(board.aviso.call_args.kwargs["boton"], "La hago yo")
+        board.aviso.call_args.kwargs["al_pulsar"]()
+        board.hacerla_yo.assert_called_once_with("P", t, "por-validar")
+
+    def test_la_hago_yo_la_asigna_a_la_persona_y_la_mueve(self):
+        board = self.board()
+        t = tarea("pendiente", "sonnet")
+        asignada = tarea("pendiente", "persona")
+        board.fuente = SimpleNamespace(poner_agente=mock.Mock(return_value=asignada))
+        board.es_pausable = mock.Mock(return_value=False)
+        with mock.patch.object(movimientos_mod.bitacora, "anotar"):
+            Movimientos.hacerla_yo(board, "P", t, "por-validar")
+        board.fuente.poner_agente.assert_called_once_with(t, "persona")
+        board.escribir_movimiento.assert_called_once_with("P", asignada, "por-validar")
+        board.es_pausable.assert_not_called()
+
+    def test_la_hago_yo_en_haciendo_para_al_agente_del_board(self):
+        board = self.board()
+        t = tarea("en-curso", "sonnet")
+        board.fuente = SimpleNamespace(poner_agente=mock.Mock(return_value=t))
+        board.es_pausable = mock.Mock(return_value=True)
+        with mock.patch.object(movimientos_mod.bitacora, "anotar"), \
+                mock.patch("enrutador.despacho_board.pausar") as pausar:
+            Movimientos.hacerla_yo(board, "P", t, "por-validar")
+        pausar.assert_called_once_with(t.id)
+        board.escribir_movimiento.assert_called_once()
 
     def test_una_de_una_persona_se_mueve_como_siempre(self):
         board = self.board()
