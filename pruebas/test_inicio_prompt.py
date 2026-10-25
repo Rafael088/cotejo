@@ -45,7 +45,8 @@ class PromptDeInicio(unittest.TestCase):
     def test_nombra_el_entorno_con_el_que_corre(self):
         # `crear` y `asignar` escriben en la fuente activa: sin esto, con Obsidian activo, el
         # agente no encuentra el proyecto que acaba de crear `init`.
-        self.assertEqual(inicio.ENTORNO, {"COTEJO_FUENTE": "repo"})
+        # `COTEJO_ORIGEN=inicio`: `init` marca el proyecto como del Inicio (cotejo-00fwc2).
+        self.assertEqual(inicio.ENTORNO, {"COTEJO_FUENTE": "repo", "COTEJO_ORIGEN": "inicio"})
         self.assertIn("`COTEJO_FUENTE=repo`", armar(base()))
 
     def test_no_hay_preguntas_al_usuario(self):

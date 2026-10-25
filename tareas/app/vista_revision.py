@@ -309,6 +309,68 @@ class Revision:
         dialogo.connect("response", self.al_responder_integrar, plan)
         dialogo.present(self)
 
+    def integrar_sola(self, proyecto, tarea, plan):
+        """Aprobada en un proyecto del Inicio: se mete en la rama principal sin preguntar y se
+        dice en llano, sin nombrar ramas (cotejo-00fwc2). La tarea sigue aprobada pase lo que
+        pase; si no entró, se ofrece reintentar o que un agente resuelva el choque."""
+        if not plan.get("repo"):
+            return  # sin repo no hay nada de código que decir
+        resultado = revision.integrar_sola(plan)
+        aviso = revision.aviso_inicio(resultado)
+        if aviso["agente"]:
+            self.ofrecer_agente_para_choque(proyecto, tarea, plan, resultado, aviso["texto"])
+        elif aviso["reintentar"]:
+            self.aviso(aviso["texto"], segundos=12, boton="Reintentar",
+                       al_pulsar=lambda: self.reintentar_integrar(proyecto, tarea, plan))
+        else:
+            self.aviso(aviso["texto"])
+
+    def reintentar_integrar(self, proyecto, tarea, plan):
+        """«Reintentar»: el plan se recalcula, porque lo que impedía integrar pudo cambiar."""
+        nuevo = revision.plan_integracion(tarea.id, {"git": {"rama": plan.get("rama"),
+                                                             "repo": plan.get("repo")}})
+        self.integrar_sola(proyecto, tarea, nuevo)
+
+    def ofrecer_agente_para_choque(self, proyecto, tarea, plan, resultado, texto):
+        dialogo = Adw.AlertDialog(heading="Aprobada, pero no está en tu app todavía", body=texto)
+        dialogo.add_response("ahora-no", "Ahora no")
+        dialogo.add_response("agente", "Que lo resuelva un agente")
+        dialogo.set_response_appearance("agente", Adw.ResponseAppearance.SUGGESTED)
+        dialogo.set_default_response("agente")
+        dialogo.set_close_response("ahora-no")
+        dialogo.connect("response", self.al_responder_choque, proyecto, tarea, plan, resultado)
+        dialogo.present(self)
+
+    def al_responder_choque(self, _dialogo, respuesta, proyecto, tarea, plan, resultado):
+        if respuesta == "agente":
+            self.resolver_con_agente(proyecto, tarea, plan, resultado.get("archivos"))
+
+    def resolver_con_agente(self, proyecto, tarea, plan, archivos=()):
+        """Crea la tarea de juntar los dos trabajos, con el modelo de la tarea aprobada, y la
+        mueve a Haciendo: lo mismo que haría la persona a mano, así que se lanza (o se pregunta
+        el modelo, o queda en espera) por el camino de siempre (`mover`). Repetirlo no la
+        duplica: si ya hay una pendiente que dice lo mismo, se usa esa."""
+        texto = revision.texto_tarea_conflicto(tarea.texto, plan, archivos)
+        nueva = next((t for t in getattr(proyecto, "tareas", ()) if t.texto == texto), None)
+        try:
+            if nueva is None:
+                nueva = self.fuente.crear(proyecto, texto)
+                bitacora.anotar("crear", proyecto, nueva, a=modelo.PENDIENTE)
+            agente = tarea.agente
+            if agente and agente not in (self.alias_persona or ()) and nueva.agente != agente:
+                anterior = nueva.agente
+                nueva = self.fuente.poner_agente(nueva, agente)
+                bitacora.anotar("asignar", proyecto, nueva, de=anterior, a=agente)
+        except (modelo.TareaCambiada, modelo.NoSeCreaAqui, NotImplementedError,
+                OSError) as error:
+            self.aviso(f"No pude crear la tarea para el agente: {error}")
+            self.app.refrescar()
+            return
+        if nueva.columna == modelo.PENDIENTE:
+            self.mover(proyecto, nueva, "en-curso")
+        else:
+            self.app.refrescar()
+
     def al_responder_integrar(self, _dialogo, respuesta, plan):
         if respuesta != "integrar":
             return

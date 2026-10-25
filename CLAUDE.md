@@ -140,8 +140,17 @@ ahora), volver a comprobar (`recomprobar`, la misma función que `cotejo comprob
 difftool` con la herramienta de la persona y lo que hace **Aprobar**: `plan_integracion` se
 calcula antes de marcar —marcar retira el worktree, y con él el registro de qué repo es— y el
 board solo **ofrece** integrar; `integrar` (un `merge --no-ff`, que se aborta entero si choca y
-nunca borra la rama) corre únicamente si la persona dice que sí. La CLI no gana verbos con
-esto. El diff se pinta solo con GTK4 + Adwaita (sin GtkSourceView): una etiqueta por línea,
+nunca borra la rama) corre únicamente si la persona dice que sí. **Salvo en un proyecto
+creado desde el Inicio** (cotejo-00fwc2): lleva `origen: inicio` en `.cotejo/proyecto.md`
+(`tareas/origen.py`), que pone `init` solo con `COTEJO_ORIGEN=inicio` en el entorno (va en
+`inicio.ENTORNO`, el del agente que lo prepara), y ahí aprobar llama a `integrar_sola`: el mismo
+merge sin preguntar y, si entra, `branch -d` de la rama (el worktree ya se retiró). En esos
+proyectos `.cotejo/` no cuenta como «sin commitear» (el board lo reescribe al mover); si la rama
+lo pisaría, git se niega antes de empezar. Lo que ve la persona sale de `aviso_inicio`, sin
+nombrar ramas: limpio, «Ya está en tu app»; choque, el merge se aborta y se ofrece «Que lo
+resuelva un agente» (crea una tarea de juntar los dos trabajos con el modelo de la aprobada y la
+mueve a Haciendo por `mover`); cambios sin guardar, «Reintentar». Sin marca —todos los de
+antes— sigue el diálogo de siempre. La CLI no gana verbos con esto. El diff se pinta solo con GTK4 + Adwaita (sin GtkSourceView): una etiqueta por línea,
 con los colores de siempre (verde lo que entra, ámbar lo que sale) y recortado a
 `LINEAS_MAX` por archivo; lo grande, en la herramienta.
 

@@ -128,7 +128,8 @@ class Movimientos:
         self.escribir_movimiento(proyecto, actual, destino)
 
     def escribir_movimiento(self, proyecto, tarea, destino, motivo=""):
-        # Aprobar una entrega ofrece integrar su rama (B4). Se mira antes de escribir porque
+        # Aprobar una entrega ofrece integrar su rama (B4), o la integra sola en un proyecto
+        # del Inicio (`origen.py`). Se mira antes de escribir porque
         # dar la tarea por buena retira su worktree, y con él el registro de qué repo es.
         plan = None
         if destino == modelo.HECHA and tarea.columna == "por-validar":
@@ -166,7 +167,12 @@ class Movimientos:
         self.comprobaciones.pop(tarea.id, None)
         self.app.refrescar()
         if plan is not None:
-            self.ofrecer_integrar(actual, plan)
+            # En un proyecto creado desde el Inicio aprobar ya integra, sin enseñar ramas
+            # (cotejo-00fwc2); en los de quien programa, se ofrece como siempre.
+            if plan.get("del_inicio"):
+                self.integrar_sola(proyecto, actual, plan)
+            else:
+                self.ofrecer_integrar(actual, plan)
         return True
 
     def retirar_worktree(self, tarea, destino):
