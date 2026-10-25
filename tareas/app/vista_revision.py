@@ -200,6 +200,7 @@ class Revision:
         vista.set_content(Gtk.ScrolledWindow(child=cuerpo, vexpand=True,
                                              hscrollbar_policy=Gtk.PolicyType.NEVER))
         dialogo.set_child(vista)
+        self.registrar_ficha(dialogo, tarea, "revision")
         dialogo.present(self)
         # Sin esto el foco cae en la primera etiqueta seleccionable y se abre con todo su texto
         # resaltado, como si ya lo hubieras marcado tú (lo mismo que en `al_ver`).
