@@ -5,6 +5,7 @@ import sys
 from gi.repository import Adw, GLib, Gdk, Gio, Gtk
 
 from .. import bitacora, configuracion, estado, fuente as f, rutas, temas, usuario
+from . import escala
 from .comun import APP_ID, DATOS, animaciones_activas, aplicar_clase_animaciones
 from .piezas import pintar_logo
 from .estilo import CSS
@@ -40,12 +41,19 @@ class App(Adw.Application):
         # Si el board que se abra será el primero de un proceso que arrancó con la ventana: es
         # el único que lleva la animación de arranque. Con --fondo no hay arranque que enseñar.
         self.desde_cero = True
+        # Lo que la escala de Windows le añade a la de GTK (ver `escala`). 1 fuera de Windows.
+        self.factor = 1.0
+        self.vigilando_escala = False
+        self.dpi_de_letra = None  # el gtk-xft-dpi de antes de tocarlo, si se tocó
 
     def do_startup(self):
         Adw.Application.do_startup(self)
         self.proveedor = Gtk.CssProvider()
         Gtk.StyleContext.add_provider_for_display(
             Gdk.Display.get_default(), self.proveedor, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        # Antes del primer CSS y del primer icono: con el DPI del sistema, que es el del
+        # monitor principal. Al abrir la ventana se corrige con el de su monitor.
+        self.poner_factor(escala.forzado() or escala.calcular_factor(escala.dpi_de(None)))
         self.aplicar_tema(temas.elegido())
         # Los iconos propios. Van como simbólicos para que el color lo siga poniendo el CSS:
         # el mismo dibujo va en plata en un chip, en verde en la columna que te espera y en
@@ -115,7 +123,7 @@ class App(Adw.Application):
         except temas.TemaRoto as error:
             datos = temas.cargar(temas.DEFECTO)
             self.problema_tema = str(error)
-        self.proveedor.load_from_string(temas.css(datos) + CSS)
+        self.proveedor.load_from_string(escala.escalar_css(temas.css(datos) + CSS, self.factor))
         self.colores = datos["colores"]
         self.esquema = datos["esquema"]
         if self.board:
@@ -151,6 +159,36 @@ class App(Adw.Application):
         """El ajuste cambió con la app abierta: cada ventana ya viva se pone al día."""
         if self.board is not None:
             aplicar_clase_animaciones(self.board)
+
+    # --- escala de Windows ------------------------------------------------
+
+    def poner_factor(self, factor):
+        """Cambia el factor de escala; True si cambió (y hay que recargar el CSS)."""
+        if factor == self.factor:
+            return False
+        self.factor = escala.FACTOR = factor
+        ajustes = Gtk.Settings.get_default()
+        if ajustes is not None:
+            if self.dpi_de_letra is None:
+                self.dpi_de_letra = ajustes.props.gtk_xft_dpi
+            ajustes.props.gtk_xft_dpi = escala.dpi_de_letra(factor, self.dpi_de_letra)
+        return True
+
+    def vigilar_escala(self):
+        """Si la ventana pasó a un monitor con otra escala, el board se pone a la de ese.
+
+        Se mira cada segundo y no con `enter-monitor` porque el backend de Windows de GTK no
+        garantiza emitirlo, y preguntar el DPI de una ventana a Windows no cuesta nada.
+        """
+        if self.board is None or not self.board.get_realized():
+            return GLib.SOURCE_CONTINUE
+        superficie = self.board.get_surface()
+        dpi = escala.dpi_de(superficie)
+        if dpi and self.poner_factor(escala.calcular_factor(dpi, superficie.get_scale_factor())):
+            self.aplicar_tema(self.tema)
+            for ventana in self.get_windows():
+                escala.reescalar_iconos(ventana)
+        return GLib.SOURCE_CONTINUE
 
     # --- datos ------------------------------------------------------------
 
@@ -259,6 +297,10 @@ class App(Adw.Application):
                 GLib.idle_add(lambda: self.board.entrar_dot() and False)
         self.desde_cero = False
         self.board.present()
+        if sys.platform == "win32" and not escala.forzado() and not self.vigilando_escala:
+            self.vigilando_escala = True
+            self.vigilar_escala()
+            GLib.timeout_add_seconds(1, self.vigilar_escala)
 
     def no_abrio(self):
         """El board no se pudo crear: dejarlo escrito y decirlo, no quedarse vivo y callado.

@@ -220,6 +220,12 @@ void inicio(void) {
        mira esta variable sino `loaders.cache`, que el instalador genera al instalar: sin él
        no hay SVG y el board no podía dibujar su logo (cotejo-bezrqz). */
     poner(L"GDK_PIXBUF_MODULEDIR", L"\\runtime\\lib\\gdk-pixbuf-2.0\\2.10.0\\loaders");
+    /* Que GTK le pida a Windows el DPI de cada monitor y no uno solo para todo el sistema: sin
+       esto el board se queda con la escala de cuando se inició sesión y, al pasarlo a otra
+       pantalla, Windows lo estira como una imagen. La escala fraccionaria (125, 150 %) que GTK
+       no hace la pone la app (`tareas/app/escala.py`, cotejo-x968aw). Quien quiera lo de
+       antes tiene GDK_WIN32_DISABLE_HIDPI, que GTK mira primero. */
+    SetEnvironmentVariableW(L"GDK_WIN32_PER_MONITOR_HIDPI", L"1");
     /* bin\ primero, para que Cotejo encuentre a cotejo-notion aunque no esté en el PATH. */
     viejo[0] = 0;
     GetEnvironmentVariableW(L"PATH", viejo, LARGO);

@@ -275,6 +275,10 @@ list.columna, list.columna > row { background: transparent; }
 .chip { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue);
         background: var(--k-velo); border-radius: 6px; padding: 1px var(--k-espacio-sm); }
 .chip image { -gtk-icon-size: 12px; }
+/* El tamaño de icono de GTK, el mismo que ya traía: escrito aquí para que `escala` lo agrande
+   con el resto en Windows (los botones de la cabecera no pasan por `piezas.icono`). Se hereda:
+   ponerlo en la ventana alcanza a todos los que no piden otro. */
+window, popover { -gtk-icon-size: 16px; }
 /* El agente deja de ir en verde. Tenerlo asignado no es una alerta —casi todas las cartas
    lo llevan—, y mientras fue el color de lo urgente el verde no señalaba nada. Queda en
    contorno plata, que se lee igual de bien y le devuelve el acento a lo que sí espera. */

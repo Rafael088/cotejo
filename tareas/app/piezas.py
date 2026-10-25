@@ -6,6 +6,7 @@ import sys
 from gi.repository import Adw, GLib, GObject, Gdk, Gtk, Pango
 
 from .. import estado, marca, temas
+from . import escala
 from .comun import (
     DATOS, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XS, LADO_ARRANQUE, REVELAR_MS, SALIDA_CARTA_MS,
     animaciones_activas,
@@ -302,9 +303,13 @@ def icono(nombre, tamano=16, *clases):
     Se piden por nombre y no por archivo a propósito: así GTK los trata como simbólicos y
     les aplica el `color` del CSS, que es lo que deja al mismo dibujo cambiar de color
     según dónde esté. `data/iconos/generar.py` explica por qué están dibujados como están.
+    El tamaño se pide sin escalar: en Windows lo escala `escala` y lo vuelve a escalar si la
+    ventana pasa a otro monitor, para lo que apunta el de partida en `cotejo_tamano`.
     """
-    return Gtk.Image(icon_name=f"cotejo-{nombre}-symbolic", pixel_size=tamano,
-                     css_classes=list(clases))
+    imagen = Gtk.Image(icon_name=f"cotejo-{nombre}-symbolic", pixel_size=escala.tamano(tamano),
+                       css_classes=list(clases))
+    imagen.cotejo_tamano = tamano
+    return imagen
 
 
 class Finalizadas:
