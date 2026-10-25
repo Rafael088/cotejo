@@ -181,10 +181,19 @@ queda **en espera** (`SinHueco`: sigue en Pendiente con un chip «En espera» y 
 ficha, anotada `en-espera` en el registro; nada la relanza sola, se vuelve a mover cuando haya
 hueco); lo demás que impediría lanzar se dice antes de tomarla (`despacho.antes_de_tomar` con el
 motor `headless`). Luego toma, crea su worktree, arma el encargo de siempre y lanza el cliente
-sin interfaz (`motores/fondo.py`) con el mismo `cotejo` en el PATH y permiso de escribir solo en
-el worktree, el `.git` del repo, la config y el estado (`clientes.Cliente.permisos`), más
-`enrutador.lanzar.argumentos_extra.<cliente>` (Claude: `acceptEdits`, `stream-json` y Bash solo
-para `cotejo` y `git`). Toda decisión deja línea en `despachos.jsonl` con `motor: "board"`. El
+sin interfaz (`motores/fondo.py`, con `PWD` igual al worktree: OpenCode trabaja donde dice
+`PWD`) con el mismo `cotejo` en el PATH y **terminal libre en el worktree con prohibidos de
+fábrica** (cotejo-7yfw1e, dec-kiik): `clientes.Cliente.terminal_libre` (Claude: `acceptEdits`,
+`--allowedTools Bash` y `--disallowedTools` con `clientes.prohibidos`; Codex: su sandbox
+`workspace-write` de `permisos`; OpenCode: `permission.bash` todo `allow` y los prohibidos `deny`
+al final; Gemini: `auto_edit` y `--policy` con `politica_gemini_toml`) y, debajo, las guardas del
+PATH (`guardas.py`: un `git` que lee los argumentos y no deja `push` a la fuerza ni a `main`/la
+rama por defecto —`worktrees.rama_por_defecto`—, y `sudo`/`su`/`doas`/`pkexec` que se niegan).
+Los prohibidos son sudo/su, `git push --force`, empujar a `main` o a la rama por defecto y borrar
+fuera del worktree (ruta absoluta, `~`, `$HOME` o `..`). No viven en la config:
+`enrutador.lanzar.argumentos_extra.<cliente>` solo añade (Claude: `stream-json`). El agente de
+`despachar --motor agente` no comparte este armado (no lanza nada) ni el de preparar (solo
+`cotejo`). Toda decisión deja línea en `despachos.jsonl` con `motor: "board"`. El
 registro es uno por tarea en `<estado>/lanzados/<id>.json` (`pid`, `programa`, `host`, `log`,
 `log_desde`, `cliente`, `modelo`, `worktree`, `directorio`, `comando`, `prompt`) con fases
 `lanzado` / `terminado` / `en-espera` / `detenido`, y `lanzados.estado` da `trabajando`, `murio`,

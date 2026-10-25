@@ -102,6 +102,41 @@ class Cliente:
             return [], {"GEMINI_CLI_TRUST_WORKSPACE": "true"}
         return [], {}
 
+    def terminal_libre(self, carpetas, ramas=None, politica_gemini=None, entorno=None):
+        """Los permisos del agente que lanza el board (v1.3.0, cotejo-7yfw1e, dec-kiik):
+        `(argumentos, variables de entorno)`.
+
+        Terminal libre dentro del worktree de su tarea —puede correr las pruebas y los builds
+        sin que nadie configure nada— y una lista corta de prohibidos de fábrica
+        (`prohibidos`): subir privilegios (sudo/su), `git push --force`, empujar a `main` o a la
+        rama por defecto (`ramas`) y borrar fuera del worktree. Cada cliente con lo suyo:
+
+        - **Claude Code**: `acceptEdits`, `--allowedTools Bash` (todo el Bash) y
+          `--disallowedTools` con los prohibidos, que ganan a cualquier permiso.
+        - **Codex**: su sandbox `workspace-write` (`permisos`): solo escribe en las carpetas de
+          la tarea, no tiene red (no puede empujar nada) y no puede subir privilegios.
+        - **OpenCode**: `permission.bash` con todo en `allow` y los prohibidos en `deny` al
+          final (en OpenCode gana la última regla que casa), encima de lo que da `permisos`.
+        - **Gemini CLI**: `auto_edit` y una política (`--policy`, `politica_gemini`, el archivo
+          que escribe `guardas.preparar` con `politica_gemini_toml`) que deja todo el shell y
+          niega los prohibidos.
+
+        Debajo de los cuatro, el PATH del agente lleva las guardas de `guardas.py` (un `git`
+        que no deja empujar a la fuerza ni a esas ramas, y un `sudo`/`su` que se niega).
+        """
+        ramas = ramas_protegidas(ramas)
+        argv, env = self.permisos(carpetas, entorno=entorno)
+        if self.nombre == "claude":
+            return (["--permission-mode", "acceptEdits", "--allowedTools", "Bash",
+                     "--disallowedTools", *[f"Bash({p})" for p in prohibidos(ramas)]], env)
+        if self.nombre == "opencode":
+            return argv, {"OPENCODE_CONFIG_CONTENT": _opencode_con_prohibidos(
+                env["OPENCODE_CONFIG_CONTENT"], prohibidos(ramas))}
+        if self.nombre == "gemini":
+            return (["--approval-mode", "auto_edit"] +
+                    (["--policy", str(politica_gemini)] if politica_gemini else []), env)
+        return argv, env
+
     @property
     def instalado(self):
         return shutil.which(self.ejecutable) is not None
@@ -130,6 +165,98 @@ def _opencode_con_permiso(carpetas, previo=None):
         externo[carpeta.rstrip("/") + "/*"] = "allow"
     datos["permission"] = {**permiso, "external_directory": externo}
     return json.dumps(datos, ensure_ascii=False)
+
+
+# --- los prohibidos de fábrica del agente que lanza el board (dec-kiik) -------------------------
+
+# Siempre protegida, aunque el repo diga que su rama por defecto es otra.
+RAMA_PRINCIPAL = "main"
+# Subir privilegios: sudo y su, y sus primos (doas; pkexec abriría una ventana pidiendo la
+# contraseña en el escritorio de la persona).
+ESCALAR = ("sudo", "su", "doas", "pkexec")
+# Lo que borra: con ruta absoluta, desde la casa o subiendo con `..` se sale del worktree; con
+# ruta relativa sin `..`, se queda dentro.
+BORRAR = ("rm", "rmdir", "unlink", "shred")
+
+
+def ramas_protegidas(ramas=None):
+    """`main` y las que se digan (la rama por defecto del repo), sin repetir ni vacías."""
+    if isinstance(ramas, str):
+        ramas = [ramas]
+    return list(dict.fromkeys([RAMA_PRINCIPAL] + [r.strip() for r in (ramas or ()) if r and r.strip()]))
+
+
+def prohibidos(ramas=None):
+    """Los prohibidos de fábrica como patrones de comando, donde `*` es cualquier cosa (también
+    nada): la misma lista para Claude (`Bash(<patrón>)`), OpenCode (`permission.bash`) y Gemini
+    (`commandRegex`, con `_regex_gemini`).
+
+    Son patrones sobre el texto del comando, así que paran lo que se escribe de la forma normal
+    (`sudo …`, `git push --force …`, `git push origin main`, `rm -rf /…`, `rm ../…`); lo que se
+    salga de eso lo para el `git` de `guardas.py`, que lee los argumentos de verdad, o el
+    sandbox del cliente (Codex). Borrar dentro del worktree con ruta relativa sigue libre."""
+    lista = []
+    for orden in ESCALAR:
+        lista += [orden, f"{orden} *"]
+    lista += ["git push *--force*", "git push -f*", "git push * -f*", "git push *+*",
+              "git push *--mirror*", "git push *--all*"]
+    for rama in ramas_protegidas(ramas):
+        lista += [f"git push * {rama}", f"git push * {rama} *", f"git push *:{rama}",
+                  f"git push *:{rama} *", f"git push *:refs/heads/{rama}*"]
+    for orden in BORRAR:
+        lista += [f"{orden} /*", f"{orden} * /*", f"{orden} ~*", f"{orden} * ~*",
+                  f"{orden} *..*", f"{orden} *$HOME*", f"{orden} *${{HOME}}*"]
+    return list(dict.fromkeys(lista))
+
+
+def _opencode_con_prohibidos(previo, patrones):
+    """La config de OpenCode con `permission.bash`: `*` en `allow` primero, las reglas de bash
+    que ya trajera la persona después (si negó algo, sigue negado) y los prohibidos en `deny` al
+    final, porque en OpenCode gana la última regla que casa."""
+    datos = json.loads(previo)
+    permiso = datos.setdefault("permission", {})
+    anterior = permiso.get("bash")
+    anterior = ({} if not isinstance(anterior, dict) else
+                {k: v for k, v in anterior.items() if k != "*"})
+    bash = {"*": "allow", **anterior}
+    for patron in patrones:
+        bash.pop(patron, None)
+        bash[patron] = "deny"
+    permiso["bash"] = bash
+    permiso.setdefault("edit", "allow")
+    return json.dumps(datos, ensure_ascii=False)
+
+
+def _regex_gemini(patron):
+    """Un patrón de `prohibidos` como `commandRegex` de Gemini, que se prueba contra el JSON
+    de los argumentos justo después de `"command":"`: `*` no cruza la comilla que cierra el
+    comando, y el final se ancla en ella. Solo se escapan los metacaracteres: Gemini es
+    JavaScript, y ahí `\\ ` (un espacio escapado, lo que pondría `re.escape`) no es válido con
+    la bandera `u`."""
+    return "".join('[^"]*' if c == "*" else "\\" + c if c in METACARACTERES else c
+                   for c in patron) + '"'
+
+
+METACARACTERES = set(".^$+?()[]{}|\\/")
+
+
+AVISO = ("Es uno de los prohibidos de fábrica del agente que lanza CotejoBoard: no subir "
+         "privilegios, no git push --force, no empujar a main ni a la rama por defecto, no borrar "
+         "fuera del worktree. Hazlo de otra forma o bloquea la tarea con el motivo.")
+
+
+def politica_gemini_toml(ramas=None):
+    """La política de Gemini CLI para el agente del board: todo el shell permitido (también con
+    redirecciones) y los prohibidos negados con más prioridad."""
+    def cadena(texto):
+        return json.dumps(texto, ensure_ascii=False)   # una cadena TOML básica vale como JSON
+    reglas = ['[[rule]]', 'toolName = "run_shell_command"', 'decision = "allow"',
+              'priority = 100', 'allowRedirection = true', '']
+    for patron in prohibidos(ramas):
+        reglas += ['[[rule]]', 'toolName = "run_shell_command"',
+                   f'commandRegex = {cadena(_regex_gemini(patron))}', 'decision = "deny"',
+                   'priority = 900', f'denyMessage = {cadena(AVISO)}', '']
+    return "# Lo escribe Cotejo antes de lanzar un agente desde el board.\n" + "\n".join(reglas)
 
 
 CLIENTES = {

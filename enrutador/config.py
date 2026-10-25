@@ -79,18 +79,14 @@ DEFECTOS = {
                                       "gemini": ["--allowed-tools", "run_shell_command(cotejo)"]}},
     # Lanzar desde el board (`enrutador/despacho_board.py`, v1.3.0): pasar a mano una tarea de
     # Pendiente a Haciendo la despacha sin interfaz, con los ajustes de `motores.headless` y
-    # además estos argumentos por cliente. Sin nadie delante, Claude no puede pedir permiso:
-    # se le deja editar archivos en su worktree y correr `cotejo` y `git`, y nada más; quien
-    # quiera darle más (sus pruebas, su compilador) lo añade aquí. `stream-json` es lo que deja
-    # ver en el detalle de la tarea qué está haciendo mientras trabaja. `timeout_seg` es cuánto
-    # se le deja antes de pararlo.
+    # además estos argumentos por cliente. Los permisos no están aquí (cotejo-7yfw1e,
+    # dec-kiik): terminal libre en su worktree con los prohibidos de fábrica, que pone
+    # `clientes.Cliente.terminal_libre` siempre, para que una config propia no se los lleve.
+    # `stream-json` es lo que deja ver en el detalle de la tarea qué está haciendo mientras
+    # trabaja. `timeout_seg` es cuánto se le deja antes de pararlo.
     "lanzar": {"timeout_seg": 3600,
                "argumentos_extra": {
-                   "claude": ["--permission-mode", "acceptEdits", "--output-format",
-                              "stream-json", "--verbose", "--allowedTools", "Bash(cotejo:*)",
-                              "Bash(git:*)"],
-                   "gemini": ["--approval-mode", "auto_edit", "--allowed-tools",
-                              "run_shell_command(cotejo)", "run_shell_command(git)"]}},
+                   "claude": ["--output-format", "stream-json", "--verbose"]}},
     # Dónde corre el agente para cada proyecto de Cotejo. Sin entrada, corre donde estés.
     "proyectos": {},
     # Un worktree por despacho (`tareas/worktrees.py`): si la tarea es de un repo de git,
