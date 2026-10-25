@@ -26,7 +26,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from . import __version__, bitacora, configuracion, fuente as f, modelo, usuario, version as _version
+from . import __version__, bitacora, configuracion, fuente as f, modelo, origen, usuario, version as _version
 from .almacen import ARCHIVO_PROYECTO, Almacen, CARPETA as CARPETA_COTEJO, TIPOS
 from .cli import ESQUEMA, ErrorCLI, imprimir
 from .fuentes.obsidian import vault_valido
@@ -274,6 +274,9 @@ def cmd_init(args):
     tareas_creado = ARCHIVO_TAREAS in creados
     # `version:` en proyecto.md (v1.2.4): también la pone a un proyecto de antes que no la tenía.
     version = _version.asegurar(raiz)
+    # Creado desde el Inicio (`COTEJO_ORIGEN=inicio`, lo lleva el agente que lo prepara): la
+    # marca va antes del commit inicial, para que viaje con el repo.
+    del_inicio = origen.marcar_si_viene_del_inicio(raiz)
 
     datos = _config_o_error()
     cambio_config = False
@@ -304,7 +307,7 @@ def cmd_init(args):
 
     identidad = _asegurar_identidad(raiz)
     commit, aviso_commit = _commit_inicial(raiz)
-    cambio = git_init or bool(identidad) or bool(commit) or bool(creados) or cambio_config or version["hecho"] == "puesta"
+    cambio = git_init or bool(identidad) or bool(commit) or bool(creados) or cambio_config or version["hecho"] == "puesta" or del_inicio
     if cambio_fuente:
         salida = f"Listo. La fuente activa ha cambiado a «repo» (la anterior «{fuente_activa_antes}» no funciona)."
     elif cambio:
@@ -325,7 +328,7 @@ def cmd_init(args):
     imprimir({"esquema": ESQUEMA, "repo": str(raiz), "tareas": str(archivo_tareas),
               "creado": tareas_creado, "creados": creados, "git_init": git_init, "commit": commit,
               "identidad": identidad,
-              "version": version,
+              "version": version, "del_inicio": origen.es_del_inicio(raiz),
               "registrado_en": str(ruta_config),
               "cambio": cambio, "salida": salida})
     return 0

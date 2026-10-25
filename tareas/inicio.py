@@ -35,7 +35,9 @@ PASOS = (
 # carpeta en la fuente repo sin activarla; con esto, `crear` y `asignar` —que escriben en la
 # fuente activa— encuentran el proyecto nuevo aunque la persona use Obsidian u otra fuente, y su
 # config no se toca. Es parte del contrato: el prompt lo nombra y `enrutador/preparar.py` lo pone.
-ENTORNO = {"COTEJO_FUENTE": "repo"}
+# `COTEJO_ORIGEN=inicio` hace que `init` marque el proyecto como creado desde el Inicio
+# (`origen.py`): ahí aprobar una entrega la integra sola, sin enseñar ramas.
+ENTORNO = {"COTEJO_FUENTE": "repo", "COTEJO_ORIGEN": "inicio"}
 
 LARGO_MAXIMO = 2000       # por respuesta, en caracteres
 LARGO_CARPETA = 500
