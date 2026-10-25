@@ -107,7 +107,9 @@ class Lanzar(ConClienteFalso):
         self.assertTrue(Path(registro["worktree"]["ruta"]).is_dir())
 
         self.assertTrue(esperar(lambda: terminado), "el cliente falso no terminó")
-        self.assertEqual(terminado[0]["estado"], lanzados.TERMINADO)
+        # Terminó sin entregar (cotejo-o253bs): vuelve a Pendiente, pausada para retomarla.
+        self.assertEqual(terminado[0]["estado"], lanzados.DETENIDO)
+        self.assertEqual(terminado[0]["fin"]["como"], lanzados.FIN_SIN_ENTREGAR)
         self.assertEqual(terminado[0]["codigo"], 0)
 
         # Se lanzó en su worktree, con su modelo, el encargo de siempre y el mismo cotejo.

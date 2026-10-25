@@ -23,6 +23,11 @@ Las fases que se guardan y el `estado` que se lee de ellas:
   volver a lanzarla es una reanudación: `reanudacion` dice qué vez es, de quién retoma y
   cuántos commits y cambios encontró (la nota entera, de `retomar.py`, va en `prompt`).
 
+Cuando el agente vuelve se le hace el fin una sola vez (`reclamar_fin`, clave `fin` con su
+`como`: `entrego`, `sin-entregar` u `otro`, cotejo-o253bs). El que terminó sin entregar queda
+`detenido` con el motivo, como uno pausado; `murio` marca al que se cerró sin que nadie lo viera
+y `rechazo` guarda lo que se pidió cambiar al devolverlo desde Para comprobar.
+
 **La salida del agente en vivo.** El agente escribe a su `.log` (el de Claude va en
 `stream-json`, una línea por evento); `Seguimiento` lee solo lo nuevo en cada `nuevas()` y
 `legible` lo pasa a texto: lo que dice el agente, qué herramienta usa y cómo terminó. Lo que no
@@ -41,6 +46,9 @@ ESQUEMA = 1
 
 LANZADO, TERMINADO, EN_ESPERA, DETENIDO = "lanzado", "terminado", "en-espera", "detenido"
 TRABAJANDO, MURIO = "trabajando", "murio"
+# Cómo acabó un lanzamiento (`fin.como`, cotejo-o253bs): entregó, terminó sin entregar (y se
+# devolvió a Pendiente), o la tarea ya estaba en otra parte (la bloqueó o la movió alguien).
+FIN_ENTREGO, FIN_SIN_ENTREGAR, FIN_OTRO = "entrego", "sin-entregar", "otro"
 
 # Cuánto de un log largo se enseña al abrir el detalle: lo de antes está en el archivo.
 RECORTE_INICIAL = 16 * 1024
@@ -124,21 +132,49 @@ def anotar_lanzado(registro, pid, programa):
     with _CANDADO:
         registro.update(fase=LANZADO, pid=pid, programa=programa, host=socket.gethostname(),
                         ts=int(time.time()))
-        for clave in ("codigo", "terminado_ts", "motivo", "detenido_ts", "motivo_antes"):
+        for clave in ("codigo", "terminado_ts", "motivo", "detenido_ts", "motivo_antes",
+                      "fin", "murio"):
             registro.pop(clave, None)
         return guardar(registro)
 
 
-def anotar_terminado(tarea_id, codigo, pid=None):
+def anotar_terminado(tarea_id, codigo, pid=None, murio=False):
     """El proceso volvió. Si ya no está `lanzado` (lo pararon) o es de otro lanzamiento (`pid`
-    ya es otro), no se pisa y se devuelve como está."""
+    ya es otro), no se pisa y se devuelve como está. `murio`: nadie lo vio volver (el board
+    estaba cerrado) y no hay código (`codigo` None)."""
     with _CANDADO:
         registro = leer(tarea_id)
         if registro is None or registro.get("fase") != LANZADO:
             return registro
         if pid is not None and registro.get("pid") != pid:
             return registro
-        registro.update(fase=TERMINADO, codigo=int(codigo), terminado_ts=int(time.time()))
+        registro.update(fase=TERMINADO, codigo=None if codigo is None else int(codigo),
+                        terminado_ts=int(time.time()))
+        if murio:
+            registro["murio"] = True
+        return guardar(registro)
+
+
+def reclamar_fin(tarea_id, pid):
+    """True solo la primera vez para el lanzamiento de `pid`: quien lo gana hace el fin
+    (`despacho_board.fin`). Así el hilo que lo esperaba y la recogida de los muertos nunca
+    lo hacen dos veces."""
+    with _CANDADO:
+        registro = leer(tarea_id)
+        if not registro or registro.get("pid") != pid or registro.get("fin"):
+            return False
+        registro["fin"] = {"como": "", "ts": int(time.time())}
+        guardar(registro)
+        return True
+
+
+def actualizar(tarea_id, **campos):
+    """Cambia campos sin tocar la fase. None si no hay registro."""
+    with _CANDADO:
+        registro = leer(tarea_id)
+        if registro is None:
+            return None
+        registro.update(campos)
         return guardar(registro)
 
 
@@ -163,7 +199,8 @@ def estado(registro):
     fase = registro.get("fase")
     salida = {k: registro.get(k) for k in ("id", "proyecto", "cliente", "modelo", "pid", "log",
                                           "worktree", "directorio", "ts", "codigo",
-                                          "terminado_ts", "reanudacion")}
+                                          "terminado_ts", "reanudacion", "fin", "rechazo",
+                                          "murio")}
     salida["por_que"] = ""
     if fase == EN_ESPERA:
         cual = EN_ESPERA
@@ -294,7 +331,15 @@ def situacion(e, ahora=None):
         minutos = max(0, ahora - int(e.get("ts") or ahora)) // 60
         haciendo = "retomándola" if e.get("reanudacion") else "trabajando en ella"
         return f"{quien} está {haciendo}" + (f" desde hace {minutos} min" if minutos else "")
+    como = (e.get("fin") or {}).get("como")
+    if como == FIN_ENTREGO:
+        return f"{quien} terminó y entregó: está en Para comprobar"
+    if como == FIN_SIN_ENTREGAR:
+        return (f"{quien} terminó sin entregar: la tarea volvió a Pendiente y su worktree "
+                f"se queda para retomarla")
     if cual == TERMINADO:
+        if e.get("codigo") is None:
+            return f"{quien} se cerró sin que nadie lo viera terminar"
         return (f"{quien} terminó" if e.get("codigo") == 0
                 else f"{quien} terminó con un error (código {e.get('codigo')})")
     if cual == MURIO:

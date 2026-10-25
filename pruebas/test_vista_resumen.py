@@ -43,6 +43,7 @@ def abrir(anotacion):
         setattr(falso, nombre, getattr(app.Board, nombre))
     falso.archivo_del_diff = types.MethodType(app.Board.archivo_del_diff, falso)
     falso.abrir_en_herramienta = lambda *a: None
+    falso.seccion_en_vivo = lambda _tarea: None
     falso.presentados = []
     with mock.patch.object(Adw.Dialog, "present", lambda d, padre: falso.presentados.append(d)), \
             mock.patch("tareas.revision.carpeta_git", lambda *a: None), \

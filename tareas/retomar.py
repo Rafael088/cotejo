@@ -15,13 +15,19 @@ están en disco:
 Es corta a propósito: el agente nuevo tiene el worktree delante y lo que necesita es saber que
 no empieza de cero y por dónde mirar, no un resumen. Sin GTK y sin importar el enrutador.
 
-Para quien venga detrás (el fin y el rechazo de un agente, cotejo-o253bs): `datos(registro)`
-reúne lo de arriba como dict, `armar(datos, motivo=...)` lo pasa a texto y `nota(registro,
-motivo=...)` hace las dos cosas. `registro` es el de `lanzados.leer(id)` del lanzamiento
-anterior, antes de que el nuevo lo pise.
+`datos(registro)` reúne lo de arriba como dict, `armar(datos, motivo=...)` lo pasa a texto y
+`nota(registro, motivo=...)` hace las dos cosas. `registro` es el de `lanzados.leer(id)` del
+lanzamiento anterior, antes de que el nuevo lo pise.
+
+**El rechazo** (cotejo-o253bs): devolver una entrega de Para comprobar a Haciendo con motivo
+guarda en el registro `rechazo` (`rechazo(motivo, entrega)`: el motivo y la entrega anterior en
+llano) y el agente nuevo recibe, después de la nota de retomar, «Lo que te pidieron cambiar»
+(`armar_rechazo`). Vale hasta que vuelva a entregar (`rechazo_vigente`): si se pausa antes,
+el siguiente también lo lleva.
 """
 
 import subprocess
+import time
 from pathlib import Path
 
 from . import lanzados, worktrees
@@ -33,6 +39,9 @@ LINEA = 300          # cada línea del log, recortada
 TIEMPO_GIT = 15
 
 TITULO = "## Retomas esta tarea: no empiezas de cero"
+TITULO_RECHAZO = "## Lo que te pidieron cambiar"
+# Por qué se paró el anterior cuando vuelve desde Para comprobar (el motivo va aparte, entero).
+POR_RECHAZO = "entregó y se la devolvieron desde Para comprobar"
 
 
 def _git(carpeta, *args):
@@ -147,6 +156,61 @@ def nota(registro, motivo="", cuantas=ULTIMAS):
     return armar(datos(registro, cuantas), motivo=motivo)
 
 
+# --- el rechazo (cotejo-o253bs) ---------------------------------------------------------------
+
+def entrega_en_llano(entrega):
+    """Lo que dejó la entrega anterior, en pocas líneas: su resumen, su evidencia, el commit y
+    cómo salieron las pruebas. `entrega` es la anotación de `bitacora.ultima_entrega`."""
+    if not entrega:
+        return []
+    lineas = []
+    if (entrega.get("resumen") or "").strip():
+        lineas.append("Resumen: " + " ".join(entrega["resumen"].split())[:LINEA * 2])
+    if (entrega.get("evidencia") or "").strip():
+        lineas.append("Evidencia: " + " ".join(entrega["evidencia"].split())[:LINEA * 2])
+    git = entrega.get("git") if isinstance(entrega.get("git"), dict) else {}
+    if git.get("head"):
+        lineas.append(f"Commit: {str(git['head'])[:7]}"
+                      + (f" en {git['rama']}" if git.get("rama") else ""))
+    for prueba in entrega.get("pruebas") or ():
+        if isinstance(prueba, dict) and prueba.get("comando"):
+            lineas.append(f"Prueba: {prueba['comando']} → {prueba.get('estado') or '?'}")
+    return lineas
+
+
+def rechazo(motivo, entrega, ahora=None):
+    """Lo que se guarda en el registro al devolver de Para comprobar a Haciendo: el motivo de
+    la persona y la entrega que rechazó, ya en llano."""
+    return {"motivo": (motivo or "").strip(), "entrega": entrega_en_llano(entrega),
+            "entrega_ts": (entrega or {}).get("cuando"),
+            "ts": int(ahora if ahora is not None else time.time())}
+
+
+def rechazo_vigente(registro, entrega):
+    """El rechazo del registro si sigue valiendo: el agente aún no volvió a entregar después
+    de él (una entrega más nueva lo deja atrás). None si no hay o ya no vale."""
+    r = (registro or {}).get("rechazo")
+    if not r or not r.get("motivo"):
+        return None
+    if entrega and int(entrega.get("cuando") or 0) > int(r.get("ts") or 0):
+        return None
+    return r
+
+
+def armar_rechazo(r):
+    """La parte de la nota con el rechazo: el motivo, entero, y la entrega anterior."""
+    partes = [TITULO_RECHAZO, "",
+              "Entregaste esta tarea y una persona la revisó y te la devolvió. Esto es lo que "
+              "te pidió cambiar, y es lo primero que tienes que resolver:", "",
+              "  " + r["motivo"].replace("\n", "\n  ")]
+    if r.get("entrega"):
+        partes += ["", "Tu entrega anterior (la que no le valió):"]
+        partes += ["  " + l for l in r["entrega"]]
+    partes += ["", "Cuando lo hayas cambiado, vuelve a entregar con `cotejo entregar` diciendo "
+                   "en la evidencia qué cambiaste respecto a la entrega anterior."]
+    return "\n".join(partes)
+
+
 def motivo_de(registro):
     """Por qué se paró el anterior: el de su `detenido`, o el que tenía antes de quedar en
     espera de hueco (`lanzados.poner_en_espera` lo guarda en `motivo_antes`)."""
@@ -174,5 +238,8 @@ def resumen(reanudacion):
         trozos.append(f"{cambios} cambio" + ("s" if cambios != 1 else "") + " sin commitear")
     de = f" de {reanudacion['anterior']}" if reanudacion.get("anterior") else ""
     lleva = f": sigue con {' y '.join(trozos)}" if trozos else ""
-    return (f"Es una reanudación (vez {vez}): retoma lo que dejó el agente "
-            f"anterior{de}{lleva}.")
+    frase = (f"Es una reanudación (vez {vez}): retoma lo que dejó el agente "
+             f"anterior{de}{lleva}.")
+    if reanudacion.get("rechazo"):
+        frase += f" Se la devolvieron desde Para comprobar: «{reanudacion['rechazo']}»."
+    return frase

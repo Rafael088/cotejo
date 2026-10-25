@@ -251,6 +251,7 @@ class App(Adw.Application):
     def refrescar(self):
         """Escanea el vault una sola vez y reparte: el board y el archivo que lee la barra."""
         avisos = []
+        self.recoger_lanzados()
         # Con las hechas: el board necesita las cuatro columnas.
         self.proyectos = ([] if self.fuente.problema
                           else self.fuente.escanear(incluir_hechas=True, avisos=avisos))
@@ -265,6 +266,17 @@ class App(Adw.Application):
             self.bitacora = bitacora.ultimas()
         if self.board is not None:
             self.board.pintar()
+
+    @staticmethod
+    def recoger_lanzados():
+        """Antes de leer: el fin de los agentes del board que se cerraron sin que nadie los
+        viera (cotejo-o253bs, `despacho_board.recoger`). Si entregaron no cambia nada; si no,
+        su tarea vuelve a Pendiente con el motivo. Un fallo aquí no tumba el refresco."""
+        try:
+            from enrutador import despacho_board
+            return despacho_board.recoger()
+        except Exception:  # noqa: BLE001 — refrescar no puede romperse por esto
+            return []
 
     def vigilar(self):
         for monitor in self.monitores:
