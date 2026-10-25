@@ -404,10 +404,60 @@ class Init(PruebaDeConexion):
                                   capture_output=True, text=True).stdout.split()
         self.assertIn(".cotejo/tareas.md", archivos)
         self.assertIn(".cotejo/proyecto.md", archivos)
-        # La identidad de Cotejo fue solo para ese commit: no quedó en la config del repo.
-        config = subprocess.run(["git", "-C", str(destino), "config", "--local", "--list"],
-                                capture_output=True, text=True).stdout
-        self.assertNotIn("user.name", config)
+        # Sin identidad de la persona, `init` deja la de Cotejo en la config LOCAL del repo para
+        # que los agentes commiteen sin `-c` (cotejo-q93zyw).
+        self.assertEqual(self._local(destino, "user.name"), "Cotejo")
+        self.assertEqual(self._local(destino, "user.email"), "cotejo@localhost")
+        self.assertEqual(datos["identidad"], ["user.name", "user.email"])
+        hecho = subprocess.run(["git", "-C", str(destino), "-c", "commit.gpgsign=false",
+                                "commit", "-q", "--allow-empty", "-m", "x"], capture_output=True)
+        self.assertEqual(hecho.returncode, 0, hecho.stderr)
+
+    def _local(self, repo, clave):
+        return subprocess.run(["git", "-C", str(repo), "config", "--local", "--get", clave],
+                              capture_output=True, text=True).stdout.strip()
+
+    def _init_con_global(self, contenido):
+        """Corre `init` en una carpeta nueva con un gitconfig global de mentira (o vacío)."""
+        home = self.vault / "home-ident"
+        home.mkdir(exist_ok=True)
+        glob = home / "gitconfig"
+        glob.write_text(contenido, encoding="utf-8")
+        entorno = {"HOME": str(home), "XDG_CONFIG_HOME": str(home / "c"),
+                   "GIT_CONFIG_GLOBAL": str(glob), "GIT_CONFIG_SYSTEM": os.devnull,
+                   "GIT_CONFIG_NOSYSTEM": "1"}
+        for clave in ("GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME",
+                      "GIT_COMMITTER_EMAIL", "EMAIL"):
+            os.environ.pop(clave, None)
+        destino = self.vault / "ident-proyecto"
+        with mock.patch.dict(os.environ, entorno):
+            codigo, datos = self.correr("init", "--repo", str(destino))
+        self.assertEqual(codigo, 0, datos)
+        return destino, datos
+
+    def test_init_respeta_la_identidad_global_de_la_persona(self):
+        destino, datos = self._init_con_global(
+            "[user]\n\tname = Ana Prueba\n\temail = ana@ejemplo.test\n")
+        self.assertEqual(datos["identidad"], [])
+        self.assertEqual(self._local(destino, "user.name"), "")
+        self.assertEqual(self._local(destino, "user.email"), "")
+
+    def test_init_completa_solo_lo_que_falta_de_la_identidad(self):
+        destino, datos = self._init_con_global("[user]\n\tname = Ana Prueba\n")
+        self.assertEqual(datos["identidad"], ["user.email"])
+        self.assertEqual(self._local(destino, "user.name"), "")
+        self.assertEqual(self._local(destino, "user.email"), "cotejo@localhost")
+
+    def test_init_no_pisa_la_identidad_local_de_un_repo_existente(self):
+        destino = self.vault / "con-identidad"
+        destino.mkdir()
+        for clave, valor in (("user.name", "Dueña"), ("user.email", "d@ejemplo.test")):
+            subprocess.run(["git", "init", "-q", str(destino)], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(destino), "config", clave, valor], check=True)
+        _, datos = self.correr("init", "--repo", str(destino))
+        self.assertEqual(datos["identidad"], [])
+        self.assertEqual(self._local(destino, "user.name"), "Dueña")
+        self.assertEqual(self._local(destino, "user.email"), "d@ejemplo.test")
 
     def test_init_no_toca_un_repo_que_ya_tiene_commits(self):
         destino = self.vault / "con-historia"

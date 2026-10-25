@@ -149,6 +149,33 @@ def _git_salida(raiz, *args):
     return hecho.returncode, (hecho.stdout + hecho.stderr).strip()
 
 
+IDENTIDAD_COTEJO = {"user.name": "Cotejo", "user.email": "cotejo@localhost"}
+
+
+def _asegurar_identidad(raiz):
+    """Si git no tiene nombre o correo efectivos en `raiz`, los pone en la config LOCAL del repo
+    (cotejo-q93zyw). Devuelve la lista de claves que puso, vacía si no hizo falta.
+
+    Los agentes commitean dentro del proyecto y sin identidad cada commit exige `-c user.email=…`
+    (y el sandbox no les deja escribir `.git/config`); `init` sí puede, porque tiene el `.git`
+    permitido. Lo que la persona ya tiene (global, del sistema o local) manda: solo se rellena lo
+    que `git config` ve vacío, nunca se sobrescribe. Lo que falte se rellena con el valor de
+    Cotejo. No lanza: un fallo se queda en vacío y el commit inicial aún tiene su propio `-c`.
+    """
+    if shutil.which("git") is None:
+        return []
+    puestas = []
+    for clave, valor in IDENTIDAD_COTEJO.items():
+        codigo, actual = _git_salida(raiz, "config", "--get", clave)
+        if codigo is None:
+            return puestas
+        if codigo == 0 and actual.strip():
+            continue
+        if _git_salida(raiz, "config", "--local", clave, valor)[0] == 0:
+            puestas.append(clave)
+    return puestas
+
+
 def _commit_inicial(raiz):
     """Si el repo no tiene ningún commit, le hace uno con `.cotejo/` (v1.2.5). Devuelve
     `(hash, aviso)`: el hash corto si lo hizo, y un aviso en palabras si no pudo.
@@ -275,8 +302,9 @@ def cmd_init(args):
         cambio_fuente = True
         cambio_config = True
 
+    identidad = _asegurar_identidad(raiz)
     commit, aviso_commit = _commit_inicial(raiz)
-    cambio = git_init or bool(commit) or bool(creados) or cambio_config or version["hecho"] == "puesta"
+    cambio = git_init or bool(identidad) or bool(commit) or bool(creados) or cambio_config or version["hecho"] == "puesta"
     if cambio_fuente:
         salida = f"Listo. La fuente activa ha cambiado a «repo» (la anterior «{fuente_activa_antes}» no funciona)."
     elif cambio:
@@ -296,6 +324,7 @@ def cmd_init(args):
     bitacora.anotar_verbo("init", raiz, git_init=git_init, creados=len(creados))
     imprimir({"esquema": ESQUEMA, "repo": str(raiz), "tareas": str(archivo_tareas),
               "creado": tareas_creado, "creados": creados, "git_init": git_init, "commit": commit,
+              "identidad": identidad,
               "version": version,
               "registrado_en": str(ruta_config),
               "cambio": cambio, "salida": salida})
