@@ -4,10 +4,11 @@ import threading
 
 from gi.repository import Adw, GLib, Gtk, Pango
 
-from .. import bitacora, modelo, revision, worktrees
+from .. import bitacora, capturas, modelo, revision, worktrees
 from .comun import ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XS
 from .escala import px
 from .piezas import chip, con_mano, icono
+from .vista_capturas import EN_REVISION, seccion_capturas
 
 
 class Revision:
@@ -53,7 +54,8 @@ class Revision:
         comprobar.set_sensitive(not (self.comprobaciones.get(tarea.id) or {}).get("corriendo"))
         comprobar.connect("clicked", lambda *_: self.volver_a_comprobar(tarea))
         botones.append(con_mano(comprobar))
-        if datos or (self.entrega_de(tarea) or {}).get("resumen"):
+        if datos or (self.entrega_de(tarea) or {}).get("resumen") \
+                or capturas.de_la_entrega(self.entrega_de(tarea)):
             ver = Gtk.Button(child=self.con_icono("evidencia", "Revisar"), css_classes=["flat"],
                              tooltip_text="El diff, las pruebas y los commits de la entrega")
             ver.connect("clicked", lambda *_: self.ver_revision(proyecto, tarea))
@@ -124,7 +126,7 @@ class Revision:
         entrega = self.entrega_de(tarea)
         datos = revision.resumen(entrega)
         texto_resumen = ((entrega or {}).get("resumen") or "").strip()
-        if datos is None and not texto_resumen:
+        if datos is None and not texto_resumen and not capturas.de_la_entrega(entrega):
             return
         datos = datos or {"rama": None, "head": None, "desde": None, "sin_commitear": False,
                           "pruebas": None, "diff": None, "commits": [], "commits_texto": ""}
@@ -162,6 +164,10 @@ class Revision:
                                 css_classes=["revision-texto"]))
         if texto_resumen:
             cuerpo.append(self.bloque_resumen(proyecto, tarea, entrega, texto_resumen, dialogo))
+        vistas = seccion_capturas(entrega, dialogo, EN_REVISION,
+                                  self.titulo_seccion("CAPTURAS DEL TRABAJO"))
+        if vistas is not None:
+            cuerpo.append(vistas)
         # Lo que dijo el agente que la lanzó el board, guardado (cotejo-o253bs).
         dialogo.en_vivo = self.seccion_en_vivo(tarea)
         if dialogo.en_vivo is not None:

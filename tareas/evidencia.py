@@ -180,3 +180,14 @@ def resumen_para_humanos(texto):
             "el resumen viene vacío. Cuenta qué cambió visto desde fuera y cómo probarlo uno "
             "mismo, sin jerga; o quita --resumen.")
     return texto.strip()
+
+
+def prueba(texto):
+    """Un comando de prueba que se pueda partir en argv sin shell, que es como se volverá a correr."""
+    try:
+        partir(texto)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            f"«{texto}» no se puede partir en argumentos ({error}). Se corre sin shell: "
+            "nada de tuberías ni `&&`; si hacen falta, una --prueba por comando.") from error
+    return texto

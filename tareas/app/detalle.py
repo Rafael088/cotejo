@@ -9,6 +9,7 @@ from .comun import (
 )
 from .escala import px
 from .piezas import con_mano, etiquetar, icono
+from .vista_capturas import seccion_capturas
 
 
 class Detalle:
@@ -147,6 +148,12 @@ class Detalle:
                                   wrap_mode=Pango.WrapMode.WORD_CHAR,
                                   css_classes=["anotacion-texto"]))
             cuerpo.append(caja)
+        # Lo que se ve del trabajo entregado (`entregar --captura`): grande y sin abrir nada.
+        entregada = self.app.bitacora.get(tarea.id)
+        vistas = seccion_capturas(entregada if (entregada or {}).get("operacion") == "entregar"
+                                  else None, dialogo)
+        if vistas is not None:
+            cuerpo.append(vistas)
 
         # Lanzada desde el board (v1.3.0, `lanzar.py`): en Haciendo, lo que hace su agente en
         # vivo; en Pendiente, por qué quedó en espera o que está pausada (cotejo-z7ma7r).

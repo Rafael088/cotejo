@@ -78,6 +78,18 @@ def elegir(entorno=None, which=shutil.which):
     return (None, None, "no hay firefox ni chromium en esta máquina")
 
 
+def disponible(entorno=None, which=shutil.which):
+    """¿Hay un navegador que valga aquí? Se evalúa al llamar, no al importar el módulo."""
+    return elegir(entorno, which)[0] is not None
+
+
+def disponible_para_el_agente(which=shutil.which):
+    """¿Puede el agente ver su trabajo? Se mira como si estuviera encerrado (solo Firefox): el
+    encargo y la nota se arman fuera del sandbox, y prometerle Chromium a un agente encerrado
+    es darle un comando que se cae."""
+    return disponible({"COTEJO_SANDBOX": "1"}, which)
+
+
 def a_url(destino):
     """Una URL tal cual; una ruta, como `file://` absoluta."""
     texto = str(destino)

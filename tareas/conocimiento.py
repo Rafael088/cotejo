@@ -714,8 +714,8 @@ def anadir(sub):
     buscar.add_argument("--temas", help="Coma-separados; las que tengan todos")
     buscar.add_argument("--estado", help="Estado de la entrada")
     buscar.add_argument("--desde", metavar="AAAA-MM-DD",
-                        help="Desde esa fecha (por `fecha` o `actualizado`)")
-    buscar.add_argument("--texto", help="En título, resumen y cuerpo; sin mayúsculas ni acentos")
+                        help="Desde esa fecha")
+    buscar.add_argument("--texto", help="En título, resumen y cuerpo")
     buscar.add_argument("--limite", type=int, default=50,
                         help="Máximo de entradas")
     buscar.set_defaults(funcion=cmd_buscar)
