@@ -207,9 +207,9 @@ class Lanzar:
     def relanzar_al_rechazar(self, proyecto, tarea, motivo):
         """Devuelta a Haciendo con motivo: se mueve (con el «rechazar» de siempre) y se lanza
         un agente nuevo en su worktree con el encargo, la entrega anterior y lo que se pidió
-        cambiar. False si no la lanzó el board (y se mueve como siempre)."""
-        if not self.es_pausable(tarea):
-            return False
+        cambiar. Vale también si la entregó otro camino (`despachar`, un agente a mano) con tal
+        de que esté asignada a un agente (cotejo-2sxw7p). False si es de una persona o no tiene
+        agente (y se mueve como siempre)."""
         from enrutador import despacho_board as db
         try:
             estado = db.rechazar(

@@ -280,3 +280,22 @@ def en_filtro_finalizada(cerrada, filtro, hoy=None):
     except ValueError:
         return False
     return 0 <= (referencia - fecha).days < dias
+
+
+def aviso_comprobar_a_mano(tarea, destino, alias_persona=("persona",)):
+    """Por qué una persona no puede pasar esta tarea a Para comprobar con la mano (cotejo-2sxw7p),
+    en llano; "" si puede.
+
+    A *Para comprobar* solo se llega cuando el agente asignado entrega. Pasar a mano una tarea
+    de un agente desde Pendiente o Haciendo dejaría esa columna diciendo «entregada» sobre algo
+    que nadie entregó, sin evidencia que revisar. Una tarea de una persona o sin asignar sí se
+    mueve: quien la hace es quien la mueve.
+    """
+    if destino != "por-validar" or tarea.columna not in (PENDIENTE, "en-curso"):
+        return ""
+    if not tarea.agente or tarea.agente in alias_persona:
+        return ""
+    quien = alias_persona[0] if alias_persona else "persona"
+    return (f"No se puede pasar a Para comprobar a mano: está asignada a {tarea.agente} y solo "
+            f"llega ahí cuando {tarea.agente} la entrega. Si la vas a hacer tú, asígnala a "
+            f"«{quien}» y luego muévela.")

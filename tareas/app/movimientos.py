@@ -84,6 +84,13 @@ class Movimientos:
         motivo antes de escribir nada. La evidencia es obligatoria al entregar por la misma
         razón que el motivo lo es al devolver: si no, el agente vuelve a entregar lo mismo.
         """
+        # A Para comprobar solo se llega entregando (cotejo-2sxw7p): una tarea de un agente no
+        # se pasa a mano, y se le dice a la persona por qué en vez de no hacer nada.
+        bloqueo = modelo.aviso_comprobar_a_mano(tarea, destino, self.alias_persona)
+        if bloqueo:
+            self.aviso(bloqueo, segundos=8)
+            self.app.refrescar()
+            return
         if tarea.columna == "por-validar" and destino != modelo.HECHA:
             self.preguntar_motivo(proyecto, tarea, destino)
             return
