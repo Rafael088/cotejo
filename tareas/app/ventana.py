@@ -175,6 +175,17 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
             ancho, alto = min(ancho, int(zona.width * 0.9)), min(alto, int(zona.height * 0.9))
         return ancho, alto
 
+    @staticmethod
+    def tamano_inicial():
+        """1280 × 820 a la escala de ahora, sin pasar del 90 % de la pantalla: a 150 % serían
+        1920 × 1230, más alto que un portátil de 1080."""
+        ancho, alto = px(1280), px(820)
+        monitores = Gdk.Display.get_default().get_monitors()
+        if monitores.get_n_items():
+            zona = monitores.get_item(0).get_geometry()
+            ancho, alto = min(ancho, int(zona.width * 0.9)), min(alto, int(zona.height * 0.9))
+        return ancho, alto
+
     def ajustar_columnas(self):
         anchos = comun.anchos_columnas(int(self.scroll_tablero.get_hadjustment().get_page_size()))
         caja = self.tablero.get_first_child()
@@ -444,5 +455,8 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
         self.animacion.set_easing(Adw.Easing.EASE_OUT_CUBIC)
         self.animacion.play()
 
-    def aviso(self, texto):
-        self.toasts.add_toast(Adw.Toast(title=GLib.markup_escape_text(texto), timeout=4))
+    def aviso(self, texto, segundos=4):
+        """Un aviso que no se sale de la ventana: el texto largo se parte en líneas."""
+        etiqueta = Gtk.Label(label=texto, wrap=True, max_width_chars=48, xalign=0,
+                             natural_wrap_mode=Gtk.NaturalWrapMode.WORD)
+        self.toasts.add_toast(Adw.Toast(custom_title=etiqueta, timeout=segundos))

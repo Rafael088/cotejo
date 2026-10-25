@@ -8,6 +8,10 @@ from .escala import px
 from .piezas import con_mano, etiquetar, icono
 
 
+# El aviso de «no hay agente» trae una instrucción: da tiempo de leerla.
+SEGUNDOS_SIN_AGENTE = 15
+
+
 class Maestro:
     """La barra del maestro: elegir cliente y abrirlo con la indicación."""
 
@@ -39,9 +43,8 @@ class Maestro:
                                                             self.abrir_maestro(n)))
             caja.append(opcion)
         if not instalados:
-            caja.append(Gtk.Label(label="No encontré ningún cliente de IA instalado\n"
-                                        f"({', '.join(clientes.CLIENTES)}).",
-                                  xalign=0, css_classes=["menu-titulo"]))
+            caja.append(Gtk.Label(label=clientes.SIN_AGENTE_TEXTO, xalign=0, wrap=True,
+                                  max_width_chars=36, css_classes=["menu-titulo"]))
         popover.set_child(caja)
 
     def cliente_del_maestro(self, instalados):
@@ -87,8 +90,7 @@ class Maestro:
         from enrutador import clientes
         instalados = clientes.instalados()
         if not instalados:
-            self.aviso("No encontré ningún cliente de IA instalado "
-                       f"({', '.join(clientes.CLIENTES)})")
+            self.aviso(clientes.SIN_AGENTE_TEXTO, segundos=SEGUNDOS_SIN_AGENTE)
             return
         self.abrir_maestro(self.cliente_del_maestro(instalados))
 
@@ -124,10 +126,18 @@ class Maestro:
         de_uno = self.seleccion != TODOS and not sin_fuente
         for control in (self.boton_maestro, self.entrada_maestro):
             control.set_sensitive(de_uno)
+        from enrutador import clientes
+        sin_agente = not clientes.instalados()
         con_texto = bool(self.entrada_maestro.get_text().strip())
         self.boton_maestro.set_label("Enviar al maestro" if con_texto else "Abrir maestro")
-        self.boton_maestro.set_tooltip_text(
-            ("Abrir el maestro con tu indicación" if con_texto
-             else "Abrir un agente que reparta las tareas asignadas de este proyecto")
-            if de_uno else "Aún no hay de dónde leer las tareas: configura una fuente primero"
-            if sin_fuente else "Elige un proyecto para abrir su maestro")
+        if sin_fuente:
+            ayuda = "Aún no hay de dónde leer las tareas: configura una fuente primero"
+        elif not de_uno:
+            ayuda = "Elige un proyecto para abrir su maestro"
+        elif sin_agente:
+            ayuda = clientes.SIN_AGENTE_TEXTO   # por qué el botón no abre nada
+        elif con_texto:
+            ayuda = "Abrir el maestro con tu indicación"
+        else:
+            ayuda = "Abrir un agente que reparta las tareas asignadas de este proyecto"
+        self.boton_maestro.set_tooltip_text(ayuda)

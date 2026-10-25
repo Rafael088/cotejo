@@ -17,20 +17,18 @@ def abrir(config, cotejo, humano, nivel, propios, proyecto, cliente, modelo, sim
           indicacion):
     pedido = bool(cliente)
     if not pedido:
-        # Sin cliente pedido, el primero que haya en la máquina; si no hay ninguno, `claude`
-        # solo para poder armar el ensayo (no se le nombra a nadie como si lo hubiera pedido).
-        cliente = (clientes.instalados() or ["claude"])[0]
+        # Sin cliente pedido, el primero que haya en la máquina. Si no hay ninguno no se
+        # inventa uno (ni `claude`): sin agente no hay maestro, ni siquiera para simularlo.
+        # Es el mismo texto que el del board, y se dice antes de mirar tareas: un «asigna
+        # tareas» no arreglaría nada.
+        if not clientes.instalados():
+            raise ErrorCLI(clientes.SIN_AGENTE, clientes.SIN_AGENTE_SALIDA)
+        cliente = clientes.instalados()[0]
     try:
         elegido = clientes.de(cliente)
         nombre = maestro.resolver_proyecto(proyecto, cotejo.proyectos())
     except (clientes.ClienteDesconocido, maestro.SinProyecto) as error:
         raise ErrorCLI(str(error), "Mira los proyectos con `cotejo estado`.") from error
-    if not pedido and not simular and not clientes.instalados():
-        # Antes de mirar tareas: sin agente no hay maestro que abrir, y decirlo primero evita
-        # un «asigna tareas» que no arregla nada.
-        raise ErrorCLI(clientes.aviso_sin_agentes(),
-                       "Instala uno (por ejemplo Claude Code) y repite `cotejo maestro`; "
-                       "`--simular` enseña qué abriría sin necesitarlo.")
     ajustes = config.get("maestro") or {}
     if modelo is None:
         modelo = (ajustes.get("modelos") or {}).get(elegido.nombre, "")

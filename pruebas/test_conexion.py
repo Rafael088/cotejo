@@ -163,6 +163,56 @@ class Doctor(PruebaDeConexion):
         self.assertFalse(any("agente de terminal" in a for a in datos.get("avisos", [])))
         self.assertIn("claude", datos["agentes"]["instalados"])
 
+    def fuera_de_un_repo(self):
+        """Una carpeta que no es repo: `doctor` no suma la pista del repo donde se para."""
+        fuera = self.vault / "no-es-repo"
+        fuera.mkdir(exist_ok=True)
+        return fuera
+
+    def test_de_punta_a_punta_con_el_path_vacio_avisa_y_no_dice_todo_en_orden(self):
+        self.parado_en(self.fuera_de_un_repo())
+        with mock.patch.dict(os.environ, {"PATH": ""}):
+            codigo, datos = self.correr("doctor")
+        self.assertEqual(codigo, 0)
+        self.assertTrue(datos["ok"])
+        self.assertEqual(datos["agentes"]["instalados"], [])
+        self.assertEqual(len(datos["avisos"]), 1)
+        self.assertIn("No encontré ningún agente de terminal", datos["avisos"][0])
+        self.assertNotIn("Todo en orden", datos["salida"])
+        self.assertIn("No encontré ningún agente", datos["salida"])
+
+    def test_de_punta_a_punta_con_un_cliente_en_el_path_no_hay_aviso(self):
+        bin_falso = self.vault / "bin-falso"
+        bin_falso.mkdir()
+        claude = bin_falso / "claude"
+        claude.write_text("#!/bin/sh\n", encoding="utf-8")
+        claude.chmod(0o755)
+        self.parado_en(self.fuera_de_un_repo())
+        with mock.patch.dict(os.environ, {"PATH": str(bin_falso)}):
+            codigo, datos = self.correr("doctor")
+        self.assertEqual(codigo, 0)
+        self.assertTrue(datos["ok"])
+        self.assertEqual(datos["agentes"]["instalados"], ["claude"])
+        self.assertNotIn("avisos", datos)
+        self.assertIn("Todo en orden", datos["salida"])
+
+    def test_en_subproceso_con_el_path_vacio_ok_true_y_el_aviso(self):
+        (self.vault / "hogar").mkdir()
+        entorno = {"PATH": "", "COTEJO_VAULT": str(self.vault),
+                   "COTEJO_CARPETA_PROYECTOS": self.CARPETA, "COTEJO_CONFIG": str(self.config),
+                   "HOME": str(self.vault / "hogar"), "XDG_CONFIG_HOME": str(self.vault / "xdg-c"),
+                   "XDG_STATE_HOME": str(self.vault / "xdg-e"), "DBUS_SESSION_BUS_ADDRESS": "",
+                   "PYTHONPATH": str(RAIZ)}
+        hecho = subprocess.run([sys.executable, "-m", "tareas", "doctor"], cwd=self.fuera_de_un_repo(),
+                               env=entorno,
+                               capture_output=True, text=True)
+        self.assertEqual(hecho.returncode, 0, hecho.stderr)
+        datos = json.loads(hecho.stdout)
+        self.assertTrue(datos["ok"])
+        self.assertEqual(datos["agentes"]["instalados"], [])
+        self.assertIn("No encontré ningún agente de terminal", datos["avisos"][0])
+        self.assertNotIn("Todo en orden", datos["salida"])
+
     def test_con_la_config_rota_lo_dice_y_no_revienta(self):
         self.config.write_text("{roto", encoding="utf-8")
         codigo, datos = self.correr("doctor")
