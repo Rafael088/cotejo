@@ -4,6 +4,7 @@ from gi.repository import Gtk
 
 from .. import modelo, revision
 from .comun import ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XS
+from .escala import px
 from .piezas import con_mano
 
 
@@ -12,7 +13,7 @@ class Resumen:
 
     def bloque_resumen(self, proyecto, tarea, entrega, texto, dialogo):
         """Resumen tal cual lo escribió el agente, una frase de pruebas y los dos caminos."""
-        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_MD,
+        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_MD),
                        css_classes=["revision-resumen"])
         caja.append(self.titulo_seccion("QUÉ CAMBIÓ Y CÓMO PROBARLO"))
         caja.append(Gtk.Label(label=texto, xalign=0, wrap=True, selectable=False,
@@ -25,7 +26,7 @@ class Resumen:
             label="Pruébalo como dice arriba. Si está bien, apruébalo; si no, devuélvelo "
                   "y cuéntale al agente qué falta.",
             xalign=0, wrap=True, css_classes=["revision-dato"]))
-        botones = Gtk.Box(spacing=ESPACIADO_SM, margin_top=ESPACIADO_XS)
+        botones = Gtk.Box(spacing=px(ESPACIADO_SM), margin_top=px(ESPACIADO_XS))
 
         def aprobar(*_):
             dialogo.close()

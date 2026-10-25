@@ -6,6 +6,7 @@ from gi.repository import Adw, GObject, Gdk, Gtk
 
 from .. import bitacora, modelo, revision, worktrees
 from .comun import texto_a_markup
+from .escala import px
 from .piezas import TareaArrastrada, icono
 
 
@@ -193,7 +194,7 @@ class Movimientos:
         etiqueta = Gtk.Label(label=texto, xalign=0, yalign=0, wrap=True, selectable=True,
                              css_classes=["anotacion-texto"])
         dialogo.set_extra_child(Gtk.ScrolledWindow(
-            child=etiqueta, propagate_natural_height=True, max_content_height=420,
+            child=etiqueta, propagate_natural_height=True, max_content_height=px(420),
             hscrollbar_policy=Gtk.PolicyType.NEVER))
         dialogo.add_response("cerrar", "Cerrar")
         dialogo.present(self)

@@ -105,7 +105,7 @@ class ElCss(unittest.TestCase):
     def test_la_letra_del_board_crece_con_el_factor(self):
         escalado = escala.escalar_css(CSS, 1.5)
         self.assertIn("--k-contenido: 21px;", escalado)
-        self.assertIn("--k-etiqueta: 16.5px;", escalado)
+        self.assertIn("--k-etiqueta: 18px;", escalado)
 
 
 @unittest.skipUnless(HAY_GTK, "sin GTK")
@@ -133,6 +133,59 @@ class LosIconos(unittest.TestCase):
         escala.FACTOR = 1.0
         escala.reescalar_iconos(caja)
         self.assertEqual((uno.get_pixel_size(), otro.get_pixel_size()), (16, 15))
+
+
+@unittest.skipUnless(HAY_GTK, "sin GTK")
+class LasMedidasDePython(unittest.TestCase):
+    def tearDown(self):
+        escala.FACTOR = 1.0
+
+    def test_px_escala_al_llamarla_no_al_importar(self):
+        self.assertEqual(escala.px(8), 8)
+        escala.FACTOR = 1.5
+        self.assertEqual((escala.px(8), escala.px(354)), (12, 531))
+
+    def test_las_columnas_crecen_con_el_factor(self):
+        from tareas.app import comun
+        escala.FACTOR = 1.5
+        anchos = comun.anchos_columnas(10_000)
+        self.assertEqual(anchos, {c: round(a * 1.5) for c, a in comun.ANCHO_COLUMNAS.items()})
+        # Y en una ventana estrecha ceden sin bajar de su piso, también escalado.
+        for clave, piso in comun.anchos_columnas(1200).items():
+            self.assertGreaterEqual(piso, round(comun.ANCHO_MINIMO_COLUMNAS.get(clave, 52) * 1.5))
+
+    def test_el_tamano_de_la_config(self):
+        self.assertEqual([escala.zoom(t) for t in (100, 125, 150)], [1.0, 1.25, 1.5])
+        for raro in (None, 0, 110, "125", 300):
+            self.assertEqual(escala.zoom(raro), 1.0, raro)
+
+
+@unittest.skipUnless(HAY_GTK, "sin GTK")
+class ElMenuDeTamano(unittest.TestCase):
+    def fila(self, tamano, elegidos):
+        falso = types.SimpleNamespace(
+            app=types.SimpleNamespace(tamano=tamano,
+                                      elegir_tamano=lambda t: elegidos.append(t)),
+            aviso=lambda texto: None)
+        falso.al_elegir_tamano = lambda *a: app.Board.al_elegir_tamano(falso, *a)
+        return app.Board.fila_tamano(falso, Gtk.Popover())
+
+    def botones(self, fila):
+        grupo = fila.get_last_child()
+        hijo, botones = grupo.get_first_child(), []
+        while hijo is not None:
+            botones.append(hijo)
+            hijo = hijo.get_next_sibling()
+        return botones
+
+    def test_marca_el_que_hay_y_elige_otro_con_un_clic(self):
+        elegidos = []
+        botones = self.botones(self.fila(125, elegidos))
+        self.assertEqual([b.get_label() for b in botones], ["100 %", "125 %", "150 %"])
+        self.assertEqual([b.get_active() for b in botones], [False, True, False])
+        botones[2].set_active(True)
+        self.assertEqual(elegidos, [150])
+        self.assertFalse(botones[1].get_active())
 
 
 class ElLanzador(unittest.TestCase):

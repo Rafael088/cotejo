@@ -7,6 +7,7 @@ from .comun import (
     ALTO_CHIP_BANDA, CENTRADO_MS, ESPACIADO_SM, ESPACIADO_XS, FRANJA_BANDA, TODOS,
     UMBRAL_ARRASTRE, animaciones_activas, posicion_centrado,
 )
+from .escala import px
 from .piezas import chip, con_mano, etiquetar, icono, vaciar
 
 
@@ -25,7 +26,7 @@ class Banda:
         Antes la banda era infinita (la lista repetida, dando la vuelta): con dos o tres
         proyectos se veía el mismo nombre tres veces seguidas y no se sabía cuál era cuál.
         """
-        self.chips = Gtk.Box(spacing=ESPACIADO_SM, halign=Gtk.Align.CENTER)
+        self.chips = Gtk.Box(spacing=px(ESPACIADO_SM), halign=Gtk.Align.CENTER)
         self.animacion_banda = None
         self.botones_chip = {}
         self.banda_scroll = Gtk.ScrolledWindow(hexpand=True, vscrollbar_policy=Gtk.PolicyType.NEVER,
@@ -61,7 +62,7 @@ class Banda:
                               css_classes=["banda-fundido", lado])
             encima.add_overlay(fundido)
             self.fundidos_banda.append(fundido)
-        fila = Gtk.Box(spacing=ESPACIADO_XS)
+        fila = Gtk.Box(spacing=px(ESPACIADO_XS))
         fila.append(self.flecha_banda_atras)
         fila.append(encima)
         fila.append(self.flecha_banda_adelante)
@@ -109,7 +110,7 @@ class Banda:
         ajuste = self.banda_scroll.get_hadjustment()
         if ajuste.get_upper() <= ajuste.get_page_size():
             return False
-        ajuste.set_value(ajuste.get_value() + dy * ALTO_CHIP_BANDA)
+        ajuste.set_value(ajuste.get_value() + dy * px(ALTO_CHIP_BANDA))
         return True
 
     def banda_desborda(self):
@@ -186,7 +187,7 @@ class Banda:
         vaciar(self.chips)
         self.botones_chip = {}
         for clave, nombre, pendientes, esperando in self.filas_banda(proyectos):
-            caja = Gtk.Box(spacing=ESPACIADO_SM)
+            caja = Gtk.Box(spacing=px(ESPACIADO_SM))
             # «Todos» no es un proyecto más: es la vista de todos juntos. Lleva el ícono del
             # tablero y una raya que lo separa de los proyectos.
             if clave == TODOS:
@@ -209,8 +210,8 @@ class Banda:
             if clave == TODOS and len(nombres) > 0:
                 self.chips.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL,
                                                 css_classes=["banda-separador"],
-                                                margin_top=ESPACIADO_SM,
-                                                margin_bottom=ESPACIADO_SM))
+                                                margin_top=px(ESPACIADO_SM),
+                                                margin_bottom=px(ESPACIADO_SM)))
         if con_foco in self.botones_chip:
             self.botones_chip[con_foco].grab_focus()
         GLib.idle_add(self.centrar_chip_activo, False)

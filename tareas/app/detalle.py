@@ -7,6 +7,7 @@ from .comun import (
     ESPACIADO_LG, ESPACIADO_SM, ESPACIADO_XL, ESPACIADO_XS, ICONOS_COLUMNA, ICONOS_DIFICULTAD,
     NOMBRES_DIFICULTAD, anotacion_visible, id_corto,
 )
+from .escala import px
 from .piezas import con_mano, etiquetar, icono
 
 
@@ -28,12 +29,12 @@ class Detalle:
         version, nombre_corto, descripcion = tarea.partes
         nombres = dict(modelo.COLUMNAS)
         dialogo = Adw.Dialog(title=f"{id_corto(tarea.id)} · {nombres[tarea.columna]}",
-                             content_width=560)
+                             content_width=px(560))
         vista = Adw.ToolbarView(css_classes=["detalle"])
         cabecera = Adw.HeaderBar(show_title=False)
         # La columna donde está, a la izquierda de la barra, como la miga de pan de la ficha:
         # el título del diálogo queda para el lector de pantalla y el selector de ventanas.
-        donde_esta = Gtk.Box(spacing=ESPACIADO_SM, css_classes=["detalle-columna"])
+        donde_esta = Gtk.Box(spacing=px(ESPACIADO_SM), css_classes=["detalle-columna"])
         donde_esta.append(icono(ICONOS_COLUMNA[tarea.columna], 14))
         donde_esta.append(Gtk.Label(label=nombres[tarea.columna]))
         if proyecto is not None:
@@ -43,17 +44,17 @@ class Detalle:
         cabecera.pack_start(donde_esta)
         vista.add_top_bar(cabecera)
 
-        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_LG,
-                         margin_top=ESPACIADO_LG, margin_bottom=ESPACIADO_XL,
-                         margin_start=ESPACIADO_XL + ESPACIADO_XS,
-                         margin_end=ESPACIADO_XL + ESPACIADO_XS)
+        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_LG),
+                         margin_top=px(ESPACIADO_LG), margin_bottom=px(ESPACIADO_XL),
+                         margin_start=px(ESPACIADO_XL) + px(ESPACIADO_XS),
+                         margin_end=px(ESPACIADO_XL) + px(ESPACIADO_XS))
 
         # Los textos se pueden seleccionar con el mouse para copiarlos, pero no toman el foco:
         # si no, la primera etiqueta se abría con todo el texto resaltado.
         # Qué es. Sin dos puntos en el texto, el «nombre» es solo su principio recortado y la
         # descripción el texto entero: enseñar los dos era leer la misma frase dos veces.
-        que_es = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_SM)
-        arriba = Gtk.Box(spacing=ESPACIADO_SM)
+        que_es = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_SM))
+        arriba = Gtk.Box(spacing=px(ESPACIADO_SM))
         arriba.append(Gtk.Label(label=id_corto(tarea.id), tooltip_text=tarea.id,
                                 css_classes=["carta-codigo", "detalle-id"]))
         if version:
@@ -74,10 +75,10 @@ class Detalle:
 
         # Quién la tiene, cuánto cuesta y dónde vive: tres datos en una franja, cada uno con
         # su rótulo encima, en vez de una tabla de clave y valor que había que leer entera.
-        datos = Gtk.Box(spacing=ESPACIADO_XL, css_classes=["detalle-datos"], homogeneous=False)
+        datos = Gtk.Box(spacing=px(ESPACIADO_XL), css_classes=["detalle-datos"], homogeneous=False)
         datos.append(self.dato_de_detalle("Modelo", self.selector_de_agente(proyecto, tarea,
                                                                             dialogo)))
-        dificultad = Gtk.Box(spacing=ESPACIADO_XS)
+        dificultad = Gtk.Box(spacing=px(ESPACIADO_XS))
         if tarea.dificultad:
             dificultad.append(icono(ICONOS_DIFICULTAD.get(tarea.dificultad, ""), 14))
         dificultad.append(Gtk.Label(
@@ -95,9 +96,9 @@ class Detalle:
         visible = anotacion_visible(tarea, self.app.bitacora.get(tarea.id))
         if visible is not None:
             clase, titulo_anotacion, texto = visible
-            caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS,
+            caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
                            css_classes=["anotacion", clase])
-            cabeza = Gtk.Box(spacing=ESPACIADO_XS)
+            cabeza = Gtk.Box(spacing=px(ESPACIADO_XS))
             cabeza.append(icono("devuelta" if clase == "detenida" else "evidencia", 12))
             cabeza.append(Gtk.Label(label=titulo_anotacion, xalign=0, hexpand=True,
                                     css_classes=["anotacion-titulo"]))
@@ -108,17 +109,17 @@ class Detalle:
             cuerpo.append(caja)
 
         vista.set_content(Gtk.ScrolledWindow(child=cuerpo, propagate_natural_height=True,
-                                             max_content_height=520,
+                                             max_content_height=px(520),
                                              hscrollbar_policy=Gtk.PolicyType.NEVER))
 
         # Mover, abajo y fijo: atrás a la izquierda, adelante a la derecha y en verde, como
         # el orden de las columnas. Nunca a Finalizada desde aquí: eso es comprobar.
         orden = [c for c, _ in modelo.COLUMNAS]
         i = orden.index(tarea.columna)
-        acciones = Gtk.Box(spacing=ESPACIADO_SM, css_classes=["detalle-acciones"])
+        acciones = Gtk.Box(spacing=px(ESPACIADO_SM), css_classes=["detalle-acciones"])
 
         def accion(texto, destino, nombre_icono, clase, icono_al_final=False):
-            fila = Gtk.Box(spacing=ESPACIADO_SM)
+            fila = Gtk.Box(spacing=px(ESPACIADO_SM))
             partes = [Gtk.Label(label=texto), icono(nombre_icono, 14)]
             for parte in (partes if icono_al_final else reversed(partes)):
                 fila.append(parte)
@@ -147,7 +148,7 @@ class Detalle:
     @staticmethod
     def dato_de_detalle(rotulo, valor, expandir=False):
         """Uno de los datos de la franja de la ficha: rótulo pequeño encima, valor debajo."""
-        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS,
+        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
                        hexpand=expandir)
         caja.append(Gtk.Label(label=rotulo.upper(), xalign=0, css_classes=["detalle-clave"]))
         valor.set_valign(Gtk.Align.CENTER)
@@ -161,7 +162,7 @@ class Detalle:
         """
         quien = ("sin-agente" if not tarea.agente else
                  "persona" if tarea.agente in self.alias_persona else "agente")
-        fila = Gtk.Box(spacing=ESPACIADO_XS)
+        fila = Gtk.Box(spacing=px(ESPACIADO_XS))
         fila.append(icono(quien, 14))
         fila.append(Gtk.Label(label=tarea.agente or "Sin asignar",
                               css_classes=["detalle-valor"]
@@ -173,8 +174,8 @@ class Detalle:
         etiquetar(boton, f"Cambiar el modelo, ahora {tarea.agente or 'sin asignar'}")
         boton.set_tooltip_text("Cambiar a quién está asignada")
         caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
-                       margin_top=ESPACIADO_SM, margin_bottom=ESPACIADO_SM,
-                       margin_start=ESPACIADO_SM, margin_end=ESPACIADO_SM)
+                       margin_top=px(ESPACIADO_SM), margin_bottom=px(ESPACIADO_SM),
+                       margin_start=px(ESPACIADO_SM), margin_end=px(ESPACIADO_SM))
         popover = Gtk.Popover(child=caja)
         caja.append(Gtk.Label(label="ASIGNAR A", xalign=0, css_classes=["menu-titulo"]))
 
@@ -197,4 +198,4 @@ class Detalle:
             agentes.append(self.opcion(agente or "Sin agente", funcion or self.al_asignar,
                                        proyecto, tarea, agente, popover, quien))
         return Gtk.ScrolledWindow(child=agentes, hscrollbar_policy=Gtk.PolicyType.NEVER,
-                                  propagate_natural_height=True, max_content_height=320)
+                                  propagate_natural_height=True, max_content_height=px(320))

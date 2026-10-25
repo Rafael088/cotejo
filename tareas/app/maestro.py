@@ -4,6 +4,7 @@ from gi.repository import Adw, Gtk
 
 from . import comun
 from .comun import ESPACIADO_MD, ESPACIADO_SM, TODOS
+from .escala import px
 from .piezas import con_mano, etiquetar, icono
 
 
@@ -22,15 +23,15 @@ class Maestro:
         """
         from enrutador import clientes
         caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
-                       margin_top=ESPACIADO_SM, margin_bottom=ESPACIADO_SM,
-                       margin_start=ESPACIADO_SM, margin_end=ESPACIADO_SM)
+                       margin_top=px(ESPACIADO_SM), margin_bottom=px(ESPACIADO_SM),
+                       margin_start=px(ESPACIADO_SM), margin_end=px(ESPACIADO_SM))
         popover = boton.get_popover()
         caja.append(Gtk.Label(label="ABRIR EL MAESTRO CON", xalign=0,
                               css_classes=["menu-titulo"]))
         instalados = clientes.instalados()
         actual = self.cliente_del_maestro(instalados)
         for nombre in instalados:
-            fila = Gtk.Box(spacing=ESPACIADO_MD)
+            fila = Gtk.Box(spacing=px(ESPACIADO_MD))
             fila.append(icono("agente", 15))
             fila.append(Gtk.Label(label=clientes.CLIENTES[nombre].titulo or nombre, xalign=0,
                                   hexpand=True))
@@ -62,7 +63,7 @@ class Maestro:
         abrían el maestro y Enter anotaba la frase como carta en Pendiente, que el maestro
         nunca leía.
         """
-        barra = Gtk.Box(spacing=ESPACIADO_SM, halign=Gtk.Align.CENTER,
+        barra = Gtk.Box(spacing=px(ESPACIADO_SM), halign=Gtk.Align.CENTER,
                         valign=Gtk.Align.CENTER, css_classes=["maestro-barra"])
         barra.append(icono("agente", 14, "maestro-chispa"))
         self.entrada_maestro = Gtk.Entry(placeholder_text="Indicación para el maestro (opcional)",

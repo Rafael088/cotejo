@@ -7,6 +7,7 @@ from .comun import (
     ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XS, ICONOS_COLUMNA, ICONOS_DIFICULTAD,
     MAX_CARACTERES_CARTA, anotacion_visible, id_corto, texto_a_markup,
 )
+from .escala import px
 from .piezas import chip, con_mano, etiquetar, icono, revelar_al_acercarse
 
 
@@ -29,9 +30,9 @@ class Cartas:
         version, nombre_corto, descripcion = tarea.partes
         # La compacta sin separación: el revelador cerrado no debe dejar un hueco debajo del id.
         carta = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
-                        spacing=0 if compacta else ESPACIADO_SM)
+                        spacing=0 if compacta else px(ESPACIADO_SM))
         fila.set_child(carta)
-        arriba = Gtk.Box(spacing=ESPACIADO_SM)
+        arriba = Gtk.Box(spacing=px(ESPACIADO_SM))
         if compacta:
             fila.add_css_class("carta-compacta")
         arriba.append(Gtk.Label(label=id_corto(tarea.id), xalign=0, valign=Gtk.Align.CENTER,
@@ -55,15 +56,15 @@ class Cartas:
 
         if compacta:
             # Lo único que Pendiente esconde: el nombre corto, hasta el puntero o el foco.
-            etiqueta.set_margin_bottom(ESPACIADO_SM)
-            etiqueta.set_margin_end(ESPACIADO_SM)
+            etiqueta.set_margin_bottom(px(ESPACIADO_SM))
+            etiqueta.set_margin_end(px(ESPACIADO_SM))
             fila.revelador = revelar_al_acercarse(fila, etiqueta)
             carta.append(fila.revelador)
         else:
             carta.append(etiqueta)
         if columna == "en-curso" and tarea.agente:
             # Haciéndola enseña el modelo asignado y nada más (sin dificultad ni anotación).
-            quien = Gtk.Box(spacing=ESPACIADO_XS)
+            quien = Gtk.Box(spacing=px(ESPACIADO_XS))
             quien.append(self.chip_agente(tarea))
             carta.append(quien)
         if completa and descripcion != nombre_corto:
@@ -93,7 +94,7 @@ class Cartas:
 
     def detalles_de_carta(self, detalle, proyecto, tarea, con_proyecto=False):
         """Chips, anotación y, en *Para comprobar*, la entrega con su diff y sus botones."""
-        chips = Gtk.Box(spacing=ESPACIADO_XS)
+        chips = Gtk.Box(spacing=px(ESPACIADO_XS))
         if con_proyecto:
             chips.append(chip(proyecto.nombre, "tablero", tooltip=proyecto.nombre, maximo=18))
         if tarea.agente:
@@ -125,7 +126,7 @@ class Cartas:
         clase, titulo, texto = visible
         caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
                        css_classes=["anotacion", clase])
-        cabeza = Gtk.Box(spacing=ESPACIADO_XS)
+        cabeza = Gtk.Box(spacing=px(ESPACIADO_XS))
         cabeza.append(icono("devuelta" if clase == "detenida" else "evidencia", 12))
         cabeza.append(Gtk.Label(label=titulo, xalign=0, hexpand=True,
                                 ellipsize=Pango.EllipsizeMode.END,
@@ -156,8 +157,8 @@ class Cartas:
                                tooltip_text=("Mover (tecla Menú)" if tarea.hecha
                                              else "Mover o asignar (tecla Menú)"))
         etiquetar(boton, f"Acciones de la tarea: {tarea.texto[:60]}")
-        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, margin_top=ESPACIADO_SM, margin_bottom=ESPACIADO_SM,
-                       margin_start=ESPACIADO_SM, margin_end=ESPACIADO_SM)
+        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, margin_top=px(ESPACIADO_SM), margin_bottom=px(ESPACIADO_SM),
+                       margin_start=px(ESPACIADO_SM), margin_end=px(ESPACIADO_SM))
         popover = Gtk.Popover(child=caja)
         boton.set_popover(popover)
 
@@ -179,7 +180,7 @@ class Cartas:
         # Lo finalizado ya no cambia de manos: sin «Asignar a», que en Finalizada solo servía
         # para equivocarse.
         if not tarea.hecha:
-            caja.append(Gtk.Separator(margin_top=ESPACIADO_SM, margin_bottom=ESPACIADO_XS))
+            caja.append(Gtk.Separator(margin_top=px(ESPACIADO_SM), margin_bottom=px(ESPACIADO_XS)))
             caja.append(Gtk.Label(label="ASIGNAR A", xalign=0, css_classes=["menu-titulo"]))
             caja.append(self.lista_de_agentes(proyecto, tarea, popover))
 
@@ -189,7 +190,7 @@ class Cartas:
             # La carta recorta a tres líneas; una evidencia de verdad trae comandos y salidas
             # de pruebas, y lo que hay que copiar de ahí no cabe en un tooltip.
             detenida = clase == "detenida"
-            caja.append(Gtk.Separator(margin_top=ESPACIADO_SM, margin_bottom=ESPACIADO_XS))
+            caja.append(Gtk.Separator(margin_top=px(ESPACIADO_SM), margin_bottom=px(ESPACIADO_XS)))
             caja.append(self.opcion("Ver el motivo" if detenida else "Ver la evidencia",
                                     self.al_ver, proyecto, tarea, (titulo, texto), popover,
                                     "devuelta" if detenida else "evidencia"))
@@ -197,7 +198,7 @@ class Cartas:
 
     def opcion(self, texto, funcion, proyecto, tarea, dato, popover,
                nombre_icono="", atajo="", sugerida=False):
-        fila = Gtk.Box(spacing=ESPACIADO_MD)
+        fila = Gtk.Box(spacing=px(ESPACIADO_MD))
         if nombre_icono:
             fila.append(icono(nombre_icono, 15))
         fila.append(Gtk.Label(label=texto, xalign=0, hexpand=True,

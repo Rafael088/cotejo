@@ -9,6 +9,7 @@ Habla con los tokens del tema, igual que `piezas.vacio`.
 from gi.repository import Gdk, Gtk
 
 from .comun import ESPACIADO_SM, ESPACIADO_XS
+from .escala import px
 from .piezas import con_mano, etiquetar, icono
 
 QUE_ES = ("Cotejo reparte las tareas de tus proyectos entre agentes de IA y te deja "
@@ -34,7 +35,7 @@ def _paso(texto):
 
 def _comando(texto, copiar):
     """El comando en una caja de mono, seleccionable, con su botón para copiarlo."""
-    fila = Gtk.Box(spacing=ESPACIADO_SM, css_classes=["comando-copiable"])
+    fila = Gtk.Box(spacing=px(ESPACIADO_SM), css_classes=["comando-copiable"])
     fila.append(Gtk.Label(label=texto, xalign=0, hexpand=True, wrap=True, selectable=True,
                           css_classes=["comando-texto"]))
     boton = con_mano(Gtk.Button(label="Copiar", valign=Gtk.Align.CENTER, css_classes=["flat"]))
@@ -50,7 +51,7 @@ def vacio_de_arranque(aviso, vault=None):
         Gdk.Display.get_default().get_clipboard().set(texto)
         aviso("Copiado al portapapeles")
 
-    caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_SM,
+    caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_SM),
                    css_classes=["vacio", "primer-arranque"])
     marca = icono("agente", 20, "vacio-icono")
     marca.set_halign(Gtk.Align.START)
