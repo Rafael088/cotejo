@@ -54,7 +54,8 @@ la persona instalar Firefox.
 
 def cierre(id_, navegador_disponible=None):
     """El cierre del encargo; pide capturas solo si hay con qué sacarlas."""
-    hay = navegador.disponible() if navegador_disponible is None else navegador_disponible
+    hay = (navegador.disponible_para_el_agente() if navegador_disponible is None
+           else navegador_disponible)
     return CIERRE.format(id=id_, capturas=(CON_NAVEGADOR if hay else SIN_NAVEGADOR).format(id=id_))
 
 

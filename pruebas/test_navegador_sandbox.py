@@ -158,6 +158,14 @@ class Eleccion(unittest.TestCase):
         self.assertIn("socket de Unix", motivo)
         self.assertIsNone(navegador.elegir({"COTEJO_SANDBOX": "1"}, self.which("chromium"))[0])
 
+    def test_al_agente_no_se_le_promete_chromium(self):
+        # El encargo y la nota se arman fuera del sandbox; con solo Chromium, el agente
+        # encerrado no podría sacar capturas: ni se le piden ni se le da el comando.
+        self.assertFalse(navegador.disponible_para_el_agente(self.which("chromium")))
+        self.assertTrue(navegador.disponible_para_el_agente(self.which("firefox")))
+        with mock.patch.object(navegador, "disponible_para_el_agente", return_value=False):
+            self.assertEqual(armado.nota_sandbox(), armado.NOTA_SIN_NAVEGADOR)
+
     def test_fuera_vale_chromium(self):
         self.assertEqual(navegador.elegir({}, self.which("chromium"))[:2],
                          ("chromium", "/usr/bin/chromium"))

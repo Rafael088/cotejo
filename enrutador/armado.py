@@ -42,7 +42,7 @@ NOTA_SIN_NAVEGADOR = (SANDBOX_BASE + "En esta máquina no hay un navegador sin i
 def nota_sandbox(disponible=None):
     """La nota del sandbox que vale ahora: con la línea de captura si hay navegador, y si no,
     la que avisa. `disponible` (para las pruebas) es lo que contesta la detección."""
-    hay = navegador.disponible() if disponible is None else disponible
+    hay = navegador.disponible_para_el_agente() if disponible is None else disponible
     return NOTA_SANDBOX if hay else NOTA_SIN_NAVEGADOR
 
 

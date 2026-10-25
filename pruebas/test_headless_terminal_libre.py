@@ -130,7 +130,10 @@ class ConSandbox(Entorno):
     def argv(self, disponible, encima=None):
         cotejo = mock.Mock()
         cotejo.carpeta_de_la_tarea.return_value = self.repo / ".cotejo"
+        # La nota cambia según haya Firefox en la máquina: se fija para no depender de ella.
         with mock.patch.object(sandbox, "disponible", return_value=disponible), \
+                mock.patch.object(armado.navegador, "disponible_para_el_agente",
+                                  return_value=True), \
                 mock.patch.object(claude_cli.f, "Cotejo", return_value=cotejo):
             return self.motor(encima).argv(self.encargo("claude"))
 
