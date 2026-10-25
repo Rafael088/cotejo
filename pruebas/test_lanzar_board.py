@@ -207,6 +207,11 @@ class LanzarDesdeElBoard(base.PestanaInicio):
         self.assertIsNotNone(vivo)
         self.assertFalse(vivo.hay_reloj())          # todavía no se ve
         self.assertIn("sonnet está trabajando en ella", vivo.situacion.get_label())
+        # La señal de vida (cotejo-21y2ah): visible, con cuánto lleva y el último movimiento.
+        self.assertTrue(vivo.vida.get_visible())
+        self.assertEqual(vivo.vida_titulo.get_label(), "Trabajando")
+        self.assertIn("Último movimiento hace", vivo.vida_detalle.get_label())
+        self.assertFalse(vivo.vida_ayuda.get_visible())
         ficha.present(self.board)
         self.assertTrue(self.esperar(vivo.hay_reloj, 2000))
         self.assertIn("Voy a mirar el repo.", vivo.texto())
