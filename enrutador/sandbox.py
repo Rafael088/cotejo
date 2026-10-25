@@ -29,6 +29,10 @@ Lo que cambia para el agente, probado con Claude de verdad:
   Un remoto por SSH no funciona dentro del sandbox (no hay DNS ni conexión directa): su push
   falla y se dice en la nota del lanzamiento.
 - `cotejo` funciona: escribe en su config, su estado y el archivo de la tarea.
+- Un navegador sin interfaz arranca si es Firefox (`navegador.py`, cotejo-xrmr3h): Chromium se
+  aborta, porque al empezar crea un socket de Unix y el filtro seccomp de Claude niega
+  `socket(AF_UNIX)`. Ese filtro no se abre (por ahí se hablaría con el D-Bus y el systemd del
+  escritorio): Firefox no lo necesita y escribe solo en su perfil del `TMPDIR` y en la captura.
 
 **Si el sandbox no está** (en Linux faltan `bwrap` o `socat`, o bubblewrap no puede crear su
 espacio de nombres; o es Windows), Claude Code correría el Bash sin él avisando por stderr. Cotejo

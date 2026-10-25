@@ -198,7 +198,13 @@ escribe en los demás worktrees; la red solo a los servidores de sus remotos (+`
 `lanzar.sandbox.dominios`. Lleva `GH_TOKEN` (de `gh auth token`: el llavero no se alcanza desde
 el sandbox) y `COTEJO_SANDBOX=1`, con el que la guarda de `git` quita el `-u` de un push. Sin
 bwrap/socat (o sin espacio de nombres, o en Windows) no se pide y el registro guarda
-`sandbox.activo: false` con el motivo; `lanzar.sandbox: false` lo apaga. No viven en la config:
+`sandbox.activo: false` con el motivo; `lanzar.sandbox: false` lo apaga. Para ver lo que hace,
+el agente tiene **Firefox sin interfaz** dentro del sandbox (`enrutador/navegador.py`,
+cotejo-xrmr3h: `capturar()`, `python3 -m enrutador.navegador <archivo|url> <png>` y la línea
+`COMO_CAPTURAR` que lleva `armado.NOTA_SANDBOX`); Chromium no arranca ahí (su ProcessSingleton
+pide `socket(AF_UNIX)`, que el seccomp de Claude niega a propósito, y no se abre). Un servidor
+en `localhost` vale si va en el mismo comando que el navegador. `pruebas/test_navegador_sandbox.py`
+lo prueba en bwrap con esas reglas. No viven en la config:
 `enrutador.lanzar.argumentos_extra.<cliente>` solo añade (Claude: `stream-json`). El agente de
 `despachar --motor agente` no comparte este armado (no lanza nada) ni el de preparar (solo
 `cotejo`). El armado entero (terminal libre, ramas protegidas, carpetas de escritura, sandbox,
