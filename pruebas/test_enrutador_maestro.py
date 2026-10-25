@@ -200,7 +200,9 @@ class Maestro(PruebaDeEnrutador):
         self.assertEqual({t["id"] for t in datos["tareas"]}, {"cotejo-kimi", "cotejo-opus"})
 
     def test_el_maestro_solo_reparte_lo_asignado(self):
-        codigo, datos = self.correr("maestro", "--proyecto", "Uno", "--simular")
+        # Con un agente instalado: sin ninguno, `--simular` también lo dice y no simula.
+        with mock.patch("enrutador.clientes.shutil.which", return_value="/usr/bin/x"):
+            codigo, datos = self.correr("maestro", "--proyecto", "Uno", "--simular")
         self.assertEqual(codigo, verbos.OK)
         self.assertEqual({t["id"] for t in datos["asignadas"]}, {"cotejo-kimi", "cotejo-opus"})
         instruccion = datos["comando"][-1]
@@ -223,7 +225,9 @@ class Maestro(PruebaDeEnrutador):
         self.assertNotIn("#en-curso", self.leer_nota("Uno.md"))
 
     def test_claude_abre_el_maestro_con_el_modelo_de_la_config(self):
-        _, datos = self.correr("maestro", "--proyecto", "Uno", "--simular")
+        # Con un agente instalado: sin ninguno, `--simular` también lo dice y no simula.
+        with mock.patch("enrutador.clientes.shutil.which", return_value="/usr/bin/x"):
+            _, datos = self.correr("maestro", "--proyecto", "Uno", "--simular")
         self.assertEqual(datos["comando"][:4], ["xdg-terminal-exec", "claude", "--model", "opus"])
 
     def test_sin_tareas_asignadas_no_se_abre_nada(self):

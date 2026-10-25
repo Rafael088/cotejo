@@ -202,6 +202,13 @@ class NucleoSinGTK(unittest.TestCase):
         # Un repo de verdad: `version` y `release` le preguntan a git por las etiquetas.
         subprocess.run(["git", "init", "-q", str(repo_init)], check=True)
         (raiz / "home").mkdir()
+        # Un agente de terminal de mentira en el PATH: `maestro --simular` necesita uno, y la
+        # máquina que corre las pruebas (CI) puede no tener ninguno.
+        agentes = raiz / "agentes"
+        agentes.mkdir()
+        falso = agentes / ("claude.cmd" if os.name == "nt" else "claude")
+        falso.write_text("@echo off\n" if os.name == "nt" else "#!/bin/sh\n", encoding="utf-8")
+        falso.chmod(0o755)
         # Sin los COTEJO_ ni los XDG_ de quien corre las pruebas: la fuente, el motor y dónde se
         # escribe no pueden depender de lo que tenga exportado esa máquina.
         entorno = {k: v for k, v in os.environ.items()
@@ -214,6 +221,7 @@ class NucleoSinGTK(unittest.TestCase):
             "COTEJO_CARPETA_PROYECTOS": "01-Proyectos",
             "COTEJO_CONFIG": str(raiz / "config" / "cotejo" / "config.json"),
             "NO_COLOR": "1",  # argparse 3.14 colorea la ayuda; aquí sobra
+            "PATH": str(agentes) + os.pathsep + os.environ.get("PATH", ""),
         })
         cls.resultados = []
         # Si `crear` falla, los que vienen detrás corren con un id que no existe: fallarán, pero
