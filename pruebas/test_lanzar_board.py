@@ -195,6 +195,58 @@ class LanzarDesdeElBoard(base.PestanaInicio):
         self.assertIn("EN ESPERA", base.textos(ficha.get_child()))
         self.assertIn(motivo, base.textos(ficha.get_child()))
 
+    def test_quitar_de_la_espera_borra_el_chip_y_volver_a_arrastrar_la_lanza_como_nueva(self):
+        self.board.ver_pestana("tablero")
+        with mock.patch.object(type(self.board), "aviso", lambda _b, _t: None):
+            self.configurar(capacidad={"mb_por_agente": 10 ** 9})
+            self.arrastrar("parseo")
+            fila = self.fila("parseo", "pendiente")
+            self.assertIn("En espera", base.textos(fila))
+            antes = self.linea("^cotejo-con")
+            # Desde el menú de la carta.
+            self.board.al_quitar_de_espera(fila.proyecto, fila.tarea)
+            base.girar(100)
+            self.assertIsNone(lanzados.leer("cotejo-con"))
+            self.assertEqual(lanzados.en_espera(), {})
+            fila = self.fila("parseo", "pendiente")
+            self.assertNotIn("En espera", base.textos(fila))
+            ficha = self.board.dialogo_detalle(fila.proyecto, fila.tarea)
+            self.assertNotIn("EN ESPERA", base.textos(ficha.get_child()))
+            # La tarea y su modelo siguen igual en la fuente; nada se lanzó.
+            self.assertEqual(self.linea("^cotejo-con"), antes)
+            self.assertFalse(self.argv_falso.exists())
+            # Desde la ficha: otra espera y el botón de la ficha.
+            self.arrastrar("parseo")
+            fila = self.fila("parseo", "pendiente")
+            ficha = self.board.dialogo_detalle(fila.proyecto, fila.tarea)
+            self.assertIn("Quitar de la espera", base.textos(ficha.get_child()))
+            boton = self.buscar_boton(ficha.get_child(), "Quitar de la espera")
+            boton.emit("clicked")
+            base.girar(100)
+            self.assertEqual(lanzados.en_espera(), {})
+            self.assertNotIn("En espera", base.textos(self.fila("parseo", "pendiente")))
+            # Con hueco otra vez, arrastrarla la lanza como nueva.
+            self.configurar()
+            with mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):
+                self.arrastrar("parseo")
+                self.assertTrue(self.esperar(self.argv_falso.exists))
+                registro = lanzados.leer("cotejo-con")
+                self.assertIsInstance(registro["pid"], int)
+                self.assertNotEqual(registro["fase"], lanzados.EN_ESPERA)
+                self.assertIn("#en-curso", self.linea("^cotejo-con"))
+
+    @staticmethod
+    def buscar_boton(widget, texto):
+        if isinstance(widget, Gtk.Button) and widget.get_label() == texto:
+            return widget
+        hijo = widget.get_first_child()
+        while hijo is not None:
+            hallado = LanzarDesdeElBoard.buscar_boton(hijo, texto)
+            if hallado is not None:
+                return hallado
+            hijo = hijo.get_next_sibling()
+        return None
+
     def test_la_ficha_en_haciendo_ve_el_log_en_vivo_con_reloj_solo_mientras_se_ve(self):
         self.board.ver_pestana("tablero")
         with mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):

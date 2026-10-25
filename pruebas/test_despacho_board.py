@@ -323,6 +323,39 @@ class PausarYRetomar(ConClienteFalso):
         self.assertIsNone(despacho_board.pausar("cotejo-nunca"))
 
 
+class QuitarDeEspera(unittest.TestCase):
+    def setUp(self):
+        carpeta = tempfile.TemporaryDirectory()
+        self.addCleanup(carpeta.cleanup)
+        parche = mock.patch.dict(os.environ, {"COTEJO_ESTADO": carpeta.name})
+        parche.start()
+        self.addCleanup(parche.stop)
+
+    def test_borra_el_registro_de_espera_y_nada_mas(self):
+        lanzados.poner_en_espera({"id": "cotejo-esp", "proyecto": "Faro"}, "sonnet", "sin hueco")
+        self.assertIn("cotejo-esp", lanzados.en_espera())
+        self.assertTrue(lanzados.quitar_de_espera("cotejo-esp"))
+        self.assertEqual(lanzados.en_espera(), {})
+        self.assertIsNone(lanzados.leer("cotejo-esp"))
+        self.assertFalse(lanzados.quitar_de_espera("cotejo-esp"))
+
+    def test_si_ya_se_lanzo_antes_vuelve_a_detenida_con_su_motivo_de_entonces(self):
+        lanzados.guardar({"id": "cotejo-esp", "fase": lanzados.DETENIDO, "motivo": "la paré",
+                          "pid": 7, "log": "/tmp/x.log"})
+        lanzados.poner_en_espera({"id": "cotejo-esp"}, "sonnet", "sin hueco")
+        self.assertTrue(lanzados.quitar_de_espera("cotejo-esp"))
+        registro = lanzados.leer("cotejo-esp")
+        self.assertEqual((registro["fase"], registro["motivo"]), (lanzados.DETENIDO, "la paré"))
+        self.assertNotIn("motivo_antes", registro)
+        self.assertEqual(lanzados.en_espera(), {})
+
+    def test_no_toca_una_lanzada_o_inexistente(self):
+        lanzados.guardar({"id": "cotejo-viv", "fase": lanzados.LANZADO, "pid": 1, "log": "x"})
+        self.assertFalse(lanzados.quitar_de_espera("cotejo-viv"))
+        self.assertEqual(lanzados.leer("cotejo-viv")["fase"], lanzados.LANZADO)
+        self.assertFalse(lanzados.quitar_de_espera("cotejo-nada"))
+
+
 class NotaDeRetomar(unittest.TestCase):
     def test_sin_git_ni_log_dice_lo_que_hay_y_no_falla(self):
         with tempfile.TemporaryDirectory() as carpeta:

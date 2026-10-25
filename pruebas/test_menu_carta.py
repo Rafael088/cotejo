@@ -30,7 +30,8 @@ def board_falso(cuantos_modelos):
         alias_persona=("persona",),  # Alias de personas de la configuración
         app=types.SimpleNamespace(bitacora={}),
         fuente=types.SimpleNamespace(accion_abrir="Abrir la nota"),
-        al_mover=None, al_asignar=None, al_ver=None)
+        al_mover=None, al_asignar=None, al_ver=None, al_quitar_de_espera=None,
+        motivo_en_espera=lambda _tarea: "")
     falso.opcion = types.MethodType(app.Board.opcion, falso)
     falso.lista_de_agentes = types.MethodType(app.Board.lista_de_agentes, falso)
     return falso

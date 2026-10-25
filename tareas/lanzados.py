@@ -127,6 +127,26 @@ def poner_en_espera(tarea, modelo, motivo):
         return guardar(previo)
 
 
+def quitar_de_espera(tarea_id):
+    """Se arrepintió: borra el registro de espera sin lanzar nada. True si estaba en espera.
+
+    Si antes hubo un lanzamiento (una pausada que se movió sin hueco), el registro vuelve a lo
+    que era (detenido, con su motivo de entonces) para que retomar siga funcionando; si no, se
+    borra entero (el log se queda). Nunca toca la tarea ni su modelo en la fuente.
+    """
+    with _CANDADO:
+        registro = leer(tarea_id)
+        if not registro or registro.get("fase") != EN_ESPERA:
+            return False
+        if registro.get("pid") and registro.get("log"):
+            registro["fase"] = DETENIDO
+            registro["motivo"] = registro.pop("motivo_antes", "") or ""
+            guardar(registro)
+        else:
+            borrar(tarea_id)
+        return True
+
+
 def anotar_lanzado(registro, pid, programa):
     """Lo que se anota en cuanto el proceso existe, como `al_lanzar` en `despachar`."""
     with _CANDADO:
