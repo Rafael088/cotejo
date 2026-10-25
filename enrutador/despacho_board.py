@@ -115,19 +115,22 @@ def decidir(tarea, config):
 
 def hueco(config):
     """Lo que dice `capacidad` ahora: `capacidad.calcular` sobre la máquina medida."""
-    foto = capacidad.leer(c.ejecutable for c in clientes.CLIENTES.values())
+    foto = capacidad.leer((c.ejecutable for c in clientes.CLIENTES.values()),
+                          lanzados.pids_propios())
     return capacidad.calcular(foto, config.get("capacidad") or {})
 
 
 def motivo_sin_hueco(calculo):
-    """Por qué no cabe, para quien no programa."""
+    """Por qué no cabe y qué hacer, para quien no programa."""
     limita = calculo.get("limita")
-    por = {"memoria": "no queda memoria libre para otro agente",
+    por = {"memoria": "a la máquina le falta memoria libre para otro agente",
            "cpu": "el procesador ya va muy cargado",
            "maximo": (f"ya corren los {calculo.get('limites', {}).get('maximo')} agentes que "
                       f"permite tu configuración")}.get(limita, "la máquina no da para otro")
-    return (f"No hay hueco para otro agente ahora: {por}. La tarea queda en Pendiente, en "
-            f"espera; muévela otra vez a Haciendo cuando termine alguno.")
+    return (f"No se lanzó: {por}. La tarea sigue en Pendiente, en espera. Cierra algo que no "
+            f"uses (un navegador, otra sesión) o espera a que termine otro agente, y vuelve a "
+            f"pasarla a Haciendo. Si quieres arriesgarte, pulsa «Lanzar de todos modos» en su "
+            f"ficha: se lanza igual, bajo tu responsabilidad.")
 
 
 def _cliente_de(elegida):
@@ -155,16 +158,20 @@ def sandbox_de(config, cliente, cotejo, tarea, trabajo, worktree=None, directori
 
 # --- lanzar -------------------------------------------------------------------------------------
 
-def lanzar(tarea_id, al_terminar=None, config=None):
+def lanzar(tarea_id, al_terminar=None, config=None, forzar=False):
     """Lanza la tarea con su modelo asignado y devuelve su estado (`lanzados.estado`).
+
+    Con `forzar` (el botón «Lanzar de todos modos») se salta la capacidad, solo esta vez y
+    bajo responsabilidad de quien lo pide: lo demás (modelo asignado, carpeta, worktree) se
+    comprueba igual.
 
     Levanta `EsDeUnaPersona`, `FaltaModelo`, `SinHueco` o `NoSePuede` sin haber tomado nada.
     `al_terminar(estado)` se llama desde otro hilo cuando el agente vuelve.
     """
-    return _lanzar(tarea_id, al_terminar, config, rechazada=False)
+    return _lanzar(tarea_id, al_terminar, config, rechazada=False, forzar=forzar)
 
 
-def _lanzar(tarea_id, al_terminar, config, rechazada, rechazo_dado=None):
+def _lanzar(tarea_id, al_terminar, config, rechazada, rechazo_dado=None, forzar=False):
     """`lanzar`, y con `rechazada` el relanzamiento de `rechazar`: la tarea ya está en
     Haciendo a nombre de su modelo (se la devolvieron desde Para comprobar), así que no se
     toma otra vez, y el agente nuevo recibe además lo que le pidieron cambiar. `rechazo_dado` es
@@ -197,8 +204,8 @@ def _lanzar(tarea_id, al_terminar, config, rechazada, rechazo_dado=None):
             f"La tarea no está {'en Haciendo' if rechazada else 'pendiente'}, está en "
             f"«{tarea.get('estado')}»."))
 
-    calculo = hueco(config)
-    if calculo.get("caben") == 0:
+    calculo = None if forzar else hueco(config)
+    if calculo and calculo.get("caben") == 0:
         motivo = motivo_sin_hueco(calculo)
         lanzados.poner_en_espera(tarea, elegida.nivel.modelo, motivo)
         _rechazar(tarea, elegida, "capacidad", SinHueco(motivo))

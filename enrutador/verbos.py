@@ -766,7 +766,9 @@ def cmd_capacidad(args):
     """
     config, cotejo, humano, nivel, propios = preparar()
     ajustes = config.get("capacidad") or {}
-    foto = capacidad.leer(c.ejecutable for c in clientes.CLIENTES.values())
+    from tareas import lanzados
+    foto = capacidad.leer((c.ejecutable for c in clientes.CLIENTES.values()),
+                          lanzados.pids_propios())
     calculo = capacidad.calcular(foto, ajustes)
     caben = calculo["caben"]
     agentes = foto.get("agentes")
@@ -782,7 +784,7 @@ def cmd_capacidad(args):
         "maquina": {k: foto.get(k) for k in ("sistema", "cpus", "carga", "memoria_total_mb",
                                              "memoria_disponible_mb", "swap_total_mb",
                                              "swap_libre_mb")},
-        "agentes_en_curso": None if agentes is None else len(agentes),
+        "agentes_en_curso": None if agentes is None else len(capacidad.en_curso(agentes)),
         "agentes": agentes,
     }
 

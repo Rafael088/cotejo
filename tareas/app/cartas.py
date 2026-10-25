@@ -192,6 +192,8 @@ class Cartas:
 
         if self.motivo_en_espera(tarea):
             caja.append(Gtk.Separator(margin_top=px(ESPACIADO_SM), margin_bottom=px(ESPACIADO_XS)))
+            caja.append(self.opcion("Lanzar de todos modos", self.al_lanzar_igual, proyecto,
+                                    tarea, None, popover, "aviso"))
             caja.append(self.opcion("Quitar de la espera", self.al_quitar_de_espera, proyecto,
                                     tarea, None, popover, "aviso"))
 

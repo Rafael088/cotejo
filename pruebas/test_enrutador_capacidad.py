@@ -22,11 +22,16 @@ def maquina(**cambios):
 
 class Calcular(unittest.TestCase):
     def test_la_memoria_disponible_menos_la_reserva_entre_lo_que_ocupa_un_agente(self):
-        # 5000 − 1024 de reserva = 3976 → 2 agentes de 1500.
+        # 5000 − 800 de reserva (10 % de 8000) = 4200 → 6 agentes de 700.
         calculo = capacidad.calcular(maquina())
-        self.assertEqual((calculo["caben"], calculo["limita"]), (2, "memoria"))
+        self.assertEqual((calculo["caben"], calculo["limita"]), (6, "memoria"))
         self.assertEqual(calculo["mb_por_agente_origen"], "por_defecto")
-        self.assertIn("3976 MB", calculo["por_que"][0])
+        self.assertIn("4200 MB", calculo["por_que"][0])
+
+    def test_una_maquina_de_8_gb_con_poco_libre_deja_lanzar_uno(self):
+        # Lo que encontró el dueño: 7,6 GB con ~2,7 GB disponibles no dejaban lanzar ni uno.
+        calculo = capacidad.calcular(maquina(memoria_total_mb=7625, memoria_disponible_mb=1700))
+        self.assertGreaterEqual(calculo["caben"], 1)
 
     def test_la_reserva_crece_con_la_maquina(self):
         calculo = capacidad.calcular(maquina(memoria_total_mb=64000,
@@ -36,14 +41,14 @@ class Calcular(unittest.TestCase):
     def test_el_swap_cuenta_solo_en_parte(self):
         sin = capacidad.calcular(maquina())["caben"]
         con = capacidad.calcular(maquina(swap_libre_mb=8000))["caben"]
-        self.assertEqual(con - sin, 1)   # 8000 × 0,25 = 2000 → uno más
+        self.assertEqual(con - sin, 2)   # 8000 × 0,25 = 2000 → dos más de 700
 
     def test_medir_un_agente_pequeño_no_abarata_la_cuenta(self):
         # Uno en reposo ocupa menos que trabajando: medirlo no puede repartir de más.
         calculo = capacidad.calcular(maquina(agentes=[{"pid": 1, "programa": "claude",
                                                       "mb": 300}]))
         self.assertEqual(calculo["mb_por_agente"], capacidad.MB_POR_AGENTE)
-        self.assertEqual(calculo["caben"], 2)
+        self.assertEqual(calculo["caben"], 6)
 
     def test_medir_uno_grande_la_sube(self):
         calculo = capacidad.calcular(maquina(agentes=[{"pid": 1, "programa": "claude",
@@ -51,6 +56,17 @@ class Calcular(unittest.TestCase):
         self.assertEqual((calculo["mb_por_agente"], calculo["mb_por_agente_origen"]),
                          (3000, "medido"))
         self.assertEqual(calculo["caben"], 1)
+
+    def test_las_sesiones_de_la_persona_no_suben_la_cuenta_ni_cuentan(self):
+        # Una sesión interactiva de 3000 MB (propio False) ya está restada de lo disponible.
+        sesion = {"pid": 1, "programa": "claude", "mb": 3000, "propio": False}
+        suyo = {"pid": 2, "programa": "claude", "mb": 550, "propio": True}
+        calculo = capacidad.calcular(maquina(agentes=[sesion, suyo]))
+        self.assertEqual((calculo["mb_por_agente"], calculo["mb_por_agente_origen"]),
+                         (capacidad.MB_POR_AGENTE, "por_defecto"))
+        self.assertEqual(capacidad.en_curso([sesion, suyo]), [suyo])
+        # Sin distinguir quién los lanzó, cuentan todos (como antes).
+        self.assertEqual(len(capacidad.en_curso([{"pid": 1, "mb": 1}])), 1)
 
     def test_una_maquina_cargada_no_recibe_mas(self):
         calculo = capacidad.calcular(maquina(carga=9.5))
@@ -85,6 +101,13 @@ class Agentes(unittest.TestCase):
                          [{"pid": 20, "programa": "claude", "mb": 740},
                           {"pid": 31, "programa": "claude", "mb": 1500}])
 
+    def test_solo_son_propios_los_que_lanzo_cotejo_o_cuelgan_de_lo_que_lanzo(self):
+        # 20 = sesión de la persona; 40 = envoltorio que lanzó Cotejo; 41 = su claude.
+        procesos = {10: (1, 50, ""), 20: (10, 500, "claude"), 40: (1, 5, ""),
+                    41: (40, 550, "claude")}
+        self.assertEqual([(a["pid"], a["propio"]) for a in capacidad.agentes_de(procesos, {40})],
+                         [(20, False), (41, True)])
+
     def test_en_esta_maquina_se_lee_algo_con_sentido(self):
         foto = capacidad.leer()
         self.assertGreaterEqual(foto["cpus"], 1)
@@ -110,6 +133,7 @@ class Verbo(PruebaDeEnrutador):
         return datos
 
     def test_parte_las_asignadas_entre_ahora_y_esperar(self):
+        self.escribir_config({"capacidad": {"mb_por_agente": 1500, "reserva_mb": 1024}})
         datos = self.capacidad(maquina(), "--proyecto", "Uno")
         self.assertEqual(datos["caben"], 2)
         self.assertEqual([t["id"] for t in datos["ahora"]], ["cotejo-a", "cotejo-b"])

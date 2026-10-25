@@ -240,6 +240,13 @@ def estado(registro):
     return salida
 
 
+def pids_propios():
+    """Los pids de los agentes que el board lanzó y siguen en `lanzado`: los únicos que
+    `cotejo capacidad` cuenta como agentes en curso (las sesiones de la persona, no)."""
+    return {r["pid"] for r in todos().values()
+            if r.get("fase") == LANZADO and isinstance(r.get("pid"), int)}
+
+
 def en_espera():
     """{id: motivo} de las que esperan hueco: lo que el board pinta en Pendiente."""
     return {i: r.get("motivo") or "" for i, r in todos().items() if r.get("fase") == EN_ESPERA}
