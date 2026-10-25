@@ -20,8 +20,8 @@ import unicodedata
 from pathlib import Path
 
 from . import bitacora as historial
-from . import (almacen, arquitectura, configuracion, importar_obsidian, modelo, reintento,
-               version as version_proyecto)
+from . import (almacen, arquitectura, como_se_abre, configuracion, importar_obsidian, modelo,
+               reintento, version as version_proyecto)
 from .cli import ESQUEMA, ErrorCLI, imprimir, nucleo
 
 
@@ -593,8 +593,9 @@ def _texto_con_piezas(texto, crudas, previa=None):
 def _validar_piezas(texto):
     """El análisis de `texto`, o ErrorCLI con sus errores si su tabla de piezas tiene alguno."""
     analisis = arquitectura.analizar(texto)
-    if analisis.errores:
-        raise ErrorCLI("La tabla de piezas tiene errores: " + "; ".join(analisis.errores),
+    errores = [*analisis.errores, *como_se_abre.errores(texto)]   # y «Cómo se abre»
+    if errores:
+        raise ErrorCLI("La arquitectura tiene errores: " + "; ".join(errores),
                        "Corrígelos y repite; cada fila es capa (" + "|".join(arquitectura.CAPAS)
                        + "), pieza, qué es, tecnología y tareas. No se escribió nada.")
     return analisis

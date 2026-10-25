@@ -6,7 +6,7 @@ antes de tocar nada.
 ## Antes de empezar
 
 ```sh
-python3 -m unittest discover pruebas   # 1842, deben estar todas en verde
+python3 -m unittest discover pruebas   # 2007, deben estar todas en verde
 tareas-obsidian evaluar | head -3      # 85,7 % y 0 abaratados
 git log --oneline | head -3
 git status --short                     # si no está limpio, averigua por qué antes de seguir
@@ -121,6 +121,22 @@ Inicio y, desde «Revisar el plan», «Ver el mapa del proyecto» y «Empezar la
 carpeta porque un proyecto recién preparado vive en la fuente repo y no en la activa (sus tareas
 se leen entonces con `revisar_plan.fuente_del_proyecto`). Del mapa, «Ver el tablero»
 (`abrir_tablero`) lleva al tablero con ese proyecto elegido, y «Inicio» vuelve.
+
+**«Ver mi app» y «Abrir la carpeta»** (v1.3.0, cotejo-vn4qd2) van en cada tarjeta del Inicio
+y en la barra del mapa (`tareas/app/ver_app.py`, mezcla `VerApp`), siempre sobre la carpeta
+principal del proyecto (`fuente.carpeta_de`), nunca un worktree. Qué abrir lo dice
+`tareas/como_se_abre.py`, puro: la sección `## Cómo se abre` de la arquitectura (`- comando:`,
+`- url:` opcional, `- qué esperar:`, `- carpeta:` opcional; `FORMATO`), que pide el prompt de
+preparar y que el encargo de cada agente (`enrutador/encargo.py`) pide mantener al día;
+`anotar`/`editar` la validan (sin shell, sin `sudo`, sin salir de la carpeta) y volver a anotar
+la arquitectura la conserva (`reintento.guardar`). Sin ella deduce (`package.json` con `dev`/
+`start` → `npm run …`; `index.html` → el servidor estático de Cotejo, `http.server` en un puerto
+libre de 127.0.0.1) y si no, `SIN_ANOTAR` en llano. `tareas/servidor_app.py` arranca sin shell
+(`shlex.split`, grupo de procesos propio), un proceso por proyecto que se reutiliza, espera a
+que el puerto responda (la dirección puede salir de lo que imprime la app) con tope y error en
+llano, y lo para con «Parar», al cerrar la ventana o por `atexit`; el log va a
+`<estado>/ver-app/<proyecto>.log`. El navegador y la carpeta los abre el board con
+`Gio.AppInfo.launch_default_for_uri` (`VerApp.lanzar`), fuera de cualquier sandbox.
 
 `tareas/importar_obsidian.py` es el importador de la 1.2 (D1): `planear()` devuelve un `Plan` —las
 entradas que se crearían con su `origen` estable (`nota#sección:hash`)— sin escribir nada, y

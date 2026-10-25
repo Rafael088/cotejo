@@ -33,6 +33,7 @@ class Tarjeta:
     piezas: int = 0            # piezas de la arquitectura
     piezas_hechas: int = 0
     estados: list = field(default_factory=list)   # el estado de cada pieza, en orden
+    carpeta: str = ""          # la carpeta principal del proyecto («Ver mi app»), o ""
 
     @property
     def con_arquitectura(self):
@@ -113,7 +114,7 @@ def columnas_de(proyecto):
     return columnas
 
 
-def tarjeta(proyecto, version="", objetivo="", piezas=()):
+def tarjeta(proyecto, version="", objetivo="", piezas=(), carpeta=""):
     """La tarjeta de un proyecto a partir de lo leído. `piezas` son los dicts de
     `conocimiento.piezas_del_repo` (con `estado`)."""
     estados = [p.get("estado", "falta") for p in piezas]
@@ -126,6 +127,7 @@ def tarjeta(proyecto, version="", objetivo="", piezas=()):
         piezas=len(estados),
         piezas_hechas=sum(1 for e in estados if e == "hecho"),
         estados=estados,
+        carpeta=str(carpeta or ""),
     )
 
 
@@ -177,5 +179,5 @@ def tarjetas(proyectos, fuente, avisos=None):
                     avisos.append({"nota": str(carpeta), "motivo": f"Inicio: {error}"})
         if not (proyecto.tareas or proyecto.hechas or datos != ("", "", [])):
             continue
-        resultado.append(tarjeta(proyecto, *datos))
+        resultado.append(tarjeta(proyecto, *datos, carpeta=carpeta or ""))
     return ordenar(resultado)
