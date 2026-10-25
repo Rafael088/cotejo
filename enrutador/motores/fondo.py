@@ -17,8 +17,13 @@ def lanzar(comando, directorio, registro, ajustes=None, entorno=None, etiqueta="
     """Arranca `comando` y devuelve el `Popen`. `registro` es el archivo de su salida.
 
     Levanta `FileNotFoundError` si el programa no existe, igual que `Popen`.
+
+    `PWD` va con `directorio` (cotejo-7yfw1e): `cwd` cambia la carpeta del proceso pero no esa
+    variable, y OpenCode trabaja donde dice `PWD`; sin esto, corría sus comandos en la carpeta
+    desde la que se abrió el board y no en el worktree de la tarea.
     """
     lanzar = aislamiento.envolver(comando, ajustes or {}, etiqueta)
+    entorno = {**(entorno or {}), **({"PWD": str(directorio)} if directorio else {})}
     os.makedirs(os.path.dirname(registro), exist_ok=True)
     with open(registro, "ab") as salida:
         return subprocess.Popen(

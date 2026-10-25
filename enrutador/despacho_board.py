@@ -19,8 +19,11 @@ propio para ninguna:
    tomarla (`despacho.antes_de_tomar`, con el motor `headless`, que es el que sabe de clientes).
 5. Se toma a nombre del modelo (`cotejo.tomar`), se le crea su worktree (`tareas/worktrees.py`)
    y se lanza el cliente sin interfaz (`motores/fondo.py`) con el encargo de siempre
-   (`encargo.armar`), el mismo `cotejo` que el board en el PATH (`mismo_cotejo.py`) y permiso
-   para escribir solo donde hace falta (`clientes.Cliente.permisos`, como en preparar). Si algo
+   (`encargo.armar`), el mismo `cotejo` que el board en el PATH (`mismo_cotejo.py`) y
+   **terminal libre en su worktree con los prohibidos de fábrica** (cotejo-7yfw1e, dec-kiik):
+   puede correr pruebas y builds sin que nadie configure nada, y no puede subir privilegios,
+   empujar a la fuerza, empujar a `main` o a la rama por defecto ni borrar fuera del worktree
+   (`clientes.Cliente.terminal_libre`, y debajo las guardas del PATH de `guardas.py`). Si algo
    falla después de tomarla, se suelta con el motivo.
 
 Toda decisión deja línea en la bitácora de despachos, también las negativas, con
@@ -46,7 +49,8 @@ from pathlib import Path
 from tareas import lanzados, retomar, worktrees
 from tareas.cli import ErrorCLI
 from . import (bitacora, capacidad, clientes, config as cfg, cotejo as f, decision, despacho,
-               encargo as enc, mismo_cotejo, motor, niveles, preparar, procesos, reglas)
+               encargo as enc, guardas, mismo_cotejo, motor, niveles, preparar, procesos,
+               reglas)
 from .motores import fondo
 
 MOTOR = "board"
@@ -54,7 +58,11 @@ MOTOR = "board"
 LO_DIJO_UNA_PERSONA = ("override", "asignacion")
 
 NOTA = ("Te lanzó CotejoBoard sin nadie delante: nadie va a contestarte preguntas mientras "
-        "trabajas. Si algo te impide seguir, no lo dejes a medias: bloquéala con el motivo.")
+        "trabajas. Si algo te impide seguir, no lo dejes a medias: bloquéala con el motivo. "
+        "Tienes terminal libre en tu carpeta de trabajo: corre las pruebas y los builds que "
+        "haga falta. Están prohibidos y se rechazan solos: sudo/su, git push --force, empujar "
+        "a main o a la rama por defecto y borrar fuera de tu carpeta (borra con rutas "
+        "relativas, sin «..»).")
 
 
 class NoSePuede(Exception):
@@ -126,17 +134,25 @@ def _cliente_de(elegida):
         raise NoSePuede(str(error)) from error
 
 
-def comando(config, cliente, elegida, prompt, carpetas):
+def comando(config, cliente, elegida, prompt, carpetas, ramas=None, politica_gemini=None):
     """El argv sin interfaz: el del motor `headless` para ese cliente, más
-    `lanzar.argumentos_extra.<cliente>` y lo que le deja escribir en `carpetas`."""
+    `lanzar.argumentos_extra.<cliente>` y la terminal libre en `carpetas` con los prohibidos
+    de fábrica para `ramas` (`clientes.Cliente.terminal_libre`). Los permisos no viven en la
+    config: así una config propia no se los lleva por delante."""
     propios = preparar._propios(config, cliente)
     extra = (list(propios.get("argumentos_extra") or ()) +
              list(((config.get("lanzar") or {}).get("argumentos_extra") or {})
                   .get(cliente.nombre) or ()) +
-             cliente.permisos(carpetas)[0])
+             cliente.terminal_libre(carpetas, ramas, politica_gemini)[0])
     return cliente.argv_sin_interfaz(
         cliente.modelo_de(elegida.nivel.modelo, elegida.nivel.modelo_id), prompt,
         comando=propios.get("comando"), extra=extra)
+
+
+def ramas_protegidas(directorio, worktree=None):
+    """`main` y la rama por defecto del repo de la tarea (la de su `origin`)."""
+    repo = (worktree or {}).get("repo") or worktrees.raiz_repo(directorio)
+    return clientes.ramas_protegidas(worktrees.rama_por_defecto(repo) if repo else None)
 
 
 def carpetas_de_escritura(trabajo, worktree=None):
@@ -270,8 +286,9 @@ def lanzar(tarea_id, al_terminar=None, config=None):
                        "sin_commitear": (len(datos_nota["sin_commitear"])
                                          if datos_nota["sin_commitear"] is not None else None),
                        "nota": prompt[len(encargo.prompt) + 2:]}
+    ramas = ramas_protegidas(directorio, worktree)
     argv = comando(config, cliente, elegida, prompt,
-                   carpetas_de_escritura(trabajo, worktree))
+                   carpetas_de_escritura(trabajo, worktree), ramas, guardas.politica_gemini())
     log = lanzados.ruta_log(tarea["id"])
     registro = {"id": tarea["id"], "proyecto": proyecto, "texto": tarea.get("texto", ""),
                 "cliente": cliente.nombre, "modelo": elegida.nivel.modelo,
@@ -288,8 +305,10 @@ def lanzar(tarea_id, al_terminar=None, config=None):
                 "reanudacion": reanudacion,
                 "lanzamientos": int((anterior or {}).get("lanzamientos") or 0) + 1}
     try:
-        entorno = mismo_cotejo.entorno(cliente.permisos(
-            carpetas_de_escritura(trabajo, worktree))[1])
+        # El lanzador de `cotejo` primero y las guardas detrás, antes que lo del sistema.
+        con_guardas = guardas.entorno(cliente.terminal_libre(
+            carpetas_de_escritura(trabajo, worktree), ramas)[1], ramas)
+        entorno = mismo_cotejo.entorno(con_guardas, base=con_guardas)
         ajustes = (config.get("motores") or {}).get("headless") or {}
         proceso = fondo.lanzar(argv, trabajo, str(log), ajustes, entorno,
                                etiqueta="tarea-" + worktrees.seguro(tarea["id"]))
@@ -380,4 +399,5 @@ def pausar(tarea_id, motivo=PAUSA):
 
 
 __all__ = ["NoSePuede", "pausar", "EsDeUnaPersona", "FaltaModelo", "SinHueco", "lanzar", "estado",
-           "detener", "vigilar", "decidir", "hueco", "comando", "carpetas_de_escritura"]
+           "detener", "vigilar", "decidir", "hueco", "comando", "carpetas_de_escritura",
+           "ramas_protegidas"]
