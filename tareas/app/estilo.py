@@ -168,6 +168,14 @@ list.columna, list.columna > row { background: transparent; }
 .detalle-columna { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue);
                    margin-left: var(--k-espacio-sm); }
 .detalle-tenue { color: var(--k-tenue); }
+/* Señal de vida del agente en la ficha (cotejo-21y2ah): el punto late solo con animaciones. */
+.vida-punto { font-size: var(--k-etiqueta); opacity: 0.45; transition: opacity 900ms ease-in-out; }
+.vida.activo .vida-punto { color: @success_color; }
+.vida.pensando .vida-punto { color: var(--k-tenue); }
+.vida.colgado .vida-punto, .vida.colgado .vida-ayuda { color: var(--k-ambar); }
+.vida-punto.late { opacity: 1; }
+.vida.colgado .vida-punto { opacity: 1; }
+window.sin-animaciones .vida-punto { transition: none; opacity: 1; }
 .detalle-id { font-size: var(--k-dato); }
 .detalle-nombre { font-family: "Sora"; font-weight: 600; font-size: var(--k-ventana);
                   line-height: 1.3; }

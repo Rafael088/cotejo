@@ -34,8 +34,8 @@ agente nuevo en el mismo worktree con lo que se pidió cambiar.
 
 from gi.repository import Adw, GLib, Gtk, Pango
 
-from .. import bitacora, lanzados, modelo, retomar
-from .comun import ESPACIADO_SM, ESPACIADO_XS, id_corto
+from .. import bitacora, lanzados, modelo, retomar, senal_vida
+from .comun import ESPACIADO_SM, ESPACIADO_XS, animaciones_activas, id_corto
 from .escala import px
 from .piezas import icono
 
@@ -62,6 +62,24 @@ class EnVivo(Gtk.Box):
         cabeza.append(Gtk.Label(label="LO QUE HACE EL AGENTE", xalign=0,
                                 css_classes=["detalle-clave"]))
         self.append(cabeza)
+        # La señal de vida (cotejo-21y2ah): un punto que late, cuánto lleva y cuánto hace que
+        # se movió; pasado el umbral, dice en llano qué hacer. Ver `senal_vida.py`.
+        self.vida_punto = Gtk.Label(label="●", css_classes=["vida-punto"], valign=Gtk.Align.START)
+        self.vida_titulo = Gtk.Label(xalign=0, hexpand=True, css_classes=["detalle-valor"])
+        self.vida_detalle = Gtk.Label(xalign=0, css_classes=["detalle-tenue"])
+        self.vida_ayuda = Gtk.Label(xalign=0, wrap=True, visible=False,
+                                    wrap_mode=Pango.WrapMode.WORD_CHAR,
+                                    css_classes=["vida-ayuda"])
+        textos = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
+                         hexpand=True)
+        textos.append(self.vida_titulo)
+        textos.append(self.vida_detalle)
+        textos.append(self.vida_ayuda)
+        self.vida = Gtk.Box(spacing=px(ESPACIADO_SM), visible=False, css_classes=["vida"])
+        self.vida.append(self.vida_punto)
+        self.vida.append(textos)
+        self.append(self.vida)
+        self.nivel_vida = None
         self.situacion = Gtk.Label(xalign=0, wrap=True, css_classes=["detalle-valor"],
                                    wrap_mode=Pango.WrapMode.WORD_CHAR)
         self.append(self.situacion)
@@ -91,6 +109,7 @@ class EnVivo(Gtk.Box):
         dice = retomar.resumen((registro or {}).get("reanudacion"))
         self.reanudacion.set_label(dice)
         self.reanudacion.set_visible(bool(dice))
+        self.pintar_vida(registro)
         nuevas = self.seguimiento.nuevas(registro) if registro else []
         buffer = self.registro.get_buffer()
         if nuevas:
@@ -104,6 +123,31 @@ class EnVivo(Gtk.Box):
         elif self.vacio and not buffer.get_char_count():
             buffer.set_text("Todavía no ha dicho nada.")
         return nuevas
+
+    def pintar_vida(self, registro):
+        """Pone la señal de vida. El latido es una clase que alterna en cada tic y solo si las
+        animaciones del sistema están activas; si no, el punto se queda fijo."""
+        senal = senal_vida.evaluar(registro) if registro else None
+        self.vida.set_visible(senal is not None)
+        if senal is None:
+            self.nivel_vida = None
+            return
+        if senal["nivel"] != self.nivel_vida:
+            if self.nivel_vida:
+                self.vida.remove_css_class(self.nivel_vida)
+            self.vida.add_css_class(senal["nivel"])
+            self.nivel_vida = senal["nivel"]
+        self.vida_titulo.set_label(senal["titulo"])
+        self.vida_detalle.set_label(senal["detalle"])
+        self.vida_ayuda.set_label(senal["ayuda"])
+        self.vida_ayuda.set_visible(bool(senal["ayuda"]))
+        if senal["animar"] and animaciones_activas():
+            if self.vida_punto.has_css_class("late"):
+                self.vida_punto.remove_css_class("late")
+            else:
+                self.vida_punto.add_css_class("late")
+        else:
+            self.vida_punto.remove_css_class("late")
 
     def _tic(self):
         self.refrescos += 1
