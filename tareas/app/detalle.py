@@ -152,6 +152,11 @@ class Detalle:
         # vivo; en Pendiente, por qué quedó en espera o que está pausada (cotejo-z7ma7r).
         dialogo.en_vivo = self.seccion_en_vivo(tarea)
         if dialogo.en_vivo is not None:
+            def retomar_caida(*_):
+                dialogo.close()
+                self.retomar_la_caida(proyecto, tarea)
+            dialogo.en_vivo.al_retomar = retomar_caida
+            dialogo.en_vivo.refrescar()      # ya con el botón a mano
             cuerpo.append(dialogo.en_vivo)
         espera = self.motivo_en_espera(tarea)
         if espera:
