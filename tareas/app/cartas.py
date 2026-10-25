@@ -45,6 +45,10 @@ class Cartas:
         if espera:
             # Se pidió lanzarla y no había hueco (`lanzar.py`): sigue aquí hasta que se mueva otra vez.
             arriba.append(chip("En espera", "aviso", "chip-espera", tooltip=espera))
+        if tarea.id in getattr(self, "integrando", ()):
+            # Aprobada en un proyecto del Inicio: su merge corre en segundo plano.
+            arriba.append(chip("Integrando…", "recargar", "chip-integrando",
+                               tooltip="Metiéndola en tu app"))
         arriba.append(Gtk.Box(hexpand=True))
         etiqueta = Gtk.Label(label=texto_a_markup(nombre_corto), use_markup=True, xalign=0,
                              yalign=0, wrap=True, wrap_mode=Pango.WrapMode.WORD_CHAR,

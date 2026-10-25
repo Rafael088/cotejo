@@ -20,7 +20,7 @@ from unittest import mock
 
 from apoyo import PruebaDeCLI
 from test_revision import HAY_GIT, RepoConRama, git
-from tareas import almacen, inicio, modelo, origen, revision, worktrees
+from tareas import almacen, inicio, juntar, modelo, origen, revision, worktrees
 
 DEL_INICIO = {origen.VARIABLE: origen.INICIO}
 
@@ -208,13 +208,80 @@ class IntegraSola(ConRepo):
 class SinMarcaSigueComoAntes(ConRepo):
     del_inicio = False
 
-    def test_sin_marca_el_plan_no_es_del_inicio_y_cotejo_cuenta_como_sucio(self):
+    def test_sin_marca_se_ofrece_y_cotejo_tampoco_cuenta_como_sucio(self):
         self.r.trabajar()
         plan = revision.plan_integracion(self.r.tarea_id, self.r.entregar())
         self.assertFalse(plan["del_inicio"])
-        # Lo de siempre: con cambios sin commitear, ni se ofrece.
+        # `.cotejo/` cambiado no impide ofrecerla (decisión del dueño, también aquí)...
+        self.assertTrue(plan["ofrecer"], plan)
+        self.assertTrue(revision.integrar(plan)["integrada"])
+        # ... y la rama no se borra: en los de quien programa, eso es suyo.
+        self.assertIn(self.r.rama, self.ramas())
+
+    def test_sin_marca_un_cambio_fuera_de_cotejo_sigue_impidiendo(self):
+        self.r.trabajar()
+        (self.r.repo / "a.txt").write_text("a medias\n", encoding="utf-8")
+        plan = revision.plan_integracion(self.r.tarea_id, self.r.entregar())
         self.assertFalse(plan["ofrecer"])
         self.assertIn("sin commitear", plan["motivo"])
+
+
+class LaTareaDeJuntar(ConRepo):
+    """Tras un choque, la tarea de juntar lleva apuntada la rama original (`juntar.py`) y, al
+    aprobarla e integrarla limpia, la original se borra con `branch -d`."""
+
+    def setUp(self):
+        super().setUp()
+        parche = mock.patch.object(juntar, "CARPETA", self.tmp / "juntar")
+        parche.start()
+        self.addCleanup(parche.stop)
+
+    def chocar(self):
+        self.r.trabajar()
+        (self.r.repo / "a.txt").write_text("otra cosa\n", encoding="utf-8")
+        git(self.r.repo, "commit", "-q", "-am", "choca")
+        plan, resultado = self.aprobar()
+        self.assertEqual(resultado["causa"], "conflicto")
+        return plan
+
+    def tarea_de_juntar(self, plan, resolver=True):
+        """La tarea que crearía «Que lo resuelva un agente», con su agente haciendo el trabajo."""
+        juntar.anotar("cotejo-jjj111", plan["rama"], plan["repo"])
+        self.assertEqual(juntar.de_tarea("cotejo-jjj111")["rama"], self.r.rama)
+        otra = RepoConRama.__new__(RepoConRama)
+        otra.repo, otra.tarea_id = self.r.repo, "cotejo-jjj111"
+        wt = worktrees.planear("cotejo-jjj111", self.r.repo)
+        otra.worktree = Path(worktrees.crear("cotejo-jjj111", wt)["ruta"])
+        otra.rama = wt["rama"]
+        if resolver:
+            subprocess.run(["git", "-C", str(otra.worktree), "merge", "-q", self.r.rama],
+                           capture_output=True)
+            otra.trabajar("a.txt", "otra cosa\nDOS\n", "junta los dos")
+        else:
+            otra.trabajar("b.txt", "nada que ver\n", "no junta")
+        plan_j = revision.plan_integracion("cotejo-jjj111", otra.entregar())
+        worktrees.retirar("cotejo-jjj111")
+        return revision.integrar_sola(plan_j, "cotejo-jjj111")
+
+    def test_al_integrar_la_de_juntar_se_borra_tambien_la_original(self):
+        resultado = self.tarea_de_juntar(self.chocar())
+        self.assertTrue(resultado["integrada"], resultado)
+        self.assertEqual(resultado["original"], {"rama": self.r.rama, "borrada": True})
+        self.assertNotIn(self.r.rama, self.ramas())
+        self.assertIsNone(juntar.de_tarea("cotejo-jjj111"))
+        self.assertEqual(revision.aviso_inicio(resultado)["texto"], "Aprobada. Ya está en tu app.")
+
+    def test_si_la_original_no_quedo_integrada_no_se_fuerza_y_se_dice(self):
+        resultado = self.tarea_de_juntar(self.chocar(), resolver=False)
+        self.assertTrue(resultado["integrada"], resultado)
+        self.assertFalse(resultado["original"]["borrada"])
+        self.assertIn(self.r.rama, self.ramas())
+        texto = revision.aviso_inicio(resultado)["texto"]
+        self.assertIn("no lo borré", texto)
+        self.assertNotIn(self.r.rama, texto)
+
+    def test_una_tarea_cualquiera_no_es_de_juntar(self):
+        self.assertIsNone(juntar.borrar_original("cotejo-zzz999"))
 
 
 # --- el board, con un Board falso -----------------------------------------------------------
@@ -253,11 +320,36 @@ class AprobarEnElBoard(unittest.TestCase):
         self.assertEqual(self.escribir({"del_inicio": True, "repo": "/r"}), ["sola"])
         self.assertEqual(self.escribir({"del_inicio": False, "repo": "/r"}), ["ofrecer"])
 
-    def falso(self):
-        falso = types.SimpleNamespace(avisos=[], choques=[])
+    def falso(self, en_fondo=None):
+        """Un Board falso con el ejecutor inyectado: por defecto corre todo seguido, sin hilos
+        ni tiempo real; `en_fondo` deja guardar el trabajo para terminarlo cuando se quiera."""
+        falso = types.SimpleNamespace(avisos=[], choques=[], integrando=set(), pintadas=0)
         falso.aviso = lambda texto, **k: falso.avisos.append((texto, k.get("boton", "")))
         falso.ofrecer_agente_para_choque = lambda *a: falso.choques.append(a)
+        falso.pintar = lambda: setattr(falso, "pintadas", falso.pintadas + 1)
+        falso.en_fondo = en_fondo or (lambda trabajo, al_terminar: al_terminar(trabajo()))
+        falso.al_integrar_sola = lambda *a: app.Board.al_integrar_sola(falso, *a)
         return falso
+
+    def test_mientras_integra_dice_integrando_y_no_se_repite(self):
+        pendientes = []
+        falso = self.falso(en_fondo=lambda trabajo, al_terminar: pendientes.append(
+            (trabajo, al_terminar)))
+        with mock.patch.object(revision, "integrar_sola",
+                               return_value={"integrada": True}) as sola:
+            app.Board.integrar_sola(falso, None, self.tarea(), {"repo": "/r"})
+            self.assertEqual(falso.integrando, {"cotejo-aaa111"})
+            # Aprobar o integrar otra vez la misma tarea mientras tanto no hace nada.
+            app.Board.integrar_sola(falso, None, self.tarea(), {"repo": "/r"})
+            self.assertEqual(len(pendientes), 1)
+            self.assertEqual(app.Board.escribir_movimiento(falso, None, self.tarea(),
+                                                           modelo.HECHA), False)
+            self.assertEqual(falso.avisos, [("Todavía la estoy metiendo en tu app", "")])
+            trabajo, al_terminar = pendientes.pop()
+            al_terminar(trabajo())
+        sola.assert_called_once_with({"repo": "/r"}, "cotejo-aaa111")
+        self.assertEqual(falso.integrando, set())
+        self.assertEqual(falso.avisos[-1], ("Aprobada. Ya está en tu app.", ""))
 
     def test_limpio_lo_dice_y_nada_mas(self):
         falso = self.falso()
@@ -304,13 +396,28 @@ class AprobarEnElBoard(unittest.TestCase):
             app=types.SimpleNamespace(refrescar=lambda: None),
             mover=lambda p, t, d: movidas.append((t.agente, d)))
         proyecto = types.SimpleNamespace(tareas=[])
-        plan = {"rama": "cotejo/cotejo-aaa111", "destino": "main"}
-        with mock.patch.object(app.vista_revision.bitacora, "anotar"):
+        plan = {"rama": "cotejo/cotejo-aaa111", "destino": "main", "repo": "/r"}
+        temporal = tempfile.TemporaryDirectory()
+        self.addCleanup(temporal.cleanup)
+        with mock.patch.object(app.vista_revision.bitacora, "anotar"), \
+                mock.patch.object(juntar, "CARPETA", Path(temporal.name)):
             app.Board.resolver_con_agente(falso, proyecto, self.tarea(agente="opus"), plan,
                                           ["a.txt"])
+            # La rama va en el registro, no solo en el texto.
+            self.assertEqual(juntar.de_tarea("cotejo-nnn111"),
+                             {"rama": "cotejo/cotejo-aaa111", "repo": "/r"})
         self.assertEqual(len(creadas), 1)
         self.assertIn("git merge cotejo/cotejo-aaa111", creadas[0])
         self.assertEqual(movidas, [("opus", "en-curso")])
+
+    def test_el_tooltip_de_aprobar_segun_el_proyecto(self):
+        falso = types.SimpleNamespace(entrega_de=lambda t: {})
+        with mock.patch.object(revision, "es_del_inicio", return_value=True):
+            self.assertEqual(app.Board.tooltip_aprobar(falso, self.tarea()),
+                             "La das por buena y la mete en tu app")
+        with mock.patch.object(revision, "es_del_inicio", return_value=False):
+            self.assertEqual(app.Board.tooltip_aprobar(falso, self.tarea()),
+                             "La das por buena; si tiene rama, te ofrece integrarla")
 
 
 if __name__ == "__main__":

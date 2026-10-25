@@ -76,6 +76,8 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
         # Lo que dio «Volver a comprobar» por id de tarea (B4). Vive en memoria y no en la
         # bitácora: comprobar es leer, y no deja rastro en el historial de la tarea.
         self.comprobaciones = {}
+        # Las tareas que se están integrando en segundo plano (proyectos del Inicio).
+        self.integrando = set()
 
         # Alias de personas (nombres adicionales que cuentan como humanos)
         config_enrutador = enrutador_config.cargar()

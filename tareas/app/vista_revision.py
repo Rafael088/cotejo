@@ -4,7 +4,7 @@ import threading
 
 from gi.repository import Adw, GLib, Gtk, Pango
 
-from .. import bitacora, capturas, modelo, revision, worktrees
+from .. import bitacora, capturas, juntar, modelo, revision, worktrees
 from .comun import ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XS
 from .escala import px
 from .piezas import chip, con_mano, icono
@@ -60,13 +60,23 @@ class Revision:
                              tooltip_text="El diff, las pruebas y los commits de la entrega")
             ver.connect("clicked", lambda *_: self.ver_revision(proyecto, tarea))
             botones.append(con_mano(ver))
-        aprobar = Gtk.Button(child=self.con_icono("estado-hecha", "Aprobar"), hexpand=True,
-                             halign=Gtk.Align.END, css_classes=["suggested-action"],
-                             tooltip_text="La das por buena; si tiene rama, te ofrece integrarla")
+        integrando = tarea.id in self.integrando
+        aprobar = Gtk.Button(
+            child=self.con_icono("estado-hecha", "Integrando…" if integrando else "Aprobar"),
+            hexpand=True, halign=Gtk.Align.END, css_classes=["suggested-action"],
+            tooltip_text=self.tooltip_aprobar(tarea))
+        aprobar.set_sensitive(not integrando)
         aprobar.connect("clicked", lambda *_: self.mover(proyecto, tarea, modelo.HECHA))
         botones.append(con_mano(aprobar))
         caja.append(botones)
         return caja
+
+    def tooltip_aprobar(self, tarea):
+        """En un proyecto del Inicio aprobar mete el trabajo en la app; en los de quien
+        programa, ofrece integrar la rama (como siempre)."""
+        if revision.es_del_inicio(tarea.id, self.entrega_de(tarea)):
+            return "La das por buena y la mete en tu app"
+        return "La das por buena; si tiene rama, te ofrece integrarla"
 
     @staticmethod
     def con_icono(nombre, texto):
@@ -141,7 +151,9 @@ class Revision:
         comprobar.connect("clicked", lambda *_: self.volver_a_comprobar(tarea))
         cabecera.pack_start(comprobar)
         aprobar = Gtk.Button(child=self.con_icono("estado-hecha", "Aprobar"),
-                             css_classes=["suggested-action"])
+                             css_classes=["suggested-action"],
+                             tooltip_text=self.tooltip_aprobar(tarea))
+        aprobar.set_sensitive(tarea.id not in self.integrando)
 
         def al_aprobar(*_):
             dialogo.close()
@@ -315,7 +327,31 @@ class Revision:
         pase; si no entró, se ofrece reintentar o que un agente resuelva el choque."""
         if not plan.get("repo"):
             return  # sin repo no hay nada de código que decir
-        resultado = revision.integrar_sola(plan)
+        # Una a la vez por tarea: mientras dura, la carta dice «Integrando…» y no se reaprueba.
+        if tarea.id in self.integrando:
+            return
+        self.integrando.add(tarea.id)
+        self.pintar()
+        # En segundo plano: un merge grande no congela la ventana. Al terminar, de vuelta en el
+        # hilo de la interfaz, el aviso de siempre.
+        self.en_fondo(lambda: revision.integrar_sola(plan, tarea.id),
+                      lambda resultado: self.al_integrar_sola(proyecto, tarea, plan, resultado))
+
+    def en_fondo(self, trabajo, al_terminar):
+        """Corre `trabajo()` en un hilo y `al_terminar(resultado)` en el de la interfaz. Las
+        pruebas lo reemplazan por uno que corre todo seguido (sin depender del tiempo)."""
+        def correr():
+            try:
+                resultado = trabajo()
+            except Exception as error:  # noqa: BLE001 — un fallo aquí no puede tumbar el board
+                resultado = {"integrada": False, "causa": "git", "motivo": f"No pude: {error}"}
+            GLib.idle_add(lambda: al_terminar(resultado) and False)
+
+        threading.Thread(target=correr, daemon=True).start()
+
+    def al_integrar_sola(self, proyecto, tarea, plan, resultado):
+        self.integrando.discard(tarea.id)
+        self.pintar()
         aviso = revision.aviso_inicio(resultado)
         if aviso["agente"]:
             self.ofrecer_agente_para_choque(proyecto, tarea, plan, resultado, aviso["texto"])
@@ -356,13 +392,15 @@ class Revision:
             if nueva is None:
                 nueva = self.fuente.crear(proyecto, texto)
                 bitacora.anotar("crear", proyecto, nueva, a=modelo.PENDIENTE)
+            # Qué rama junta, fuera del texto: al aprobarla e integrarla se borra también esa.
+            juntar.anotar(nueva.id, plan["rama"], plan["repo"])
             agente = tarea.agente
             if agente and agente not in (self.alias_persona or ()) and nueva.agente != agente:
                 anterior = nueva.agente
                 nueva = self.fuente.poner_agente(nueva, agente)
                 bitacora.anotar("asignar", proyecto, nueva, de=anterior, a=agente)
         except (modelo.TareaCambiada, modelo.NoSeCreaAqui, NotImplementedError,
-                OSError) as error:
+                OSError, ValueError) as error:
             self.aviso(f"No pude crear la tarea para el agente: {error}")
             self.app.refrescar()
             return

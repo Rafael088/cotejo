@@ -18,7 +18,7 @@ import os
 import subprocess
 from pathlib import Path
 
-from . import evidencia, origen, worktrees
+from . import evidencia, juntar, origen, worktrees
 
 TIEMPO_GIT = 60
 
@@ -301,18 +301,33 @@ def _repo_principal(carpeta):
     return Path(raiz) if codigo == 0 and raiz else None
 
 
-def _sucios(repo, del_inicio):
+def _sucios(repo):
     """Los archivos con cambios sin commitear del repo (sin los no seguidos), o None si git no
-    contesta. En un proyecto del Inicio no cuenta `.cotejo/`: ahí escriben el board y los verbos
+    contesta. `.cotejo/` no cuenta, en ningún proyecto: ahí escriben el board y los verbos
     (mover una tarea reescribe `tareas.md`) y casi siempre está cambiado; si la rama también lo
     toca, el propio merge se niega antes de empezar y no se pisa nada."""
-    args = ["status", "--porcelain", "--untracked-files=no"]
-    if del_inicio:
-        args += ["--", ".", ":(exclude).cotejo"]
-    codigo, salida, _ = _git(repo, *args)
+    codigo, salida, _ = _git(repo, "status", "--porcelain", "--untracked-files=no",
+                             "--", ".", ":(exclude).cotejo")
     if codigo != 0:
         return None
     return [linea[3:] for linea in salida.splitlines() if linea.strip()]
+
+
+def _repo_de(registrado, git):
+    if registrado.get("repo") and Path(registrado["repo"]).is_dir():
+        return Path(registrado["repo"])
+    for carpeta in (registrado.get("ruta"), git.get("repo")):
+        if carpeta and Path(carpeta).is_dir():
+            repo = _repo_principal(carpeta)
+            if repo:
+                return repo
+    return None
+
+
+def es_del_inicio(tarea_id, entrega):
+    """Si la tarea es de un proyecto creado desde el Inicio (para el tooltip de Aprobar)."""
+    repo = _repo_de(worktrees.de_tarea(tarea_id) or {}, (entrega or {}).get("git") or {})
+    return repo is not None and origen.es_del_inicio(repo)
 
 
 def plan_integracion(tarea_id, entrega):
@@ -333,15 +348,7 @@ def plan_integracion(tarea_id, entrega):
     if not rama:
         return {**plan, "motivo": "La entrega no está en ninguna rama"}
 
-    repo = None
-    if registrado.get("repo") and Path(registrado["repo"]).is_dir():
-        repo = Path(registrado["repo"])
-    else:
-        for carpeta in (registrado.get("ruta"), git.get("repo")):
-            if carpeta and Path(carpeta).is_dir():
-                repo = _repo_principal(carpeta)
-                if repo:
-                    break
+    repo = _repo_de(registrado, git)
     if repo is None:
         return {**plan, "motivo": "No encuentro el repo de la tarea"}
     plan["repo"] = str(repo)
@@ -360,7 +367,7 @@ def plan_integracion(tarea_id, entrega):
     codigo, _, _ = _git(repo, "merge-base", "--is-ancestor", punta, "HEAD")
     if codigo == 0:
         return {**plan, "causa": "integrada", "motivo": f"{rama} ya está integrada en {destino}"}
-    sucios = _sucios(repo, plan["del_inicio"])
+    sucios = _sucios(repo)
     if sucios is None:
         return {**plan, "motivo": f"No pude preguntarle a git por {repo}"}
     if sucios:
@@ -399,7 +406,7 @@ def integrar(plan):
     if codigo != 0 or actual != destino:
         return {"integrada": False, "causa": "otra-rama",
                 "motivo": f"{repo} ya no está en {destino}; no integré nada"}
-    sucios = _sucios(repo, plan.get("del_inicio"))
+    sucios = _sucios(repo)
     if sucios is None or sucios:
         return {"integrada": False, "causa": "sucio", "sucios": sucios or [],
                 "motivo": f"{repo} tiene cambios sin commitear; no integré nada"}
@@ -429,14 +436,15 @@ def integrar(plan):
 
 # --- aprobar en un proyecto del Inicio: integrar sin preguntar ------------------------------
 
-def integrar_sola(plan):
+def integrar_sola(plan, tarea_id=None):
     """Aprobar en un proyecto del Inicio (cotejo-00fwc2): mete la rama en la principal sin
     preguntar y, si entró (o ya estaba dentro), borra la rama. `{integrada, causa?, ...}`.
 
     El worktree ya lo retiró el board al aprobar; la rama se borra con `branch -d`, que git
     solo hace si está integrada y nadie la tiene sacada. Si no se puede integrar, nada queda a
     medias (`integrar` aborta el merge) y la rama se queda para reintentar o para el agente que
-    resuelva el choque.
+    resuelva el choque. Si `tarea_id` es una tarea de juntar (`juntar.py`) y entró, se borra
+    también la rama original que juntaba: `original` dice cómo fue.
     """
     causa = (plan or {}).get("causa")
     if causa == "misma-rama":
@@ -450,6 +458,10 @@ def integrar_sola(plan):
     if resultado.get("integrada"):
         codigo, _, _ = _git(resultado["repo"], "branch", "-d", resultado["rama"])
         resultado["rama_borrada"] = codigo == 0
+        if tarea_id:
+            original = juntar.borrar_original(tarea_id)
+            if original is not None:
+                resultado["original"] = original
     return resultado
 
 
@@ -466,7 +478,12 @@ def aviso_inicio(resultado):
     verdad entre dos trabajos); `reintentar`, volver a intentarlo cuando la persona guarde o
     deshaga sus cambios (eso un agente no puede hacerlo sin tocarle la carpeta)."""
     if resultado.get("integrada"):
-        return {"texto": "Aprobada. Ya está en tu app.", "agente": False, "reintentar": False}
+        texto = "Aprobada. Ya está en tu app."
+        original = resultado.get("original") or {}
+        if original and not original.get("borrada"):
+            texto += (" El trabajo de antes que había que juntar no está entero dentro, así "
+                      "que no lo borré: sigue guardado aparte.")
+        return {"texto": texto, "agente": False, "reintentar": False}
     causa = resultado.get("causa")
     if causa == "conflicto":
         donde = _lista(resultado.get("archivos"))

@@ -128,6 +128,10 @@ class Movimientos:
         self.escribir_movimiento(proyecto, actual, destino)
 
     def escribir_movimiento(self, proyecto, tarea, destino, motivo=""):
+        # Mientras se integra en segundo plano, esa tarea no se vuelve a aprobar.
+        if destino == modelo.HECHA and tarea.id in getattr(self, "integrando", ()):
+            self.aviso("Todavía la estoy metiendo en tu app")
+            return False
         # Aprobar una entrega ofrece integrar su rama (B4), o la integra sola en un proyecto
         # del Inicio (`origen.py`). Se mira antes de escribir porque
         # dar la tarea por buena retira su worktree, y con él el registro de qué repo es.
