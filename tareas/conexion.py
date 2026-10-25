@@ -350,6 +350,9 @@ def cmd_doctor(args):
     # Lo del $HOME de esta persona con un paquete del sistema. No cambia `ok`: sin el widget o
     # sin el protocolo, Cotejo funciona igual; se dice para que no se quede sin poner.
     de_usuario = usuario.revisar()
+    # Sin ningún agente de terminal Cotejo funciona (no hay maestro ni despacho): aviso, no fallo.
+    from enrutador import clientes
+    sin_agentes = clientes.aviso_sin_agentes()
 
     if errores:
         salida = "Arregla la config: los errores de arriba dicen qué y dónde."
@@ -366,6 +369,8 @@ def cmd_doctor(args):
         salida = "Funciona. " + pista_repo[0]
     elif ok and de_usuario.get("avisos"):
         salida = "Funciona. " + de_usuario["avisos"][0]
+    elif ok and sin_agentes:
+        salida = "Funciona. " + sin_agentes
     else:
         salida = "Todo en orden. `tareas` para ver qué hay."
 
@@ -374,9 +379,6 @@ def cmd_doctor(args):
                                "existe": configuracion.ruta().exists(),
                                "errores": errores, "avisos": avisos},
                     "fuente": fuente, "salida": salida}
-    # Sin ningún agente de terminal Cotejo funciona (no hay maestro ni despacho): aviso, no fallo.
-    from enrutador import clientes
-    sin_agentes = clientes.aviso_sin_agentes()
     datos_salida["agentes"] = {"instalados": clientes.instalados()}
     if pista_repo or sin_agentes:
         datos_salida["avisos"] = list(pista_repo) + ([sin_agentes] if sin_agentes else [])

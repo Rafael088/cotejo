@@ -87,6 +87,10 @@ Cotejo\
 - **Lo que pacman haría al instalar**: los esquemas de GSettings se compilan al construir; la
   caché de cargadores de gdk-pixbuf no se genera, porque llevaría rutas absolutas y la carpeta
   se puede instalar en cualquier sitio: el lanzador apunta `GDK_PIXBUF_MODULEDIR` a la carpeta de cargadores.
+- **La escala de la pantalla**: GTK en Windows solo escala por enteros y deja el 125, 150 y
+  175 % en 1. El lanzador pone `GDK_WIN32_PER_MONITOR_HIDPI=1` (el DPI de cada monitor) y el
+  resto lo escala la app (`tareas/app/escala.py`). `COTEJO_ESCALA=1.5` fuerza un factor, y
+  `GDK_WIN32_DISABLE_HIDPI=1` vuelve a dejar que Windows estire la ventana como una imagen.
 - **La config y el estado** van donde dice `tareas/rutas.py`: `%APPDATA%\cotejo` y
   `%LOCALAPPDATA%\cotejo\estado`. El instalador no los toca, ni al desinstalar.
 

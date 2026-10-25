@@ -6,6 +6,7 @@ from gi.repository import Adw, GLib, Gtk, Pango
 
 from .. import bitacora, modelo, revision, worktrees
 from .comun import ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XS
+from .escala import px
 from .piezas import chip, con_mano, icono
 
 
@@ -20,9 +21,9 @@ class Revision:
         Todo sale de `revision.resumen`, que no sabe de GTK y se prueba sin pantalla.
         """
         datos = revision.resumen(self.entrega_de(tarea))
-        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS)
+        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS))
         if datos:
-            fila = Gtk.Box(spacing=ESPACIADO_XS)
+            fila = Gtk.Box(spacing=px(ESPACIADO_XS))
             pruebas = datos["pruebas"]
             if pruebas:
                 fila.append(chip(pruebas["texto"],
@@ -35,7 +36,7 @@ class Revision:
             if fila.get_first_child() is not None:
                 caja.append(fila)
             if datos["diff"]:
-                linea = Gtk.Box(spacing=ESPACIADO_SM)
+                linea = Gtk.Box(spacing=px(ESPACIADO_SM))
                 linea.append(Gtk.Label(label=datos["diff"]["texto"], xalign=0,
                                        css_classes=["revision-dato"]))
                 linea.append(self.barra_diff(datos["diff"]["proporcion_mas"], 1.0, 56))
@@ -45,7 +46,7 @@ class Revision:
             caja.append(Gtk.Label(label=comprobacion, xalign=0, wrap=True,
                                   css_classes=["revision-dato"]))
 
-        botones = Gtk.Box(spacing=ESPACIADO_XS, css_classes=["revision-botones"])
+        botones = Gtk.Box(spacing=px(ESPACIADO_XS), css_classes=["revision-botones"])
         comprobar = Gtk.Button(child=self.con_icono("recargar", "Comprobar"),
                                css_classes=["flat"],
                                tooltip_text="Vuelve a correr las pruebas de la entrega")
@@ -67,7 +68,7 @@ class Revision:
 
     @staticmethod
     def con_icono(nombre, texto):
-        caja = Gtk.Box(spacing=ESPACIADO_XS)
+        caja = Gtk.Box(spacing=px(ESPACIADO_XS))
         caja.append(icono(nombre, 12))
         caja.append(Gtk.Label(label=texto))
         return caja
@@ -128,7 +129,7 @@ class Revision:
         datos = datos or {"rama": None, "head": None, "desde": None, "sin_commitear": False,
                           "pruebas": None, "diff": None, "commits": [], "commits_texto": ""}
         carpeta = revision.carpeta_git(tarea.id, entrega)
-        dialogo = Adw.Dialog(title="Revisar la entrega", content_width=880, content_height=760)
+        dialogo = Adw.Dialog(title="Revisar la entrega", content_width=px(880), content_height=px(760))
         vista = Adw.ToolbarView()
         cabecera = Adw.HeaderBar()
         vista.add_top_bar(cabecera)
@@ -154,9 +155,9 @@ class Revision:
         herramienta.set_sensitive(bool(carpeta and datos.get("desde") and datos.get("head")))
         cabecera.pack_end(herramienta)
 
-        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_MD,
-                         margin_top=ESPACIADO_MD, margin_bottom=ESPACIADO_LG,
-                         margin_start=ESPACIADO_LG, margin_end=ESPACIADO_LG)
+        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_MD),
+                         margin_top=px(ESPACIADO_MD), margin_bottom=px(ESPACIADO_LG),
+                         margin_start=px(ESPACIADO_LG), margin_end=px(ESPACIADO_LG))
         cuerpo.append(Gtk.Label(label=tarea.texto, xalign=0, wrap=True,
                                 css_classes=["revision-texto"]))
         if texto_resumen:
@@ -201,7 +202,7 @@ class Revision:
 
     @staticmethod
     def titulo_seccion(texto):
-        return Gtk.Label(label=texto, xalign=0, margin_top=ESPACIADO_SM,
+        return Gtk.Label(label=texto, xalign=0, margin_top=px(ESPACIADO_SM),
                          css_classes=["revision-titulo"])
 
     @staticmethod
@@ -210,11 +211,11 @@ class Revision:
         codigo = prueba.get("codigo")
         texto = {"verde": "verde", "rojo": f"rojo · código {codigo}",
                  "sin-terminar": prueba.get("error") or "no terminó"}[estado_]
-        cabeza = Gtk.Box(spacing=ESPACIADO_SM)
+        cabeza = Gtk.Box(spacing=px(ESPACIADO_SM))
         cabeza.append(chip(texto, "estado-hecha" if estado_ == "verde" else "aviso", estado_))
         cabeza.append(Gtk.Label(label=prueba.get("comando", ""), xalign=0, hexpand=True,
                                 selectable=True, wrap=True, css_classes=["salida-prueba"]))
-        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS)
+        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS))
         caja.append(cabeza)
         salida = (prueba.get("salida") or "").strip()
         if salida:
@@ -228,7 +229,7 @@ class Revision:
 
     def archivo_del_diff(self, archivo, parte):
         """Una fila del diff: ruta, +/−, barra; y el diff del archivo plegado debajo."""
-        cabeza = Gtk.Box(spacing=ESPACIADO_SM)
+        cabeza = Gtk.Box(spacing=px(ESPACIADO_SM))
         cabeza.append(Gtk.Label(label=archivo["ruta"], xalign=0, hexpand=True,
                                 ellipsize=Pango.EllipsizeMode.START, css_classes=["salida-prueba"]))
         cifras = ("binario" if archivo["binario"] else
@@ -251,7 +252,7 @@ class Revision:
     @staticmethod
     def lineas_del_diff(parte):
         caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, css_classes=["diff"],
-                       margin_top=ESPACIADO_XS)
+                       margin_top=px(ESPACIADO_XS))
         if parte["binario"]:
             caja.append(Gtk.Label(label="Archivo binario: ábrelo en la herramienta", xalign=0,
                                   css_classes=["diff-linea", "hunk"]))
@@ -259,7 +260,7 @@ class Revision:
         lineas, fuera = revision.recortar(parte["lineas"])
         signos = {"mas": "+", "menos": "−", "contexto": " ", "hunk": ""}
         for tipo, texto in lineas:
-            fila = Gtk.Box(spacing=ESPACIADO_XS, css_classes=["diff-linea", tipo])
+            fila = Gtk.Box(spacing=px(ESPACIADO_XS), css_classes=["diff-linea", tipo])
             if tipo != "hunk":
                 fila.append(Gtk.Label(label=signos[tipo], css_classes=["diff-signo"]))
             fila.append(Gtk.Label(label=texto, xalign=0, hexpand=True, selectable=True,

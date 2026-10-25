@@ -18,6 +18,7 @@ from gi.repository import GLib, Gtk
 
 from .. import preparando
 from .comun import ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XL, ESPACIADO_XS
+from .escala import px
 from .piezas import con_mano, etiquetar
 
 PREPARANDO = "preparando"
@@ -38,9 +39,9 @@ class PantallaPreparando(Gtk.ScrolledWindow):
         self.filas = []
         self.vista = None
 
-        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_LG,
-                         margin_top=ESPACIADO_XL * 2, margin_bottom=ESPACIADO_XL * 2,
-                         margin_start=ESPACIADO_XL * 2, margin_end=ESPACIADO_XL * 2)
+        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_LG),
+                         margin_top=px(ESPACIADO_XL) * 2, margin_bottom=px(ESPACIADO_XL) * 2,
+                         margin_start=px(ESPACIADO_XL) * 2, margin_end=px(ESPACIADO_XL) * 2)
         self.ruta = Gtk.Label(label="Inicio", xalign=0, css_classes=["dato"])
         self.eyebrow = Gtk.Label(xalign=0, css_classes=["dato"])
         self.titulo = Gtk.Label(xalign=0, wrap=True, css_classes=["inicio-titular"])
@@ -48,7 +49,7 @@ class PantallaPreparando(Gtk.ScrolledWindow):
         for w in (self.ruta, self.eyebrow, self.titulo, self.reloj):
             cuerpo.append(w)
 
-        self.lista = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_MD)
+        self.lista = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_MD))
         cuerpo.append(self.lista)
 
         self.mensaje = Gtk.Label(xalign=0, wrap=True, visible=False, css_classes=["preparando-error"])
@@ -61,14 +62,14 @@ class PantallaPreparando(Gtk.ScrolledWindow):
         self.registro = Gtk.TextView(editable=False, cursor_visible=False, monospace=True,
                                      wrap_mode=Gtk.WrapMode.WORD_CHAR,
                                      css_classes=["entrevista-texto"])
-        marco = Gtk.ScrolledWindow(child=self.registro, min_content_height=140,
-                                   max_content_height=260,
+        marco = Gtk.ScrolledWindow(child=self.registro, min_content_height=px(140),
+                                   max_content_height=px(260),
                                    hscrollbar_policy=Gtk.PolicyType.NEVER,
                                    css_classes=["entrevista-marco"])
         self.ver_registro = Gtk.Expander(label="Ver lo que hace el agente", child=marco)
         cuerpo.append(self.ver_registro)
 
-        pie = Gtk.Box(spacing=ESPACIADO_SM, halign=Gtk.Align.END)
+        pie = Gtk.Box(spacing=px(ESPACIADO_SM), halign=Gtk.Align.END)
         self.boton_inicio = con_mano(Gtk.Button(label="Volver al Inicio"))
         self.reintentar = con_mano(Gtk.Button(label="Reintentar", visible=False))
         self.en_terminal = con_mano(Gtk.Button(label="Abrir en terminal", visible=False))
@@ -80,7 +81,7 @@ class PantallaPreparando(Gtk.ScrolledWindow):
         cuerpo.append(pie)
 
         ancho = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, halign=Gtk.Align.CENTER)
-        ancho.set_size_request(640, -1)
+        ancho.set_size_request(px(640), -1)
         ancho.append(cuerpo)
         self.set_child(ancho)
 
@@ -118,9 +119,9 @@ class PantallaPreparando(Gtk.ScrolledWindow):
             buffer.set_text(v.registro)
 
     def _fila(self):
-        caja = Gtk.Box(spacing=ESPACIADO_MD)
+        caja = Gtk.Box(spacing=px(ESPACIADO_MD))
         simbolo = Gtk.Label(width_chars=2, css_classes=["preparando-simbolo"])
-        textos = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS, hexpand=True)
+        textos = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS), hexpand=True)
         nombre = Gtk.Label(xalign=0, wrap=True, css_classes=["carta-nombre"])
         detalle = Gtk.Label(xalign=0, wrap=True, css_classes=["carta-descripcion"])
         textos.append(nombre)

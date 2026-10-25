@@ -10,6 +10,7 @@ from gi.repository import GLib, Gtk
 from enrutador import config as enrutador_config, niveles as enrutador_niveles
 
 from .. import modelo, rutas
+from .escala import px
 
 
 APP_ID = "io.github.cotejoapp.Cotejo"
@@ -292,15 +293,15 @@ ANCHO_MINIMO_COLUMNAS = {"pendiente": 300, "en-curso": 360, "por-validar": 440}
 def anchos_columnas(disponible):
     """Ancho de cada columna para un tablero que dispone de `disponible` px.
 
-    Con espacio de sobra, los anchos de ANCHO_COLUMNAS; si falta, lo que falta se reparte
+    Con espacio de sobra, los anchos de ANCHO_COLUMNAS (a la escala de ahora, `px`); si falta, lo que falta se reparte
     entre las tres columnas anchas en proporción a lo que pueden ceder, sin pasar de su piso.
     """
-    anchos = dict(ANCHO_COLUMNAS)
-    falta = (sum(ANCHO_COLUMNAS.values()) + 3 * ESPACIADO_SM + 2 * MARGEN_TABLERO_LADOS
+    anchos = {clave: px(ancho) for clave, ancho in ANCHO_COLUMNAS.items()}
+    falta = (sum(anchos.values()) + 3 * px(ESPACIADO_SM) + 2 * px(MARGEN_TABLERO_LADOS)
              - disponible)
     if falta <= 0:
         return anchos
-    cesion = {c: ANCHO_COLUMNAS[c] - m for c, m in ANCHO_MINIMO_COLUMNAS.items()}
+    cesion = {c: anchos[c] - px(m) for c, m in ANCHO_MINIMO_COLUMNAS.items()}
     total = sum(cesion.values())
     for clave, puede in cesion.items():
         anchos[clave] -= round(min(falta, total) * puede / total)

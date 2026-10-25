@@ -26,6 +26,7 @@ from gi.repository import Adw, Gtk, Pango
 
 from .. import equipo, resumen_inicio
 from .comun import ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XL, ESPACIADO_XS
+from .escala import px
 from .comun import animaciones_activas
 from .constelacion import caja_constelacion
 from .piezas import chip, con_mano, etiquetar, vaciar
@@ -110,12 +111,12 @@ class PestanaInicio:
     # --- lo que se pinta ----------------------------------------------------------------------
 
     def crear_inicio(self):
-        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XL,
-                         margin_top=ESPACIADO_XL * 2, margin_bottom=ESPACIADO_XL * 2,
-                         margin_start=ESPACIADO_XL * 2, margin_end=ESPACIADO_XL * 2)
+        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XL),
+                         margin_top=px(ESPACIADO_XL) * 2, margin_bottom=px(ESPACIADO_XL) * 2,
+                         margin_start=px(ESPACIADO_XL) * 2, margin_end=px(ESPACIADO_XL) * 2)
 
-        cabeza = Gtk.Box(spacing=ESPACIADO_LG)
-        textos = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS,
+        cabeza = Gtk.Box(spacing=px(ESPACIADO_LG))
+        textos = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
                          hexpand=True, valign=Gtk.Align.END)
         self.inicio_saludo = Gtk.Label(xalign=0, css_classes=["inicio-saludo"])
         self.inicio_titular = Gtk.Label(xalign=0, wrap=True, css_classes=["inicio-titular"])
@@ -130,7 +131,7 @@ class PestanaInicio:
         cuerpo.append(cabeza)
 
         # Un repo de la lista que ya no existe (v1.3.0): se salta, y aquí se dice en llano.
-        self.inicio_aviso = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS,
+        self.inicio_aviso = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
                                     css_classes=["vacio", "roto"], visible=False)
         self.inicio_aviso_titulo = Gtk.Label(xalign=0, wrap=True, css_classes=["vacio-titulo"])
         self.inicio_aviso_detalle = Gtk.Label(xalign=0, wrap=True, selectable=True,
@@ -148,11 +149,11 @@ class PestanaInicio:
         self.inicio_tarjetas = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE,
                                            homogeneous=True, min_children_per_line=1,
                                            max_children_per_line=4,
-                                           row_spacing=ESPACIADO_MD, column_spacing=ESPACIADO_MD,
+                                           row_spacing=px(ESPACIADO_MD), column_spacing=px(ESPACIADO_MD),
                                            valign=Gtk.Align.START)
         cuerpo.append(self.inicio_tarjetas)
 
-        ancho = Adw.Clamp(child=cuerpo, maximum_size=ANCHO_INICIO, tightening_threshold=ANCHO_INICIO)
+        ancho = Adw.Clamp(child=cuerpo, maximum_size=px(ANCHO_INICIO), tightening_threshold=px(ANCHO_INICIO))
         return Gtk.ScrolledWindow(child=ancho, hexpand=True, vexpand=True,
                                   hscrollbar_policy=Gtk.PolicyType.NEVER,
                                   css_classes=["inicio"])
@@ -199,8 +200,8 @@ class PestanaInicio:
         self.constelacion.poner(tarjetas)
 
     def tarjeta_de_proyecto(self, t):
-        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_SM)
-        fila = Gtk.Box(spacing=ESPACIADO_SM)
+        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_SM))
+        fila = Gtk.Box(spacing=px(ESPACIADO_SM))
         nombre = Gtk.Label(label=t.nombre, xalign=0, hexpand=True,
                            ellipsize=Pango.EllipsizeMode.END, css_classes=["carta-nombre"])
         fila.append(nombre)
@@ -220,7 +221,7 @@ class PestanaInicio:
         return boton
 
     def tarjeta_nuevo(self):
-        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS,
+        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
                        valign=Gtk.Align.CENTER, halign=Gtk.Align.CENTER)
         caja.append(Gtk.Label(label="+", css_classes=["inicio-mas"]))
         caja.append(Gtk.Label(label="Empezar un proyecto", css_classes=["vacio-titulo"]))

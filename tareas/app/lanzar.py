@@ -24,6 +24,7 @@ from gi.repository import Adw, GLib, Gtk, Pango
 
 from .. import bitacora, lanzados, modelo
 from .comun import ESPACIADO_SM, ESPACIADO_XS, id_corto
+from .escala import px
 from .piezas import icono
 
 SEGUNDOS = 1
@@ -37,13 +38,13 @@ class EnVivo(Gtk.Box):
     __gtype_name__ = "CotejoAgenteEnVivo"
 
     def __init__(self, tarea_id):
-        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS)
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS))
         self.id = tarea_id
         self.seguimiento = lanzados.Seguimiento(tarea_id)
         self.temporizador = 0
         self.refrescos = 0            # las pruebas lo miran
         self.vacio = True
-        cabeza = Gtk.Box(spacing=ESPACIADO_XS)
+        cabeza = Gtk.Box(spacing=px(ESPACIADO_XS))
         cabeza.append(icono("agente", 12))
         cabeza.append(Gtk.Label(label="LO QUE HACE EL AGENTE", xalign=0,
                                 css_classes=["detalle-clave"]))
@@ -54,8 +55,8 @@ class EnVivo(Gtk.Box):
         self.registro = Gtk.TextView(editable=False, cursor_visible=False, monospace=True,
                                      wrap_mode=Gtk.WrapMode.WORD_CHAR,
                                      css_classes=["entrevista-texto"])
-        self.marco = Gtk.ScrolledWindow(child=self.registro, min_content_height=140,
-                                        max_content_height=260,
+        self.marco = Gtk.ScrolledWindow(child=self.registro, min_content_height=px(140),
+                                        max_content_height=px(260),
                                         hscrollbar_policy=Gtk.PolicyType.NEVER,
                                         css_classes=["entrevista-marco"])
         self.append(self.marco)
@@ -208,16 +209,16 @@ class Lanzar:
 
     def seccion_en_espera(self, motivo):
         """En la ficha de una tarea en espera: por qué no se lanzó."""
-        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS,
+        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
                        css_classes=["anotacion", "detenida"])
-        cabeza = Gtk.Box(spacing=ESPACIADO_XS)
+        cabeza = Gtk.Box(spacing=px(ESPACIADO_XS))
         cabeza.append(icono("aviso", 12))
         cabeza.append(Gtk.Label(label="EN ESPERA", xalign=0, css_classes=["anotacion-titulo"]))
         caja.append(cabeza)
         caja.append(Gtk.Label(label=motivo, xalign=0, wrap=True, selectable=True,
                               focusable=False, wrap_mode=Pango.WrapMode.WORD_CHAR,
                               css_classes=["anotacion-texto"]))
-        caja.set_margin_top(ESPACIADO_SM)
+        caja.set_margin_top(px(ESPACIADO_SM))
         return caja
 
     def seccion_en_vivo(self, tarea):

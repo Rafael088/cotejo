@@ -9,6 +9,7 @@ from .comun import (
     ANCHO_BARRA_MAESTRO, DONAR_URL, ESPACIADO_SM, ESPACIADO_XS, MARGEN_TABLERO_LADOS,
     frase_ahorro, miles,
 )
+from .escala import px
 from .piezas import chip, etiquetar
 
 
@@ -23,9 +24,9 @@ class Pie:
         """
         pie = Gtk.CenterBox(css_classes=["pie"], hexpand=True)
 
-        izquierda = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS,
+        izquierda = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
                             valign=Gtk.Align.CENTER, css_classes=["pie-izquierda"],
-                            margin_start=MARGEN_TABLERO_LADOS)
+                            margin_start=px(MARGEN_TABLERO_LADOS))
         izquierda.append(self.pie_ahorro())
         if DONAR_URL:
             izquierda.append(self.pie_donar())
@@ -33,14 +34,14 @@ class Pie:
 
         centro = Gtk.Box(valign=Gtk.Align.CENTER, css_classes=["pie-centro"])
         barra = self.barra_maestro()
-        barra.set_size_request(ANCHO_BARRA_MAESTRO, -1)
+        barra.set_size_request(px(ANCHO_BARRA_MAESTRO), -1)
         self.barra_del_maestro = barra  # el ancla del dot en el pie, su casa
         centro.append(barra)
         pie.set_center_widget(centro)
 
         derecha = Gtk.Box(valign=Gtk.Align.CENTER, halign=Gtk.Align.END,
-                          css_classes=["pie-derecha"], margin_end=MARGEN_TABLERO_LADOS)
-        contenido = Gtk.Box(spacing=ESPACIADO_SM)
+                          css_classes=["pie-derecha"], margin_end=px(MARGEN_TABLERO_LADOS))
+        contenido = Gtk.Box(spacing=px(ESPACIADO_SM))
         contenido.append(Gtk.Image.new_from_icon_name("edit-undo-symbolic"))
         contenido.append(Gtk.Label(label="Volver"))
         self.boton_volver = Gtk.Button(child=contenido, css_classes=["pie-volver"])

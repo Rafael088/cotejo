@@ -12,6 +12,7 @@ from gi.repository import Gio, Gtk
 
 from .. import equipo
 from .comun import ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XL, ESPACIADO_XS
+from .escala import px
 from .piezas import chip, con_mano, etiquetar, vaciar
 
 EQUIPO = "equipo"
@@ -19,22 +20,22 @@ EQUIPO = "equipo"
 
 class PestanaEquipo:
     def crear_equipo(self):
-        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_LG,
-                         margin_top=ESPACIADO_XL * 2, margin_bottom=ESPACIADO_XL * 2,
-                         margin_start=ESPACIADO_XL * 2, margin_end=ESPACIADO_XL * 2)
+        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_LG),
+                         margin_top=px(ESPACIADO_XL) * 2, margin_bottom=px(ESPACIADO_XL) * 2,
+                         margin_start=px(ESPACIADO_XL) * 2, margin_end=px(ESPACIADO_XL) * 2)
         cuerpo.append(Gtk.Label(label="Primer arranque", xalign=0, css_classes=["dato"]))
         cuerpo.append(Gtk.Label(label="Antes de empezar, Cotejo revisa tu equipo", xalign=0,
                                 wrap=True, css_classes=["inicio-titular"]))
         cuerpo.append(Gtk.Label(
             label="Para preparar proyectos hace falta un agente de IA. Esto es lo que encontré:",
             xalign=0, wrap=True, css_classes=["vacio-pista"]))
-        self.equipo_filas = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_SM)
+        self.equipo_filas = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_SM))
         cuerpo.append(self.equipo_filas)
         self.equipo_titular = Gtk.Label(xalign=0, wrap=True, css_classes=["vacio-titulo"])
         self.equipo_mensaje = Gtk.Label(xalign=0, wrap=True, css_classes=["vacio-pista"])
         cuerpo.append(self.equipo_titular)
         cuerpo.append(self.equipo_mensaje)
-        botones = Gtk.Box(spacing=ESPACIADO_MD)
+        botones = Gtk.Box(spacing=px(ESPACIADO_MD))
         self.equipo_revisar = con_mano(Gtk.Button(label="Ya lo instalé, revisar otra vez",
                                                   css_classes=["suggested-action"]))
         self.equipo_revisar.connect("clicked", lambda *_: self.revisar_equipo())
@@ -53,7 +54,7 @@ class PestanaEquipo:
         vaciar(self.equipo_filas)
         self.equipo_enlaces = {}
         for pieza in visto.piezas:
-            fila = Gtk.Box(spacing=ESPACIADO_MD, css_classes=["carta"])
+            fila = Gtk.Box(spacing=px(ESPACIADO_MD), css_classes=["carta"])
             fila.append(Gtk.Label(label=pieza.titulo, xalign=0, hexpand=True))
             fila.append(chip(pieza.estado, "", *(["verde"] if pieza.listo else [])))
             if not pieza.listo:

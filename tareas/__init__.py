@@ -12,7 +12,7 @@ que no se separen).
 
 import os
 
-__version__ = "1.2.5"
+__version__ = "1.2.6"
 
 for _viejo, _valor in list(os.environ.items()):
     if _viejo.startswith("FOCO_"):

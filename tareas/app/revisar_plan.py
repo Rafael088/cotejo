@@ -19,13 +19,14 @@ from gi.repository import GLib, Gtk
 
 from .. import almacen, decision, revisar_plan
 from .comun import ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XL, ESPACIADO_XS
+from .escala import px
 from .piezas import chip, con_mano, etiquetar, vaciar
 
 PLAN = "plan"
 
 
 def _bloque(*hijos):
-    caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_SM,
+    caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_SM),
                    css_classes=["carta", "plan-bloque"])
     for hijo in hijos:
         caja.append(hijo)
@@ -38,11 +39,11 @@ class FilaDecision(Gtk.Box):
     __gtype_name__ = "CotejoFilaDecision"
 
     def __init__(self, datos, al_aceptar, al_rechazar):
-        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS,
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
                          css_classes=["plan-decision"])
         self.datos = datos
-        fila = Gtk.Box(spacing=ESPACIADO_MD)
-        textos = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS,
+        fila = Gtk.Box(spacing=px(ESPACIADO_MD))
+        textos = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
                          hexpand=True)
         self.titulo = Gtk.Label(label=datos["titulo"], xalign=0, wrap=True,
                                 css_classes=["carta-nombre"])
@@ -56,7 +57,7 @@ class FilaDecision(Gtk.Box):
         self.motivo = self.enviar = None
         estado = datos["estado"]
         if estado == "propuesta":
-            acciones = Gtk.Box(spacing=ESPACIADO_XS, valign=Gtk.Align.START)
+            acciones = Gtk.Box(spacing=px(ESPACIADO_XS), valign=Gtk.Align.START)
             self.cambiar = con_mano(Gtk.Button(label="Cambiar"))
             self.aceptar = con_mano(Gtk.Button(label="Aceptar", css_classes=["suggested-action"]))
             etiquetar(self.cambiar, f"Cambiar la decisión «{datos['titulo']}»")
@@ -72,7 +73,7 @@ class FilaDecision(Gtk.Box):
         self.append(fila)
 
         if estado == "propuesta":
-            self.caja_motivo = Gtk.Box(spacing=ESPACIADO_XS, visible=False)
+            self.caja_motivo = Gtk.Box(spacing=px(ESPACIADO_XS), visible=False)
             self.motivo = Gtk.Entry(
                 hexpand=True, placeholder_text="Por qué no: tu agente lo leerá para proponer otra")
             etiquetar(self.motivo, "Motivo para cambiar la decisión")
@@ -108,9 +109,9 @@ class PantallaRevisarPlan(Gtk.ScrolledWindow):
         self.plan = None
         self.filas_decision = []
         self.filas_tarea = []
-        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_LG,
-                         margin_top=ESPACIADO_XL * 2, margin_bottom=ESPACIADO_XL * 2,
-                         margin_start=ESPACIADO_XL * 2, margin_end=ESPACIADO_XL * 2)
+        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_LG),
+                         margin_top=px(ESPACIADO_XL) * 2, margin_bottom=px(ESPACIADO_XL) * 2,
+                         margin_start=px(ESPACIADO_XL) * 2, margin_end=px(ESPACIADO_XL) * 2)
         self.ruta = Gtk.Label(xalign=0, css_classes=["dato"])
         cuerpo.append(self.ruta)
 
@@ -119,17 +120,17 @@ class PantallaRevisarPlan(Gtk.ScrolledWindow):
         cuerpo.append(_bloque(Gtk.Label(label="EL OBJETIVO", xalign=0, css_classes=["dato"]),
                               self.objetivo, self.siguiente))
 
-        cabeza = Gtk.Box(spacing=ESPACIADO_SM)
+        cabeza = Gtk.Box(spacing=px(ESPACIADO_SM))
         self.cabecera_decisiones = Gtk.Label(xalign=0, hexpand=True, wrap=True,
                                              css_classes=["carta-nombre"])
         cabeza.append(self.cabecera_decisiones)
         self.cuenta = Gtk.Box()
         cabeza.append(self.cuenta)
         self.lista_decisiones = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
-                                        spacing=ESPACIADO_MD)
+                                        spacing=px(ESPACIADO_MD))
         cuerpo.append(_bloque(cabeza, self.lista_decisiones))
 
-        self.lista_tareas = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_SM)
+        self.lista_tareas = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_SM))
         cuerpo.append(_bloque(Gtk.Label(label="Tareas de la 0.1.0", xalign=0,
                                         css_classes=["carta-nombre"]), self.lista_tareas))
 
@@ -137,7 +138,7 @@ class PantallaRevisarPlan(Gtk.ScrolledWindow):
                                 css_classes=["preparando-error"])
         cuerpo.append(self.avisos)
 
-        pie = Gtk.Box(spacing=ESPACIADO_SM, halign=Gtk.Align.END)
+        pie = Gtk.Box(spacing=px(ESPACIADO_SM), halign=Gtk.Align.END)
         self.boton_inicio = con_mano(Gtk.Button(label="Volver al Inicio"))
         self.ver_mapa = con_mano(Gtk.Button(label="Ver el mapa del proyecto"))
         self.empezar = con_mano(Gtk.Button(label="Empezar la 0.1.0",
@@ -148,7 +149,7 @@ class PantallaRevisarPlan(Gtk.ScrolledWindow):
         cuerpo.append(pie)
 
         ancho = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, halign=Gtk.Align.CENTER)
-        ancho.set_size_request(720, -1)
+        ancho.set_size_request(px(720), -1)
         ancho.append(cuerpo)
         self.set_child(ancho)
 
@@ -171,7 +172,7 @@ class PantallaRevisarPlan(Gtk.ScrolledWindow):
         vaciar(self.lista_tareas)
         self.filas_tarea = []
         for t in plan.tareas:
-            fila = Gtk.Box(spacing=ESPACIADO_MD, css_classes=["plan-tarea"])
+            fila = Gtk.Box(spacing=px(ESPACIADO_MD), css_classes=["plan-tarea"])
             quien = chip(t["quien"], "", *(["chip-tu"] if t["tuya"] else []),
                          tooltip=("Es tuya: ningún modelo la hace" if t["tuya"] else
                                   f"La haría {t['modelo'] or 'un agente'}"))

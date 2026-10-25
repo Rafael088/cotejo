@@ -10,6 +10,7 @@ from .comun import (
     ANCHO_COLUMNAS, ANCHO_RIEL, ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XL,
     ESPACIADO_XS, ICONOS_COLUMNA, TODOS, VACIOS, VACIO_BUSQUEDA, id_corto, ordenar_por_version,
 )
+from .escala import px
 from .piezas import TareaArrastrada, con_mano, etiquetar, icono, vaciar, vacio
 
 
@@ -19,11 +20,11 @@ class Columnas:
     # --- vista ---------------------------------------------------------
 
     def columna(self, indice, clave, nombre):
-        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_SM,
+        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_SM),
                        css_classes=["columna-caja"], hexpand=False)
-        caja.set_size_request(ANCHO_COLUMNAS[clave], -1)
-        encabezado = Gtk.Box(spacing=ESPACIADO_SM, margin_start=ESPACIADO_XS,
-                             margin_end=ESPACIADO_XS, margin_top=ESPACIADO_XS)
+        caja.set_size_request(px(ANCHO_COLUMNAS[clave]), -1)
+        encabezado = Gtk.Box(spacing=px(ESPACIADO_SM), margin_start=px(ESPACIADO_XS),
+                             margin_end=px(ESPACIADO_XS), margin_top=px(ESPACIADO_XS))
         marca = icono(ICONOS_COLUMNA[clave], 15, "columna-icono")
         etiqueta = Gtk.Label(label=nombre, xalign=0, hexpand=True, wrap=True,
                              css_classes=["columna-titulo"])
@@ -90,7 +91,7 @@ class Columnas:
             self.poner_nombre_riel()
             encabezado.set_visible(False)
             scroll.set_visible(False)
-            caja.set_size_request(ANCHO_RIEL, -1)
+            caja.set_size_request(px(ANCHO_RIEL), -1)
         return caja
 
     def menu_filtro_finalizada(self, boton):
@@ -100,12 +101,12 @@ class Columnas:
         la tarea), así que no hay por qué pedir un segundo paso.
         """
         caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
-                       margin_top=ESPACIADO_SM, margin_bottom=ESPACIADO_SM,
-                       margin_start=ESPACIADO_SM, margin_end=ESPACIADO_SM)
+                       margin_top=px(ESPACIADO_SM), margin_bottom=px(ESPACIADO_SM),
+                       margin_start=px(ESPACIADO_SM), margin_end=px(ESPACIADO_SM))
         popover = Gtk.Popover(child=caja)
         caja.append(Gtk.Label(label="FINALIZADA DESDE", xalign=0, css_classes=["menu-titulo"]))
         for clave_filtro, nombre, _dias in modelo.FILTROS_FINALIZADA:
-            fila = Gtk.Box(spacing=ESPACIADO_MD)
+            fila = Gtk.Box(spacing=px(ESPACIADO_MD))
             fila.append(Gtk.Label(label=nombre, xalign=0, hexpand=True))
             if clave_filtro == self.filtro_finalizada:
                 fila.append(icono("estado-hecha", 14, "en-cotejo"))
@@ -162,12 +163,12 @@ class Columnas:
         lista y las marcas del filtro; el board la llama cada vez que repinta sus columnas.
         """
         dialogo = Adw.Dialog(title=dict(modelo.COLUMNAS)[modelo.HECHA],
-                             content_width=520, content_height=560)
+                             content_width=px(520), content_height=px(560))
         vista = Adw.ToolbarView()
         vista.add_top_bar(Adw.HeaderBar())
-        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_MD,
-                         margin_top=ESPACIADO_SM, margin_bottom=ESPACIADO_MD,
-                         margin_start=ESPACIADO_XL, margin_end=ESPACIADO_XL)
+        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_MD),
+                         margin_top=px(ESPACIADO_SM), margin_bottom=px(ESPACIADO_MD),
+                         margin_start=px(ESPACIADO_XL), margin_end=px(ESPACIADO_XL))
         filtro = Gtk.Box(css_classes=["linked"], halign=Gtk.Align.START)
         botones, primero = {}, None
         for clave_filtro, nombre, _dias in modelo.FILTROS_FINALIZADA:
@@ -190,8 +191,8 @@ class Columnas:
             filas = self.finalizadas_del_filtro()
             todos = self.seleccion == TODOS
             for proyecto, tarea in filas:
-                fila = Gtk.Box(spacing=ESPACIADO_MD, margin_top=ESPACIADO_XS,
-                               margin_bottom=ESPACIADO_XS)
+                fila = Gtk.Box(spacing=px(ESPACIADO_MD), margin_top=px(ESPACIADO_XS),
+                               margin_bottom=px(ESPACIADO_XS))
                 fila.append(Gtk.Label(label=id_corto(tarea.id), xalign=0,
                                       css_classes=["carta-codigo"]))
                 texto = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
@@ -259,7 +260,7 @@ class Columnas:
                 if todos:
                     lista.append(self.fila_quieta(
                         Gtk.Label(label=proyecto.nombre.upper(), xalign=0, wrap=True,
-                                  css_classes=["grupo-titulo"], margin_top=ESPACIADO_SM)))
+                                  css_classes=["grupo-titulo"], margin_top=px(ESPACIADO_SM))))
                 if clave == modelo.PENDIENTE:
                     tareas = ordenar_por_version(tareas)
                 version_anterior = None
@@ -269,7 +270,7 @@ class Columnas:
                         if version != version_anterior:
                             lista.append(self.fila_quieta(Gtk.Label(
                                 label=version, xalign=0, css_classes=["grupo-version"],
-                                margin_top=ESPACIADO_XS, margin_start=ESPACIADO_XS)))
+                                margin_top=px(ESPACIADO_XS), margin_start=px(ESPACIADO_XS))))
                             version_anterior = version
                     fila = self.carta(proyecto, tarea)
                     lista.append(fila)
@@ -317,7 +318,7 @@ class Columnas:
                 else:
                     caja = vacio("aviso", "No hay de dónde leer las tareas",
                                  self.fuente.problema, roto=True)
-                caja.set_margin_top(ESPACIADO_SM)
+                caja.set_margin_top(px(ESPACIADO_SM))
                 lista.append(self.fila_quieta(caja))
 
     def fila_quieta(self, hijo):
@@ -331,7 +332,7 @@ class Columnas:
             caja = vacio("buscar", *VACIO_BUSQUEDA)
         else:
             caja = vacio("vacio", *VACIOS[clave])
-        caja.set_margin_top(ESPACIADO_LG)
-        caja.set_margin_start(ESPACIADO_SM)
-        caja.set_margin_end(ESPACIADO_SM)
+        caja.set_margin_top(px(ESPACIADO_LG))
+        caja.set_margin_start(px(ESPACIADO_SM))
+        caja.set_margin_end(px(ESPACIADO_SM))
         return caja

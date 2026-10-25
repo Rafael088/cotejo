@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "cotejo.barra",
   "name": "Cotejo",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "author": "Cotejo",
   "license": "LicenseRef-Cotejo-Proprietary",
   "description": "Abre y cierra Cotejo desde la barra, y avisa cuando hay tareas esperando que las valides.",
