@@ -387,5 +387,8 @@ class Board(Maestro, Columnas, Banda, Pie, Cartas, Detalle, Decisiones, Revision
         self.animacion.set_easing(Adw.Easing.EASE_OUT_CUBIC)
         self.animacion.play()
 
-    def aviso(self, texto):
-        self.toasts.add_toast(Adw.Toast(title=GLib.markup_escape_text(texto), timeout=4))
+    def aviso(self, texto, segundos=4):
+        """Un aviso que no se sale de la ventana: el texto largo se parte en líneas."""
+        etiqueta = Gtk.Label(label=texto, wrap=True, max_width_chars=48, xalign=0,
+                             natural_wrap_mode=Gtk.NaturalWrapMode.WORD)
+        self.toasts.add_toast(Adw.Toast(custom_title=etiqueta, timeout=segundos))
