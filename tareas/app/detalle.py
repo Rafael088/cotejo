@@ -2,7 +2,7 @@
 
 from gi.repository import Adw, Gtk, Pango
 
-from .. import modelo
+from .. import modelo, seguir_ficha
 from .comun import (
     ESPACIADO_LG, ESPACIADO_SM, ESPACIADO_XL, ESPACIADO_XS, ICONOS_COLUMNA, ICONOS_DIFICULTAD,
     NOMBRES_DIFICULTAD, anotacion_visible, id_corto,
@@ -15,7 +15,47 @@ class Detalle:
     """La ficha de una tarea y el selector de agente."""
 
     def ver_detalle(self, proyecto, tarea):
-        self.dialogo_detalle(proyecto, tarea).present(self)
+        dialogo = self.dialogo_detalle(proyecto, tarea)
+        self.registrar_ficha(dialogo, tarea, seguir_ficha.DETALLE)
+        dialogo.present(self)
+
+    # --- la ficha abierta sigue a la tarea (v1.3.0, cotejo-v66btg) -------------------------
+
+    def registrar_ficha(self, dialogo, tarea, vista):
+        """Anota qué ficha hay abierta para que `seguir_ficha` la ponga al día en cada repintado.
+        Al cerrarse, deja de seguirla (solo si sigue siendo esa: una ficha nueva ya la reemplazó)."""
+        if dialogo is None:
+            return
+        self.ficha_abierta = (dialogo, (tarea.id, vista, tarea.columna))
+
+        def al_cerrar(*_):
+            actual = getattr(self, "ficha_abierta", None)
+            if actual is not None and actual[0] is dialogo:
+                self.ficha_abierta = None
+        dialogo.connect("closed", al_cerrar)
+
+    def seguir_ficha(self):
+        """Tras repintar: si la tarea de la ficha abierta cambió de columna, la ficha se muestra
+        al estado nuevo (de Haciendo a la revisión de Para comprobar, etc.) en vez de quedarse con
+        la cabecera vieja. Si la tarea ya no está en la fuente, se cierra y se avisa. Si la fuente
+        no responde no se sabe nada de la tarea: la ficha se queda como está."""
+        abierta = getattr(self, "ficha_abierta", None)
+        if abierta is None or self.fuente.problema:
+            return
+        dialogo, datos = abierta
+        decision = seguir_ficha.decidir(
+            datos, self.app.proyectos, lambda t: self.entrega_de(t) is not None)
+        if decision[0] == seguir_ficha.IGUAL:
+            return
+        self.ficha_abierta = None
+        dialogo.close()
+        if decision[0] == seguir_ficha.DESAPARECE:
+            self.aviso("La tarea de la ficha ya no está en la fuente: se cerró.")
+            return
+        _, proyecto, tarea, vista = decision
+        if vista == seguir_ficha.REVISION and self.ver_revision(proyecto, tarea) is not None:
+            return
+        self.ver_detalle(proyecto, tarea)
 
     def dialogo_detalle(self, proyecto, tarea):
         """La ficha de una tarea: lo que la carta no enseña y lo que se puede hacer con ella.

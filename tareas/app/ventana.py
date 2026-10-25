@@ -402,6 +402,7 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
         self.inicio_al_dia = False
         self.pintar_inicio()
         self.repintar_mapa_si_se_ve()
+        self.seguir_ficha()
 
     def poner_subtitulo(self, proyectos, todos):
         esperando = sum(1 for p in proyectos for t in p.tareas if t.estado == "por-validar")
