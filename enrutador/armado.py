@@ -14,18 +14,24 @@ de usar `cotejo` y nada más.
 from pathlib import Path
 
 from tareas import worktrees
-from . import clientes, guardas, mismo_cotejo, preparar, sandbox as caja
+from . import clientes, guardas, mismo_cotejo, navegador, preparar, sandbox as caja
 
 NOTA_TERMINAL = ("Tienes terminal libre en tu carpeta de trabajo: corre las pruebas y los "
                  "builds que haga falta. Están prohibidos y se rechazan solos: sudo/su, git "
                  "push --force, empujar a main o a la rama por defecto y borrar fuera de tu "
                  "carpeta (borra con rutas relativas, sin «..»).")
+# Cómo ve el agente una página que hizo, dentro del sandbox (cotejo-xrmr3h, `navegador.py`).
+NOTA_NAVEGADOR = ("Para ver una página (y sacarle captura) usa Firefox sin interfaz: "
+                  f"`{navegador.COMO_CAPTURAR}`; en el repo de Cotejo, también "
+                  "`python3 -m enrutador.navegador <archivo|url> captura.png`. Chromium no "
+                  "arranca en el sandbox. Si sirves la página con un servidor local, arráncalo "
+                  "en el mismo comando que el navegador: cada comando va en su sandbox.")
 # Se añade a la nota cuando el Bash del agente va dentro del sandbox de Claude (cotejo-amui0f).
 NOTA_SANDBOX = ("Tu terminal corre dentro de un sandbox: solo puedes escribir en tu carpeta de "
                 "trabajo, el .git del repo y las carpetas de Cotejo, y la red solo llega a los "
                 "remotos del repo. Si algo falla con «sistema de ficheros de solo lectura» o "
                 "una conexión denegada, es a propósito: no intentes rodearlo; si te impide "
-                "terminar, bloquea la tarea con el motivo.")
+                "terminar, bloquea la tarea con el motivo. " + NOTA_NAVEGADOR)
 
 
 def ramas_protegidas(directorio, worktree=None):
