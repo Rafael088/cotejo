@@ -56,7 +56,7 @@ from tareas import bitacora as bitacora_cotejo, lanzados, retomar, worktrees
 from tareas.cli import ErrorCLI
 from . import (bitacora, capacidad, clientes, config as cfg, cotejo as f, decision, despacho,
                encargo as enc, guardas, mismo_cotejo, motor, niveles, preparar, procesos,
-               reglas)
+               reglas, sandbox as caja)
 from .motores import fondo
 
 MOTOR = "board"
@@ -69,6 +69,12 @@ NOTA = ("Te lanzó CotejoBoard sin nadie delante: nadie va a contestarte pregunt
         "haga falta. Están prohibidos y se rechazan solos: sudo/su, git push --force, empujar "
         "a main o a la rama por defecto y borrar fuera de tu carpeta (borra con rutas "
         "relativas, sin «..»).")
+# Se añade a la nota cuando el Bash del agente va dentro del sandbox de Claude (cotejo-amui0f).
+NOTA_SANDBOX = ("Tu terminal corre dentro de un sandbox: solo puedes escribir en tu carpeta de "
+                "trabajo, el .git del repo y las carpetas de Cotejo, y la red solo llega a los "
+                "remotos del repo. Si algo falla con «sistema de ficheros de solo lectura» o "
+                "una conexión denegada, es a propósito: no intentes rodearlo; si te impide "
+                "terminar, bloquea la tarea con el motivo.")
 
 
 class NoSePuede(Exception):
@@ -140,16 +146,18 @@ def _cliente_de(elegida):
         raise NoSePuede(str(error)) from error
 
 
-def comando(config, cliente, elegida, prompt, carpetas, ramas=None, politica_gemini=None):
+def comando(config, cliente, elegida, prompt, carpetas, ramas=None, politica_gemini=None,
+            sandbox=None):
     """El argv sin interfaz: el del motor `headless` para ese cliente, más
     `lanzar.argumentos_extra.<cliente>` y la terminal libre en `carpetas` con los prohibidos
-    de fábrica para `ramas` (`clientes.Cliente.terminal_libre`). Los permisos no viven en la
-    config: así una config propia no se los lleva por delante."""
+    de fábrica para `ramas` (`clientes.Cliente.terminal_libre`), con el sandbox de Claude si
+    viene (`sandbox`, los ajustes de `sandbox_de`). Los permisos no viven en la config: así una
+    config propia no se los lleva por delante."""
     propios = preparar._propios(config, cliente)
     extra = (list(propios.get("argumentos_extra") or ()) +
              list(((config.get("lanzar") or {}).get("argumentos_extra") or {})
                   .get(cliente.nombre) or ()) +
-             cliente.terminal_libre(carpetas, ramas, politica_gemini)[0])
+             cliente.terminal_libre(carpetas, ramas, politica_gemini, sandbox=sandbox)[0])
     return cliente.argv_sin_interfaz(
         cliente.modelo_de(elegida.nivel.modelo, elegida.nivel.modelo_id), prompt,
         comando=propios.get("comando"), extra=extra)
@@ -170,6 +178,29 @@ def carpetas_de_escritura(trabajo, worktree=None):
         if git.is_dir():
             lista.append(str(git))
     return list(dict.fromkeys(lista))
+
+
+def sandbox_de(config, cliente, cotejo, tarea, trabajo, worktree=None, directorio=None):
+    """El sandbox del agente de esta tarea (cotejo-amui0f): `{"activo", "motivo", "ajustes",
+    "entorno", "avisos"}`. Solo Claude Code lo lleva (Codex trae el suyo; OpenCode y Gemini no
+    tienen); sin él disponible en la máquina, o con `lanzar.sandbox: false`, va apagado con el
+    motivo y el agente trabaja con los prohibidos de siempre (`sandbox.py`)."""
+    apagado = {"activo": False, "motivo": "", "ajustes": None, "entorno": {}, "avisos": []}
+    if cliente.nombre != "claude":
+        return {**apagado, "motivo": f"{cliente.titulo or cliente.nombre} no usa el de Claude"}
+    ajustes = (config.get("lanzar") or {}).get("sandbox")
+    if ajustes is False:
+        return {**apagado, "motivo": "apagado en la config (lanzar.sandbox)"}
+    hay, motivo = caja.disponible()
+    if not hay:
+        return {**apagado, "motivo": motivo}
+    repo = (worktree or {}).get("repo") or (worktrees.raiz_repo(directorio) if directorio
+                                            else None)
+    hecho = caja.del_lanzamiento(
+        carpetas_de_escritura(trabajo, worktree), repo=repo,
+        propio=(worktree or {}).get("ruta"), carpeta_tarea=cotejo.carpeta_de_la_tarea(tarea["id"]),
+        ajustes=ajustes)
+    return {"activo": True, "motivo": "", **hecho}
 
 
 # --- lanzar -------------------------------------------------------------------------------------
@@ -245,13 +276,13 @@ def _lanzar(tarea_id, al_terminar, config, rechazada):
     # el motivo ni la evidencia de la bitácora.
     rechazo = retomar.rechazo_vigente(anterior, bitacora_cotejo.ultima_entrega(tarea["id"]))
 
-    def armar(tarea_ahora, worktree):
+    def armar(tarea_ahora, worktree, nota=NOTA):
         trabajo = Path(worktree["ruta"]) if worktree else directorio
         if rechazo:
             tarea_ahora = {k: v for k, v in tarea_ahora.items()
                            if k not in ("motivo", "evidencia")}
         return motor.Encargo(
-            prompt=enc.armar(tarea_ahora, elegida, directorio, NOTA, worktree),
+            prompt=enc.armar(tarea_ahora, elegida, directorio, nota, worktree),
             modelo=elegida.nivel.modelo, modelo_id=elegida.nivel.modelo_id,
             directorio=trabajo, tarea_id=tarea_ahora.get("id", ""), proyecto=proyecto,
             cliente=elegida.nivel.cliente)
@@ -292,7 +323,9 @@ def _lanzar(tarea_id, al_terminar, config, rechazada):
             worktree = worktrees.crear(tarea["id"], plan_wt)
         except worktrees.ErrorWorktree as error:
             soltar(f"No se pudo crear su worktree: {error.mensaje}", "worktree")
-    encargo = armar(tarea, worktree)
+    trabajo = Path(worktree["ruta"]) if worktree else directorio
+    encerrado = sandbox_de(config, cliente, cotejo, tarea, trabajo, worktree, directorio)
+    encargo = armar(tarea, worktree, NOTA + (" " + NOTA_SANDBOX if encerrado["activo"] else ""))
     trabajo = Path(encargo.directorio)
     prompt, reanudacion = encargo.prompt, None
     if retomar.es_retomable(anterior):
@@ -318,7 +351,8 @@ def _lanzar(tarea_id, al_terminar, config, rechazada):
                        "nota": prompt[len(encargo.prompt) + 2:]}
     ramas = ramas_protegidas(directorio, worktree)
     argv = comando(config, cliente, elegida, prompt,
-                   carpetas_de_escritura(trabajo, worktree), ramas, guardas.politica_gemini())
+                   carpetas_de_escritura(trabajo, worktree), ramas, guardas.politica_gemini(),
+                   sandbox=encerrado["ajustes"])
     log = lanzados.ruta_log(tarea["id"])
     registro = {"id": tarea["id"], "proyecto": proyecto, "texto": tarea.get("texto", ""),
                 "cliente": cliente.nombre, "modelo": elegida.nivel.modelo,
@@ -333,11 +367,15 @@ def _lanzar(tarea_id, al_terminar, config, rechazada):
                 "base": ((anterior or {}).get("base")
                          or (worktree or {}).get("desde") or None),
                 "reanudacion": reanudacion, "rechazo": rechazo,
+                # Si su Bash va encerrado y, si no, por qué (cotejo-amui0f). El token no se
+                # guarda: va solo en el entorno del agente.
+                "sandbox": {"activo": encerrado["activo"], "motivo": encerrado["motivo"],
+                            "avisos": encerrado["avisos"]},
                 "lanzamientos": int((anterior or {}).get("lanzamientos") or 0) + 1}
     try:
         # El lanzador de `cotejo` primero y las guardas detrás, antes que lo del sistema.
-        con_guardas = guardas.entorno(cliente.terminal_libre(
-            carpetas_de_escritura(trabajo, worktree), ramas)[1], ramas)
+        con_guardas = guardas.entorno({**cliente.terminal_libre(
+            carpetas_de_escritura(trabajo, worktree), ramas)[1], **encerrado["entorno"]}, ramas)
         entorno = mismo_cotejo.entorno(con_guardas, base=con_guardas)
         ajustes = (config.get("motores") or {}).get("headless") or {}
         proceso = fondo.lanzar(argv, trabajo, str(log), ajustes, entorno,
@@ -348,7 +386,7 @@ def _lanzar(tarea_id, al_terminar, config, rechazada):
     if id_antes != tarea["id"]:
         lanzados.borrar(id_antes)   # tomarla le dio su id definitivo: el «en espera» era del otro
     _anotar(tarea, elegida, tomada=True, fase="lanzado", comando=argv, pid=proceso.pid,
-            programa=argv[0], host=socket.gethostname(),
+            programa=argv[0], host=socket.gethostname(), sandbox=encerrado["activo"],
             **({"worktree": registro["worktree"]} if worktree else {}))
     vigilar(proceso, tarea, elegida,
             (config.get("lanzar") or {}).get("timeout_seg") or ajustes.get("timeout_seg", 3600),

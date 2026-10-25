@@ -83,7 +83,10 @@ DEFECTOS = {
     # dec-kiik): terminal libre en su worktree con los prohibidos de fábrica, que pone
     # `clientes.Cliente.terminal_libre` siempre, para que una config propia no se los lleve.
     # `stream-json` es lo que deja ver en el detalle de la tarea qué está haciendo mientras
-    # trabaja. `timeout_seg` es cuánto se le deja antes de pararlo.
+    # trabaja. `timeout_seg` es cuánto se le deja antes de pararlo. El Bash de Claude va en su
+    # sandbox (`enrutador/sandbox.py`, cotejo-amui0f): `sandbox.dominios` y `sandbox.escritura`
+    # le abren más servidores y carpetas (un registro de paquetes, una caché de builds), y
+    # `"sandbox": false` lo apaga.
     "lanzar": {"timeout_seg": 3600,
                "argumentos_extra": {
                    "claude": ["--output-format", "stream-json", "--verbose"]}},
