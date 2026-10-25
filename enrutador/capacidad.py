@@ -27,12 +27,17 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Lo que se supone que ocupa un agente cuando no hay ninguno corriendo que medir. Un Claude
-# Code en marcha ronda los 400–900 MB; con las pruebas o una compilación de un proyecto
-# encima, más. Se prefiere quedarse corto repartiendo a tumbar la máquina.
-MB_POR_AGENTE = 1500
+# Lo que se supone que ocupa un agente cuando no hay ninguno de Cotejo corriendo que medir.
+# Medido en una máquina de 7,6 GB (octubre de 2026): un Claude Code lanzado por Cotejo, con
+# su árbol de procesos, ocupa unos 550 MB. Se supone 700: 150 MB de margen sobre lo medido
+# para cuando corre pruebas, y aun así la cuenta cabe en un portátil de 8 GB. (Antes 1500: tan
+# pesimista que la máquina del autor nunca dejaba lanzar ni uno.) Si un agente de Cotejo ya en
+# marcha ocupa más, `calcular` sube la cuenta a ese número.
+MB_POR_AGENTE = 700
 # Lo que se deja libre siempre: el escritorio, el navegador, el propio maestro creciendo.
-RESERVA_MIN_MB = 1024
+# `MemAvailable` ya cuenta la caché como libre, así que 512 MB bastan de suelo; en máquinas
+# grandes manda el 10 %.
+RESERVA_MIN_MB = 512
 RESERVA_FRACCION = 0.10
 # Del swap libre cuenta solo una parte: sirve para no morir, no para trabajar a gusto.
 FRACCION_SWAP = 0.25
@@ -46,15 +51,20 @@ CLIENTES_CONOCIDOS = ("claude", "opencode", "codex", "gemini")
 
 # --- leer la máquina (E/S) ------------------------------------------------------------------
 
-def leer(clientes_extra=()):
-    """La foto de la máquina ahora mismo. Lo que no se pueda saber va como None."""
+def leer(clientes_extra=(), propios=None):
+    """La foto de la máquina ahora mismo. Lo que no se pueda saber va como None.
+
+    `propios` son los pids de los agentes que lanzó Cotejo (`tareas/lanzados.py`): solo esos
+    cuentan como «agentes en curso» y miden lo que cuesta uno. Las sesiones de la persona
+    (su Claude Code interactivo) ya están restadas de la memoria disponible; contarlas otra vez
+    como agentes dejaba la cuenta en cero. Sin `propios` (None) cuenta todos, como antes."""
     nombres = set(CLIENTES_CONOCIDOS) | set(clientes_extra)
     foto = {"sistema": sys.platform, "cpus": os.cpu_count() or 1, "carga": _carga(),
             "memoria_total_mb": None, "memoria_disponible_mb": None,
             "swap_total_mb": None, "swap_libre_mb": None, "agentes": None}
     if sys.platform.startswith("linux"):
         foto.update(_memoria_linux())
-        foto["agentes"] = _agentes_linux(nombres)
+        foto["agentes"] = _agentes_linux(nombres, propios)
     elif sys.platform == "darwin":
         foto.update(_memoria_mac())
     elif sys.platform == "win32":
@@ -126,7 +136,7 @@ def _memoria_windows():
             "swap_libre_mb": max(0, (estado.ullAvailPageFile - estado.ullAvailPhys) // mb)}
 
 
-def _agentes_linux(nombres):
+def _agentes_linux(nombres, propios=None):
     """Los agentes en marcha, cada uno con la memoria de su árbol de procesos.
 
     Un agente es un proceso cuyo ejecutable (o su script, en `node …/claude`) se llama como un
@@ -153,11 +163,14 @@ def _agentes_linux(nombres):
         palabras = [Path(p.decode(errors="replace")).name for p in linea[:2] if p]
         agente = next((p for p in palabras if p in nombres), "")
         procesos[int(carpeta.name)] = (ppid, rss, agente)
-    return agentes_de(procesos)
+    return agentes_de(procesos, propios)
 
 
-def agentes_de(procesos):
-    """De {pid: (ppid, mb, nombre_de_agente_o_"")} a la lista de agentes con su árbol. Sin E/S."""
+def agentes_de(procesos, propios=None):
+    """De {pid: (ppid, mb, nombre_de_agente_o_vacío)} a la lista de agentes con su árbol. Sin E/S.
+
+    Con `propios` (pids de los lanzados por Cotejo), cada agente lleva `propio`: si él o alguno
+    de sus ancestros está ahí (el lanzador puede ser un envoltorio del cliente)."""
     hijos = {}
     for pid, (ppid, _, _) in procesos.items():
         hijos.setdefault(ppid, []).append(pid)
@@ -170,8 +183,28 @@ def agentes_de(procesos):
             pendientes.extend(h for h in hijos.get(actual, ()) if not procesos[h][2])
         return total
 
-    return [{"pid": pid, "programa": procesos[pid][2], "mb": arbol(pid)}
-            for pid in sorted(procesos) if procesos[pid][2]]
+    def es_propio(pid):
+        visto = set()
+        while pid in procesos and pid not in visto:
+            if pid in propios:
+                return True
+            visto.add(pid)
+            pid = procesos[pid][0]
+        return False
+
+    salida = []
+    for pid in sorted(procesos):
+        if procesos[pid][2]:
+            agente = {"pid": pid, "programa": procesos[pid][2], "mb": arbol(pid)}
+            if propios is not None:
+                agente["propio"] = es_propio(pid)
+            salida.append(agente)
+    return salida
+
+
+def en_curso(agentes):
+    """Los agentes que cuentan: los de Cotejo (o todos, si no se distinguió quién los lanzó)."""
+    return [a for a in agentes or () if a.get("propio", True)]
 
 
 # --- calcular (sin E/S) --------------------------------------------------------------------
@@ -180,7 +213,7 @@ def calcular(foto, ajustes=None):
     """Cuántos despachos caben ahora, qué los limita y con qué números se decidió."""
     ajustes = ajustes or {}
     agentes = foto.get("agentes")
-    medidos = [a["mb"] for a in agentes or () if a.get("mb")]
+    medidos = [a["mb"] for a in en_curso(agentes) if a.get("mb")]
     if ajustes.get("mb_por_agente"):
         por_agente, origen = int(ajustes["mb_por_agente"]), "config"
     elif medidos and max(medidos) > MB_POR_AGENTE:
@@ -230,5 +263,5 @@ def calcular(foto, ajustes=None):
 
 def _origen_legible(origen):
     return {"config": "enrutador.capacidad.mb_por_agente",
-            "medido": "el agente más grande de los que ya corren",
-            "por_defecto": "supuesto; ningún agente en marcha ocupa más"}[origen]
+            "medido": "el agente de Cotejo más grande de los que ya corren",
+            "por_defecto": "supuesto; ningún agente de Cotejo en marcha ocupa más"}[origen]

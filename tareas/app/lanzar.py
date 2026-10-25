@@ -183,13 +183,15 @@ class EnVivo(Gtk.Box):
 class Lanzar:
     """Los métodos de `Board` que lanzan una tarea al moverla y la siguen en su ficha."""
 
-    def lanzar_al_mover(self, proyecto, tarea):
+    def lanzar_al_mover(self, proyecto, tarea, forzar=False):
         """Pendiente → Haciendo, a mano. True si ya se encargó (lanzó, preguntó o quedó en
-        espera); False si toca moverla como siempre (una tarea de persona)."""
+        espera); False si toca moverla como siempre (una tarea de persona). Con `forzar`, sin
+        mirar la capacidad (solo esa vez: «Lanzar de todos modos»)."""
         from enrutador import despacho_board as db
         try:
             estado = db.lanzar(
-                tarea.id, al_terminar=lambda e: GLib.idle_add(self.agente_terminado, e))
+                tarea.id, al_terminar=lambda e: GLib.idle_add(self.agente_terminado, e),
+                forzar=forzar)
         except db.EsDeUnaPersona:
             self.aviso("Es una tarea para una persona: la paso a Haciendo sin lanzar ningún "
                        "agente.")
@@ -387,8 +389,17 @@ class Lanzar:
             self.aviso("Quitada de la espera: sigue en Pendiente.")
         self.app.refrescar()
 
-    def seccion_en_espera(self, motivo, al_quitar=None):
-        """En la ficha de una tarea en espera: por qué no se lanzó (y cómo quitarla)."""
+    def al_lanzar_igual(self, proyecto, tarea, _dato=None, popover=None):
+        """«Lanzar de todos modos»: la lanza saltándose la capacidad, solo esta vez. La espera
+        se borra sola al lanzarse (el registro nuevo pisa al de espera)."""
+        if popover is not None:
+            popover.popdown()
+        if not self.lanzar_al_mover(proyecto, tarea, forzar=True):
+            self.app.refrescar()
+
+    def seccion_en_espera(self, motivo, al_quitar=None, al_lanzar_igual=None):
+        """En la ficha de una tarea en espera: por qué no se lanzó, y qué hacer (lanzarla igual
+        o quitarla de la espera)."""
         caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
                        css_classes=["anotacion", "detenida"])
         cabeza = Gtk.Box(spacing=px(ESPACIADO_XS))
@@ -398,6 +409,12 @@ class Lanzar:
         caja.append(Gtk.Label(label=motivo, xalign=0, wrap=True, selectable=True,
                               focusable=False, wrap_mode=Pango.WrapMode.WORD_CHAR,
                               css_classes=["anotacion-texto"]))
+        if al_lanzar_igual is not None:
+            igual = Gtk.Button(label="Lanzar de todos modos", halign=Gtk.Align.START,
+                               css_classes=["flat"], tooltip_text="Salta el límite de memoria "
+                               "solo esta vez: puede ir lenta la máquina")
+            igual.connect("clicked", lambda *_: al_lanzar_igual())
+            caja.append(igual)
         if al_quitar is not None:
             boton = Gtk.Button(label="Quitar de la espera", halign=Gtk.Align.START,
                                css_classes=["flat"], tooltip_text="Borra la espera sin lanzar "

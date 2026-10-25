@@ -179,6 +179,17 @@ class Lanzar(ConClienteFalso):
         self.assertEqual(self.lanzar("cotejo-asig")["estado"], lanzados.TRABAJANDO)
         self.assertEqual(lanzados.en_espera(), {})
 
+    def test_lanzar_de_todos_modos_se_salta_la_capacidad_solo_esa_vez(self):
+        self.configurar(capacidad={"mb_por_agente": 10 ** 9})
+        with self.assertRaises(despacho_board.SinHueco) as error:
+            self.lanzar("cotejo-asig")
+        # El aviso dice qué hacer, en llano, y nombra el botón.
+        self.assertIn("Cierra algo", str(error.exception))
+        self.assertIn("Lanzar de todos modos", str(error.exception))
+        estado = despacho_board.lanzar("cotejo-asig", forzar=True)
+        self.assertEqual(estado["estado"], lanzados.TRABAJANDO)
+        self.assertEqual(lanzados.en_espera(), {})
+
     def test_lo_que_no_esta_pendiente_no_se_lanza(self):
         with self.assertRaises(despacho_board.NoSePuede):
             self.lanzar("cotejo-curso")

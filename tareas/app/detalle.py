@@ -163,7 +163,11 @@ class Detalle:
             def quitar(proyecto=proyecto, tarea=tarea):
                 dialogo.close()
                 self.al_quitar_de_espera(proyecto, tarea)
-            cuerpo.append(self.seccion_en_espera(espera, quitar))
+
+            def lanzar_igual(proyecto=proyecto, tarea=tarea):
+                dialogo.close()
+                self.al_lanzar_igual(proyecto, tarea)
+            cuerpo.append(self.seccion_en_espera(espera, quitar, lanzar_igual))
         dialogo.pausada = None if espera else self.seccion_pausada(tarea)
         if dialogo.pausada is not None:
             cuerpo.append(dialogo.pausada)

@@ -235,6 +235,22 @@ class LanzarDesdeElBoard(base.PestanaInicio):
                 self.assertNotEqual(registro["fase"], lanzados.EN_ESPERA)
                 self.assertIn("#en-curso", self.linea("^cotejo-con"))
 
+    def test_lanzar_de_todos_modos_desde_la_ficha_la_lanza_sin_mirar_la_capacidad(self):
+        self.board.ver_pestana("tablero")
+        with mock.patch.object(type(self.board), "aviso", lambda _b, _t: None):
+            self.configurar(capacidad={"mb_por_agente": 10 ** 9})
+            self.arrastrar("parseo")
+            fila = self.fila("parseo", "pendiente")
+            ficha = self.board.dialogo_detalle(fila.proyecto, fila.tarea)
+            self.assertTrue(any("Cierra algo" in t for t in base.textos(ficha.get_child())))
+            boton = self.buscar_boton(ficha.get_child(), "Lanzar de todos modos")
+            self.assertIsNotNone(boton)
+            with mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):
+                boton.emit("clicked")
+                self.assertTrue(self.esperar(self.argv_falso.exists))
+            self.assertIn("#en-curso", self.linea("^cotejo-con"))
+            self.assertEqual(lanzados.en_espera(), {})
+
     @staticmethod
     def buscar_boton(widget, texto):
         if isinstance(widget, Gtk.Button) and widget.get_label() == texto:
