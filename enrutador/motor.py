@@ -24,6 +24,10 @@ class Encargo:
     tarea_id: str = ""
     proyecto: str = ""
     cliente: str = "claude"     # quién sabe ejecutar el modelo (ver `clientes.py`)
+    # Para la terminal libre del headless (`armado.py`): la carpeta del proyecto (`directorio` es
+    # donde trabaja, su worktree si lo hay) y el worktree de la tarea (`ruta`, `rama`, `repo`).
+    origen: object = None
+    worktree: object = None
 
 
 @dataclass
@@ -51,6 +55,9 @@ class Motor:
 
     def __init__(self, ajustes=None):
         self.ajustes = ajustes or {}
+        # La config entera del enrutador, que `abrir` pone: el sandbox y los argumentos extra de
+        # `lanzar` no viven en `motores.<motor>`.
+        self.config = {}
         # Lo que `despachar` quiere saber en cuanto el proceso existe, antes de que termine:
         # `al_lanzar(pid, comando)`. Solo lo llaman los motores que lanzan y esperan (headless);
         # si el proceso muere sin volver, esa anotación es lo único que queda de él.
@@ -90,4 +97,6 @@ def abrir(nombre, config):
     if clase is None:
         raise MotorDesconocido(
             f"«{nombre}» no es un motor. Los que hay: {', '.join(sorted(disponibles))}.")
-    return clase((config.get("motores") or {}).get(nombre, {}))
+    instancia = clase((config.get("motores") or {}).get(nombre, {}))
+    instancia.config = config
+    return instancia

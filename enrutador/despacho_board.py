@@ -54,9 +54,8 @@ from pathlib import Path
 
 from tareas import bitacora as bitacora_cotejo, lanzados, retomar, worktrees
 from tareas.cli import ErrorCLI
-from . import (bitacora, capacidad, clientes, config as cfg, cotejo as f, decision, despacho,
-               encargo as enc, guardas, mismo_cotejo, motor, niveles, preparar, procesos,
-               reglas, sandbox as caja)
+from . import (armado, bitacora, capacidad, clientes, config as cfg, cotejo as f, decision,
+               despacho, encargo as enc, guardas, motor, niveles, procesos, reglas)
 from .motores import fondo
 
 MOTOR = "board"
@@ -65,16 +64,8 @@ LO_DIJO_UNA_PERSONA = ("override", "asignacion")
 
 NOTA = ("Te lanzó CotejoBoard sin nadie delante: nadie va a contestarte preguntas mientras "
         "trabajas. Si algo te impide seguir, no lo dejes a medias: bloquéala con el motivo. "
-        "Tienes terminal libre en tu carpeta de trabajo: corre las pruebas y los builds que "
-        "haga falta. Están prohibidos y se rechazan solos: sudo/su, git push --force, empujar "
-        "a main o a la rama por defecto y borrar fuera de tu carpeta (borra con rutas "
-        "relativas, sin «..»).")
-# Se añade a la nota cuando el Bash del agente va dentro del sandbox de Claude (cotejo-amui0f).
-NOTA_SANDBOX = ("Tu terminal corre dentro de un sandbox: solo puedes escribir en tu carpeta de "
-                "trabajo, el .git del repo y las carpetas de Cotejo, y la red solo llega a los "
-                "remotos del repo. Si algo falla con «sistema de ficheros de solo lectura» o "
-                "una conexión denegada, es a propósito: no intentes rodearlo; si te impide "
-                "terminar, bloquea la tarea con el motivo.")
+        + armado.NOTA_TERMINAL)
+NOTA_SANDBOX = armado.NOTA_SANDBOX
 
 
 class NoSePuede(Exception):
@@ -148,59 +139,18 @@ def _cliente_de(elegida):
 
 def comando(config, cliente, elegida, prompt, carpetas, ramas=None, politica_gemini=None,
             sandbox=None):
-    """El argv sin interfaz: el del motor `headless` para ese cliente, más
-    `lanzar.argumentos_extra.<cliente>` y la terminal libre en `carpetas` con los prohibidos
-    de fábrica para `ramas` (`clientes.Cliente.terminal_libre`), con el sandbox de Claude si
-    viene (`sandbox`, los ajustes de `sandbox_de`). Los permisos no viven en la config: así una
-    config propia no se los lleva por delante."""
-    propios = preparar._propios(config, cliente)
-    extra = (list(propios.get("argumentos_extra") or ()) +
-             list(((config.get("lanzar") or {}).get("argumentos_extra") or {})
-                  .get(cliente.nombre) or ()) +
-             cliente.terminal_libre(carpetas, ramas, politica_gemini, sandbox=sandbox)[0])
-    return cliente.argv_sin_interfaz(
-        cliente.modelo_de(elegida.nivel.modelo, elegida.nivel.modelo_id), prompt,
-        comando=propios.get("comando"), extra=extra)
+    """`armado.comando` con el modelo de la decisión del enrutador."""
+    return armado.comando(config, cliente, elegida.nivel.modelo, elegida.nivel.modelo_id, prompt,
+                          carpetas, ramas, politica_gemini, sandbox)
 
 
-def ramas_protegidas(directorio, worktree=None):
-    """`main` y la rama por defecto del repo de la tarea (la de su `origin`)."""
-    repo = (worktree or {}).get("repo") or worktrees.raiz_repo(directorio)
-    return clientes.ramas_protegidas(worktrees.rama_por_defecto(repo) if repo else None)
-
-
-def carpetas_de_escritura(trabajo, worktree=None):
-    """Las de preparar para la carpeta de trabajo (ella, la config de Cotejo y la de estado)
-    más el `.git` del repo si trabaja en un worktree: ahí van sus commits."""
-    lista = preparar.carpetas_de_escritura(trabajo)
-    if worktree:
-        git = Path(worktree["repo"]) / ".git"
-        if git.is_dir():
-            lista.append(str(git))
-    return list(dict.fromkeys(lista))
+ramas_protegidas = armado.ramas_protegidas
+carpetas_de_escritura = armado.carpetas_de_escritura
 
 
 def sandbox_de(config, cliente, cotejo, tarea, trabajo, worktree=None, directorio=None):
-    """El sandbox del agente de esta tarea (cotejo-amui0f): `{"activo", "motivo", "ajustes",
-    "entorno", "avisos"}`. Solo Claude Code lo lleva (Codex trae el suyo; OpenCode y Gemini no
-    tienen); sin él disponible en la máquina, o con `lanzar.sandbox: false`, va apagado con el
-    motivo y el agente trabaja con los prohibidos de siempre (`sandbox.py`)."""
-    apagado = {"activo": False, "motivo": "", "ajustes": None, "entorno": {}, "avisos": []}
-    if cliente.nombre != "claude":
-        return {**apagado, "motivo": f"{cliente.titulo or cliente.nombre} no usa el de Claude"}
-    ajustes = (config.get("lanzar") or {}).get("sandbox")
-    if ajustes is False:
-        return {**apagado, "motivo": "apagado en la config (lanzar.sandbox)"}
-    hay, motivo = caja.disponible()
-    if not hay:
-        return {**apagado, "motivo": motivo}
-    repo = (worktree or {}).get("repo") or (worktrees.raiz_repo(directorio) if directorio
-                                            else None)
-    hecho = caja.del_lanzamiento(
-        carpetas_de_escritura(trabajo, worktree), repo=repo,
-        propio=(worktree or {}).get("ruta"), carpeta_tarea=cotejo.carpeta_de_la_tarea(tarea["id"]),
-        ajustes=ajustes)
-    return {"activo": True, "motivo": "", **hecho}
+    """`armado.sandbox_de` para la tarea (un dict con su `id`)."""
+    return armado.sandbox_de(config, cliente, cotejo, tarea["id"], trabajo, worktree, directorio)
 
 
 # --- lanzar -------------------------------------------------------------------------------------
@@ -374,9 +324,8 @@ def _lanzar(tarea_id, al_terminar, config, rechazada):
                 "lanzamientos": int((anterior or {}).get("lanzamientos") or 0) + 1}
     try:
         # El lanzador de `cotejo` primero y las guardas detrás, antes que lo del sistema.
-        con_guardas = guardas.entorno({**cliente.terminal_libre(
-            carpetas_de_escritura(trabajo, worktree), ramas)[1], **encerrado["entorno"]}, ramas)
-        entorno = mismo_cotejo.entorno(con_guardas, base=con_guardas)
+        entorno = armado.entorno(cliente, carpetas_de_escritura(trabajo, worktree), ramas,
+                                 encerrado)
         ajustes = (config.get("motores") or {}).get("headless") or {}
         proceso = fondo.lanzar(argv, trabajo, str(log), ajustes, entorno,
                                etiqueta="tarea-" + worktrees.seguro(tarea["id"]))

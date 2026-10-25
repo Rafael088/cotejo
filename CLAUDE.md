@@ -201,7 +201,11 @@ bwrap/socat (o sin espacio de nombres, o en Windows) no se pide y el registro gu
 `sandbox.activo: false` con el motivo; `lanzar.sandbox: false` lo apaga. No viven en la config:
 `enrutador.lanzar.argumentos_extra.<cliente>` solo añade (Claude: `stream-json`). El agente de
 `despachar --motor agente` no comparte este armado (no lanza nada) ni el de preparar (solo
-`cotejo`). Toda decisión deja línea en `despachos.jsonl` con `motor: "board"`. El
+`cotejo`). El armado entero (terminal libre, ramas protegidas, carpetas de escritura, sandbox,
+guardas y entorno) vive en `enrutador/armado.py` y lo usan igual el board y
+`despachar --motor headless` (`motores/claude_cli.py`, cotejo-6a7np9: el `Encargo` lleva
+`origen` y `worktree`; sin `directorio` no hay terminal libre y el argv queda como antes).
+Toda decisión deja línea en `despachos.jsonl` con `motor: "board"`. El
 registro es uno por tarea en `<estado>/lanzados/<id>.json` (`pid`, `programa`, `host`, `log`,
 `log_desde`, `cliente`, `modelo`, `worktree`, `directorio`, `comando`, `prompt`) con fases
 `lanzado` / `terminado` / `en-espera` / `detenido`, y `lanzados.estado` da `trabajando`, `murio`,

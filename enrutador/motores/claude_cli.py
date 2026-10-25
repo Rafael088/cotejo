@@ -20,11 +20,13 @@ cuándo y con qué tope de memoria—, para que un OOM de este headless no se ll
 maestro ni a otro headless que esté corriendo a la vez.
 """
 
+import os
 import shutil
 import subprocess
 import time
+from pathlib import Path
 
-from .. import aislamiento, clientes, motor
+from .. import aislamiento, armado, clientes, cotejo as f, guardas, motor
 
 
 class ClaudeCLI(motor.Motor):
@@ -36,12 +38,33 @@ class ClaudeCLI(motor.Motor):
             return self.ajustes
         return (self.ajustes.get("clientes") or {}).get(cliente.nombre) or {}
 
-    def argv(self, encargo):
+    def _armado(self, encargo, cliente):
+        """La terminal libre con los prohibidos de fábrica, y el sandbox de Claude, para un
+        encargo con carpeta: el mismo armado que el agente del board (`armado.py`). Sin carpeta
+        no hay dónde darle terminal libre y el argv queda como siempre."""
+        if not encargo.directorio:
+            return None
+        trabajo = Path(encargo.directorio)
+        origen = Path(encargo.origen) if encargo.origen else trabajo
+        encerrado = armado.sandbox_de(self.config, cliente, f.Cotejo(), encargo.tarea_id, trabajo,
+                                      encargo.worktree, origen)
+        return {"carpetas": armado.carpetas_de_escritura(trabajo, encargo.worktree),
+                "ramas": armado.ramas_protegidas(origen, encargo.worktree),
+                "encerrado": encerrado}
+
+    def argv(self, encargo, hecho=None):
         cliente = clientes.de(encargo.cliente)
         propios = self._ajustes_de(cliente)
-        return cliente.argv_sin_interfaz(
-            cliente.modelo_de(encargo.modelo, encargo.modelo_id), encargo.prompt,
-            comando=propios.get("comando"), extra=propios.get("argumentos_extra") or ())
+        modelo = cliente.modelo_de(encargo.modelo, encargo.modelo_id)
+        hecho = hecho or self._armado(encargo, cliente)
+        if hecho is None:
+            return cliente.argv_sin_interfaz(
+                modelo, encargo.prompt, comando=propios.get("comando"),
+                extra=propios.get("argumentos_extra") or ())
+        return armado.comando(
+            self.config, cliente, encargo.modelo, encargo.modelo_id,
+            encargo.prompt + "\n\n" + armado.nota(hecho["encerrado"]), hecho["carpetas"],
+            hecho["ramas"], guardas.politica_gemini(), hecho["encerrado"]["ajustes"])
 
     def comprobar(self, encargo):
         try:
@@ -57,7 +80,11 @@ class ClaudeCLI(motor.Motor):
 
     def ejecutar(self, encargo):
         try:
-            comando = self.argv(encargo)
+            cliente = clientes.de(encargo.cliente)
+            # Una sola vez: el argv y el entorno comparten el sandbox (su token es de este
+            # lanzamiento) y las ramas protegidas.
+            hecho = self._armado(encargo, cliente)
+            comando = self.argv(encargo, hecho)
         except clientes.ClienteDesconocido as error:
             return motor.Resultado(False, [], 127, ejecutado=False,
                                    error=f"{error} Usa --motor agente.")
@@ -78,10 +105,18 @@ class ClaudeCLI(motor.Motor):
         # prefijo de systemd-run— es lo que se anota y lo que cuenta en los mensajes de error,
         # porque `enrutador/procesos.vivo` compara contra eso (ver `enrutador/aislamiento.py`).
         lanzar = aislamiento.envolver(comando, self.ajustes, encargo.tarea_id)
+        # Con terminal libre: las guardas del PATH, el `cotejo` de quien lanza y el sandbox de
+        # Claude, como el agente del board. `PWD` va con la carpeta (OpenCode trabaja donde la
+        # dice, no donde está `cwd`).
+        entorno = None
+        if hecho is not None:
+            variables = armado.entorno(cliente, hecho["carpetas"], hecho["ramas"],
+                                       hecho["encerrado"])
+            entorno = {**os.environ, **variables, "PWD": str(encargo.directorio)}
         try:
             proceso = subprocess.Popen(
                 lanzar, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-                cwd=str(encargo.directorio) if encargo.directorio else None)
+                cwd=str(encargo.directorio) if encargo.directorio else None, env=entorno)
         except FileNotFoundError:
             return motor.Resultado(
                 False, comando, 127, ejecutado=False,
