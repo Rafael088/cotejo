@@ -430,8 +430,9 @@ def hijos(widget):
 
 def board_falso(anotacion):
     falso = types.SimpleNamespace(app=types.SimpleNamespace(bitacora={"cotejo-aaa111": anotacion}),
-                                  comprobaciones={}, movidas=[], revisadas=[], comprobadas=[])
-    for nombre in ("entrega_de", "revision_en_carta"):
+                                  comprobaciones={}, movidas=[], revisadas=[], comprobadas=[],
+                                  integrando=set())
+    for nombre in ("entrega_de", "revision_en_carta", "tooltip_aprobar"):
         setattr(falso, nombre, types.MethodType(getattr(app.Board, nombre), falso))
     falso.con_icono = app.Board.con_icono
     falso.barra_diff = app.Board.barra_diff

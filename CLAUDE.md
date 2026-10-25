@@ -144,13 +144,17 @@ nunca borra la rama) corre únicamente si la persona dice que sí. **Salvo en un
 creado desde el Inicio** (cotejo-00fwc2): lleva `origen: inicio` en `.cotejo/proyecto.md`
 (`tareas/origen.py`), que pone `init` solo con `COTEJO_ORIGEN=inicio` en el entorno (va en
 `inicio.ENTORNO`, el del agente que lo prepara), y ahí aprobar llama a `integrar_sola`: el mismo
-merge sin preguntar y, si entra, `branch -d` de la rama (el worktree ya se retiró). En esos
-proyectos `.cotejo/` no cuenta como «sin commitear» (el board lo reescribe al mover); si la rama
-lo pisaría, git se niega antes de empezar. Lo que ve la persona sale de `aviso_inicio`, sin
-nombrar ramas: limpio, «Ya está en tu app»; choque, el merge se aborta y se ofrece «Que lo
-resuelva un agente» (crea una tarea de juntar los dos trabajos con el modelo de la aprobada y la
-mueve a Haciendo por `mover`); cambios sin guardar, «Reintentar». Sin marca —todos los de
-antes— sigue el diálogo de siempre. La CLI no gana verbos con esto. El diff se pinta solo con GTK4 + Adwaita (sin GtkSourceView): una etiqueta por línea,
+merge sin preguntar y, si entra, `branch -d` de la rama (el worktree ya se retiró). Corre en
+segundo plano (`Board.en_fondo`, un hilo que vuelve con `GLib.idle_add`; las pruebas lo
+inyectan): mientras tanto la carta lleva «Integrando…» y esa tarea no se vuelve a aprobar. En
+ningún proyecto `.cotejo/` cuenta como «sin commitear» al integrar (el board lo reescribe al
+mover); si la rama lo pisaría, git se niega antes de empezar. Lo que ve la persona sale de
+`aviso_inicio`, sin nombrar ramas: limpio, «Ya está en tu app»; choque, el merge se aborta y se
+ofrece «Que lo resuelva un agente» (crea una tarea de juntar los dos trabajos con el modelo de la
+aprobada, apunta qué rama junta en `<estado>/juntar/<id>.json` —`tareas/juntar.py`— y la mueve a
+Haciendo por `mover`; al aprobarla e integrarla, `branch -d` también de la original, sin forzar);
+cambios sin guardar, «Reintentar». El tooltip de Aprobar dice «La mete en tu app». Sin marca
+—todos los de antes— sigue el diálogo de siempre. La CLI no gana verbos con esto. El diff se pinta solo con GTK4 + Adwaita (sin GtkSourceView): una etiqueta por línea,
 con los colores de siempre (verde lo que entra, ámbar lo que sale) y recortado a
 `LINEAS_MAX` por archivo; lo grande, en la herramienta.
 
