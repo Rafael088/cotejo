@@ -9,7 +9,7 @@ que obedezca. Sin GTK ni disco propio: trabaja sobre un `Almacen` que le pasan.
 import dataclasses
 import os
 
-from . import arquitectura
+from . import arquitectura, como_se_abre
 
 # Los ids de las decisiones que seguían en `propuesta` cuando se relanzó el inicio de un
 # proyecto (coma-separados). Lo pone `enrutador/preparar.py` en el entorno del agente.
@@ -62,6 +62,7 @@ def guardar(alm, tipo, previa, titulo, texto, temas):
     tiene una arquitectura; las piezas nuevas van a esa, con `editar`."""
     if previa is None:
         return alm.crear(tipo, titulo, texto, temas=temas)
+    texto = como_se_abre.con_seccion_previa(texto, previa.cuerpo)   # no borra cómo se abre
     return alm.reescribir(previa.id, previa.version, texto=texto, titulo=titulo,
                           campos={"temas": list(temas)})
 

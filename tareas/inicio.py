@@ -20,6 +20,8 @@ import shlex
 from collections import namedtuple
 from dataclasses import dataclass
 
+from .como_se_abre import FORMATO as COMO_SE_ABRE
+
 # (verbo de cotejo, qué hace, en llano). El orden es el del prompt.
 Paso = namedtuple("Paso", "verbo titulo")
 
@@ -171,6 +173,11 @@ def armar(respuestas):
         "de cada pieza: nunca escribas ahí texto ni nombres de tarea, solo ids reales, y todavía "
         "no los hay. Anota la arquitectura antes de crear las tareas y, cuando existan, añade "
         "los ids a sus piezas con `cotejo editar`." % c,
+        "   En el mismo `--texto`, deja también cómo se abre la app para verla funcionando, "
+        "con el stack que elegiste (quien la construya lo corregirá si cambia). Es lo que usa "
+        "el botón «Ver mi app» de la persona, que no programa. Exactamente así:",
+        "",
+        COMO_SE_ABRE,
         "",
         paso["crear"],
         "   `cotejo crear \"Nombre corto: qué hay que hacer\" --proyecto %s --version 0.1.0`, "

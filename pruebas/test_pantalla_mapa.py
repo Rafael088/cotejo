@@ -187,7 +187,9 @@ class MapaDelProyecto(base.PestanaInicio):
 def _hijos_boton(flowbox):
     hijo = flowbox.get_first_child()
     while hijo is not None:
-        yield hijo.get_child()
+        tarjeta = hijo.get_child()
+        # La tarjeta de un proyecto es su botón con «Ver mi app» debajo (cotejo-vn4qd2).
+        yield (tarjeta.get_first_child() if hasattr(tarjeta, "botones_app") else tarjeta)
         hijo = hijo.get_next_sibling()
 
 

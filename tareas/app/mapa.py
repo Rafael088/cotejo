@@ -56,8 +56,12 @@ class PantallaMapa(Gtk.ScrolledWindow):
         self.ruta = Gtk.Label(xalign=0, hexpand=True, css_classes=["dato"])
         barra.append(self.ruta)
         self.boton_inicio = con_mano(Gtk.Button(label="Inicio"))
+        self.boton_carpeta = con_mano(Gtk.Button(label="Abrir la carpeta"))
+        self.boton_parar = con_mano(Gtk.Button(label="Parar", visible=False))
+        self.boton_ver_app = con_mano(Gtk.Button(label="Ver mi app"))
         self.boton_tablero = con_mano(Gtk.Button(label="Ver el tablero"))
-        for b in (self.boton_inicio, self.boton_tablero):
+        for b in (self.boton_inicio, self.boton_carpeta, self.boton_parar, self.boton_ver_app,
+                  self.boton_tablero):
             barra.append(b)
         cuerpo.append(barra)
 
@@ -122,6 +126,7 @@ class PantallaMapa(Gtk.ScrolledWindow):
         self.titulo.set_label(mapa.titulo)
         self.avance.set_label(mapa.texto_avance)
         etiquetar(self.boton_tablero, f"Ver el tablero de {mapa.proyecto}")
+        etiquetar(self.boton_ver_app, f"Ver mi app: abrir {mapa.proyecto}")
         vaciar(self.capas)
         self.botones_pieza = {}
         self.capas.set_visible(mapa.con_arquitectura)
@@ -201,6 +206,12 @@ class PestanaMapa:
         p.boton_inicio.connect("clicked", lambda *_: self.ver_pestana("inicio"))
         p.boton_tablero.connect("clicked", lambda *_: self.abrir_tablero(
             self.mapa_proyecto[0] if self.mapa_proyecto else ""))
+        # cotejo-vn4qd2: siempre la carpeta principal del proyecto, nunca un worktree.
+        for boton, accion in ((p.boton_ver_app, self.ver_mi_app),
+                              (p.boton_carpeta, self.abrir_carpeta),
+                              (p.boton_parar, lambda nombre, _c: self.parar_app(nombre))):
+            boton.connect("clicked", lambda _b, a=accion: self.mapa_proyecto and a(
+                self.mapa_proyecto[0], self.mapa_proyecto[1] or None))
         return p
 
     def abrir_proyecto(self, nombre, carpeta=None):
@@ -224,6 +235,7 @@ class PestanaMapa:
             if not activa or str(activa) != carpeta:
                 proyecto = None
         self.pantalla_mapa.pintar(m.leer(nombre, carpeta, proyecto))
+        self.pintar_botones_app()
 
     def repintar_mapa_si_se_ve(self):
         if getattr(self, "pestanas", None) is not None and self.pestana_actual() == MAPA:

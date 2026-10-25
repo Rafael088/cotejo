@@ -42,6 +42,7 @@ class PestanaInicio:
 
     def crear_pestanas(self, tablero):
         """La pila con las dos pestañas; `tablero` es lo que antes era todo el contenido."""
+        self.crear_ver_app()
         self.pestanas = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE,
                                   transition_duration=CAMBIO_PESTANA_MS, vexpand=True)
         self.pestanas.add_named(self.crear_inicio(), INICIO)
@@ -218,7 +219,18 @@ class PestanaInicio:
         boton = con_mano(Gtk.Button(child=caja, css_classes=["carta", "inicio-tarjeta"]))
         etiquetar(boton, f"Proyecto {t.nombre}, {t.texto_estado}, {t.texto_avance}")
         boton.connect("clicked", lambda *_: self.abrir_proyecto(t.nombre))
-        return boton
+        # «Ver mi app» y «Abrir la carpeta» (cotejo-vn4qd2): fuera del botón de la tarjeta.
+        tarjeta = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS))
+        tarjeta.append(boton)
+        acciones = Gtk.Box(spacing=px(ESPACIADO_XS), halign=Gtk.Align.START)
+        for texto, accion in (("Ver mi app", self.ver_mi_app), ("Abrir la carpeta", self.abrir_carpeta)):
+            b = con_mano(Gtk.Button(label=texto, css_classes=["flat"]))
+            etiquetar(b, f"{texto} de {t.nombre}")
+            b.connect("clicked", lambda _b, a=accion: a(t.nombre, t.carpeta or None))
+            acciones.append(b)
+        tarjeta.append(acciones)
+        tarjeta.botones_app = acciones
+        return tarjeta
 
     def tarjeta_nuevo(self):
         caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),

@@ -20,7 +20,17 @@ lanzar el proceso a mano. La nota va al final y aparte, para que se lea como lo 
 contexto de hoy, no el enunciado.
 """
 
+from tareas.como_se_abre import FORMATO as COMO_SE_ABRE
+
 from . import navegador
+
+MANTENER_COMO_SE_ABRE = """Si tu trabajo cambia cómo se abre la app (el comando, la dirección o lo que se ve al
+abrirla), actualiza la sección «## Cómo se abre» de la arquitectura del proyecto: el botón «Ver
+mi app» de la persona la usa tal cual. `cotejo contexto` te da el id de la arquitectura; luego
+`cotejo leer <arq-id>` y `cotejo editar <arq-id> --version <hash> --texto "..."` con el texto
+entero. Si aún no la tiene y ya sabes cómo se abre, añádela. El formato:
+
+""" + COMO_SE_ABRE
 
 CIERRE = """Cuando termines, entrégala en Cotejo con evidencia que otro pueda repetir —los
 archivos que tocaste, el comando de las pruebas con su salida, el hash del commit—:
@@ -92,5 +102,5 @@ def armar(tarea, decision, directorio=None, nota="", worktree=None):
     if nota:
         partes += ["", "Lo que añade quien te reparte la tarea, y que no está en su enunciado:",
                    "", nota.strip()]
-    partes += ["", cierre(tarea.get("id", "<id>"))]
+    partes += ["", MANTENER_COMO_SE_ABRE, "", cierre(tarea.get("id", "<id>"))]
     return "\n".join(partes)
