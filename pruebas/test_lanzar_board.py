@@ -262,8 +262,10 @@ class LanzarDesdeElBoard(base.PestanaInicio):
         # La señal de vida (cotejo-21y2ah): visible, con cuánto lleva y el último movimiento.
         self.assertTrue(vivo.vida.get_visible())
         self.assertEqual(vivo.vida_titulo.get_label(), "Trabajando")
-        self.assertIn("Último movimiento hace", vivo.vida_detalle.get_label())
-        self.assertFalse(vivo.vida_ayuda.get_visible())
+        self.assertIn("último movimiento hace", vivo.vida_detalle.get_label())
+        self.assertFalse(vivo.vida_retomar.get_visible())
+        # Qué está haciendo, de la última herramienta del log (el cliente falso usa Bash).
+        self.assertEqual(vivo.vida_ayuda.get_label(), "Corriendo: git status")
         ficha.present(self.board)
         self.assertTrue(self.esperar(vivo.hay_reloj, 2000))
         self.assertIn("Voy a mirar el repo.", vivo.texto())
@@ -281,6 +283,31 @@ class LanzarDesdeElBoard(base.PestanaInicio):
         quieto = vivo.refrescos
         base.girar(1300)
         self.assertEqual(vivo.refrescos, quieto)
+
+    def test_agente_cerrado_sin_entregar_ofrece_retomar_y_lanza_otro(self):
+        """cotejo-21y2ah: si el proceso murió, la ficha lo dice como un hecho y «Retomar» la
+        deja pausada y lanza un agente nuevo en el mismo worktree, sin arrastrar nada."""
+        self.board.ver_pestana("tablero")
+        with mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):
+            self.arrastrar("parseo")
+            registro = lanzados.leer("cotejo-con")
+            primero = registro["pid"]
+            self.assertTrue(self.esperar(lambda: "git status" in Path(registro["log"]).read_text()))
+            fila = self.fila("parseo", "en-curso")
+            with mock.patch.object(lanzados, "_muerto", return_value=True):
+                ficha = self.board.dialogo_detalle(fila.proyecto, fila.tarea)
+                vivo = ficha.en_vivo
+                self.assertEqual(vivo.vida_titulo.get_label(), "Se cerró sin entregar")
+                self.assertTrue(vivo.vida_retomar.get_visible())
+                self.argv_falso.unlink()
+                vivo.vida_retomar.emit("clicked")
+            base.girar(200)
+            nuevo = lanzados.leer("cotejo-con")
+            self.assertNotEqual(nuevo["pid"], primero)
+            self.assertIn("#en-curso #agente/sonnet", self.linea("^cotejo-con"))
+            self.assertEqual(nuevo["worktree"]["ruta"], registro["worktree"]["ruta"])
+            self.assertTrue(self.esperar(lambda: self.argv_falso.exists()))
+            self.assertTrue(esperar_hilo(lambda: not _vive(primero)), "el agente viejo sigue vivo")
 
     def test_devolver_a_pendiente_pausa_y_volver_a_haciendo_retoma(self):
         """cotejo-z7ma7r de punta a punta: pausar conserva worktree, rama y modelo; retomar
