@@ -246,6 +246,10 @@ def crear(tarea_id, plan):
              "rama": rama, "desde": cabeza, "creado": int(time.time())}
     if reutilizado and anterior:
         datos["creado"] = anterior.get("creado", datos["creado"])
+        # La base es de dónde salió la rama, no dónde quedó: la nota de retomar cuenta los
+        # commits desde ahí (`retomar.py`).
+        if anterior.get("rama") == rama and anterior.get("desde"):
+            datos["desde"] = anterior["desde"]
     _registrar(tarea_id, datos)
     return {**datos, "reutilizado": reutilizado}
 

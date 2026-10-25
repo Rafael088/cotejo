@@ -109,13 +109,16 @@ class Detalle:
             cuerpo.append(caja)
 
         # Lanzada desde el board (v1.3.0, `lanzar.py`): en Haciendo, lo que hace su agente en
-        # vivo; en Pendiente, por qué quedó en espera.
+        # vivo; en Pendiente, por qué quedó en espera o que está pausada (cotejo-z7ma7r).
         dialogo.en_vivo = self.seccion_en_vivo(tarea)
         if dialogo.en_vivo is not None:
             cuerpo.append(dialogo.en_vivo)
         espera = self.motivo_en_espera(tarea)
         if espera:
             cuerpo.append(self.seccion_en_espera(espera))
+        dialogo.pausada = None if espera else self.seccion_pausada(tarea)
+        if dialogo.pausada is not None:
+            cuerpo.append(dialogo.pausada)
 
         vista.set_content(Gtk.ScrolledWindow(child=cuerpo, propagate_natural_height=True,
                                              max_content_height=px(520),

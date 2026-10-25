@@ -93,6 +93,10 @@ class Movimientos:
         if (tarea.columna == modelo.PENDIENTE and destino == "en-curso"
                 and self.lanzar_al_mover(proyecto, tarea)):
             return
+        # Haciendo → Pendiente a mano la pausa (cotejo-z7ma7r, `lanzar.py`): su agente se para
+        # y el worktree, la rama y el modelo se quedan para retomarla.
+        if tarea.columna == "en-curso" and destino == modelo.PENDIENTE:
+            self.pausar_al_mover(tarea)
         self.escribir_movimiento(proyecto, tarea, destino)
 
     def escribir_movimiento(self, proyecto, tarea, destino, motivo=""):
@@ -137,12 +141,17 @@ class Movimientos:
             self.ofrecer_integrar(actual, plan)
 
     def retirar_worktree(self, tarea, destino):
-        """Aprobada o devuelta a Pendiente, su worktree de despacho sobra (B3).
+        """Aprobada o devuelta a Pendiente, su worktree de despacho sobra (B3), salvo si la
+        lanzó el board: devuelta a Pendiente está pausada y se retoma ahí (cotejo-z7ma7r).
 
         La rama se queda —es lo que se integra, o sobre lo que trabaja quien la retome— y lo
         que tenga sin commitear también: `retirar` se niega, y aquí solo se avisa.
         """
         if destino not in (modelo.HECHA, modelo.PENDIENTE):
+            return
+        # Pausada (la lanzó el board y volvió a Pendiente): su worktree es de donde retoma el
+        # agente siguiente, y se queda.
+        if destino == modelo.PENDIENTE and self.es_pausable(tarea):
             return
         resultado = worktrees.retirar(tarea.id)
         if resultado.get("registrado") and not resultado.get("retirado"):

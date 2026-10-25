@@ -20,7 +20,7 @@ from unittest import mock
 from apoyo import PruebaDeEnrutador, proyecto
 
 from enrutador import capacidad, despacho_board
-from tareas import lanzados, preparacion
+from tareas import lanzados, preparacion, retomar, worktrees
 
 FALSO = str(Path(__file__).resolve().parent / "cliente_falso.py")
 HAY_GIT = shutil.which("git") is not None
@@ -202,6 +202,142 @@ class Lanzar(ConClienteFalso):
         self.assertEqual(despacho_board.estado("cotejo-asig")["estado"], lanzados.DETENIDO)
         self.assertIn("#en-curso #agente/sonnet ^cotejo-asig", self.leer_nota("Uno.md"))
         self.assertIsNone(despacho_board.detener("cotejo-nunca"))
+
+
+@unittest.skipUnless(HAY_GIT, "sin git")
+class PausarYRetomar(ConClienteFalso):
+    """Devolver a Pendiente pausa y conserva; volver a Haciendo lanza uno nuevo que retoma
+    (cotejo-z7ma7r). El board mueve la línea; aquí se mueve a mano, como lo haría él."""
+
+    def setUp(self):
+        super().setUp()
+        for parche in (mock.patch.object(worktrees, "REGISTRO", self.fuera / "estado" / "wt-reg"),
+                       mock.patch.object(worktrees, "BASE", self.fuera / "wt")):
+            parche.start()
+            self.addCleanup(parche.stop)
+        self.addCleanup(lambda: [despacho_board.detener(i) for i in lanzados.todos()])
+
+    def a_pendiente(self, marca):
+        """Lo que escribe el board al devolverla: quita `#en-curso` y deja el modelo."""
+        nota = self.leer_nota("Uno.md").replace(f"#en-curso #agente/sonnet ^{marca}",
+                                                f"#agente/sonnet ^{marca}")
+        self.escribir_nota("Uno.md", nota)
+
+    def test_pausar_conserva_y_volver_a_lanzar_retoma_con_la_nota(self):
+        with mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):
+            terminado = []
+            primero = self.lanzar("cotejo-asig", al_terminar=terminado.append)
+            registro = lanzados.leer("cotejo-asig")
+            self.assertTrue(esperar(lambda: "git status" in Path(registro["log"]).read_text()))
+            # Pausar: el proceso se para y queda `detenido`; nada más se toca.
+            estado = despacho_board.pausar("cotejo-asig")
+            self.assertEqual(estado["estado"], lanzados.DETENIDO)
+            self.assertTrue(esperar(lambda: terminado), "el agente no se paró")
+            self.assertEqual(despacho_board.estado("cotejo-asig")["estado"], lanzados.DETENIDO)
+            ruta = Path(registro["worktree"]["ruta"])
+            self.assertTrue(ruta.is_dir())
+            self.assertIn("cotejo/cotejo-asig", git(self.repo, "branch", "--list"))
+            base = worktrees.de_tarea("cotejo-asig")["desde"]
+
+            # El agente había dejado un commit y un archivo sin commitear.
+            (ruta / "hecho.txt").write_text("listo\n")
+            git(ruta, "add", "hecho.txt")
+            git(ruta, "commit", "-q", "-m", "Primera mitad del arreglo")
+            (ruta / "a-medias.txt").write_text("falta\n")
+            self.a_pendiente("cotejo-asig")
+            self.assertIn("#agente/sonnet ^cotejo-asig", self.leer_nota("Uno.md"))
+            self.argv_falso.unlink()
+
+            # Volver a Haciendo: otro agente, el mismo worktree, encargo + nota de retomar.
+            segundo = self.lanzar("cotejo-asig")
+        self.assertEqual(segundo["estado"], lanzados.TRABAJANDO)
+        self.assertNotEqual(segundo["pid"], primero["pid"])
+        self.assertIn("#en-curso #agente/sonnet ^cotejo-asig", self.leer_nota("Uno.md"))
+        self.assertTrue(esperar(self.argv_falso.exists))
+        self.assertTrue(esperar(lambda: self.argv_falso.read_text().endswith("}")))
+        lanzado = json.loads(self.argv_falso.read_text())
+        self.assertEqual(Path(lanzado["cwd"]).resolve(), ruta.resolve())
+        prompt = lanzado["argv"][-1]
+        self.assertIn("cotejo entregar cotejo-asig", prompt)            # el encargo
+        self.assertIn(retomar.TITULO, prompt)                            # y la nota, después
+        self.assertLess(prompt.index("cotejo entregar"), prompt.index(retomar.TITULO))
+        self.assertIn("Primera mitad del arreglo", prompt)
+        self.assertIn("?? a-medias.txt", prompt)
+        self.assertIn("> Voy a mirar el repo.", prompt)
+        self.assertIn("> → Bash: git status", prompt)
+        self.assertIn("lo devolvieron a Pendiente", prompt)
+        # La base de la rama no se movió al reutilizar el worktree.
+        self.assertEqual(worktrees.de_tarea("cotejo-asig")["desde"], base)
+
+        registro = lanzados.leer("cotejo-asig")
+        self.assertEqual(registro["lanzamientos"], 2)
+        self.assertEqual(registro["base"], base)
+        r = registro["reanudacion"]
+        self.assertEqual((r["vez"], r["anterior"], r["commits"], r["sin_commitear"]),
+                         (2, "sonnet", 1, 1))
+        self.assertTrue(registro["prompt"].endswith(r["nota"]))
+        self.assertNotIn(retomar.TITULO, registro["encargo"])
+        e = despacho_board.estado("cotejo-asig")
+        self.assertIn("retomándola", lanzados.situacion(e))
+        self.assertIn("Es una reanudación (vez 2)", retomar.resumen(e["reanudacion"]))
+        self.assertIn("1 commit y 1 cambio sin commitear", retomar.resumen(e["reanudacion"]))
+
+        # Pausar y retomar otra vez no apila notas: el encargo es el de siempre.
+        despacho_board.pausar("cotejo-asig")
+        self.a_pendiente("cotejo-asig")
+        tercero = self.lanzar("cotejo-asig")
+        prompt = lanzados.leer("cotejo-asig")["prompt"]
+        self.assertEqual(prompt.count(retomar.TITULO), 1)
+        self.assertEqual(lanzados.leer("cotejo-asig")["reanudacion"]["vez"], 3)
+        self.assertEqual(tercero["estado"], lanzados.TRABAJANDO)
+
+    def test_la_primera_vez_no_es_una_reanudacion(self):
+        self.lanzar("cotejo-asig")
+        registro = lanzados.leer("cotejo-asig")
+        self.assertIsNone(registro["reanudacion"])
+        self.assertNotIn(retomar.TITULO, registro["prompt"])
+        self.assertEqual(registro["prompt"], registro["encargo"])
+
+    def test_pausada_y_sin_hueco_no_pierde_lo_del_lanzamiento_anterior(self):
+        with mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):
+            self.lanzar("cotejo-asig")
+        despacho_board.pausar("cotejo-asig")
+        self.a_pendiente("cotejo-asig")
+        self.configurar(capacidad={"mb_por_agente": 10 ** 9})
+        with self.assertRaises(despacho_board.SinHueco):
+            self.lanzar("cotejo-asig")
+        registro = lanzados.leer("cotejo-asig")
+        self.assertEqual(registro["fase"], lanzados.EN_ESPERA)
+        self.assertTrue(retomar.es_retomable(registro))
+        self.configurar()
+        self.lanzar("cotejo-asig")
+        self.assertIn("lo devolvieron a Pendiente", lanzados.leer("cotejo-asig")["prompt"])
+
+    def test_pausar_lo_que_termino_sin_entregar_y_lo_que_nunca_se_lanzo(self):
+        terminado = []
+        self.lanzar("cotejo-asig", al_terminar=terminado.append)
+        self.assertTrue(esperar(lambda: terminado))
+        self.assertEqual(despacho_board.pausar("cotejo-asig")["estado"], lanzados.DETENIDO)
+        self.assertIsNone(despacho_board.pausar("cotejo-nunca"))
+
+
+class NotaDeRetomar(unittest.TestCase):
+    def test_sin_git_ni_log_dice_lo_que_hay_y_no_falla(self):
+        with tempfile.TemporaryDirectory() as carpeta:
+            log = Path(carpeta) / "x.log"
+            log.write_text("viejo\n" + json.dumps({"type": "assistant", "message": {
+                "content": [{"type": "text", "text": "Quedé en el parser."}]}}) + "\n")
+            registro = {"id": "x", "modelo": "haiku", "log": str(log), "log_desde": 6,
+                        "trabajo": carpeta, "pid": 1}
+            texto = retomar.nota(registro, motivo="se paró a mano")
+        self.assertIn(retomar.TITULO, texto)
+        self.assertIn("(haiku)", texto)
+        self.assertIn("se paró a mano", texto)
+        self.assertIn("> Quedé en el parser.", texto)
+        self.assertNotIn("viejo", texto)            # lo de antes de su lanzamiento, no
+        self.assertNotIn("Commits", texto)          # no es un repo: no se inventa nada
+        self.assertEqual(retomar.nota(None).count(retomar.TITULO), 1)
+        self.assertFalse(retomar.es_retomable({"fase": "en-espera"}))
 
 
 class Legible(unittest.TestCase):

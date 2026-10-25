@@ -18,11 +18,17 @@ una frase de cómo va y sus mensajes (`lanzados.Seguimiento`, en llano). El temp
 las líneas nuevas (`GLib.timeout_add_seconds(1)`) existe solo mientras la ficha se ve: nace en
 `do_map` y se quita en `do_unmap`, como el reloj de Preparando. El hilo que espera al agente no
 toca GTK: avisa con `GLib.idle_add` (`agente_terminado`).
+
+**Pausar y retomar** (cotejo-z7ma7r). Devolver a mano a Pendiente una tarea que lanzó el board la
+pausa (`pausar_al_mover`): su agente se para y el worktree, la rama y el modelo se quedan (no se
+retira el worktree). Su ficha en Pendiente lo dice («Pausada»). Pasarla otra vez a Haciendo
+vuelve por `lanzar_al_mover`, que lanza un agente nuevo con la nota de retomar
+(`tareas/retomar.py`), y su «Lo que hace el agente» dice que es una reanudación.
 """
 
 from gi.repository import Adw, GLib, Gtk, Pango
 
-from .. import bitacora, lanzados, modelo
+from .. import bitacora, lanzados, modelo, retomar
 from .comun import ESPACIADO_SM, ESPACIADO_XS, id_corto
 from .escala import px
 from .piezas import icono
@@ -52,6 +58,11 @@ class EnVivo(Gtk.Box):
         self.situacion = Gtk.Label(xalign=0, wrap=True, css_classes=["detalle-valor"],
                                    wrap_mode=Pango.WrapMode.WORD_CHAR)
         self.append(self.situacion)
+        # Una reanudación (cotejo-z7ma7r) lo dice debajo: de quién retoma y con qué.
+        self.reanudacion = Gtk.Label(xalign=0, wrap=True, visible=False,
+                                     css_classes=["detalle-tenue"],
+                                     wrap_mode=Pango.WrapMode.WORD_CHAR)
+        self.append(self.reanudacion)
         self.registro = Gtk.TextView(editable=False, cursor_visible=False, monospace=True,
                                      wrap_mode=Gtk.WrapMode.WORD_CHAR,
                                      css_classes=["entrevista-texto"])
@@ -70,6 +81,9 @@ class EnVivo(Gtk.Box):
         """Pone la situación y añade al final lo que el agente escribió desde la última vez."""
         registro = lanzados.leer(self.id)
         self.situacion.set_label(lanzados.situacion(lanzados.estado(registro)))
+        dice = retomar.resumen((registro or {}).get("reanudacion"))
+        self.reanudacion.set_label(dice)
+        self.reanudacion.set_visible(bool(dice))
         nuevas = self.seguimiento.nuevas(registro) if registro else []
         buffer = self.registro.get_buffer()
         if nuevas:
@@ -134,6 +148,52 @@ class Lanzar:
                    f"{id_corto(estado.get('id') or tarea.id)}")
         self.app.refrescar()
         return True
+
+    # --- pausar: Haciendo → Pendiente a mano (cotejo-z7ma7r) --------------------------------
+
+    @staticmethod
+    def es_pausable(tarea):
+        """¿La lanzó el board alguna vez? Entonces devolverla a Pendiente la pausa."""
+        return retomar.es_retomable(lanzados.leer(tarea.id))
+
+    def pausar_al_mover(self, tarea):
+        """Para su agente y deja el worktree, la rama y el modelo para retomarla. Devuelve el
+        estado, o None si no la lanzó el board (y se mueve como siempre)."""
+        if not self.es_pausable(tarea):
+            return None
+        from enrutador import despacho_board as db
+        estado = db.pausar(tarea.id)
+        if estado:
+            self.aviso(f"Pausé a {estado.get('modelo') or 'su agente'}: su worktree y su rama "
+                       f"se quedan. Pásala a Haciendo y otro agente la retoma donde quedó.")
+        return estado
+
+    def seccion_pausada(self, tarea):
+        """En la ficha de una tarea pausada (en Pendiente, con un agente anterior): qué queda y
+        qué pasa al moverla. None si no lo está."""
+        if tarea.columna != modelo.PENDIENTE:
+            return None
+        registro = lanzados.leer(tarea.id)
+        if not retomar.es_retomable(registro) or registro.get("fase") == lanzados.EN_ESPERA:
+            return None
+        quien = registro.get("modelo") or "su agente"
+        rama = (registro.get("worktree") or {}).get("rama")
+        texto = (f"Se paró a {quien}" + (f" ({retomar.motivo_de(registro)})"
+                                          if retomar.motivo_de(registro) else "") + ". "
+                 + (f"Su worktree y la rama {rama} siguen ahí. " if rama else "")
+                 + "Al pasarla a Haciendo se lanza un agente nuevo que retoma donde quedó, con "
+                   "una nota de sus commits, lo que dejó sin commitear y lo último que dijo.")
+        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS,
+                       css_classes=["anotacion", "detenida"])
+        cabeza = Gtk.Box(spacing=ESPACIADO_XS)
+        cabeza.append(icono("aviso", 12))
+        cabeza.append(Gtk.Label(label="PAUSADA", xalign=0, css_classes=["anotacion-titulo"]))
+        caja.append(cabeza)
+        caja.append(Gtk.Label(label=texto, xalign=0, wrap=True, selectable=True,
+                              focusable=False, wrap_mode=Pango.WrapMode.WORD_CHAR,
+                              css_classes=["anotacion-texto"]))
+        caja.set_margin_top(ESPACIADO_SM)
+        return caja
 
     def agente_terminado(self, estado):
         """El agente volvió (ya en el hilo de la interfaz): se avisa y se repinta."""

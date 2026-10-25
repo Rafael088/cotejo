@@ -72,7 +72,8 @@ worktree con rama `cotejo/<id>` **fuera del repo y del vault** (por defecto en
 `rutas.estado()/wt`; `enrutador.worktrees.carpeta` o `COTEJO_WORKTREES` lo mueven, y una carpeta
 dentro de cualquiera de los dos se rechaza antes de tomar la tarea). Se registra en
 `rutas.estado()/worktrees/<id>.json`, de donde lo leen `entregar`, `comprobar`, `revisar` y el
-board, que lo retira al aprobar o devolver a Pendiente. Retirar nunca borra la rama ni lo que
+board, que lo retira al aprobar o devolver a Pendiente (salvo si la lanzó el board: entonces
+está pausada y el worktree se queda para retomarla). Retirar nunca borra la rama ni lo que
 esté sin commitear. `--sin-aislar` (o `worktrees.aislar: false`) es el comportamiento de antes.
 
 `tareas/almacen.py` es el almacén de la 1.2 (A1): el resto de `.cotejo/` —decisiones,
@@ -192,6 +193,20 @@ tarea ni el worktree (lo usan pausar y retomar, y el fin y el rechazo). La ficha
 Haciendo lanzada así enseña «Lo que hace el agente» (`lanzar.EnVivo`): `lanzados.Seguimiento` lee
 solo lo nuevo del log y `lanzados.legible` pasa el `stream-json` a texto llano, con un
 temporizador que existe solo mientras la ficha se ve (`do_map`/`do_unmap`).
+
+**Pausar y retomar** (v1.3.0, cotejo-z7ma7r). Devolver a mano a Pendiente una tarea que lanzó el
+board la pausa (`Lanzar.pausar_al_mover` → `despacho_board.pausar`): su agente se para y queda
+`detenido`, y el worktree, la rama y el `#agente/<modelo>` se quedan (`retirar_worktree` no la
+toca); su ficha en Pendiente dice «Pausada». Pasarla otra vez a Haciendo vuelve por `lanzar`, que
+reutiliza el worktree y lanza un agente **nuevo** con el encargo de siempre más la nota de
+retomar de `tareas/retomar.py`, armada sola y sin IA: commits de la rama desde su base (`base`
+en el registro; `worktrees.crear` ya no mueve `desde` al reutilizar), `git status` del worktree
+y las últimas líneas legibles del log del lanzamiento anterior. Nunca hay dos agentes vivos en
+una tarea ni se resume el viejo. El registro guarda `encargo` (sin nota), `prompt` (con ella) y
+`reanudacion` (`vez`, `anterior`, `commits`, `sin_commitear`, `nota`); «Lo que hace el agente»
+dice «está retomándola» y «Es una reanudación (vez N)…». `retomar.nota(registro, motivo)` es
+lo que reutiliza el fin y el rechazo (cotejo-o253bs). Una pausada que se mueve sin hueco queda
+en espera sin perder lo del lanzamiento anterior.
 
 `tareas/revisar_plan.py` es «Revisar el plan» (v1.3.0, cotejo-m195bn), sin GTK; la pinta
 `tareas/app/revisar_plan.py`, una página más de la pila (`"plan"`) a la que lleva el botón de

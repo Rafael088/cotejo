@@ -26,8 +26,15 @@ propio para ninguna:
 Toda decisión deja línea en la bitácora de despachos, también las negativas, con
 `motor: "board"`: `revisar` las cuenta como las de `despachar`.
 
-Para quien venga detrás (pausar y retomar, el fin y el rechazo) quedan `lanzar`, `estado`,
-`detener` y `vigilar`, y el registro por tarea de `tareas/lanzados.py`.
+**Pausar y retomar** (cotejo-z7ma7r): devolver a mano una tarea de Haciendo a Pendiente la
+pausa (`pausar`): su agente se para, y el worktree, la rama y el modelo asignado se quedan.
+Volver a pasarla a Haciendo vuelve por `lanzar`, que reutiliza el worktree (`worktrees.crear`,
+`reutilizado`) y lanza un agente **nuevo** con el encargo de siempre más la nota de retomar
+(`tareas/retomar.py`): sin agentes viejos vivos ni resúmenes con IA. El registro guarda
+`reanudacion` (qué vez, de quién, cuántos commits y cambios) y el detalle lo enseña.
+
+Para quien venga detrás (el fin y el rechazo) quedan `lanzar`, `estado`, `detener`, `pausar` y
+`vigilar`, el registro por tarea de `tareas/lanzados.py` y la nota de `tareas/retomar.py`.
 """
 
 import socket
@@ -36,7 +43,7 @@ import threading
 import time
 from pathlib import Path
 
-from tareas import lanzados, worktrees
+from tareas import lanzados, retomar, worktrees
 from tareas.cli import ErrorCLI
 from . import (bitacora, capacidad, clientes, config as cfg, cotejo as f, decision, despacho,
                encargo as enc, mismo_cotejo, motor, niveles, preparar, procesos, reglas)
@@ -157,6 +164,9 @@ def lanzar(tarea_id, al_terminar=None, config=None):
         tarea = cotejo.tarea(tarea_id)
     except ErrorCLI as error:
         raise NoSePuede(str(error)) from error
+    # Lo que quedó del lanzamiento anterior, si lo hubo: de ahí sale la nota de retomar
+    # (`tareas/retomar.py`), y se lee antes de que el nuevo lo pise.
+    anterior = lanzados.leer(tarea["id"])
     try:
         elegida = decidir(tarea, config)
     except ValueError as error:
@@ -211,6 +221,12 @@ def lanzar(tarea_id, al_terminar=None, config=None):
     for rechazo, problema in despacho.antes_de_tomar(headless, armar(tarea, plan_wt), plan_wt):
         _rechazar(tarea, elegida, rechazo, NoSePuede(problema))
 
+    # Nunca dos agentes en la misma tarea: si el anterior sigue vivo (la tarea volvió a
+    # Pendiente por otro camino), se para antes de lanzar el nuevo. No se resume ni se reusa.
+    if anterior and anterior.get("fase") == lanzados.LANZADO:
+        detener(tarea["id"], "se lanzó otro agente para retomarla")
+        anterior = lanzados.leer(tarea["id"])
+
     # Tomarla: desde aquí, cualquier fallo la suelta antes de decir que no.
     id_antes, asignada = tarea["id"], tarea.get("agente", "")
     try:
@@ -235,7 +251,26 @@ def lanzar(tarea_id, al_terminar=None, config=None):
             soltar(f"No se pudo crear su worktree: {error.mensaje}", "worktree")
     encargo = armar(tarea, worktree)
     trabajo = Path(encargo.directorio)
-    argv = comando(config, cliente, elegida, encargo.prompt,
+    prompt, reanudacion = encargo.prompt, None
+    if retomar.es_retomable(anterior):
+        # Pausada y vuelta a Haciendo: un agente nuevo con el encargo de siempre y, pegada al
+        # final, la nota de retomar armada sola (commits, cambios sin commitear y lo último
+        # que dijo el anterior). Se arma antes de lanzar: después, el log ya es del nuevo.
+        previo = {**anterior, "id": tarea["id"],
+                  "worktree": ({k: worktree.get(k) for k in ("ruta", "rama", "repo")}
+                               if worktree else anterior.get("worktree"))}
+        datos_nota = retomar.datos(previo)
+        prompt = encargo.prompt + "\n\n" + retomar.armar(datos_nota,
+                                                         motivo=retomar.motivo_de(anterior))
+        reanudacion = {"vez": int(anterior.get("lanzamientos") or 1) + 1,
+                       "anterior": anterior.get("modelo"),
+                       "anterior_ts": anterior.get("ts"),
+                       "commits": (len(datos_nota["commits"])
+                                   if datos_nota["commits"] is not None else None),
+                       "sin_commitear": (len(datos_nota["sin_commitear"])
+                                         if datos_nota["sin_commitear"] is not None else None),
+                       "nota": prompt[len(encargo.prompt) + 2:]}
+    argv = comando(config, cliente, elegida, prompt,
                    carpetas_de_escritura(trabajo, worktree))
     log = lanzados.ruta_log(tarea["id"])
     registro = {"id": tarea["id"], "proyecto": proyecto, "texto": tarea.get("texto", ""),
@@ -244,10 +279,14 @@ def lanzar(tarea_id, al_terminar=None, config=None):
                 "directorio": str(directorio), "trabajo": str(trabajo),
                 "worktree": ({k: worktree.get(k) for k in ("ruta", "rama", "repo")}
                              if worktree else None),
-                "comando": argv, "prompt": encargo.prompt, "log": str(log),
-                "log_desde": _tamano(log),
-                "lanzamientos": int((lanzados.leer(tarea["id"]) or {}).get("lanzamientos")
-                                    or 0) + 1}
+                "comando": argv, "prompt": prompt, "encargo": encargo.prompt,
+                "log": str(log), "log_desde": _tamano(log),
+                # La base de la rama se guarda la primera vez y se arrastra: es desde donde
+                # cuenta los commits la nota de retomar.
+                "base": ((anterior or {}).get("base")
+                         or (worktree or {}).get("desde") or None),
+                "reanudacion": reanudacion,
+                "lanzamientos": int((anterior or {}).get("lanzamientos") or 0) + 1}
     try:
         entorno = mismo_cotejo.entorno(cliente.permisos(
             carpetas_de_escritura(trabajo, worktree))[1])
@@ -320,5 +359,25 @@ def detener(tarea_id, motivo=""):
     return lanzados.estado(registro)
 
 
-__all__ = ["NoSePuede", "EsDeUnaPersona", "FaltaModelo", "SinHueco", "lanzar", "estado",
+PAUSA = "lo devolvieron a Pendiente desde el board"
+
+
+def pausar(tarea_id, motivo=PAUSA):
+    """Pausar desde el board (cotejo-z7ma7r): para su agente, si sigue vivo, y lo anota
+    `detenido` con el motivo. El worktree, la rama y el modelo asignado se quedan, para que
+    volver a pasarla a Haciendo lance uno nuevo que retome (`lanzar`, con la nota de
+    `tareas/retomar.py`). Devuelve el estado, o None si el board nunca la lanzó."""
+    registro = lanzados.leer(tarea_id)
+    if registro is None:
+        return None
+    if registro.get("fase") == lanzados.LANZADO:
+        return detener(tarea_id, motivo)
+    if registro.get("fase") == lanzados.TERMINADO:
+        # Terminó sin entregar y se devuelve a mano: también queda pausada para retomarla.
+        registro = lanzados.cambiar_fase(tarea_id, lanzados.DETENIDO, motivo=motivo,
+                                         detenido_ts=int(time.time()))
+    return lanzados.estado(registro)
+
+
+__all__ = ["NoSePuede", "pausar", "EsDeUnaPersona", "FaltaModelo", "SinHueco", "lanzar", "estado",
            "detener", "vigilar", "decidir", "hueco", "comando", "carpetas_de_escritura"]
