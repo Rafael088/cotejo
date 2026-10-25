@@ -23,8 +23,8 @@ import sys
 import time
 from datetime import date
 
-from . import (__version__, ahorro, bitacora, configuracion, estado, evidencia, fuente as f,
-               modelo, revision, version as versiones, worktrees)
+from . import (__version__, ahorro, bitacora, capturas, configuracion, estado, evidencia,
+               fuente as f, modelo, revision, version as versiones, worktrees)
 
 # Versión del formato de salida. Se agregan claves; no se renombran ni se quitan.
 ESQUEMA = 1
@@ -333,6 +333,11 @@ def cmd_entregar(args):
     # tanto alguien movió la tarea, `escribir` lo detecta y no queda una entrega a medias.
     estructurada = evidencia.reunir(carpeta, args.prueba or ())
     estructurada.update(resumen=args.resumen) if args.resumen is not None else None  # solo se agrega
+    try:
+        if args.captura:
+            estructurada["capturas"] = capturas.guardar(tarea.id, args.captura)
+    except (ValueError, OSError) as error:
+        raise ErrorCLI(f"No pude guardar las capturas: {error}", "No se escribió nada.")
     actual = escribir(fuente.poner_estado, tarea, "por-validar")
     bitacora.anotar("entregar", proyecto, actual, de="en-curso", a="por-validar",
                     evidencia=args.evidencia, **estructurada)
@@ -606,17 +611,6 @@ def agente(texto):
     return texto
 
 
-def prueba(texto):
-    """Un comando de prueba que se pueda partir en argv sin shell, que es como se volverá a correr."""
-    try:
-        evidencia.partir(texto)
-    except ValueError as error:
-        raise argparse.ArgumentTypeError(
-            f"«{texto}» no se puede partir en argumentos ({error}). Se corre sin shell: "
-            "nada de tuberías ni `&&`; si hacen falta, una --prueba por comando.") from error
-    return texto
-
-
 def agente_o_ninguno(texto):
     """Como `agente`, pero el vacío sí vale: es como se le quita el dueño a una tarea.
 
@@ -682,11 +676,12 @@ def analizador():
         "entregar", help="Haciéndola → Para comprobar, con evidencia"))
     entregar.add_argument("id")
     entregar.add_argument("--evidencia", required=True,
-                          help="Archivos, pruebas con su salida, commit")
+                          help="Archivos, pruebas, commit")
     entregar.add_argument("--resumen", type=evidencia.resumen_para_humanos, metavar="TEXTO",
                           help="Qué cambió y cómo probarlo")
-    entregar.add_argument("--prueba", action="append", type=prueba, metavar="COMANDO",
-                          help="Comando que Cotejo corre sin shell; repetible")
+    entregar.add_argument("--prueba", action="append", type=evidencia.prueba, metavar="COMANDO",
+                          help="Comando de prueba, sin shell; repetible")
+    entregar.add_argument("--captura", action="append", type=capturas.captura, help="PNG; repetible")
     entregar.add_argument("--repo", metavar="CARPETA",
                           help="Dónde corren las pruebas")
     entregar.set_defaults(funcion=cmd_entregar)

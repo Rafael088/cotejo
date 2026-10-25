@@ -78,6 +78,11 @@ def elegir(entorno=None, which=shutil.which):
     return (None, None, "no hay firefox ni chromium en esta máquina")
 
 
+def disponible(entorno=None, which=shutil.which):
+    """¿Hay un navegador que valga aquí? Se evalúa al llamar, no al importar el módulo."""
+    return elegir(entorno, which)[0] is not None
+
+
 def a_url(destino):
     """Una URL tal cual; una ruta, como `file://` absoluta."""
     texto = str(destino)

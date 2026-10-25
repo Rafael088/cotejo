@@ -27,11 +27,23 @@ NOTA_NAVEGADOR = ("Para ver una página (y sacarle captura) usa Firefox sin inte
                   "arranca en el sandbox. Si sirves la página con un servidor local, arráncalo "
                   "en el mismo comando que el navegador: cada comando va en su sandbox.")
 # Se añade a la nota cuando el Bash del agente va dentro del sandbox de Claude (cotejo-amui0f).
-NOTA_SANDBOX = ("Tu terminal corre dentro de un sandbox: solo puedes escribir en tu carpeta de "
+SANDBOX_BASE = ("Tu terminal corre dentro de un sandbox: solo puedes escribir en tu carpeta de "
                 "trabajo, el .git del repo y las carpetas de Cotejo, y la red solo llega a los "
                 "remotos del repo. Si algo falla con «sistema de ficheros de solo lectura» o "
                 "una conexión denegada, es a propósito: no intentes rodearlo; si te impide "
-                "terminar, bloquea la tarea con el motivo. " + NOTA_NAVEGADOR)
+                "terminar, bloquea la tarea con el motivo. ")
+NOTA_SANDBOX = SANDBOX_BASE + NOTA_NAVEGADOR
+# Sin Firefox no se da un comando que va a fallar (cotejo-0e17vu): se dice y se pide avisar.
+NOTA_SIN_NAVEGADOR = (SANDBOX_BASE + "En esta máquina no hay un navegador sin interfaz para ver tu "
+                      "trabajo: no podrás sacarle capturas. Dilo en la entrega y propón a la "
+                      "persona instalar Firefox.")
+
+
+def nota_sandbox(disponible=None):
+    """La nota del sandbox que vale ahora: con la línea de captura si hay navegador, y si no,
+    la que avisa. `disponible` (para las pruebas) es lo que contesta la detección."""
+    hay = navegador.disponible() if disponible is None else disponible
+    return NOTA_SANDBOX if hay else NOTA_SIN_NAVEGADOR
 
 
 def ramas_protegidas(directorio, worktree=None):
@@ -101,4 +113,4 @@ def entorno(cliente, carpetas, ramas, encerrado):
 
 def nota(encerrado):
     """Lo que se le dice al agente de su terminal, y de su sandbox si lo lleva."""
-    return NOTA_TERMINAL + (" " + NOTA_SANDBOX if encerrado["activo"] else "")
+    return NOTA_TERMINAL + (" " + nota_sandbox() if encerrado["activo"] else "")

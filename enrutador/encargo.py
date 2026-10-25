@@ -20,18 +20,42 @@ lanzar el proceso a mano. La nota va al final y aparte, para que se lea como lo 
 contexto de hoy, no el enunciado.
 """
 
+from . import navegador
+
 CIERRE = """Cuando termines, entrégala en Cotejo con evidencia que otro pueda repetir —los
 archivos que tocaste, el comando de las pruebas con su salida, el hash del commit—:
 
     cotejo entregar {id} --evidencia "..."
 
-Si te atascas, no la dejes a medias: devuélvela con el motivo, que es lo que evita que el
+{capturas}Si te atascasSi te atascas, no la dejes a medias: devuélvela con el motivo, que es lo que evita que el
 siguiente se estrelle contra lo mismo:
 
     cotejo bloquear {id} --motivo "qué lo impide y qué haría falta"
 
 No la marques como hecha. No hay verbo para eso y es a propósito: `[x]` lo pone una persona en
 CotejoBoard después de comprobar."""
+
+
+CON_NAVEGADOR = """Si tu trabajo se ve (una web, una app, una pantalla), saca capturas con un navegador sin
+interfaz (el comando, si hace falta, va en la nota de arriba) —una en móvil (~390×844) y otra en
+escritorio (~1280×800)— y pásalas al entregar, una `--captura` por PNG: Cotejo las guarda y
+quien comprueba las ve grandes sin abrir nada.
+
+    cotejo entregar {id} --evidencia "..." --captura movil.png --captura escritorio.png
+
+"""
+
+SIN_NAVEGADOR = """Si tu trabajo se ve (una web, una app, una pantalla), en esta máquina no hay navegador
+sin interfaz para sacarle capturas: no las pidas ni las inventes. Dilo en la entrega y propón a
+la persona instalar Firefox.
+
+"""
+
+
+def cierre(id_, navegador_disponible=None):
+    """El cierre del encargo; pide capturas solo si hay con qué sacarlas."""
+    hay = navegador.disponible() if navegador_disponible is None else navegador_disponible
+    return CIERRE.format(id=id_, capturas=(CON_NAVEGADOR if hay else SIN_NAVEGADOR).format(id=id_))
 
 
 def armar(tarea, decision, directorio=None, nota="", worktree=None):
@@ -67,5 +91,5 @@ def armar(tarea, decision, directorio=None, nota="", worktree=None):
     if nota:
         partes += ["", "Lo que añade quien te reparte la tarea, y que no está en su enunciado:",
                    "", nota.strip()]
-    partes += ["", CIERRE.format(id=tarea.get("id", "<id>"))]
+    partes += ["", cierre(tarea.get("id", "<id>"))]
     return "\n".join(partes)
