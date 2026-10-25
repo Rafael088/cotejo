@@ -16,6 +16,7 @@ from gi.repository import GLib, Gtk, Pango
 
 from .. import entrevista, inicio
 from .comun import ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XL, ESPACIADO_XS
+from .escala import px
 from .piezas import con_mano, etiquetar
 
 ENTREVISTA = "entrevista"
@@ -27,9 +28,9 @@ class PestanaEntrevista:
     # --- armar la pantalla ----------------------------------------------------------------------
 
     def crear_entrevista(self):
-        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_LG,
-                         margin_top=ESPACIADO_XL * 2, margin_bottom=ESPACIADO_XL * 2,
-                         margin_start=ESPACIADO_XL * 2, margin_end=ESPACIADO_XL * 2)
+        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_LG),
+                         margin_top=px(ESPACIADO_XL) * 2, margin_bottom=px(ESPACIADO_XL) * 2,
+                         margin_start=px(ESPACIADO_XL) * 2, margin_end=px(ESPACIADO_XL) * 2)
         cuerpo.append(Gtk.Label(label="Inicio  ›  Nuevo proyecto", xalign=0, css_classes=["dato"]))
         cuerpo.append(Gtk.Label(label="Cuéntale a tu agente qué quieres construir", xalign=0,
                                 wrap=True, css_classes=["inicio-titular"]))
@@ -42,17 +43,17 @@ class PestanaEntrevista:
                                          Gtk.Entry(placeholder_text=ej["que_es"], hexpand=True))
         self.ent_para_quien = self._pregunta(cuerpo, "2. ¿Quién la va a usar?", "",
                                              Gtk.Entry(placeholder_text=ej["para_quien"], hexpand=True))
-        self.ent_que_hace = Gtk.TextView(wrap_mode=Gtk.WrapMode.WORD_CHAR, top_margin=ESPACIADO_SM,
-                                         bottom_margin=ESPACIADO_SM, left_margin=ESPACIADO_MD,
-                                         right_margin=ESPACIADO_MD, css_classes=["entrevista-texto"])
-        marco = Gtk.ScrolledWindow(child=self.ent_que_hace, min_content_height=84,
+        self.ent_que_hace = Gtk.TextView(wrap_mode=Gtk.WrapMode.WORD_CHAR, top_margin=px(ESPACIADO_SM),
+                                         bottom_margin=px(ESPACIADO_SM), left_margin=px(ESPACIADO_MD),
+                                         right_margin=px(ESPACIADO_MD), css_classes=["entrevista-texto"])
+        marco = Gtk.ScrolledWindow(child=self.ent_que_hace, min_content_height=px(84),
                                    hscrollbar_policy=Gtk.PolicyType.NEVER,
                                    css_classes=["entrevista-marco"])
         # Los ejemplos van en gris y no como respuesta: si no, «Preparar proyecto» sin tocar
         # nada prepararía el proyecto de ejemplo. Un TextView no tiene placeholder: va encima.
         self.ent_que_hace_ejemplo = Gtk.Label(label=ej["que_hace"], xalign=0, yalign=0,
                                               halign=Gtk.Align.START, valign=Gtk.Align.START,
-                                              margin_top=ESPACIADO_SM, margin_start=ESPACIADO_MD,
+                                              margin_top=px(ESPACIADO_SM), margin_start=px(ESPACIADO_MD),
                                               can_target=False, css_classes=["dim-label"])
         marco = Gtk.Overlay(child=marco)
         marco.add_overlay(self.ent_que_hace_ejemplo)
@@ -75,7 +76,7 @@ class PestanaEntrevista:
         self.ent_agentes = []            # nombres de cliente, en el orden del desplegable
         self.ent_agente = Gtk.DropDown(model=Gtk.StringList())
         self.ent_agente_pista = Gtk.Label(xalign=0, wrap=True, css_classes=["dato"])
-        fila_agente = Gtk.Box(spacing=ESPACIADO_SM)
+        fila_agente = Gtk.Box(spacing=px(ESPACIADO_SM))
         fila_agente.append(Gtk.Label(label="Lo prepara", css_classes=["carta-descripcion"]))
         fila_agente.append(self.ent_agente)
         fila_agente.append(self.ent_agente_pista)
@@ -85,8 +86,8 @@ class PestanaEntrevista:
         self.ent_prompt = Gtk.TextView(editable=False, cursor_visible=False, monospace=True,
                                        wrap_mode=Gtk.WrapMode.WORD_CHAR,
                                        css_classes=["entrevista-texto"])
-        marco_prompt = Gtk.ScrolledWindow(child=self.ent_prompt, min_content_height=220,
-                                          max_content_height=360,
+        marco_prompt = Gtk.ScrolledWindow(child=self.ent_prompt, min_content_height=px(220),
+                                          max_content_height=px(360),
                                           hscrollbar_policy=Gtk.PolicyType.NEVER,
                                           css_classes=["entrevista-marco"])
         self.ent_ver = Gtk.Expander(label="Ver lo que se le enviará a tu agente", child=marco_prompt)
@@ -94,7 +95,7 @@ class PestanaEntrevista:
 
         self.ent_error = Gtk.Label(xalign=0, wrap=True, css_classes=["dato"], visible=False)
         cuerpo.append(self.ent_error)
-        pie = Gtk.Box(spacing=ESPACIADO_SM, halign=Gtk.Align.END)
+        pie = Gtk.Box(spacing=px(ESPACIADO_SM), halign=Gtk.Align.END)
         cancelar = con_mano(Gtk.Button(label="Cancelar"))
         cancelar.connect("clicked", lambda *_: self.cancelar_entrevista())
         self.ent_preparar = con_mano(Gtk.Button(label="Preparar proyecto",
@@ -113,13 +114,13 @@ class PestanaEntrevista:
         self.ent_agente.connect("notify::selected", self._al_cambiar_entrevista)
 
         ancho = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, halign=Gtk.Align.CENTER)
-        ancho.set_size_request(640, -1)
+        ancho.set_size_request(px(640), -1)
         ancho.append(cuerpo)
         return Gtk.ScrolledWindow(child=ancho, hexpand=True, vexpand=True,
                                   hscrollbar_policy=Gtk.PolicyType.NEVER, css_classes=["inicio"])
 
     def _pregunta(self, cuerpo, titulo, ayuda, campo):
-        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS)
+        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS))
         caja.append(Gtk.Label(label=titulo, xalign=0, css_classes=["carta-nombre"]))
         if ayuda:
             caja.append(Gtk.Label(label=ayuda, xalign=0, wrap=True, css_classes=["carta-descripcion"]))
@@ -130,8 +131,8 @@ class PestanaEntrevista:
     def _opciones(self, cuerpo, titulo, ayuda, opciones):
         """Casillas (texto → Gtk.ToggleButton) en una fila que se parte; devuelve {texto: botón}."""
         flujo = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=False,
-                            max_children_per_line=4, row_spacing=ESPACIADO_SM,
-                            column_spacing=ESPACIADO_SM)
+                            max_children_per_line=4, row_spacing=px(ESPACIADO_SM),
+                            column_spacing=px(ESPACIADO_SM))
         botones = {}
         for texto, marcada in opciones:
             boton = con_mano(Gtk.ToggleButton(label=texto, active=marcada, css_classes=["pestana"]))

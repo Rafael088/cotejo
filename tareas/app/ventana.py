@@ -4,11 +4,12 @@ from gi.repository import Adw, GLib, Gdk, Gtk
 from enrutador import config as enrutador_config
 
 from .. import almacen, decision, estado, fuente as f, marca, modelo, temas
-from . import comun
+from . import comun, escala
 from .comun import (
     ATAJOS, ENTRADA_MS, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XL, MARGEN_TABLERO_LADOS,
     MARGEN_TABLERO_VERTICAL, agentes_disponibles, animaciones_activas, aplicar_clase_animaciones,
 )
+from .escala import px
 from .piezas import (
     Finalizadas, banda_de_avisos, cabecera_de_marca, dibujar_arranque, etiquetar, icono,
     muestra_de_tema, pintar_logo, poner_avisos,
@@ -52,7 +53,7 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
         super().__init__(application=app, title="CotejoBoard")
         self.app = app
         self.fuente = app.fuente
-        self.set_default_size(1280, 820)
+        self.set_default_size(*self.tamano_inicial())
         self.columnas = {}
         self.agentes = agentes_disponibles()
         self.orden = [clave for clave, _ in modelo.COLUMNAS]
@@ -121,11 +122,11 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
         vista.add_top_bar(self.banda_proyectos)
 
         # homogeneous=False: las columnas ya no miden lo mismo (ver ANCHO_COLUMNAS).
-        self.tablero = Gtk.Box(spacing=ESPACIADO_SM, vexpand=True, halign=Gtk.Align.CENTER,
-                               margin_top=MARGEN_TABLERO_VERTICAL,
-                               margin_bottom=MARGEN_TABLERO_VERTICAL,
-                               margin_start=MARGEN_TABLERO_LADOS,
-                               margin_end=MARGEN_TABLERO_LADOS)
+        self.tablero = Gtk.Box(spacing=px(ESPACIADO_SM), vexpand=True, halign=Gtk.Align.CENTER,
+                               margin_top=px(MARGEN_TABLERO_VERTICAL),
+                               margin_bottom=px(MARGEN_TABLERO_VERTICAL),
+                               margin_start=px(MARGEN_TABLERO_LADOS),
+                               margin_end=px(MARGEN_TABLERO_LADOS))
         self.altura_encabezados = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.VERTICAL)
         for indice, (clave, nombre) in enumerate(modelo.COLUMNAS):
             self.tablero.append(self.columna(indice, clave, nombre))
@@ -163,6 +164,17 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
         self.pintar()
         self.ver_pestana(self.pestana_inicial(), al_abrir=True)
 
+    @staticmethod
+    def tamano_inicial():
+        """1280 × 820 a la escala de ahora, sin pasar del 90 % de la pantalla: a 150 % serían
+        1920 × 1230, más alto que un portátil de 1080."""
+        ancho, alto = px(1280), px(820)
+        monitores = Gdk.Display.get_default().get_monitors()
+        if monitores.get_n_items():
+            zona = monitores.get_item(0).get_geometry()
+            ancho, alto = min(ancho, int(zona.width * 0.9)), min(alto, int(zona.height * 0.9))
+        return ancho, alto
+
     def ajustar_columnas(self):
         anchos = comun.anchos_columnas(int(self.scroll_tablero.get_hadjustment().get_page_size()))
         caja = self.tablero.get_first_child()
@@ -199,7 +211,7 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
         Era la única acción del board que había que adivinar. La tecla se enseña hasta que
         se usa: una vez que hay algo escrito, el hueco lo ocupa lo que estás buscando.
         """
-        caja = Gtk.Box(spacing=ESPACIADO_SM, css_classes=["buscador"], valign=Gtk.Align.CENTER)
+        caja = Gtk.Box(spacing=px(ESPACIADO_SM), css_classes=["buscador"], valign=Gtk.Align.CENTER)
         caja.append(icono("buscar", 16))
         self.busqueda = Gtk.Entry(placeholder_text="Buscar tareas", has_frame=False,
                                   width_chars=14)
@@ -220,13 +232,13 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
                                tooltip_text="Más opciones")
         etiquetar(boton, "Más opciones")
         caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
-                       margin_top=ESPACIADO_SM, margin_bottom=ESPACIADO_SM,
-                       margin_start=ESPACIADO_SM, margin_end=ESPACIADO_SM)
+                       margin_top=px(ESPACIADO_SM), margin_bottom=px(ESPACIADO_SM),
+                       margin_start=px(ESPACIADO_SM), margin_end=px(ESPACIADO_SM))
         popover = Gtk.Popover(child=caja, position=Gtk.PositionType.BOTTOM, halign=Gtk.Align.END)
         boton.set_popover(popover)
         for texto, nombre_icono, atajo, funcion in (
                 ("Atajos de teclado", "teclado", "Ctrl ?", self.ver_atajos),):
-            fila = Gtk.Box(spacing=ESPACIADO_MD)
+            fila = Gtk.Box(spacing=px(ESPACIADO_MD))
             fila.append(icono(nombre_icono, 15))
             rotulo = Gtk.Label(label=texto, xalign=0, hexpand=True)
             fila.append(rotulo)
@@ -234,7 +246,36 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
             opcion = Gtk.Button(css_classes=["flat", "menu-item"], child=fila)
             opcion.connect("clicked", lambda _b, f=funcion, p=popover: (p.popdown(), f()))
             caja.append(opcion)
+        caja.append(self.fila_tamano(popover))
         return boton
+
+    def fila_tamano(self, popover):
+        """Tamaño: 100, 125 o 150 % de todo el board, sobre la escala que ya pone la pantalla.
+
+        Los tres a la vista y no en un diálogo: es un ajuste de un clic y se ve al momento.
+        """
+        fila = Gtk.Box(spacing=px(ESPACIADO_MD), css_classes=["menu-item", "menu-tamano"])
+        fila.append(icono("tamano", 15))
+        fila.append(Gtk.Label(label="Tamaño", xalign=0, hexpand=True))
+        grupo = Gtk.Box(css_classes=["linked"])
+        primero = None
+        for tamano in escala.TAMANOS:
+            opcion = Gtk.ToggleButton(label=f"{tamano} %", active=tamano == self.app.tamano,
+                                      group=primero, css_classes=["tamano"])
+            etiquetar(opcion, f"Tamaño al {tamano} %")
+            opcion.connect("toggled", self.al_elegir_tamano, tamano, popover)
+            primero = primero or opcion
+            grupo.append(opcion)
+        fila.append(grupo)
+        return fila
+
+    def al_elegir_tamano(self, opcion, tamano, popover):
+        if not opcion.get_active() or tamano == self.app.tamano:
+            return
+        popover.popdown()
+        problema = self.app.elegir_tamano(tamano)
+        if problema:
+            self.aviso(problema)
 
     def al_cambiar_de_tamano(self):
         """Maximizada o a pantalla completa, sin esquinas ni sombra (ver `.a-pantalla`)."""
@@ -249,7 +290,7 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
         Todo esto funcionaba desde antes; lo que faltaba era dónde enterarse.
         """
         dialogo = Adw.AlertDialog(heading="Atajos de teclado")
-        rejilla = Gtk.Grid(row_spacing=ESPACIADO_SM, column_spacing=ESPACIADO_XL)
+        rejilla = Gtk.Grid(row_spacing=px(ESPACIADO_SM), column_spacing=px(ESPACIADO_XL))
         for fila, (atajo, que) in enumerate(ATAJOS):
             rejilla.attach(Gtk.Label(label=atajo, xalign=1, css_classes=["menu-atajo"]), 0, fila, 1, 1)
             rejilla.attach(Gtk.Label(label=que, xalign=0), 1, fila, 1, 1)
@@ -357,7 +398,7 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
             faltan = sum(len(p.tareas) for p in proyectos)
             texto = f"{faltan} sin terminar · {donde}"
             self.subtitulo.remove_css_class("en-cotejo")
-        self.subtitulo.set_label(texto.upper())
+        self.subtitulo.set_label(texto)
 
     def mostrar_arranque(self):
         """La marca cargando antes que el board: la C se dibuja y el check entra a cerrarla.

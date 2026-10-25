@@ -31,9 +31,11 @@ CSS = """
      o título de ventana—, no el tamaño que tenía hoy: dos reglas con el mismo papel caen en el
      mismo paso aunque antes difirieran en medio píxel. .anotacion-titulo sube de 9,5px: era el
      texto más chico de la app y además mono en mayúsculas con letter-spacing, la combinación
-     que peor se lee. */
-  --k-etiqueta: 11px;    /* chips, badges y etiquetas de sección: MOVER A, PROYECTOS, un chip */
-  --k-dato: 12px;        /* dato mono secundario bajo un título: el sub de una tarea, un conteo */
+     que peor se lee. En la 1.2.6 (cotejo-x968aw) etiqueta y dato suben un píxel: a 11 y
+     12px la mono fina en gris era lo que no se leía en Windows, y era casi todo lo pequeño.
+     Dato y secundario quedan en 13px, uno en mono y el otro no: el papel lo da la letra. */
+  --k-etiqueta: 12px;    /* chips, badges y etiquetas de sección: MOVER A, PROYECTOS, un chip */
+  --k-dato: 13px;        /* dato mono secundario bajo un título: el sub de una tarea, un conteo */
   --k-secundario: 13px;  /* mensaje de estado o encabezado de un vacío: banda de avisos, Sin pendientes */
   --k-contenido: 14px;   /* lo que se lee como contenido: el texto de una tarea, un nombre de fila */
   --k-encabezado: 15px;  /* encabezado de una sección: columna del board, grupo de proyecto */
@@ -93,7 +95,10 @@ window.a-pantalla, window.a-pantalla.csd { --window-radius: 0px; border-radius: 
 headerbar { min-height: 52px; box-shadow: none; border-bottom: 1px solid var(--k-borde); }
 .marca-titulo { font-family: "Sora"; font-weight: 600; font-size: var(--k-ventana); letter-spacing: -0.01em; }
 .marca-producto { color: var(--k-tenue); }
-.marca-subtitulo, .dato { font-family: "IBM Plex Mono"; font-size: var(--k-dato); color: var(--k-tenue); letter-spacing: 0.06em; }
+.dato { font-family: "IBM Plex Mono"; font-size: var(--k-dato); color: var(--k-tenue); letter-spacing: 0.06em; }
+/* El subtítulo es una frase («4 sin terminar · menu-digital»), no un dato: en Inter, sin
+   mayúsculas ni espaciado, que con la mono era lo que peor se leía de la cabecera. */
+.marca-subtitulo { font-size: var(--k-dato); color: var(--k-tenue); }
 .en-cotejo { color: var(--k-senal); }
 
 searchbar > revealer > box { background: var(--k-fondo); border-bottom: 1px solid var(--k-borde); box-shadow: none; }
@@ -218,13 +223,12 @@ list.columna, list.columna > row { background: transparent; }
    sobre la columna y 5,1:1 sobre la ventana. */
 .vacio-icono { color: var(--k-tenue-hondo); }
 .vacio-titulo { font-size: var(--k-contenido); color: var(--k-texto); font-weight: 500; }
-.vacio-pista { font-family: "IBM Plex Mono"; font-size: var(--k-dato); color: var(--k-tenue); opacity: 0.75; }
+.vacio-pista { font-size: var(--k-dato); color: var(--k-tenue); line-height: 1.4; }
 /* Lo roto no es un vacío cualquiera: ámbar, como la banda de avisos y la anotación detenida,
    sobre el mismo velo que esta. La pista va entera y no a 0.75 porque aquí es la instrucción
    para arreglarlo (7,2:1 sobre el velo; el ámbar, 10,4:1). */
 .vacio.roto { background: var(--k-ambar-velo); border-radius: 10px; padding: var(--k-espacio-md); }
 .vacio.roto .vacio-icono, .vacio.roto .vacio-titulo { color: var(--k-ambar); }
-.vacio.roto .vacio-pista { opacity: 1; }
 /* Lo que te espera en ese proyecto: el número en verde y en negrita, sin pastilla. Es el único
    verde de la banda, y se lee igual en el chip abierto que en los demás. */
 .aviso-chip { color: var(--k-senal); font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta);
@@ -237,7 +241,7 @@ list.columna, list.columna > row { background: transparent; }
 .ahorro { border: 0; padding: 0; }
 .ahorro-cifra { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue); }
 /* La invitación al café, sin raya de separación: en plata y sin acento. */
-.pie-cafe { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue);
+.pie-cafe { font-size: var(--k-dato); color: var(--k-tenue);
             padding: 0; margin: 0; min-height: 0; min-width: 0; background: transparent; border: 0; text-decoration: none; }
 .pie-cafe:hover { color: var(--k-texto); background: transparent; }
 /* Centro: la barra del Maestro, una pastilla como el buscador. El verde va solo en el ícono y
@@ -331,6 +335,15 @@ window, popover { -gtk-icon-size: 16px; }
 /* La opción a la que va la tarea si no dices otra cosa, resaltada: mover una columna a la
    derecha es lo que se hace casi siempre, y así no hay que leer la lista entera. */
 .menu-item.sugerida { background: var(--k-velo); }
+/* La fila de Tamaño no es un botón: es una fila del menú con tres opciones dentro. */
+.menu-tamano { padding: 3px 3px 3px var(--k-espacio-sm); }
+.menu-tamano > label { font-weight: bold; }  /* como el texto de los botones de encima */
+.menu-tamano .linked { border: 1px solid var(--k-borde); border-radius: 7px; padding: 2px; }
+.menu-tamano button.tamano { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); font-weight: 500;
+                             min-height: 24px; padding: 0 var(--k-espacio-sm); border-radius: 5px;
+                             background: transparent; color: var(--k-tenue); box-shadow: none; }
+.menu-tamano button.tamano:hover { color: var(--k-texto); }
+.menu-tamano button.tamano:checked { background: var(--k-superficie-alta); color: var(--k-texto); }
 .menu-atajo { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue); }
 /* Ámbar y no Verde Hecho: el acento es para lo que está en foco, no para lo que está roto. */
 banner > revealer > widget { background: var(--k-ambar-fondo); color: var(--k-ambar); }
@@ -393,6 +406,8 @@ tooltip label { color: var(--k-texto); font-size: var(--k-dato); }
 .chip.chip-tu { color: var(--k-texto); border: 1px solid var(--k-texto); background: transparent; }
 .constelacion-caja { background: var(--k-columna); border: 1px solid var(--k-borde); border-radius: 10px; padding: var(--k-espacio-md); }
 .constelacion-leyenda { padding-top: var(--k-espacio-sm); border-top: 1px solid var(--k-borde-hondo); }
+/* Los nombres de la leyenda son palabras, no datos: en Inter y sin espaciado. */
+.constelacion-leyenda .dato { font-family: "Inter"; letter-spacing: 0; }
 /* El mapa del proyecto (cotejo-p86sa9): cuatro capas sobre el fondo, piezas como cartas
    pequeñas; la tocada, con el borde del texto (el verde solo en el punto de lo que espera). */
 .mapa-capa { background: var(--k-columna); border: 1px solid var(--k-borde); border-radius: 10px;

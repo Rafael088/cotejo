@@ -241,6 +241,10 @@ def _iconos():
         "teclado": (rect(2.8, 6.8, 18.4, 10.4, 2.2) + disco((6.6, 11), 0.95)
                     + disco((9.7, 11), 0.95) + disco((12.8, 11), 0.95)
                     + disco((15.9, 11), 0.95) + linea((8.4, 14.3), (15.6, 14.3))),
+        # Una A grande y una chica: el tamaño de todo el board, en el menú ⋮.
+        "tamano": (polilinea([(3.2, 19), (8.6, 5.2), (14, 19)]) + linea((5.3, 14.2), (11.9, 14.2))
+                   + polilinea([(14.6, 19), (17.9, 10.6), (21.2, 19)])
+                   + linea((15.9, 16), (19.9, 16))),
         # Medio disco lleno: el mismo círculo cambia de mitad al cambiar de tema.
         "tema": anillo((12, 12), 6.4) + semidisco((12, 12), 5.6, -90, 90),
         # Aviso: lo que está roto, no lo que está vacío. Triángulo y no círculo para que no

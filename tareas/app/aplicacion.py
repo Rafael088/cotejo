@@ -41,8 +41,11 @@ class App(Adw.Application):
         # Si el board que se abra será el primero de un proceso que arrancó con la ventana: es
         # el único que lleva la animación de arranque. Con --fondo no hay arranque que enseñar.
         self.desde_cero = True
-        # Lo que la escala de Windows le añade a la de GTK (ver `escala`). 1 fuera de Windows.
+        # Lo que la escala de Windows le añade a la de GTK (ver `escala`), por el tamaño elegido
+        # en el menú ⋮. Fuera de Windows y con el tamaño de siempre, 1.
         self.factor = 1.0
+        self.escala_pantalla = 1.0
+        self.tamano = 100
         self.vigilando_escala = False
         self.dpi_de_letra = None  # el gtk-xft-dpi de antes de tocarlo, si se tocó
 
@@ -53,7 +56,8 @@ class App(Adw.Application):
             Gdk.Display.get_default(), self.proveedor, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         # Antes del primer CSS y del primer icono: con el DPI del sistema, que es el del
         # monitor principal. Al abrir la ventana se corrige con el de su monitor.
-        self.poner_factor(escala.forzado() or escala.calcular_factor(escala.dpi_de(None)))
+        self.tamano = self.tamano_de_la_config()
+        self.poner_factor(pantalla=escala.forzado() or escala.calcular_factor(escala.dpi_de(None)))
         self.aplicar_tema(temas.elegido())
         # Los iconos propios. Van como simbólicos para que el color lo siga poniendo el CSS:
         # el mismo dibujo va en plata en un chip, en verde en la columna que te espera y en
@@ -164,8 +168,14 @@ class App(Adw.Application):
 
     # --- escala de Windows ------------------------------------------------
 
-    def poner_factor(self, factor):
-        """Cambia el factor de escala; True si cambió (y hay que recargar el CSS)."""
+    def poner_factor(self, pantalla=None):
+        """Rehace el factor con la escala de la pantalla (si se da) y el tamaño elegido.
+
+        True si cambió, y entonces hay que recargar el CSS (`aplicar_tema`).
+        """
+        if pantalla is not None:
+            self.escala_pantalla = pantalla
+        factor = round(self.escala_pantalla * escala.zoom(self.tamano), 2)
         if factor == self.factor:
             return False
         self.factor = escala.FACTOR = factor
@@ -187,10 +197,54 @@ class App(Adw.Application):
         superficie = self.board.get_surface()
         dpi = escala.dpi_de(superficie)
         if dpi and self.poner_factor(escala.calcular_factor(dpi, superficie.get_scale_factor())):
+            # Sin rehacer la ventana: la nueva se abriría donde quiera Windows, quizá en el otro
+            # monitor, y volvería a cambiar. Lo que se crea desde ahora (las cartas, al pintar)
+            # ya sale con las medidas nuevas.
             self.aplicar_tema(self.tema)
             for ventana in self.get_windows():
                 escala.reescalar_iconos(ventana)
         return GLib.SOURCE_CONTINUE
+
+    def tamano_de_la_config(self):
+        try:
+            return configuracion.leer().get("tamano", 100)
+        except (configuracion.ConfigRota, OSError):
+            return 100
+
+    def elegir_tamano(self, tamano):
+        """Lo que hace el menú ⋮: el board se rehace al tamaño nuevo y se apunta en la config.
+
+        Se rehace la ventana entera porque los márgenes y los anchos que pone Python se leen al
+        crearla; el CSS solo no bastaría. Devuelve el problema si no se pudo guardar.
+        """
+        self.tamano = tamano
+        if self.poner_factor():
+            self.aplicar_tema(self.tema)
+            GLib.idle_add(lambda: self.reconstruir_board() and False)
+        try:
+            datos = configuracion.leer()
+            if datos.get("tamano", 100) != tamano:
+                configuracion.guardar({**datos, "tamano": tamano})
+        except (configuracion.ConfigRota, OSError) as error:
+            return f"Se ve, pero no pude guardarlo: {error}"
+        return None
+
+    def reconstruir_board(self):
+        """Cambia el board abierto por uno nuevo, en la misma pestaña y igual de grande."""
+        viejo = self.board
+        if viejo is None:
+            return
+        visible, maximizada = viejo.get_visible(), viejo.is_maximized()
+        pestana = viejo.pestanas.get_visible_child_name()
+        self.board = None
+        if visible:
+            self.desde_cero = False
+            self.abrir_board()
+            if self.board is not None:
+                if maximizada:
+                    self.board.maximize()
+                self.board.ver_pestana(pestana)
+        viejo.destroy()
 
     # --- datos ------------------------------------------------------------
 
@@ -264,6 +318,10 @@ class App(Adw.Application):
         tema = temas.elegido()
         if tema != self.tema:
             self.aplicar_tema(tema)
+        # Y el tamaño, por lo mismo: si lo cambió otra cosa que el menú ⋮.
+        tamano = self.tamano_de_la_config()
+        if tamano != self.tamano:
+            self.elegir_tamano(tamano)
         # Y el dot: `"dot": true|false` lo crea o lo destruye en el board abierto.
         if self.board is not None:
             self.board.sincronizar_dot()

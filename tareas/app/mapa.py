@@ -17,9 +17,10 @@ fuente repo y no en la activa, y por eso el plan la pasa explícita.
 
 from gi.repository import Adw, Gtk, Pango
 
-from .. import constelacion as c, mapa as m
+from .. import mapa as m
 from .comun import ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XL, ESPACIADO_XS
-from .constelacion import leyenda
+from .escala import px
+from .constelacion import dibujar_punto, leyenda
 from .piezas import chip, con_mano, etiquetar, vaciar
 
 MAPA = "mapa"
@@ -29,10 +30,9 @@ ANCHO_MAPA = 1080
 
 def punto(estado, colores):
     """El punto de un estado, dibujado igual que en la constelación."""
-    area = Gtk.DrawingArea(content_width=LADO_PUNTO, content_height=LADO_PUNTO,
+    area = Gtk.DrawingArea(content_width=px(LADO_PUNTO), content_height=px(LADO_PUNTO),
                            valign=Gtk.Align.CENTER)
-    area.set_draw_func(lambda _a, cr, w, h: c.dibujar_punto(cr, w / 2, h / 2, estado,
-                                                            colores() or {}))
+    area.set_draw_func(lambda _a, cr, w, h: dibujar_punto(cr, w, h, estado, colores))
     return area
 
 
@@ -48,11 +48,11 @@ class PantallaMapa(Gtk.ScrolledWindow):
         self.mapa = None
         self.botones_pieza = {}          # id → botón, para las pruebas y el foco
         self.ficha_actual = None
-        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_LG,
-                         margin_top=ESPACIADO_XL * 2, margin_bottom=ESPACIADO_XL * 2,
-                         margin_start=ESPACIADO_XL * 2, margin_end=ESPACIADO_XL * 2)
+        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_LG),
+                         margin_top=px(ESPACIADO_XL) * 2, margin_bottom=px(ESPACIADO_XL) * 2,
+                         margin_start=px(ESPACIADO_XL) * 2, margin_end=px(ESPACIADO_XL) * 2)
 
-        barra = Gtk.Box(spacing=ESPACIADO_SM)
+        barra = Gtk.Box(spacing=px(ESPACIADO_SM))
         self.ruta = Gtk.Label(xalign=0, hexpand=True, css_classes=["dato"])
         barra.append(self.ruta)
         self.boton_inicio = con_mano(Gtk.Button(label="Inicio"))
@@ -61,8 +61,8 @@ class PantallaMapa(Gtk.ScrolledWindow):
             barra.append(b)
         cuerpo.append(barra)
 
-        cabeza = Gtk.Box(spacing=ESPACIADO_LG)
-        textos = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS,
+        cabeza = Gtk.Box(spacing=px(ESPACIADO_LG))
+        textos = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
                          hexpand=True)
         self.eyebrow = Gtk.Label(xalign=0, css_classes=["dato"])
         self.titulo = Gtk.Label(xalign=0, wrap=True, css_classes=["inicio-titular"])
@@ -76,11 +76,11 @@ class PantallaMapa(Gtk.ScrolledWindow):
         # Las cuatro capas: en fila con ancho, una debajo de otra en una ventana estrecha.
         self.capas = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True,
                                  min_children_per_line=1, max_children_per_line=4,
-                                 row_spacing=ESPACIADO_SM, column_spacing=ESPACIADO_SM,
+                                 row_spacing=px(ESPACIADO_SM), column_spacing=px(ESPACIADO_SM),
                                  valign=Gtk.Align.START)
         cuerpo.append(self.capas)
 
-        self.vacio = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS,
+        self.vacio = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
                              visible=False, css_classes=["carta", "plan-bloque"])
         self.vacio.append(Gtk.Label(label="Este proyecto todavía no tiene arquitectura",
                                     xalign=0, css_classes=["carta-nombre"]))
@@ -90,13 +90,13 @@ class PantallaMapa(Gtk.ScrolledWindow):
             xalign=0, wrap=True, css_classes=["carta-descripcion"]))
         cuerpo.append(self.vacio)
 
-        self.ficha = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_SM,
+        self.ficha = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_SM),
                              css_classes=["carta", "plan-bloque", "mapa-ficha"])
         self.ficha_capa = Gtk.Label(xalign=0, css_classes=["dato"])
         self.ficha_nombre = Gtk.Label(xalign=0, wrap=True, css_classes=["carta-nombre"])
         self.ficha_frase = Gtk.Label(xalign=0, wrap=True)
-        self.ficha_chips = Gtk.Box(spacing=ESPACIADO_XS)
-        self.ficha_tareas = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS)
+        self.ficha_chips = Gtk.Box(spacing=px(ESPACIADO_XS))
+        self.ficha_tareas = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS))
         self.ficha_tecnologia = Gtk.Label(xalign=0, wrap=True, css_classes=["dato"])
         for w in (self.ficha_capa, self.ficha_nombre, self.ficha_frase, self.ficha_chips,
                   self.ficha_tareas, self.ficha_tecnologia):
@@ -110,8 +110,8 @@ class PantallaMapa(Gtk.ScrolledWindow):
         cuerpo.append(self.avisos_plegable)
         cuerpo.append(leyenda(colores))
 
-        self.set_child(Adw.Clamp(child=cuerpo, maximum_size=ANCHO_MAPA,
-                                 tightening_threshold=ANCHO_MAPA))
+        self.set_child(Adw.Clamp(child=cuerpo, maximum_size=px(ANCHO_MAPA),
+                                 tightening_threshold=px(ANCHO_MAPA)))
 
     # --- pintar ---------------------------------------------------------------------------------
 
@@ -143,14 +143,14 @@ class PantallaMapa(Gtk.ScrolledWindow):
             self.al_tocar_pieza(elegida["id"])
 
     def _capa(self, capa):
-        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_SM,
+        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_SM),
                        valign=Gtk.Align.START, css_classes=["mapa-capa"])
         caja.append(Gtk.Label(label=capa.titulo, xalign=0, css_classes=["carta-nombre"]))
         caja.append(Gtk.Label(label=capa.subtitulo, xalign=0, css_classes=["carta-descripcion"]))
         if not capa.piezas:
             caja.append(Gtk.Label(label="Nada todavía", xalign=0, css_classes=["dato"]))
         for pieza in capa.piezas:
-            fila = Gtk.Box(spacing=ESPACIADO_SM)
+            fila = Gtk.Box(spacing=px(ESPACIADO_SM))
             fila.append(punto(pieza["estado"], self._colores))
             fila.append(Gtk.Label(label=pieza["nombre"], xalign=0, hexpand=True, wrap=True,
                                   wrap_mode=Pango.WrapMode.WORD_CHAR))
@@ -179,7 +179,7 @@ class PantallaMapa(Gtk.ScrolledWindow):
         self.ficha_chips.append(chip(f.texto_estado, "", *(["verde"] if f.verde else [])))
         vaciar(self.ficha_tareas)
         for t in f.tareas:
-            fila = Gtk.Box(spacing=ESPACIADO_MD, css_classes=["plan-tarea"])
+            fila = Gtk.Box(spacing=px(ESPACIADO_MD), css_classes=["plan-tarea"])
             fila.append(Gtk.Label(label=t["texto"], xalign=0, wrap=True, hexpand=True))
             fila.append(chip(t["texto_columna"], "",
                              *(["verde"] if t["columna"] == "por-validar" else [])))

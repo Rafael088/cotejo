@@ -11,6 +11,7 @@ from .comun import (
     DATOS, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XS, LADO_ARRANQUE, REVELAR_MS, SALIDA_CARTA_MS,
     animaciones_activas,
 )
+from .escala import px
 
 
 def banda_de_avisos():
@@ -204,9 +205,9 @@ def cabecera_de_marca(producto, con_botones_de_ventana):
     """
     cabecera = Adw.HeaderBar(show_start_title_buttons=con_botones_de_ventana,
                              show_end_title_buttons=con_botones_de_ventana)
-    caja_titulo = Gtk.Box(spacing=ESPACIADO_MD, halign=Gtk.Align.START)
+    caja_titulo = Gtk.Box(spacing=px(ESPACIADO_MD), halign=Gtk.Align.START)
     textos = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER)
-    nombre = Gtk.Box(spacing=ESPACIADO_SM, halign=Gtk.Align.START)
+    nombre = Gtk.Box(spacing=px(ESPACIADO_SM), halign=Gtk.Align.START)
     logo = Gtk.Picture(content_fit=Gtk.ContentFit.CONTAIN, can_shrink=False,
                        alternative_text="Cotejo", valign=Gtk.Align.END)
     nombre.append(logo)
@@ -226,7 +227,7 @@ def chip(texto, nombre_icono="", *clases, tooltip="", maximo=0):
     Lleva icono además del texto porque en una carta hay tres seguidas y todas son texto
     mono del mismo tamaño: sin forma que las separe hay que leerlas para saber cuál es cuál.
     """
-    caja = Gtk.Box(spacing=ESPACIADO_XS, css_classes=["chip", *clases],
+    caja = Gtk.Box(spacing=px(ESPACIADO_XS), css_classes=["chip", *clases],
                    valign=Gtk.Align.CENTER)
     if nombre_icono:
         caja.append(icono(nombre_icono, 12))
@@ -250,7 +251,7 @@ def vacio(nombre_icono, titulo, pista, roto=False):
     """
     clases = ["vacio"] + (["roto"] if roto else [])
     caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, css_classes=clases,
-                   spacing=ESPACIADO_XS)
+                   spacing=px(ESPACIADO_XS))
     # A la izquierda como el texto que lleva debajo: una imagen se centra sola si no se
     # le dice, y quedaba fuera del eje de su propio título.
     marca = icono(nombre_icono, 20, "vacio-icono")
@@ -283,6 +284,9 @@ def muestra_de_tema(colores):
         cr.set_source_rgba(r / 255, g / 255, b / 255, a)
 
     def dibujar(_area, cr, ancho, alto):
+        # Dibujada en sus 56 × 38 y escalada al tamaño que le tocó (más grande en Windows).
+        cr.scale(ancho / 56, alto / 38)
+        ancho, alto = 56, 38
         rectangulo(cr, 0.5, 0.5, ancho - 1, alto - 1, 6)
         poner(cr, "fondo")
         cr.fill_preserve()
@@ -300,7 +304,7 @@ def muestra_de_tema(colores):
         poner(cr, "senal")
         cr.fill()
 
-    area = Gtk.DrawingArea(content_width=56, content_height=38, valign=Gtk.Align.CENTER)
+    area = Gtk.DrawingArea(content_width=px(56), content_height=px(38), valign=Gtk.Align.CENTER)
     area.set_draw_func(dibujar)
     return area
 
@@ -406,7 +410,7 @@ def dibujar_arranque(cr, ancho, alto, t, colores):
     """
     geo = marca.LETRA
     x0, y0, x1, y1 = marca.caja(geo)
-    escala = LADO_ARRANQUE / max(x1 - x0, y1 - y0)
+    escala = px(LADO_ARRANQUE) / max(x1 - x0, y1 - y0)
     cr.translate(ancho / 2, alto / 2)
     cr.scale(escala, escala)
     cr.translate(-(x0 + x1) / 2, -(y0 + y1) / 2)

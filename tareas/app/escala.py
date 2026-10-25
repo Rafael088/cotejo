@@ -59,6 +59,17 @@ def forzado():
     return factor if 0.5 <= factor <= 4 else None
 
 
+# El tamaño que se elige en el menú ⋮ (`"tamano"` en la config), en %: se multiplica por el de
+# la pantalla. Para quien quiere letra más grande, o para corregir un Windows que contesta un
+# DPI que no es sin tener que saber de variables de entorno.
+TAMANOS = (100, 125, 150)
+
+
+def zoom(tamano):
+    """El factor de un tamaño de la config: 1 si no está o no es uno de `TAMANOS`."""
+    return tamano / 100 if tamano in TAMANOS else 1.0
+
+
 def escalar_css(css, factor):
     """El CSS con cada medida en `px` multiplicada por `factor`.
 
@@ -82,11 +93,25 @@ def tamano(base):
     return max(1, round(base * FACTOR))
 
 
+def px(medida):
+    """Una medida de layout de las que pone Python (márgenes, anchos, `spacing`) a la escala
+    de ahora. Se llama al crear cada widget y no al importar: así un board rehecho después de
+    cambiar el factor (`App.reconstruir_board`) sale con las medidas nuevas."""
+    return medida if FACTOR == 1 else round(medida * FACTOR)
+
+
 def dpi_de_letra(factor, original=None):
     """El `gtk-xft-dpi` que corresponde a `factor`: el de GTK en Windows (`96 * factor`, en
     1024avos), o `original` escalado donde ya había uno (Linux con `COTEJO_ESCALA`)."""
     base = original if original and original > 0 and sys.platform != "win32" else DPI_BASE * 1024
     return round(base * factor)
+
+
+def a_escala(cr, ancho, alto):
+    """Prepara un contexto de cairo para dibujar a escala 1 lo que mide `ancho` × `alto`
+    a la de ahora: lo escala y devuelve el tamaño en las unidades de antes."""
+    cr.scale(FACTOR, FACTOR)
+    return ancho / FACTOR, alto / FACTOR
 
 
 def reescalar_iconos(raiz):
