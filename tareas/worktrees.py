@@ -128,6 +128,13 @@ def raiz_repo(carpeta):
     return Path(salida) if codigo == 0 and salida else None
 
 
+def rama_por_defecto(repo):
+    """La rama por defecto del repo según su remoto `origin` (`origin/HEAD`), o None si no lo
+    sabe (sin remoto, o un clon que nunca lo apuntó). La usa el board para protegerla."""
+    codigo, salida, _ = _git(repo, "symbolic-ref", "--short", "-q", "refs/remotes/origin/HEAD")
+    return salida.split("/", 1)[1] if codigo == 0 and "/" in salida else None
+
+
 def sin_commits(repo):
     """¿El repo no tiene ningún commit (no hay HEAD)? Falso si no se puede saber."""
     codigo, _, _ = _git(repo, "rev-parse", "--verify", "-q", "HEAD")

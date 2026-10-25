@@ -20,7 +20,8 @@ def main():
     if os.environ.get("FALSO_ARGV"):
         with open(os.environ["FALSO_ARGV"], "w", encoding="utf-8") as archivo:
             json.dump({"argv": sys.argv[1:], "cwd": os.getcwd(),
-                       "path": os.environ.get("PATH", "")}, archivo)
+                       "path": os.environ.get("PATH", ""),
+                       "pwd": os.environ.get("PWD", "")}, archivo)
     linea({"type": "system", "subtype": "init", "model": "falso"})
     linea({"type": "assistant", "message": {"content": [
         {"type": "text", "text": "Voy a mirar el repo."},
