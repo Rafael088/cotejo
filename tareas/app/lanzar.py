@@ -24,6 +24,12 @@ pausa (`pausar_al_mover`): su agente se para y el worktree, la rama y el modelo 
 retira el worktree). Su ficha en Pendiente lo dice («Pausada»). Pasarla otra vez a Haciendo
 vuelve por `lanzar_al_mover`, que lanza un agente nuevo con la nota de retomar
 (`tareas/retomar.py`), y su «Lo que hace el agente» dice que es una reanudación.
+
+**El fin y el rechazo** (cotejo-o253bs). Cuando el agente vuelve, `despacho_board` le hace el
+fin y aquí solo se avisa (`agente_terminado`): entregó y está en Para comprobar, donde su ficha
+y su revisión guardan sus mensajes; o terminó sin entregar y volvió a Pendiente, pausada, con el
+motivo. Devolver de Para comprobar a Haciendo con motivo (`relanzar_al_rechazar`) lanza un
+agente nuevo en el mismo worktree con lo que se pidió cambiar.
 """
 
 from gi.repository import Adw, GLib, Gtk, Pango
@@ -35,6 +41,7 @@ from .piezas import icono
 
 SEGUNDOS = 1
 EN_CURSO = "en-curso"
+POR_COMPROBAR = "por-validar"
 
 
 class EnVivo(Gtk.Box):
@@ -195,6 +202,32 @@ class Lanzar:
         caja.set_margin_top(ESPACIADO_SM)
         return caja
 
+    # --- el rechazo: Para comprobar → Haciendo con motivo (cotejo-o253bs) ---------------------
+
+    def relanzar_al_rechazar(self, proyecto, tarea, motivo):
+        """Devuelta a Haciendo con motivo: se mueve (con el «rechazar» de siempre) y se lanza
+        un agente nuevo en su worktree con el encargo, la entrega anterior y lo que se pidió
+        cambiar. False si no la lanzó el board (y se mueve como siempre)."""
+        if not self.es_pausable(tarea):
+            return False
+        from enrutador import despacho_board as db
+        try:
+            estado = db.rechazar(
+                tarea.id, motivo,
+                lambda: self.escribir_movimiento(proyecto, tarea, EN_CURSO, motivo),
+                al_terminar=lambda e: GLib.idle_add(self.agente_terminado, e))
+        except db.NoSePuede as error:
+            self.aviso(f"No lancé otro agente: {error}")
+            self.app.refrescar()
+            return True
+        if estado is None:
+            return False
+        self.foco_tras_pintar = tarea.id
+        self.aviso(f"{estado.get('modelo') or 'Otro agente'} la retoma con lo que pediste "
+                   f"cambiar, en el mismo worktree")
+        self.app.refrescar()
+        return True
+
     def agente_terminado(self, estado):
         """El agente volvió (ya en el hilo de la interfaz): se avisa y se repinta."""
         if estado:
@@ -282,7 +315,9 @@ class Lanzar:
         return caja
 
     def seccion_en_vivo(self, tarea):
-        """«Lo que hace el agente», si la lanzó el board y está en Haciendo; si no, None."""
-        if tarea.columna != EN_CURSO or lanzados.leer(tarea.id) is None:
+        """«Lo que hace el agente», si la lanzó el board y está en Haciendo o, ya entregada, en
+        Para comprobar (sus mensajes se guardan, cotejo-o253bs); si no, None."""
+        if (tarea.columna not in (EN_CURSO, POR_COMPROBAR)
+                or not retomar.es_retomable(lanzados.leer(tarea.id))):
             return None
         return EnVivo(tarea.id)

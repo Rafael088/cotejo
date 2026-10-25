@@ -115,7 +115,7 @@ class Movimientos:
         except (modelo.TareaCambiada, OSError) as error:
             self.aviso(f"No pude moverla: cambió en {error}")
             self.app.refrescar()
-            return
+            return False
         # Quién hizo qué se anota después de escribir en la nota: el estado no depende de que
         # la bitácora llegue al disco. Los nombres distinguen las dos transiciones que son de
         # una persona, comprobar y rechazar, del resto de los movimientos a mano.
@@ -139,6 +139,7 @@ class Movimientos:
         self.app.refrescar()
         if plan is not None:
             self.ofrecer_integrar(actual, plan)
+        return True
 
     def retirar_worktree(self, tarea, destino):
         """Aprobada o devuelta a Pendiente, su worktree de despacho sobra (B3), salvo si la
@@ -184,6 +185,10 @@ class Movimientos:
     def al_responder_motivo(self, _dialogo, respuesta, entrada, proyecto, tarea, destino):
         motivo = entrada.get_text().strip()
         if respuesta != "devolver" or not motivo:
+            return
+        # De Para comprobar a Haciendo, si la lanzó el board, va otro agente con lo que se
+        # pidió cambiar (cotejo-o253bs, `lanzar.py`); si no, se mueve como siempre.
+        if destino == "en-curso" and self.relanzar_al_rechazar(proyecto, tarea, motivo):
             return
         self.escribir_movimiento(proyecto, tarea, destino, motivo)
 
