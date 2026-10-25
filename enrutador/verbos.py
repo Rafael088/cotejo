@@ -298,7 +298,8 @@ def cmd_despachar(args):
             prompt=enc.armar(tarea, elegida, directorio, args.nota, worktree),
             modelo=elegida.nivel.modelo, modelo_id=elegida.nivel.modelo_id,
             directorio=trabajo, tarea_id=tarea.get("id", ""),
-            proyecto=tarea.get("proyecto", ""), cliente=elegida.nivel.cliente)
+            proyecto=tarea.get("proyecto", ""), cliente=elegida.nivel.cliente,
+            origen=directorio, worktree=worktree)
 
     encargo = armar_encargo(tarea, plan_wt)
 
