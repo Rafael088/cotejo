@@ -7,8 +7,8 @@ proceso sale sin cerrarlo). El log de cada uno va a `rutas.estado()/ver-app/<pro
 Lo que se corre sale del repo de la persona (`tareas/como_se_abre.py`), así que va sin shell
 (`shlex.split`), en la carpeta del proyecto, en su propio grupo de procesos (parar se lleva
 también a los hijos, como el servidor que lanza `npm run dev`) y nunca con `sudo` (se niega
-antes). Una página estática la sirve Cotejo con `python -m http.server` en un puerto libre de
-127.0.0.1.
+antes). Una página estática la sirve Cotejo con `servidor_estatico.py` en un puerto libre de
+127.0.0.1: como `http.server`, pero sin servir nada oculto (`.git`, `.cotejo`) ni listar carpetas.
 
 `abrir` bloquea hasta que la app responde o se rinde (por eso el board lo llama en un hilo) y
 **no** abre el navegador: devuelve un `Resultado` con qué abrir (`abrir`) y la frase en llano,
@@ -153,8 +153,8 @@ class Servidores:
             if not (carpeta / como.url).is_file():
                 return Resultado(False, f"No encuentro «{como.url}» en la carpeta de tu proyecto.")
             puerto = puerto_libre()
-            argv = [sys.executable, "-m", "http.server", str(puerto), "--bind", "127.0.0.1",
-                    "--directory", str(carpeta)]
+            argv = [sys.executable, str(Path(__file__).with_name("servidor_estatico.py")),
+                    str(puerto), str(carpeta)]
             url = f"http://127.0.0.1:{puerto}/{como.url}"
             return self._arrancar(nombre, ("pagina", str(carpeta), como.url), argv, carpeta,
                                   url, como, tope=10)

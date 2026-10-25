@@ -19,6 +19,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -230,6 +231,22 @@ class CicloDeVida(unittest.TestCase):
         self.assertIsNotNone(proceso.poll())
         self.assertFalse(s.responde(r.abrir))
         self.assertFalse(self.servidores.vivo("tienda"))
+
+    def test_la_pagina_estatica_no_ensena_lo_oculto(self):
+        # La carpeta del proyecto lleva .git y .cotejo: el servidor de Cotejo no los sirve,
+        # ni con la ruta escapada, ni lista carpetas.
+        (self.carpeta / ".git").mkdir()
+        (self.carpeta / ".git" / "config").write_text("[remote]", encoding="utf-8")
+        (self.carpeta / ".env").write_text("CLAVE=1", encoding="utf-8")
+        (self.carpeta / "img").mkdir()
+        r = self.servidores.abrir("tienda", self.plan(url="index.html"))
+        self.assertTrue(r.ok, r.texto)
+        base = r.abrir.rsplit("/", 1)[0]
+        self.assertIn("Mi app", self.leer(r.abrir))
+        for ruta in ("/.git/config", "/%2Egit/config", "/img/../.env", "/.env", "/img/"):
+            with self.subTest(ruta=ruta), self.assertRaises(urllib.error.HTTPError) as error:
+                self.leer(base + ruta)
+            self.assertEqual(error.exception.code, 404)
 
     def test_comando_anotado_con_su_direccion(self):
         puerto = s.puerto_libre()
