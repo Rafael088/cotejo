@@ -17,6 +17,8 @@ entera vuelta a pedir por cada tarea que se despachaba. Ahora el vault se escane
 ahí salen todas las respuestas.
 """
 
+from pathlib import Path
+
 from tareas import bitacora as bitacora_cotejo, cli as cotejo
 
 
@@ -114,6 +116,26 @@ class Cotejo:
         """La carpeta del proyecto según la fuente (en la de repos, el repo), o None."""
         fuente, _ = self._abrir()
         return fuente.carpeta_de(proyecto)
+
+    def carpeta_de_la_tarea(self, tarea_id):
+        """La carpeta local donde la fuente escribe esta tarea (el `.cotejo/` de su repo, o la
+        carpeta de su nota en el vault), o None si no vive en un archivo de esta máquina (una
+        fuente externa). Es donde escribe `cotejo entregar`, y el sandbox del agente del board
+        tiene que dejarle (cotejo-amui0f)."""
+        fuente, proyectos = self._abrir()
+        try:
+            _, tarea = cotejo.tomar_tarea(fuente, proyectos, tarea_id)
+        except cotejo.ErrorCLI:
+            return None
+        duena = fuente._duena(tarea.donde) if hasattr(fuente, "_duena") else fuente
+        archivo = getattr(duena, "_archivo", None)
+        if archivo is None or not tarea.donde:
+            return None
+        try:
+            carpeta = Path(archivo(tarea.donde)).parent
+        except (FileNotFoundError, ValueError, TypeError):
+            return None
+        return carpeta if carpeta.is_dir() else None
 
     def carpetas_propias(self):
         """Dónde guarda la fuente sus notas: ningún worktree puede caer ahí dentro."""

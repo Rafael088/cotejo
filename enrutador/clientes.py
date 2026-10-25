@@ -102,7 +102,8 @@ class Cliente:
             return [], {"GEMINI_CLI_TRUST_WORKSPACE": "true"}
         return [], {}
 
-    def terminal_libre(self, carpetas, ramas=None, politica_gemini=None, entorno=None):
+    def terminal_libre(self, carpetas, ramas=None, politica_gemini=None, entorno=None,
+                       sandbox=None):
         """Los permisos del agente que lanza el board (v1.3.0, cotejo-7yfw1e, dec-kiik):
         `(argumentos, variables de entorno)`.
 
@@ -112,7 +113,11 @@ class Cliente:
         rama por defecto (`ramas`) y borrar fuera del worktree. Cada cliente con lo suyo:
 
         - **Claude Code**: `acceptEdits`, `--allowedTools Bash` (todo el Bash) y
-          `--disallowedTools` con los prohibidos, que ganan a cualquier permiso.
+          `--disallowedTools` con los prohibidos, que ganan a cualquier permiso. Con `sandbox`
+          (la clave `sandbox` que arma `sandbox.del_lanzamiento`, cotejo-amui0f), además su
+          Bash corre encerrado: escribe solo en esas carpetas y sale a la red solo a sus
+          remotos, así que borrar fuera del worktree falla también por `python3 -c`, `find
+          -delete` o `cd /x && rm y`, que los patrones no ven.
         - **Codex**: su sandbox `workspace-write` (`permisos`): solo escribe en las carpetas de
           la tarea, no tiene red (no puede empujar nada) y no puede subir privilegios.
         - **OpenCode**: `permission.bash` con todo en `allow` y los prohibidos en `deny` al
@@ -127,7 +132,9 @@ class Cliente:
         ramas = ramas_protegidas(ramas)
         argv, env = self.permisos(carpetas, entorno=entorno)
         if self.nombre == "claude":
+            from . import sandbox as caja
             return (["--permission-mode", "acceptEdits", "--allowedTools", "Bash",
+                     *(caja.argumentos_claude(sandbox) if sandbox else []),
                      "--disallowedTools", *[f"Bash({p})" for p in prohibidos(ramas)]], env)
         if self.nombre == "opencode":
             return argv, {"OPENCODE_CONFIG_CONTENT": _opencode_con_prohibidos(
@@ -194,7 +201,8 @@ def prohibidos(ramas=None):
     Son patrones sobre el texto del comando, así que paran lo que se escribe de la forma normal
     (`sudo …`, `git push --force …`, `git push origin main`, `rm -rf /…`, `rm ../…`); lo que se
     salga de eso lo para el `git` de `guardas.py`, que lee los argumentos de verdad, o el
-    sandbox del cliente (Codex). Borrar dentro del worktree con ruta relativa sigue libre."""
+    sandbox del cliente (Codex, y Claude con `sandbox.py`). Borrar dentro del worktree con ruta
+    relativa sigue libre."""
     lista = []
     for orden in ESCALAR:
         lista += [orden, f"{orden} *"]

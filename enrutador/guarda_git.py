@@ -9,6 +9,12 @@ fábrica, que aquí se leen de los argumentos y no de cómo esté escrito el com
   diga que es su `HEAD`): `origin main`, `HEAD:main`, `x:refs/heads/main`, `--delete main`, y un
   `git push` a secas cuya rama de destino (`@{push}`) es una de ellas.
 
+Y una cortesía para el sandbox de Claude (cotejo-amui0f, `COTEJO_SANDBOX=1`): ahí el `.git/config`
+del repo no se puede escribir (un `core.hooksPath` que dejara el agente lo correría después el
+`git` de la persona), así que `git push -u` empujaba la rama pero fallaba al guardar su upstream
+y salía con error. Dentro del sandbox se le quita el `-u` (`sin_upstream`) y se avisa: la rama
+se empuja igual.
+
 Es la segunda capa, debajo de lo que niega cada cliente (`clientes.prohibidos`): quien llame a
 otro `git` por su ruta completa se la salta, y por eso no es la única. Solo usa la biblioteca
 estándar: corre con `python -I -S` en cada llamada a `git` del agente.
@@ -86,6 +92,50 @@ def leer_push(args):
     return remoto, refspecs, ""
 
 
+SIN_UPSTREAM = ("Cotejo: empujo sin «-u»: dentro del sandbox no se puede escribir el "
+                ".git/config del repo, que es donde git guarda el upstream. La rama se empuja "
+                "igual; para los siguientes push di el remoto y la rama.")
+
+
+def sin_upstream(args):
+    """`(args, quitado)`: la llamada a `git push` sin `-u`/`--set-upstream` (también dentro de
+    `-uq`), o tal cual si no es un push o no los lleva."""
+    globales, sub, resto = partir(args)
+    if sub != "push":
+        return args, False
+    salida, quitado, fin, i = [], False, False, 0
+    while i < len(resto):
+        a = resto[i]
+        i += 1
+        if fin or a == "--":
+            fin = True
+            salida.append(a)
+            continue
+        if a == "--set-upstream":
+            quitado = True
+            continue
+        if a.startswith("--"):
+            salida.append(a)
+            if a.split("=", 1)[0] in PUSH_CON_VALOR and "=" not in a and i < len(resto):
+                salida.append(resto[i])
+                i += 1
+            continue
+        if a.startswith("-") and len(a) > 1:
+            letras, valor = a[1:], ""
+            if "o" in letras:
+                letras, valor = letras[:letras.index("o")], letras[letras.index("o"):]
+            limpias = letras.replace("u", "")
+            quitado = quitado or limpias != letras
+            if limpias or valor:
+                salida.append("-" + limpias + valor)
+            if valor == "o" and i < len(resto):
+                salida.append(resto[i])
+                i += 1
+            continue
+        salida.append(a)
+    return [*globales, sub, *salida], quitado
+
+
 def _git(real, globales, *args):
     try:
         hecho = subprocess.run([real, *globales, *args], capture_output=True, text=True,
@@ -161,6 +211,10 @@ def main(args):
     if por:
         sys.stderr.write(AVISO.format(motivo=por) + "\n")
         return 1
+    if os.environ.get("COTEJO_SANDBOX") == "1":
+        args, quitado = sin_upstream(args)
+        if quitado:
+            sys.stderr.write(SIN_UPSTREAM + "\n")
     if os.name == "nt":
         return subprocess.call([real, *args])
     os.execv(real, [real, *args])

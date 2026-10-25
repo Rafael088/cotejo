@@ -190,7 +190,15 @@ al final; Gemini: `auto_edit` y `--policy` con `politica_gemini_toml`) y, debajo
 PATH (`guardas.py`: un `git` que lee los argumentos y no deja `push` a la fuerza ni a `main`/la
 rama por defecto —`worktrees.rama_por_defecto`—, y `sudo`/`su`/`doas`/`pkexec` que se niegan).
 Los prohibidos son sudo/su, `git push --force`, empujar a `main` o a la rama por defecto y borrar
-fuera del worktree (ruta absoluta, `~`, `$HOME` o `..`). No viven en la config:
+fuera del worktree (ruta absoluta, `~`, `$HOME` o `..`). Con Claude, además, su Bash va en
+**el sandbox de Claude Code** (cotejo-amui0f, `enrutador/sandbox.py`, por `--settings`): escribe
+solo en el worktree, el `.git` del repo (sin `hooks` ni `config`), las carpetas de Cotejo, la
+carpeta del archivo de la tarea (`Cotejo.carpeta_de_la_tarea`) y un remoto que sea carpeta; no
+escribe en los demás worktrees; la red solo a los servidores de sus remotos (+`api.github.com`) y
+`lanzar.sandbox.dominios`. Lleva `GH_TOKEN` (de `gh auth token`: el llavero no se alcanza desde
+el sandbox) y `COTEJO_SANDBOX=1`, con el que la guarda de `git` quita el `-u` de un push. Sin
+bwrap/socat (o sin espacio de nombres, o en Windows) no se pide y el registro guarda
+`sandbox.activo: false` con el motivo; `lanzar.sandbox: false` lo apaga. No viven en la config:
 `enrutador.lanzar.argumentos_extra.<cliente>` solo añade (Claude: `stream-json`). El agente de
 `despachar --motor agente` no comparte este armado (no lanza nada) ni el de preparar (solo
 `cotejo`). Toda decisión deja línea en `despachos.jsonl` con `motor: "board"`. El
