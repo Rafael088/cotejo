@@ -6,7 +6,7 @@ antes de tocar nada.
 ## Antes de empezar
 
 ```sh
-python3 -m unittest discover pruebas   # 918, deben estar todas en verde
+python3 -m unittest discover pruebas   # 1842, deben estar todas en verde
 tareas-obsidian evaluar | head -3      # 85,7 % y 0 abaratados
 git log --oneline | head -3
 git status --short                     # si no está limpio, averigua por qué antes de seguir
@@ -216,6 +216,28 @@ una tarea ni se resume el viejo. El registro guarda `encargo` (sin nota), `promp
 dice «está retomándola» y «Es una reanudación (vez N)…». `retomar.nota(registro, motivo)` es
 lo que reutiliza el fin y el rechazo (cotejo-o253bs). Una pausada que se mueve sin hueco queda
 en espera sin perder lo del lanzamiento anterior.
+
+**El fin y el rechazo** (v1.3.0, cotejo-o253bs). El proceso del agente se cierra solo al
+terminar, y el hilo de `vigilar` le hace el fin (`despacho_board.fin`, **una vez por
+lanzamiento**: `lanzados.reclamar_fin` y la clave `fin` del registro, con `como` =
+`entrego` / `sin-entregar` / `otro`). Si entregó, la tarea ya está en Para comprobar y su
+registro y su log se quedan: la ficha y la revisión enseñan sus mensajes (`seccion_en_vivo`
+vale también en Para comprobar). Si sigue en Haciendo a su nombre, terminó **sin entregar**:
+`cotejo.soltar` la devuelve a Pendiente con su modelo y el motivo en llano («El agente terminó
+sin entregar…», con lo último que dijo) y el registro queda `detenido` con
+`motivo: "el agente terminó sin entregar"`, así que sale «Pausada» y conserva el worktree. Si la
+bloqueó o la movió alguien, no se toca. Los que murieron con el board cerrado los recoge
+`despacho_board.recoger()`, que `App.refrescar` llama antes de leer (salta los pids que espera
+un hilo de este proceso). Nada de esto relanza: lanzar es siempre de una persona. **Devolver de
+Para comprobar a Haciendo con motivo** una tarea que lanzó el board (`Lanzar.relanzar_al_rechazar`,
+desde `al_responder_motivo`) llama a `despacho_board.rechazar(id, motivo, mover)`: para al
+anterior si sigue vivo y guarda `rechazo` en el registro (motivo, la entrega anterior en llano de
+`retomar.rechazo` y `de_pid`, que impide que el fin del anterior la suelte) **antes** de que
+`mover()` escriba la línea y el «rechazar» de siempre; luego lanza uno nuevo en el mismo worktree
+sin volver a tomarla, con el encargo (sin repetir motivo ni evidencia), la nota de retomar y
+«Lo que te pidieron cambiar» (`retomar.armar_rechazo`). Si no se puede lanzar (sin hueco…),
+vuelve a Pendiente con el rechazo guardado y el siguiente lanzamiento lo lleva mientras no haya
+una entrega más nueva (`retomar.rechazo_vigente`).
 
 `tareas/revisar_plan.py` es «Revisar el plan» (v1.3.0, cotejo-m195bn), sin GTK; la pinta
 `tareas/app/revisar_plan.py`, una página más de la pila (`"plan"`) a la que lleva el botón de

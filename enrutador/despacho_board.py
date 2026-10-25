@@ -36,8 +36,14 @@ Volver a pasarla a Haciendo vuelve por `lanzar`, que reutiliza el worktree (`wor
 (`tareas/retomar.py`): sin agentes viejos vivos ni resúmenes con IA. El registro guarda
 `reanudacion` (qué vez, de quién, cuántos commits y cambios) y el detalle lo enseña.
 
-Para quien venga detrás (el fin y el rechazo) quedan `lanzar`, `estado`, `detener`, `pausar` y
-`vigilar`, el registro por tarea de `tareas/lanzados.py` y la nota de `tareas/retomar.py`.
+**El fin y el rechazo** (cotejo-o253bs). Cuando el agente termina, su proceso se cierra solo y
+`vigilar` le hace el fin (`fin`, una vez por lanzamiento): si entregó, la tarea ya está en Para
+comprobar y su registro y su log se quedan; si terminó o murió **sin entregar**, vuelve a
+Pendiente con su modelo y el motivo en llano —«el agente terminó sin entregar», con lo último
+que dijo— y queda `detenido` con el worktree para retomarla. Los que se cerraron con el board
+cerrado los recoge `recoger` al refrescar. Nada de eso relanza: lanzar es siempre de una
+persona. Devolver de Para comprobar a Haciendo con motivo (`rechazar`) lanza uno nuevo en el
+mismo worktree con el encargo, la nota de retomar y lo que pidieron cambiar.
 """
 
 import socket
@@ -46,7 +52,7 @@ import threading
 import time
 from pathlib import Path
 
-from tareas import lanzados, retomar, worktrees
+from tareas import bitacora as bitacora_cotejo, lanzados, retomar, worktrees
 from tareas.cli import ErrorCLI
 from . import (bitacora, capacidad, clientes, config as cfg, cotejo as f, decision, despacho,
                encargo as enc, guardas, mismo_cotejo, motor, niveles, preparar, procesos,
@@ -174,6 +180,13 @@ def lanzar(tarea_id, al_terminar=None, config=None):
     Levanta `EsDeUnaPersona`, `FaltaModelo`, `SinHueco` o `NoSePuede` sin haber tomado nada.
     `al_terminar(estado)` se llama desde otro hilo cuando el agente vuelve.
     """
+    return _lanzar(tarea_id, al_terminar, config, rechazada=False)
+
+
+def _lanzar(tarea_id, al_terminar, config, rechazada):
+    """`lanzar`, y con `rechazada` el relanzamiento de `rechazar`: la tarea ya está en
+    Haciendo a nombre de su modelo (se la devolvieron desde Para comprobar), así que no se
+    toma otra vez, y el agente nuevo recibe además lo que le pidieron cambiar."""
     config = config if config is not None else cfg.cargar()
     cotejo = f.Cotejo()
     try:
@@ -195,9 +208,11 @@ def lanzar(tarea_id, al_terminar=None, config=None):
         _rechazar(tarea, elegida, "falta_modelo", FaltaModelo(
             f"Nadie le ha asignado modelo. La propuesta es {elegida.nivel.modelo} "
             f"({elegida.razon}).", elegida.nivel.modelo, elegida.razon))
-    if tarea.get("estado") != "pendiente":
+    esperado = "en-curso" if rechazada else "pendiente"
+    if tarea.get("estado") != esperado:
         _rechazar(tarea, elegida, "no_pendiente", NoSePuede(
-            f"La tarea no está pendiente, está en «{tarea.get('estado')}»."))
+            f"La tarea no está {'en Haciendo' if rechazada else 'pendiente'}, está en "
+            f"«{tarea.get('estado')}»."))
 
     calculo = hueco(config)
     if calculo.get("caben") == 0:
@@ -225,8 +240,16 @@ def lanzar(tarea_id, al_terminar=None, config=None):
 
     cliente = _cliente_de(elegida)
 
+    # Lo que pidieron cambiar, si se la devolvieron desde Para comprobar y aún no volvió a
+    # entregar (`retomar.rechazo_vigente`): va entero en la nota, así que el encargo no repite
+    # el motivo ni la evidencia de la bitácora.
+    rechazo = retomar.rechazo_vigente(anterior, bitacora_cotejo.ultima_entrega(tarea["id"]))
+
     def armar(tarea_ahora, worktree):
         trabajo = Path(worktree["ruta"]) if worktree else directorio
+        if rechazo:
+            tarea_ahora = {k: v for k, v in tarea_ahora.items()
+                           if k not in ("motivo", "evidencia")}
         return motor.Encargo(
             prompt=enc.armar(tarea_ahora, elegida, directorio, NOTA, worktree),
             modelo=elegida.nivel.modelo, modelo_id=elegida.nivel.modelo_id,
@@ -243,12 +266,16 @@ def lanzar(tarea_id, al_terminar=None, config=None):
         detener(tarea["id"], "se lanzó otro agente para retomarla")
         anterior = lanzados.leer(tarea["id"])
 
-    # Tomarla: desde aquí, cualquier fallo la suelta antes de decir que no.
+    # Tomarla: desde aquí, cualquier fallo la suelta antes de decir que no. Una rechazada ya
+    # está en Haciendo a su nombre: lo que tenía en Pendiente es lo del lanzamiento anterior.
     id_antes, asignada = tarea["id"], tarea.get("agente", "")
-    try:
-        tarea = cotejo.tomar(tarea["id"], elegida.nivel.modelo)
-    except ErrorCLI as error:
-        _rechazar(tarea, elegida, "no_pendiente", NoSePuede(str(error)))
+    if rechazada:
+        asignada = (anterior or {}).get("asignada") or asignada
+    else:
+        try:
+            tarea = cotejo.tomar(tarea["id"], elegida.nivel.modelo)
+        except ErrorCLI as error:
+            _rechazar(tarea, elegida, "no_pendiente", NoSePuede(str(error)))
 
     def soltar(motivo, rechazo):
         try:
@@ -276,8 +303,10 @@ def lanzar(tarea_id, al_terminar=None, config=None):
                   "worktree": ({k: worktree.get(k) for k in ("ruta", "rama", "repo")}
                                if worktree else anterior.get("worktree"))}
         datos_nota = retomar.datos(previo)
-        prompt = encargo.prompt + "\n\n" + retomar.armar(datos_nota,
-                                                         motivo=retomar.motivo_de(anterior))
+        prompt = encargo.prompt + "\n\n" + retomar.armar(
+            datos_nota, motivo=retomar.POR_RECHAZO if rechazada else retomar.motivo_de(anterior))
+        if rechazo:
+            prompt += "\n\n" + retomar.armar_rechazo(rechazo)
         reanudacion = {"vez": int(anterior.get("lanzamientos") or 1) + 1,
                        "anterior": anterior.get("modelo"),
                        "anterior_ts": anterior.get("ts"),
@@ -285,6 +314,7 @@ def lanzar(tarea_id, al_terminar=None, config=None):
                                    if datos_nota["commits"] is not None else None),
                        "sin_commitear": (len(datos_nota["sin_commitear"])
                                          if datos_nota["sin_commitear"] is not None else None),
+                       "rechazo": (rechazo or {}).get("motivo"),
                        "nota": prompt[len(encargo.prompt) + 2:]}
     ramas = ramas_protegidas(directorio, worktree)
     argv = comando(config, cliente, elegida, prompt,
@@ -302,7 +332,7 @@ def lanzar(tarea_id, al_terminar=None, config=None):
                 # cuenta los commits la nota de retomar.
                 "base": ((anterior or {}).get("base")
                          or (worktree or {}).get("desde") or None),
-                "reanudacion": reanudacion,
+                "reanudacion": reanudacion, "rechazo": rechazo,
                 "lanzamientos": int((anterior or {}).get("lanzamientos") or 0) + 1}
     try:
         # El lanzador de `cotejo` primero y las guardas detrás, antes que lo del sistema.
@@ -333,29 +363,163 @@ def _tamano(ruta):
         return 0
 
 
+# Los pids que espera un hilo de este proceso: `recoger` no se los adelanta.
+_VIGILADOS = set()
+
+
 def vigilar(proceso, tarea, elegida, timeout, al_terminar=None):
-    """Espera al proceso en un hilo, anota cómo volvió (registro y bitácora de despachos) y
-    llama `al_terminar(estado)`. Devuelve el hilo."""
+    """Espera al proceso en un hilo, anota cómo volvió (registro y bitácora de despachos), le
+    hace el fin (`fin`: entregó, o vuelve a Pendiente) y llama `al_terminar(estado)`. Devuelve
+    el hilo."""
+    _VIGILADOS.add(proceso.pid)
+
     def esperar():
         try:
-            codigo = proceso.wait(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            procesos.terminar(proceso.pid)
             try:
-                proceso.wait(timeout=10)
+                codigo = proceso.wait(timeout=timeout)
             except subprocess.TimeoutExpired:
-                proceso.kill()
-                proceso.wait()
-            codigo = 124
-        registro = lanzados.anotar_terminado(tarea["id"], codigo, pid=proceso.pid)
-        _anotar(tarea, elegida, tomada=True, fase="terminado", ok=codigo == 0, codigo=codigo,
-                pid=proceso.pid)
+                procesos.terminar(proceso.pid)
+                try:
+                    proceso.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    proceso.kill()
+                    proceso.wait()
+                codigo = 124
+            registro = lanzados.anotar_terminado(tarea["id"], codigo, pid=proceso.pid)
+            _anotar(tarea, elegida, tomada=True, fase="terminado", ok=codigo == 0,
+                    codigo=codigo, pid=proceso.pid)
+            if registro and registro.get("fase") == lanzados.TERMINADO:
+                registro = fin(tarea["id"], proceso.pid) or registro
+        finally:
+            _VIGILADOS.discard(proceso.pid)
         if al_terminar and registro:
             al_terminar(lanzados.estado(registro))
 
     hilo = threading.Thread(target=esperar, name=f"lanzar-{tarea['id']}", daemon=True)
     hilo.start()
     return hilo
+
+
+# --- el fin (cotejo-o253bs) ---------------------------------------------------------------------
+
+SIN_ENTREGAR = "el agente terminó sin entregar"
+
+
+def motivo_sin_entregar(registro):
+    """Por qué volvió a Pendiente, para quien no programa, con lo último que dijo."""
+    codigo = registro.get("codigo")
+    por = (" (su proceso se cerró sin que nadie lo viera terminar)" if registro.get("murio")
+           else " (se le acabó el tiempo)" if codigo == 124
+           else f" (salió con un error, código {codigo})" if codigo not in (0, None) else "")
+    texto = "El agente terminó sin entregar" + por + "."
+    ultimas = retomar.ultimas_lineas(registro, 3)
+    if ultimas:
+        texto += " Lo último que dijo: " + " / ".join(f"«{l}»" for l in ultimas) + "."
+    return texto + (" Su worktree se queda: pásala a Haciendo y otro agente la retoma donde "
+                    "quedó.")
+
+
+def fin(tarea_id, pid):
+    """Lo que pasa cuando el agente de `pid` termina, una sola vez por lanzamiento
+    (`lanzados.reclamar_fin`). Si entregó, la tarea ya está en Para comprobar y el registro y
+    su log se quedan (son sus mensajes). Si sigue en Haciendo a su nombre, terminó **sin
+    entregar**: vuelve a Pendiente con su modelo y el motivo en llano (`cotejo.soltar`), y queda
+    `detenido` con el worktree, para retomarla. Si la bloqueó o la movió alguien, no se toca.
+    Nunca lanza nada. Devuelve el registro, o None si otro ya le hizo el fin."""
+    if not lanzados.reclamar_fin(tarea_id, pid):
+        return None
+    ahora = int(time.time())
+    registro = lanzados.leer(tarea_id) or {}
+    como = lanzados.FIN_OTRO
+    # Devuelta desde Para comprobar mientras volvía: eso lo lleva `rechazar`, no el fin.
+    rechazada = (registro.get("rechazo") or {}).get("de_pid") == pid
+    if registro.get("fase") == lanzados.TERMINADO and not rechazada:
+        cotejo = f.Cotejo()
+        try:
+            tarea = cotejo.tarea(tarea_id)
+        except ErrorCLI:
+            tarea = {}
+        if tarea.get("estado") == "por-validar":
+            como = lanzados.FIN_ENTREGO
+        elif tarea.get("estado") == "en-curso" and tarea.get("agente") == registro.get("modelo"):
+            motivo = motivo_sin_entregar(registro)
+            try:
+                soltada = cotejo.soltar(tarea_id, motivo, agente=registro.get("modelo"),
+                                        asignada=registro.get("asignada")
+                                        or registro.get("modelo") or "")
+            except ErrorCLI:
+                soltada = False
+            if soltada:
+                return lanzados.cambiar_fase(
+                    tarea_id, lanzados.DETENIDO, motivo=SIN_ENTREGAR, detenido_ts=ahora,
+                    fin={"como": lanzados.FIN_SIN_ENTREGAR, "ts": ahora, "motivo": motivo})
+    return lanzados.actualizar(tarea_id, fin={"como": como, "ts": ahora})
+
+
+def recoger():
+    """Los fines que nadie hizo: agentes que se cerraron con el board cerrado (`murio`) o que
+    volvieron sin que llegara su fin. Los que espera un hilo de este proceso no se tocan.
+    Lo llama el board al refrescar; nunca lanza nada. Devuelve los ids que recogió."""
+    recogidos = []
+    for tarea_id, registro in lanzados.todos().items():
+        pid = registro.get("pid")
+        if not pid or pid in _VIGILADOS or registro.get("fin"):
+            continue
+        if registro.get("fase") == lanzados.LANZADO:
+            if not procesos.anotado_muerto(registro):
+                continue
+            registro = lanzados.anotar_terminado(tarea_id, None, pid=pid, murio=True)
+        if (registro or {}).get("fase") == lanzados.TERMINADO and fin(tarea_id, pid):
+            recogidos.append(tarea_id)
+    return recogidos
+
+
+# --- el rechazo (cotejo-o253bs) -----------------------------------------------------------------
+
+RECHAZO = "lo devolvieron desde Para comprobar para lanzar otro"
+
+
+def rechazar(tarea_id, motivo, mover, al_terminar=None, config=None):
+    """Para comprobar → Haciendo con motivo, de una tarea que lanzó el board: un agente
+    **nuevo** en el mismo worktree con el encargo, la nota de retomar y «Lo que te pidieron
+    cambiar» (el motivo y la entrega anterior, `retomar.armar_rechazo`).
+
+    El orden importa: se para el agente anterior si sigue vivo y se guarda el rechazo en el
+    registro **antes** de que `mover()` (lo que escribe el board: la línea y el «rechazar» de
+    la bitácora) la pase a Haciendo; así su fin no la toma por una que terminó sin entregar.
+    Si después no se puede lanzar (sin hueco, sin cliente…), vuelve a Pendiente con su modelo y
+    el rechazo guardado, y levanta el `NoSePuede`: al pasarla otra vez a Haciendo, el agente
+    nuevo lo recibe. Devuelve el estado, o None si no la lanzó el board (y `mover` no se llamó:
+    se mueve como siempre)."""
+    anterior = lanzados.leer(tarea_id)
+    if not retomar.es_retomable(anterior):
+        return None
+    if not (motivo or "").strip():
+        raise NoSePuede("Para devolverla hace falta un motivo.")
+    if anterior.get("fase") == lanzados.LANZADO:
+        detener(tarea_id, RECHAZO)
+    lanzados.actualizar(tarea_id, rechazo={
+        **retomar.rechazo(motivo, bitacora_cotejo.ultima_entrega(tarea_id)),
+        "de_pid": anterior.get("pid")})
+    if not mover():
+        raise NoSePuede("No pude pasarla a Haciendo: cambió mientras tanto.")
+    try:
+        return _lanzar(tarea_id, al_terminar, config, rechazada=True)
+    except NoSePuede as error:
+        modelo = anterior.get("modelo")
+        try:
+            f.Cotejo().soltar(tarea_id, f"No se pudo lanzar otro agente: {error} Lo que pediste "
+                              f"cambiar queda guardado para el siguiente.", agente=modelo,
+                              asignada=anterior.get("asignada") or modelo or "")
+        except ErrorCLI:
+            pass
+        registro = lanzados.leer(tarea_id) or {}
+        if registro.get("fase") not in (lanzados.EN_ESPERA, lanzados.DETENIDO):
+            lanzados.cambiar_fase(tarea_id, lanzados.DETENIDO, motivo=RECHAZO,
+                                  detenido_ts=int(time.time()))
+        dicho = (f"{error} La devolví a Pendiente con lo que pediste cambiar: pásala a "
+                 f"Haciendo cuando se pueda.")
+        raise (SinHueco(dicho) if isinstance(error, SinHueco) else NoSePuede(dicho)) from error
 
 
 # --- seguir y parar -----------------------------------------------------------------------------
@@ -398,6 +562,6 @@ def pausar(tarea_id, motivo=PAUSA):
     return lanzados.estado(registro)
 
 
-__all__ = ["NoSePuede", "pausar", "EsDeUnaPersona", "FaltaModelo", "SinHueco", "lanzar", "estado",
+__all__ = ["NoSePuede", "pausar", "fin", "recoger", "rechazar", "motivo_sin_entregar", "EsDeUnaPersona", "FaltaModelo", "SinHueco", "lanzar", "estado",
            "detener", "vigilar", "decidir", "hueco", "comando", "carpetas_de_escritura",
            "ramas_protegidas"]

@@ -110,7 +110,8 @@ class LanzarDesdeElBoard(base.PestanaInicio):
     def test_arrastrar_una_tarea_con_modelo_la_lanza_y_el_registro_guarda_pid_y_log(self):
         self.board.ver_pestana("tablero")
         avisos = []
-        with mock.patch.object(type(self.board), "aviso", lambda _b, t: avisos.append(t)):
+        with mock.patch.object(type(self.board), "aviso", lambda _b, t: avisos.append(t)), \
+                mock.patch.dict(os.environ, {"FALSO_ESPERA": "1"}):
             self.arrastrar("parseo")
             self.assertIn("#en-curso #agente/sonnet", self.linea("^cotejo-con"))
             registro = lanzados.leer("cotejo-con")
@@ -118,12 +119,14 @@ class LanzarDesdeElBoard(base.PestanaInicio):
             self.assertTrue(registro["log"])
             self.assertEqual(registro["modelo"], "sonnet")
             self.assertTrue(any("sonnet empezó" in a for a in avisos), avisos)
-            # Cuando vuelve, se anota y el board avisa.
+            # Cuando vuelve, se anota y el board avisa. El falso no entrega: vuelve a Pendiente
+            # (cotejo-o253bs).
             self.assertTrue(self.esperar(
-                lambda: (lanzados.leer("cotejo-con") or {}).get("fase") == lanzados.TERMINADO))
+                lambda: ((lanzados.leer("cotejo-con") or {}).get("fin") or {}).get("como")
+                == lanzados.FIN_SIN_ENTREGAR))
             self.assertTrue(self.esperar(lambda: any("terminó" in a for a in avisos)), avisos)
         self.assertTrue(Path(registro["log"]).read_text().strip())
-        self.assertEqual(self.fila("parseo").tarea.columna, "en-curso")
+        self.assertEqual(self.fila("parseo").tarea.columna, "pendiente")
 
     def test_sin_modelo_pregunta_con_la_propuesta_y_al_elegir_asigna_y_lanza(self):
         self.board.ver_pestana("tablero")
@@ -142,7 +145,9 @@ class LanzarDesdeElBoard(base.PestanaInicio):
         dialogo.desplegable.set_selected(1)
         fila = self.fila("mensaje de error", "pendiente")
         dialogo.force_close()
-        self.board.al_responder_modelo(dialogo, "lanzar", fila.proyecto, fila.tarea)
+        # Que siga trabajando mientras se mira: si vuelve sin entregar, vuelve a Pendiente.
+        with mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):
+            self.board.al_responder_modelo(dialogo, "lanzar", fila.proyecto, fila.tarea)
         base.girar(100)
         self.assertIn(f"#en-curso #agente/{elegido}", self.linea("^cotejo-sin"))
         self.assertEqual(lanzados.leer("cotejo-sin")["modelo"], elegido)
@@ -283,6 +288,104 @@ class LanzarDesdeElBoard(base.PestanaInicio):
             self.assertTrue(vivo.reanudacion.get_visible())
             self.assertIn("Es una reanudación (vez 2)", vivo.reanudacion.get_label())
             self.assertIn("1 commit y 1 cambio sin commitear", vivo.reanudacion.get_label())
+
+    # --- el fin y el rechazo (cotejo-o253bs) --------------------------------------------------
+
+    def fin_de(self, marca):
+        return ((lanzados.leer(marca) or {}).get("fin") or {}).get("como")
+
+    def entregada(self, avisos):
+        """Arrastra «parseo» con un agente que entrega, y espera a verla en Para comprobar."""
+        with mock.patch.dict(os.environ, {"FALSO_ENTREGAR": "cotejo-con"}):
+            self.arrastrar("parseo")
+        self.assertTrue(self.esperar(lambda: self.fin_de("cotejo-con") == lanzados.FIN_ENTREGO,
+                                     30000), "el agente no entregó")
+        self.assertTrue(self.esperar(lambda: any("entregó" in a for a in avisos)), avisos)
+        self.app.refrescar()
+        return self.fila("parseo", "por-validar")
+
+    def test_el_que_entrega_queda_en_para_comprobar_con_sus_mensajes(self):
+        self.board.ver_pestana("tablero")
+        avisos = []
+        with mock.patch.object(type(self.board), "aviso", lambda _b, t: avisos.append(t)):
+            fila = self.entregada(avisos)
+        self.assertIn("#por-validar", self.linea("^cotejo-con"))
+        # Su revisión y su ficha guardan lo que dijo.
+        revision = self.board.ver_revision(fila.proyecto, fila.tarea)
+        self.assertIsNotNone(revision.en_vivo)
+        self.assertIn("Entregué (código 0).", revision.en_vivo.texto())
+        self.assertIn("entregó", revision.en_vivo.situacion.get_label())
+        revision.force_close()
+        ficha = self.board.dialogo_detalle(fila.proyecto, fila.tarea)
+        self.assertIn("Voy a mirar el repo.", ficha.en_vivo.texto())
+
+    def test_el_que_termina_sin_entregar_vuelve_a_pendiente_pausado_con_el_motivo(self):
+        self.board.ver_pestana("tablero")
+        avisos = []
+        with mock.patch.object(type(self.board), "aviso", lambda _b, t: avisos.append(t)):
+            self.arrastrar("parseo")
+            self.assertTrue(self.esperar(
+                lambda: self.fin_de("cotejo-con") == lanzados.FIN_SIN_ENTREGAR))
+            self.assertTrue(self.esperar(lambda: any("terminó sin entregar" in a
+                                                     for a in avisos)), avisos)
+        fila = self.fila("parseo", "pendiente")
+        self.assertIn("#agente/sonnet", self.linea("^cotejo-con"))
+        ficha = self.board.dialogo_detalle(fila.proyecto, fila.tarea)
+        dicho = " ".join(base.textos(ficha.get_child()))
+        self.assertIn("PAUSADA", dicho)
+        self.assertIn("el agente terminó sin entregar", dicho)
+        self.assertIn("«Voy a mirar el repo.»", dicho)          # el motivo, con sus mensajes
+        self.assertTrue(Path(lanzados.leer("cotejo-con")["worktree"]["ruta"]).is_dir())
+
+    def test_el_que_murio_con_el_board_cerrado_se_recoge_al_refrescar(self):
+        self.board.ver_pestana("tablero")
+        procesos = []
+        with mock.patch.object(despacho_board, "vigilar",
+                               lambda proceso, *a, **k: procesos.append(proceso)), \
+                mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):
+            self.arrastrar("parseo")
+        procesos[0].kill()
+        procesos[0].wait()
+        self.app.refrescar()
+        base.girar(100)
+        self.assertEqual(self.fila("parseo").tarea.columna, "pendiente")
+        self.assertEqual(self.fin_de("cotejo-con"), lanzados.FIN_SIN_ENTREGAR)
+
+    def test_devolver_de_para_comprobar_a_haciendo_lanza_otro_con_lo_que_se_pidio(self):
+        self.board.ver_pestana("tablero")
+        avisos = []
+        with mock.patch.object(type(self.board), "aviso", lambda _b, t: avisos.append(t)):
+            fila = self.entregada(avisos)
+            primero = lanzados.leer("cotejo-con")
+            self.argv_falso.unlink()
+            entrada = Gtk.Entry(text="Falta el caso del archivo vacío.")
+            with mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):
+                self.board.al_responder_motivo(None, "devolver", entrada, fila.proyecto,
+                                               fila.tarea, "en-curso")
+            base.girar(100)
+            self.assertTrue(any("la retoma con lo que pediste cambiar" in a for a in avisos),
+                            avisos)
+        self.assertIn("#en-curso", self.linea("^cotejo-con"))
+        self.assertIn("#agente/sonnet", self.linea("^cotejo-con"))
+        rechazo = [json.loads(l) for l in bitacora.ARCHIVO.read_text().splitlines()
+                   if '"rechazar"' in l][-1]
+        self.assertEqual(rechazo["motivo"], "Falta el caso del archivo vacío.")
+        registro = lanzados.leer("cotejo-con")
+        self.assertNotEqual(registro["pid"], primero["pid"])
+        self.assertEqual(registro["worktree"]["ruta"], primero["worktree"]["ruta"])
+        self.assertTrue(self.esperar(lambda: self.argv_falso.exists()
+                                     and self.argv_falso.read_text().endswith("}")))
+        lanzado = json.loads(self.argv_falso.read_text())
+        self.assertEqual(Path(lanzado["cwd"]).resolve(),
+                         Path(primero["worktree"]["ruta"]).resolve())
+        prompt = lanzado["argv"][-1]
+        for dicho in ("cotejo entregar cotejo-con", retomar.TITULO_RECHAZO,
+                      "Falta el caso del archivo vacío.", "Resumen: Arreglé el parseo."):
+            self.assertIn(dicho, prompt)
+        # Su ficha en Haciendo dice que retoma tras el rechazo.
+        fila = self.fila("parseo", "en-curso")
+        vivo = self.board.dialogo_detalle(fila.proyecto, fila.tarea).en_vivo
+        self.assertIn("Se la devolvieron desde Para comprobar", vivo.reanudacion.get_label())
 
     def test_devolver_lo_que_no_lanzo_el_board_retira_el_worktree_como_siempre(self):
         self.board.ver_pestana("tablero")

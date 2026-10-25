@@ -162,6 +162,11 @@ class Revision:
                                 css_classes=["revision-texto"]))
         if texto_resumen:
             cuerpo.append(self.bloque_resumen(proyecto, tarea, entrega, texto_resumen, dialogo))
+        # Lo que dijo el agente que la lanzó el board, guardado (cotejo-o253bs).
+        dialogo.en_vivo = self.seccion_en_vivo(tarea)
+        if dialogo.en_vivo is not None:
+            cuerpo.append(dialogo.en_vivo)
+        if texto_resumen:
             cuerpo.append(self.titulo_seccion("EL DETALLE PARA QUIEN QUIERA VERLO"))
         donde = " · ".join(parte for parte in (
             datos.get("rama") or "", f"{(datos.get('desde') or '')[:7]}..{(datos.get('head') or '')[:7]}"
@@ -199,6 +204,7 @@ class Revision:
         # Sin esto el foco cae en la primera etiqueta seleccionable y se abre con todo su texto
         # resaltado, como si ya lo hubieras marcado tú (lo mismo que en `al_ver`).
         dialogo.set_focus(comprobar)
+        return dialogo
 
     @staticmethod
     def titulo_seccion(texto):
