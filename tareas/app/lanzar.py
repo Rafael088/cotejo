@@ -344,8 +344,22 @@ class Lanzar:
             return ""
         return (getattr(self, "en_espera", None) or {}).get(tarea.id, "")
 
-    def seccion_en_espera(self, motivo):
-        """En la ficha de una tarea en espera: por qué no se lanzó."""
+    def al_quitar_de_espera(self, _proyecto, tarea, _dato=None, popover=None):
+        """«Quitar de la espera»: borra solo el registro de espera; la tarea sigue Pendiente
+        con su modelo y, si se arrastra otra vez a Haciendo, se lanza como nueva."""
+        if popover is not None:
+            popover.popdown()
+        try:
+            quitada = lanzados.quitar_de_espera(tarea.id)
+        except OSError as error:
+            self.aviso(f"No pude quitarla de la espera: {error}")
+            return
+        if quitada:
+            self.aviso("Quitada de la espera: sigue en Pendiente.")
+        self.app.refrescar()
+
+    def seccion_en_espera(self, motivo, al_quitar=None):
+        """En la ficha de una tarea en espera: por qué no se lanzó (y cómo quitarla)."""
         caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
                        css_classes=["anotacion", "detenida"])
         cabeza = Gtk.Box(spacing=px(ESPACIADO_XS))
@@ -355,6 +369,12 @@ class Lanzar:
         caja.append(Gtk.Label(label=motivo, xalign=0, wrap=True, selectable=True,
                               focusable=False, wrap_mode=Pango.WrapMode.WORD_CHAR,
                               css_classes=["anotacion-texto"]))
+        if al_quitar is not None:
+            boton = Gtk.Button(label="Quitar de la espera", halign=Gtk.Align.START,
+                               css_classes=["flat"], tooltip_text="Borra la espera sin lanzar "
+                               "nada: queda como una Pendiente normal")
+            boton.connect("clicked", lambda *_: al_quitar())
+            caja.append(boton)
         caja.set_margin_top(px(ESPACIADO_SM))
         return caja
 
