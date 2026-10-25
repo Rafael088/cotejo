@@ -17,6 +17,8 @@ from gi.repository import Gdk, GLib, Graphene, Gtk, Pango
 
 from .. import constelacion as c
 from .comun import ESPACIADO_LG, ESPACIADO_SM, ESPACIADO_XS
+from . import escala
+from .escala import px
 from .piezas import etiquetar
 
 LADO_LEYENDA = 14
@@ -78,7 +80,8 @@ class Constelacion(Gtk.Widget):
         return self.nucleos
 
     def _al_soltar(self, _gesto, _n, x, y):
-        nucleo = c.nucleo_en(self._nucleos(self.get_width()), x, y)
+        f = escala.FACTOR
+        nucleo = c.nucleo_en(self._nucleos(self.get_width() / f), x / f, y / f)
         if nucleo is not None and self._al_tocar is not None:
             self._al_tocar(nucleo.nombre)
 
@@ -86,7 +89,7 @@ class Constelacion(Gtk.Widget):
 
     def _hace_falta_tick(self):
         return self.get_mapped() and self._animaciones() and any(
-            n.puntos for n in self._nucleos(self.get_width()))
+            n.puntos for n in self._nucleos(self.get_width() / escala.FACTOR))
 
     def _sincronizar_tick(self):
         if self._hace_falta_tick():
@@ -127,10 +130,13 @@ class Constelacion(Gtk.Widget):
         return Gtk.SizeRequestMode.HEIGHT_FOR_WIDTH
 
     def do_measure(self, orientacion, para):
+        # `tareas/constelacion.py` mide y dibuja a escala 1; aquí se pasa a la de ahora (en
+        # Windows, la de la pantalla: ver `escala`), y en `do_snapshot` igual.
+        f = escala.FACTOR
         if orientacion == Gtk.Orientation.HORIZONTAL:
-            return c.ANCHO_CELDA_MIN, c.ANCHO_CELDA_MIN * c.POR_FILA, -1, -1
-        ancho = para if para > 0 else c.ANCHO_CELDA_MIN * c.POR_FILA
-        alto = c.alto_para(len(self.proyectos), ancho)
+            return px(c.ANCHO_CELDA_MIN), px(c.ANCHO_CELDA_MIN * c.POR_FILA), -1, -1
+        ancho = para / f if para > 0 else c.ANCHO_CELDA_MIN * c.POR_FILA
+        alto = px(c.alto_para(len(self.proyectos), ancho))
         return alto, alto, -1, -1
 
     def do_size_allocate(self, ancho, alto, linea_base):
@@ -146,22 +152,24 @@ class Constelacion(Gtk.Widget):
         if ancho <= 0 or alto <= 0 or not self.proyectos:
             return
         self.fotogramas += 1
-        nucleos = self._nucleos(ancho)
+        f = escala.FACTOR
+        nucleos = self._nucleos(ancho / f)
         colores = self._colores() or {}
         cr = snapshot.append_cairo(Graphene.Rect().init(0, 0, ancho, alto))
+        cr.scale(f, f)
         self.piezas_pintadas = c.dibujar(cr, nucleos, colores, t=self._ahora(),
                                          quieto=not self._animaciones())
         tenue = color_gdk(colores, "tenue")
         for nucleo in nucleos:
-            x0, y0, celda, alto_fila = nucleo.celda
+            x0, y0, celda, alto_fila = (v * f for v in nucleo.celda)
             capa = self.create_pango_layout(nucleo.nombre)
-            capa.set_width(int((celda - ESPACIADO_SM * 2) * Pango.SCALE))
+            capa.set_width(int((celda - px(ESPACIADO_SM) * 2) * Pango.SCALE))
             capa.set_ellipsize(Pango.EllipsizeMode.END)
             capa.set_alignment(Pango.Alignment.CENTER)
             _, logico = capa.get_pixel_extents()
             snapshot.save()
             snapshot.translate(Graphene.Point().init(
-                x0 + ESPACIADO_SM, y0 + alto_fila * c.ALTO_NOMBRE - logico.height))
+                x0 + px(ESPACIADO_SM), y0 + alto_fila * c.ALTO_NOMBRE - logico.height))
             snapshot.append_layout(capa, tenue)
             snapshot.restore()
 
@@ -171,15 +179,20 @@ def color_gdk(colores, token):
     return Gdk.RGBA(red=r, green=g, blue=b, alpha=a)
 
 
+def dibujar_punto(cr, ancho, alto, estado, colores):
+    """El punto de un estado en el centro de un área, a la escala de ahora."""
+    ancho, alto = escala.a_escala(cr, ancho, alto)
+    c.dibujar_punto(cr, ancho / 2, alto / 2, estado, colores() or {})
+
+
 def leyenda(colores):
     """Hecho · En curso · Espera que lo compruebes · Falta, con el mismo punto del dibujo."""
-    caja = Gtk.Box(spacing=ESPACIADO_LG, css_classes=["constelacion-leyenda"])
+    caja = Gtk.Box(spacing=px(ESPACIADO_LG), css_classes=["constelacion-leyenda"])
     for estado in c.ESTADOS_LEYENDA:
-        uno = Gtk.Box(spacing=ESPACIADO_XS)
-        punto = Gtk.DrawingArea(content_width=LADO_LEYENDA, content_height=LADO_LEYENDA,
+        uno = Gtk.Box(spacing=px(ESPACIADO_XS))
+        punto = Gtk.DrawingArea(content_width=px(LADO_LEYENDA), content_height=px(LADO_LEYENDA),
                                 valign=Gtk.Align.CENTER)
-        punto.set_draw_func(lambda _a, cr, w, h, e=estado: c.dibujar_punto(
-            cr, w / 2, h / 2, e, colores() or {}))
+        punto.set_draw_func(lambda _a, cr, w, h, e=estado: dibujar_punto(cr, w, h, e, colores))
         uno.append(punto)
         uno.append(Gtk.Label(label=c.NOMBRES[estado], css_classes=["dato"]))
         caja.append(uno)
@@ -189,7 +202,7 @@ def leyenda(colores):
 def caja_constelacion(colores, al_tocar=None):
     """(caja, constelación): el dibujo con su leyenda debajo, lista para `poner_constelacion`."""
     dibujo = Constelacion(colores, al_tocar)
-    caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_SM,
+    caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_SM),
                    css_classes=["constelacion-caja"])
     caja.append(dibujo)
     caja.append(leyenda(colores))

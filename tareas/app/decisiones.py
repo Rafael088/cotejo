@@ -4,6 +4,7 @@ from gi.repository import Adw, Gtk
 
 from .. import almacen, decision
 from .comun import ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XS, texto_a_markup
+from .escala import px
 from .piezas import chip, con_mano, etiquetar
 
 
@@ -26,9 +27,9 @@ class Decisiones:
         # El id de la decisión, no el del proyecto: estable aunque se repinte la columna.
         fila.clave = f"decision:{entrada.id}"
 
-        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_SM)
+        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_SM))
         fila.set_child(caja)
-        chips = Gtk.Box(spacing=ESPACIADO_XS)
+        chips = Gtk.Box(spacing=px(ESPACIADO_XS))
         chips.append(chip("Decisión propuesta", "aviso",
                           tooltip="La propuso un agente; solo tú la aceptas, desde aquí"))
         caja.append(chips)
@@ -56,8 +57,8 @@ class Decisiones:
         hace: cierra el diálogo y vuelve a pintar; nunca mueve ni aprueba ninguna tarea.
         """
         datos = decision.para_revisar(alm, entrada)
-        dialogo = Adw.Dialog(title="Revisar la decisión propuesta", content_width=760,
-                             content_height=560)
+        dialogo = Adw.Dialog(title="Revisar la decisión propuesta", content_width=px(760),
+                             content_height=px(560))
         vista = Adw.ToolbarView()
         cabecera = Adw.HeaderBar()
         vista.add_top_bar(cabecera)
@@ -72,9 +73,9 @@ class Decisiones:
         aceptar_boton.connect("clicked", al_aceptar)
         cabecera.pack_end(aceptar_boton)
 
-        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_MD,
-                         margin_top=ESPACIADO_MD, margin_bottom=ESPACIADO_LG,
-                         margin_start=ESPACIADO_LG, margin_end=ESPACIADO_LG)
+        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_MD),
+                         margin_top=px(ESPACIADO_MD), margin_bottom=px(ESPACIADO_LG),
+                         margin_start=px(ESPACIADO_LG), margin_end=px(ESPACIADO_LG))
         cuerpo.append(self.panel_decision("PROPUESTA", datos))
         if datos["reemplaza"]:
             cuerpo.append(self.titulo_seccion(f"REEMPLAZA A «{datos['reemplaza']['id']}»"))
@@ -89,7 +90,7 @@ class Decisiones:
     def panel_decision(self, titulo, datos, secundario=False):
         """El texto de una decisión (la propuesta, o la que reemplaza, al lado). Sin GTK por
         dentro: `decision.para_revisar` ya deja el texto tal cual, listo para pintar."""
-        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=ESPACIADO_XS,
+        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
                        css_classes=["anotacion"] if secundario else [])
         if titulo:
             caja.append(self.titulo_seccion(titulo))
