@@ -413,9 +413,10 @@ def cmd_doctor(args):
                                "errores": errores, "avisos": avisos},
                     "fuente": fuente, "salida": salida}
     from enrutador import modelos_vivos
-    # `con_sesion` (cotejo-qixs4j): instalados y con credenciales en disco; sin lanzar nada.
+    # `con_sesion` (cotejo-qixs4j): instalados y con credenciales en disco o, si la sesión vive
+    # en el llavero, lo que contesta su CLI (`codex login status`, `claude auth status`).
     datos_salida["agentes"] = {"instalados": clientes.instalados(),
-                               "con_sesion": modelos_vivos.listos()}
+                               "con_sesion": modelos_vivos.listos(preguntar_cli=True)}
     if pista_repo or sin_agentes:
         datos_salida["avisos"] = list(pista_repo) + ([sin_agentes] if sin_agentes else [])
     if de_usuario.get("aplica"):

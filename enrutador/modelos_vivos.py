@@ -4,7 +4,9 @@
 Dos preguntas, las dos sin gastar un token ni abrir un navegador:
 
 - **¿Tiene sesión?** (`sesion`, `listos`). Se mira solo lo que cada agente deja en disco al
-  iniciar sesión, o la variable de entorno con su clave: nada de lanzar el CLI. Claude Code,
+  iniciar sesión, o la variable de entorno con su clave. Si la sesión vive en el llavero del
+  sistema (Codex y Claude Code pueden guardarla ahí), se le pregunta al CLI su estado
+  (`ESTADO_CLI`), con tope y caché corta, y nunca al pintar el board (cotejo-2j6un7). Claude Code,
   `~/.claude/.credentials.json` (o `oauthAccount` en `~/.claude.json`, que es lo que queda en
   macOS, donde la credencial va al llavero); Codex, `~/.codex/auth.json` (o `CODEX_HOME`);
   OpenCode, alguna credencial en su `auth.json` (`opencode auth list` lee ese mismo archivo);
@@ -26,6 +28,7 @@ desde «Añadir modelo». Las pruebas ponen CLIs falsos en un PATH temporal y `H
 import json
 import os
 import shutil
+import signal
 import subprocess
 import time
 from pathlib import Path
@@ -75,9 +78,92 @@ def _claude_con_cuenta(ruta):
     return isinstance(datos, dict) and bool(datos.get("oauthAccount"))
 
 
-def sesion(nombre, entorno=None):
-    """¿Inició sesión este agente? Solo mira archivos y variables; nunca lanza el CLI."""
+# La sesión guardada en el llavero del sistema no deja archivo (cotejo-2j6un7): ahí se le
+# pregunta al propio CLI, que contesta al instante y sin gastar tokens. `codex login status`
+# sale con 0 y dice «Logged in»; `claude auth status` imprime JSON con `"loggedIn": true`
+# (https://code.claude.com/docs/en/cli-reference). Solo se guarda el sí/no: la salida de Claude
+# lleva el correo de la cuenta y no se registra en ninguna parte.
+ESTADO_CLI = {
+    "codex": ("login", "status"),
+    "claude": ("auth", "status"),
+}
+TOPE_ESTADO = 5            # segundos como mucho por pregunta
+CADUCA_ESTADO = 30         # lo que vale el sí/no del CLI
+_estado_cli = {}           # nombre → (cuándo, sí/no)
+
+
+def _leer_estado(nombre, salida, codigo):
+    if nombre == "codex":
+        return codigo == 0 and "logged in" in salida.lower() and \
+            "not logged in" not in salida.lower()
+    if nombre == "claude":
+        try:
+            datos = json.loads(salida)
+        except ValueError:
+            return False
+        return isinstance(datos, dict) and datos.get("loggedIn") is True
+    return False
+
+
+def estado_del_cli(nombre, tope=TOPE_ESTADO):
+    """Le pregunta al CLI si tiene sesión (sí/no) y lo guarda `CADUCA_ESTADO` segundos. Sin
+    CLI, si falla o si tarda más de `tope`: no."""
+    argumentos = ESTADO_CLI.get(nombre)
+    ejecutable = shutil.which(clientes.de(nombre).ejecutable) if argumentos else None
+    if ejecutable is None:
+        return False
+    si = False
+    try:
+        # Sesión propia: si tarda, se mata con todo lo que haya lanzado (si no, un hijo que se
+        # quede con la salida abierta haría esperar más que el tope).
+        proceso = subprocess.Popen([ejecutable, *argumentos], stdout=subprocess.PIPE,
+                                   stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
+                                   text=True, env={**os.environ, "NO_COLOR": "1"},
+                                   start_new_session=True)
+    except OSError:
+        proceso = None
+    if proceso is not None:
+        try:
+            salida, _ = proceso.communicate(timeout=tope)
+            si = _leer_estado(nombre, salida or "", proceso.returncode)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(proceso.pid, signal.SIGKILL)
+            except OSError:
+                proceso.kill()
+            proceso.communicate()
+    _estado_cli[nombre] = (time.monotonic(), si)
+    return si
+
+
+def _estado_guardado(nombre):
+    guardado = _estado_cli.get(nombre)
+    if guardado and time.monotonic() - guardado[0] < CADUCA_ESTADO:
+        return guardado[1]
+    return None
+
+
+def olvidar_estados():
+    """Vacía lo que contestaron los CLIs (las pruebas, y quien quiera preguntar de nuevo ya)."""
+    _estado_cli.clear()
+
+
+def sesion(nombre, entorno=None, preguntar_cli=False):
+    """¿Inició sesión este agente? Mira archivos y variables. Si no hay nada y la sesión puede
+    vivir en el llavero (`ESTADO_CLI`), usa lo que contestó el CLI hace poco y, solo con
+    `preguntar_cli`, le pregunta (con tope). Al pintar el board nunca se pregunta."""
     entorno = os.environ if entorno is None else entorno
+    if _en_disco(nombre, entorno):
+        return True
+    if nombre not in ESTADO_CLI:
+        return False
+    guardado = _estado_guardado(nombre)
+    if guardado is not None:
+        return guardado
+    return estado_del_cli(nombre) if preguntar_cli else False
+
+
+def _en_disco(nombre, entorno):
     casa = _casa()
     if nombre == "claude":
         return bool(entorno.get("ANTHROPIC_API_KEY") or entorno.get("CLAUDE_CODE_OAUTH_TOKEN")
@@ -97,9 +183,10 @@ def sesion(nombre, entorno=None):
     return False
 
 
-def listos():
+def listos(preguntar_cli=False):
     """Los agentes instalados y con sesión, en el orden de `clientes.CLIENTES`."""
-    return [nombre for nombre in clientes.instalados() if sesion(nombre)]
+    return [nombre for nombre in clientes.instalados()
+            if sesion(nombre, preguntar_cli=preguntar_cli)]
 
 
 # --- modelos ------------------------------------------------------------------------------------
@@ -205,7 +292,7 @@ def resumen(refrescar=False, preguntar_cli=True):
     salida = []
     for nombre, cliente in clientes.CLIENTES.items():
         instalado = nombre in puestos
-        con_sesion = instalado and sesion(nombre)
+        con_sesion = instalado and sesion(nombre, preguntar_cli=preguntar_cli)
         modelos = ((listar(nombre, refrescar) if preguntar_cli else en_cache(nombre))
                    if con_sesion else [])
         salida.append({"cliente": nombre, "titulo": cliente.titulo or nombre,

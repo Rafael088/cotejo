@@ -63,6 +63,8 @@ class ConMaquinaFalsa(unittest.TestCase):
         p = mock.patch.dict(os.environ, entorno)
         p.start()
         self.addCleanup(p.stop)
+        modelos_vivos.olvidar_estados()
+        self.addCleanup(modelos_vivos.olvidar_estados)
 
     def cli(self, nombre, guion=NADA):
         ruta = self.bin / nombre
@@ -116,6 +118,57 @@ class Sesion(ConMaquinaFalsa):
         self.cli("codex")
         self.con_sesion("codex")
         self.assertEqual(modelos_vivos.listos(), ["codex"])
+
+
+class SesionEnElLlavero(ConMaquinaFalsa):
+    """Sin archivo ni variable, la sesión puede vivir en el llavero: se le pregunta al CLI su
+    estado (cotejo-2j6un7), solo si se pide, con tope y caché corta, y sin guardar su salida."""
+
+    CODEX_SI = "#!/bin/sh\n[ \"$1 $2\" = 'login status' ] || exit 9\necho 'Logged in using ChatGPT'\n"
+    CODEX_NO = "#!/bin/sh\necho 'Not logged in'\nexit 1\n"
+    CLAUDE_SI = ("#!/bin/sh\n[ \"$1 $2\" = 'auth status' ] || exit 9\n"
+                 "echo '{\"loggedIn\": true, \"email\": \"alguien@ejemplo.org\"}'\n")
+    CLAUDE_NO = "#!/bin/sh\necho '{\"loggedIn\": false}'\nexit 1\n"
+
+    def test_codex_contesta_que_si_solo_si_se_le_pregunta(self):
+        self.cli("codex", self.CODEX_SI)
+        self.assertFalse(modelos_vivos.sesion("codex"))            # al pintar: nunca se lanza
+        self.assertTrue(modelos_vivos.sesion("codex", preguntar_cli=True))
+        self.assertTrue(modelos_vivos.sesion("codex"))             # lo guardado, un rato
+        self.assertEqual(modelos_vivos.listos(), ["codex"])
+
+    def test_claude_lee_logged_in_y_no_guarda_el_correo(self):
+        self.cli("claude", self.CLAUDE_SI)
+        self.assertTrue(modelos_vivos.sesion("claude", preguntar_cli=True))
+        escrito = [r for r in self.raiz.rglob("*") if r.is_file() and r.parent != self.bin]
+        for ruta in escrito:
+            self.assertNotIn("alguien@ejemplo.org", ruta.read_text(encoding="utf-8",
+                                                                    errors="replace"))
+
+    def test_los_que_dicen_que_no(self):
+        self.cli("codex", self.CODEX_NO)
+        self.cli("claude", self.CLAUDE_NO)
+        self.assertFalse(modelos_vivos.sesion("codex", preguntar_cli=True))
+        self.assertFalse(modelos_vivos.sesion("claude", preguntar_cli=True))
+        self.assertEqual(modelos_vivos.listos(preguntar_cli=True), [])
+
+    def test_sin_cli_o_lento_es_que_no(self):
+        self.assertFalse(modelos_vivos.sesion("codex", preguntar_cli=True))
+        os.symlink(shutil.which("sleep", path=os.defpath), self.bin / "sleep")
+        self.cli("claude", "#!/bin/sh\nsleep 10\necho '{\"loggedIn\": true}'\n")
+        antes = time.monotonic()
+        self.assertFalse(modelos_vivos.estado_del_cli("claude", tope=0.5))
+        self.assertLess(time.monotonic() - antes, 5)
+
+    def test_opencode_y_gemini_no_se_preguntan(self):
+        self.cli("opencode", "#!/bin/sh\necho 'Logged in'\n")
+        self.assertFalse(modelos_vivos.sesion("opencode", preguntar_cli=True))
+
+    def test_caduca(self):
+        self.cli("codex", self.CODEX_SI)
+        self.assertTrue(modelos_vivos.sesion("codex", preguntar_cli=True))
+        with mock.patch.object(modelos_vivos, "CADUCA_ESTADO", 0):
+            self.assertFalse(modelos_vivos.sesion("codex"))
 
 
 class Listar(ConMaquinaFalsa):
