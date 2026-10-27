@@ -56,7 +56,9 @@ class ConMaquinaFalsa(unittest.TestCase):
         os.symlink(sh, self.bin / "sh")
         entorno = {"HOME": str(self.casa), "PATH": str(self.bin),
                    "XDG_STATE_HOME": str(self.raiz / "estado"),
-                   "XDG_DATA_HOME": "", "CODEX_HOME": ""}
+                   "XDG_DATA_HOME": "", "CODEX_HOME": "",
+                   # Aquí los CLIs son de mentira: sí se les pregunta.
+                   "COTEJO_NO_PREGUNTAR_CLI": ""}
         for clave in ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "OPENAI_API_KEY",
                       "GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENAI_USE_VERTEXAI"):
             entorno[clave] = ""

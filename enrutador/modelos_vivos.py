@@ -108,6 +108,9 @@ def _leer_estado(nombre, salida, codigo):
 def estado_del_cli(nombre, tope=TOPE_ESTADO):
     """Le pregunta al CLI si tiene sesión (sí/no) y lo guarda `CADUCA_ESTADO` segundos. Sin
     CLI, si falla o si tarda más de `tope`: no."""
+    if os.environ.get("COTEJO_NO_PREGUNTAR_CLI"):
+        # Las pruebas lo ponen: ninguna llama al claude/codex de verdad de quien las corre.
+        return False
     argumentos = ESTADO_CLI.get(nombre)
     ejecutable = shutil.which(clientes.de(nombre).ejecutable) if argumentos else None
     if ejecutable is None:

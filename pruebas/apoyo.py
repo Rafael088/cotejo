@@ -20,6 +20,10 @@ RAIZ = Path(__file__).resolve().parent.parent
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
+# Ninguna prueba le pregunta su sesión al claude/codex instalados (cotejo-2j6un7): las que
+# prueban esa pregunta lo quitan y ponen CLIs de mentira en su PATH.
+os.environ.setdefault("COTEJO_NO_PREGUNTAR_CLI", "1")
+
 
 def nota(*lineas):
     """Une líneas dejando el salto final, que es como se ven los archivos de verdad."""
