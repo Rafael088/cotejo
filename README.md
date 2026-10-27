@@ -267,9 +267,9 @@ Cotejo resuelve *qué* hay que hacer. El enrutador (`enrutador/`) resuelve *qui�
 | Nivel | Quién | Para qué | USD / Mtok (entrada · salida) |
 | --- | --- | --- | --- |
 | n0 | **una persona** | Comprar, firmar, llamar a alguien, abrir una cuenta, tocar algo físico, decidir por gusto | — |
-| n1 | `claude-haiku-4-5` | Trabajo mecánico y acotado | 1 · 5 |
-| n2 | `claude-sonnet-5` | El trabajo normal de código. **El defecto** | 2 · 10 |
-| n3 | `claude-opus-5` | Arquitectura, contratos, lo que cruza varios archivos | 5 · 25 |
+| n1 | `claude-haiku-5-5` | Trabajo mecánico y acotado | 0,10 · 0,50 |
+| n2 | `claude-sonnet-5-5` | El trabajo normal de código. **El defecto** | 2 · 10 |
+| n3 | `claude-opus-5-5` | Arquitectura, contratos, lo que cruza varios archivos | 4 · 20 |
 
 Al medir las 105 tareas reales del vault apareció lo que acabó siendo lo más útil del enrutador, y que ningún diseño previo contemplaba:
 

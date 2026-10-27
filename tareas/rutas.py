@@ -74,6 +74,12 @@ def estado():
     return _entorno("XDG_STATE_HOME", Path.home() / ".local" / "state") / ESTADO_LINUX
 
 
+def datos_xdg():
+    """`$XDG_DATA_HOME` o `~/.local/share`: donde otros programas (OpenCode) dejan sus datos.
+    Cotejo no escribe ahí; `enrutador/modelos_vivos.py` solo mira si OpenCode tiene sesión."""
+    return _entorno("XDG_DATA_HOME", Path.home() / ".local" / "share")
+
+
 def obsidian():
     """El `obsidian.json` donde Obsidian apunta sus vaults: el primero de los que existan.
 

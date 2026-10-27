@@ -117,6 +117,23 @@ class Cotejo:
         fuente, _ = self._abrir()
         return fuente.carpeta_de(proyecto)
 
+    def agente_del_proyecto(self, proyecto, config=None):
+        """El agente con el que se creó el proyecto (`origen.agente_de` sobre su carpeta), o ""
+        si no lo dice o no tiene carpeta: entonces se propone con Claude (cotejo-qixs4j)."""
+        if not proyecto:
+            return ""
+        cache = self.__dict__.setdefault("_agentes", {})
+        if proyecto not in cache:
+            from tareas import origen
+            from . import config as cfg
+            try:
+                carpeta = ((cfg.directorio_de(config, proyecto) if config else None)
+                           or self.carpeta_de(proyecto))
+            except Exception:  # noqa: BLE001 - sin carpeta se propone como siempre
+                carpeta = None
+            cache[proyecto] = origen.agente_de(carpeta) if carpeta else ""
+        return cache[proyecto]
+
     def carpeta_de_la_tarea(self, tarea_id):
         """La carpeta local donde la fuente escribe esta tarea (el `.cotejo/` de su repo, o la
         carpeta de su nota en el vault), o None si no vive en un archivo de esta máquina (una

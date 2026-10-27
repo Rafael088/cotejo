@@ -1,0 +1,264 @@
+"""Qué agentes están listos (instalados **y con sesión**) y qué modelos ofrece hoy cada uno
+(v1.3.0, cotejo-qixs4j).
+
+Dos preguntas, las dos sin gastar un token ni abrir un navegador:
+
+- **¿Tiene sesión?** (`sesion`, `listos`). Se mira solo lo que cada agente deja en disco al
+  iniciar sesión, o la variable de entorno con su clave: nada de lanzar el CLI. Claude Code,
+  `~/.claude/.credentials.json` (o `oauthAccount` en `~/.claude.json`, que es lo que queda en
+  macOS, donde la credencial va al llavero); Codex, `~/.codex/auth.json` (o `CODEX_HOME`);
+  OpenCode, alguna credencial en su `auth.json` (`opencode auth list` lee ese mismo archivo);
+  Gemini CLI, `~/.gemini/oauth_creds.json`. Instalado es lo de siempre,
+  `clientes.instalados()`.
+- **¿Qué modelos tiene?** (`listar`). Se le pregunta al CLI solo cuando sabe listarlos sin
+  hablar con ningún modelo: `opencode models` (una línea `proveedor/modelo` por modelo) y
+  `codex debug models` (el catálogo en JSON; cuentan los de `visibility: list`). Claude Code y
+  Gemini CLI no listan: aceptan alias que sobreviven a cada modelo nuevo (`claude --model opus`;
+  `gemini -m pro|flash|flash-lite|auto`) y esos son su lista, `RESPALDO`. Lo que contesta el CLI
+  se guarda en `<estado>/modelos/<cliente>.json` (`CADUCA` segundos) y la llamada tiene tope
+  (`TOPE`); si el CLI falla, tarda o no está, se usa lo último guardado y, si nada, el respaldo,
+  que es corto y conservador a propósito: nunca un id inventado.
+
+El board pinta con `en_cache` (nunca lanza nada al pintar) y refresca con `listar` en un hilo
+desde «Añadir modelo». Las pruebas ponen CLIs falsos en un PATH temporal y `HOME` en otra parte.
+"""
+
+import json
+import os
+import shutil
+import subprocess
+import time
+from pathlib import Path
+
+from tareas import rutas
+
+from . import clientes
+
+TOPE = 15                  # segundos como mucho por CLI
+CADUCA = 6 * 3600          # lo guardado vale seis horas
+
+# Lo que se ofrece cuando el CLI no lista: alias que entiende el propio agente.
+RESPALDO = {
+    "claude": ("opus", "sonnet", "haiku"),
+    "gemini": ("pro", "flash", "flash-lite", "auto"),
+    "codex": (),
+    "opencode": (),
+}
+
+# Cómo se le pregunta a cada CLI (sin modelo, sin prompt, sin red de pago).
+PREGUNTA = {
+    "opencode": ("models",),
+    "codex": ("debug", "models"),
+}
+
+
+# --- sesión -------------------------------------------------------------------------------------
+
+def _casa():
+    return Path(os.environ.get("HOME") or Path.home())
+
+
+def _con_credenciales(ruta):
+    """El `auth.json` de OpenCode tiene al menos una credencial."""
+    try:
+        datos = json.loads(Path(ruta).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return isinstance(datos, dict) and bool(datos)
+
+
+def _claude_con_cuenta(ruta):
+    try:
+        datos = json.loads(Path(ruta).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return isinstance(datos, dict) and bool(datos.get("oauthAccount"))
+
+
+def sesion(nombre, entorno=None):
+    """¿Inició sesión este agente? Solo mira archivos y variables; nunca lanza el CLI."""
+    entorno = os.environ if entorno is None else entorno
+    casa = _casa()
+    if nombre == "claude":
+        return bool(entorno.get("ANTHROPIC_API_KEY") or entorno.get("CLAUDE_CODE_OAUTH_TOKEN")
+                    or (casa / ".claude" / ".credentials.json").is_file()
+                    or _claude_con_cuenta(casa / ".claude.json"))
+    if nombre == "codex":
+        carpeta = Path(entorno.get("CODEX_HOME") or casa / ".codex")
+        return bool(entorno.get("OPENAI_API_KEY") or (carpeta / "auth.json").is_file())
+    if nombre == "opencode":
+        datos = Path(entorno["XDG_DATA_HOME"]) if entorno.get("XDG_DATA_HOME") else \
+            rutas.datos_xdg()
+        return _con_credenciales(datos / "opencode" / "auth.json")
+    if nombre == "gemini":
+        return bool(entorno.get("GEMINI_API_KEY") or entorno.get("GOOGLE_API_KEY")
+                    or entorno.get("GOOGLE_GENAI_USE_VERTEXAI")
+                    or (casa / ".gemini" / "oauth_creds.json").is_file())
+    return False
+
+
+def listos():
+    """Los agentes instalados y con sesión, en el orden de `clientes.CLIENTES`."""
+    return [nombre for nombre in clientes.instalados() if sesion(nombre)]
+
+
+# --- modelos ------------------------------------------------------------------------------------
+
+def _archivo(nombre):
+    return rutas.estado() / "modelos" / f"{nombre}.json"
+
+
+def _leer_guardado(nombre):
+    try:
+        datos = json.loads(_archivo(nombre).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(datos, dict) or not isinstance(datos.get("modelos"), list):
+        return None
+    return datos
+
+
+def _guardar(nombre, modelos):
+    archivo = _archivo(nombre)
+    try:
+        archivo.parent.mkdir(parents=True, exist_ok=True)
+        temporal = archivo.with_suffix(".tmp")
+        temporal.write_text(json.dumps({"en": time.time(), "modelos": modelos},
+                                       ensure_ascii=False), encoding="utf-8")
+        temporal.replace(archivo)
+    except OSError:
+        pass   # sin caché se vuelve a preguntar la próxima vez; no es un error
+
+
+def leer_opencode(salida):
+    """`opencode models`: una línea `proveedor/modelo` por modelo; lo demás se ignora."""
+    vistos = []
+    for linea in salida.splitlines():
+        linea = linea.strip()
+        if linea and "/" in linea and " " not in linea and linea not in vistos:
+            vistos.append(linea)
+    return vistos
+
+
+def leer_codex(salida):
+    """`codex debug models`: los de `visibility: list`, por su `priority`."""
+    try:
+        datos = json.loads(salida)
+    except ValueError:
+        return []
+    lista = datos.get("models") if isinstance(datos, dict) else datos
+    if not isinstance(lista, list):
+        return []
+    visibles = [m for m in lista if isinstance(m, dict) and m.get("slug")
+                and m.get("visibility", "list") == "list"]
+    visibles.sort(key=lambda m: m.get("priority") if isinstance(m.get("priority"), int) else 999)
+    return [m["slug"] for m in visibles]
+
+
+LECTORES = {"opencode": leer_opencode, "codex": leer_codex}
+
+
+def preguntar(nombre, tope=TOPE):
+    """Le pide la lista al CLI. None si no sabe listar, no está, falla o tarda más de `tope`."""
+    if nombre not in PREGUNTA:
+        return None
+    ejecutable = shutil.which(clientes.de(nombre).ejecutable)
+    if ejecutable is None:
+        return None
+    try:
+        hecho = subprocess.run([ejecutable, *PREGUNTA[nombre]], capture_output=True, text=True,
+                               timeout=tope, stdin=subprocess.DEVNULL,
+                               env={**os.environ, "NO_COLOR": "1"})
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if hecho.returncode != 0:
+        return None
+    return LECTORES[nombre](hecho.stdout) or None
+
+
+def en_cache(nombre):
+    """Lo que hay sin preguntar a nadie: lo último guardado o, si nada, el respaldo."""
+    guardado = _leer_guardado(nombre)
+    if guardado and guardado["modelos"]:
+        return list(guardado["modelos"])
+    return list(RESPALDO.get(nombre, ()))
+
+
+def listar(nombre, refrescar=False, tope=TOPE):
+    """Los modelos de este agente: lo guardado si es reciente, si no se le pregunta al CLI (y
+    se guarda), y si no contesta, `en_cache`. `refrescar` salta lo guardado."""
+    guardado = _leer_guardado(nombre)
+    if (not refrescar and guardado and guardado["modelos"]
+            and time.time() - float(guardado.get("en") or 0) < CADUCA):
+        return list(guardado["modelos"])
+    vivos = preguntar(nombre, tope)
+    if vivos:
+        _guardar(nombre, vivos)
+        return vivos
+    return en_cache(nombre)
+
+
+def resumen(refrescar=False, preguntar_cli=True):
+    """Para la CLI (`cotejo modelos vivos`): por cada agente conocido, si está instalado, si
+    tiene sesión y sus modelos (en vivo o, con `preguntar_cli=False`, lo guardado)."""
+    puestos = set(clientes.instalados())
+    salida = []
+    for nombre, cliente in clientes.CLIENTES.items():
+        instalado = nombre in puestos
+        con_sesion = instalado and sesion(nombre)
+        modelos = ((listar(nombre, refrescar) if preguntar_cli else en_cache(nombre))
+                   if con_sesion else [])
+        salida.append({"cliente": nombre, "titulo": cliente.titulo or nombre,
+                       "instalado": instalado, "sesion": con_sesion,
+                       "lista_el_cli": nombre in PREGUNTA, "modelos": modelos})
+    return salida
+
+
+# --- «Añadir modelo» (el diálogo del board) ----------------------------------------------------
+
+NIVELES_TEXTO = (("n1", "n1 · lo mecánico y acotado"), ("n2", "n2 · el trabajo normal"),
+                 ("n3", "n3 · lo difícil"))
+
+
+def nueva_clave(modelo_id, existentes=()):
+    """Una clave para `#agente/<clave>` a partir del id (`opencode-go/kimi-k2.7-code` →
+    `kimi-k2.7-code`): solo letras, números, punto, guion y guion bajo; sin pisar una clave
+    reservada ni una de `existentes` (se le añade `-2`, `-3`…)."""
+    from . import config as cfg, niveles
+    base = (modelo_id or "").strip().rstrip("/").rsplit("/", 1)[-1].lower()
+    base = "".join(c if c.isalnum() or c in "._-" else "-" for c in base).strip("-.") or "modelo"
+    ocupadas = (set(cfg.RESERVADOS) | {n.clave for n in niveles.DE_FABRICA}
+                | {str(c).lower() for c in existentes})
+    clave, n = base, 2
+    while clave in ocupadas:
+        clave, n = f"{base}-{n}", n + 1
+    return clave
+
+
+def definicion(cliente, modelo_id, nombre="", nivel="n2", registrados=()):
+    """Lo que el diálogo registra con `config.registrar_modelo`, lo mismo que guarda
+    `cotejo modelos agregar`. Si ese cliente ya tiene registrado ese mismo id, se actualiza
+    con su clave; si no, clave nueva (`nueva_clave`). Levanta ValueError con lo que falta."""
+    cliente = (cliente or "").strip().lower()
+    modelo_id = (modelo_id or "").strip()
+    if not cliente:
+        raise ValueError("Elige el agente.")
+    if not modelo_id or any(c in modelo_id for c in "\r\n "):
+        raise ValueError("Escribe o elige el modelo (sin espacios).")
+    if nivel not in {n for n, _ in NIVELES_TEXTO}:
+        raise ValueError("El nivel es n1, n2 o n3.")
+    mismo = [m for m in registrados or () if m.get("cliente") == cliente
+             and m.get("modelo_id") == modelo_id]
+    clave = (mismo[0]["clave"] if mismo else
+             nueva_clave(modelo_id, [m.get("clave", "") for m in registrados or ()]))
+    return {"clave": clave, "nombre": (nombre or "").strip() or modelo_id,
+            "modelo_id": modelo_id, "cliente": cliente, "nivel": nivel,
+            "entrada_mtok": 0.0, "salida_mtok": 0.0}
+
+
+def agregar(cliente, modelo_id, nombre="", nivel="n2", ruta=None):
+    """Registra el modelo como `cotejo modelos agregar` (`config.registrar_modelo`). Devuelve
+    `(guardado, reemplazado)`. Levanta ValueError o `config.ConfigInvalida`."""
+    from . import config as cfg
+    registrados = (cfg.cargar(ruta) or {}).get("modelos") or []
+    return cfg.registrar_modelo(definicion(cliente, modelo_id, nombre, nivel, registrados), ruta)

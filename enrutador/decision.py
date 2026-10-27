@@ -68,8 +68,29 @@ class Decision:
 DIFICULTAD_A_NIVEL = {"facil": "n1", "medio": "n2", "dificil": "n3"}
 
 
+# Lo que decide un tamaño y no un modelo concreto: ahí cabe traducirlo al agente del proyecto.
+POR_TAMANO = ("dificultad", "regla", "defecto")
+
+
 def decidir(texto, *, agente="", dificultad="", override="", reglas_humano=None,
-            reglas_nivel=None, niveles_extra=(), alias_persona=None):
+            reglas_nivel=None, niveles_extra=(), alias_persona=None, cliente=""):
+    """Quién atiende esta tarea, y por qué. Con `cliente` (el agente del proyecto,
+    `origen.agente_de`), lo que se decide por tamaño se propone con un modelo de ese agente
+    (`niveles.del_cliente`); lo que dijo una persona no se toca."""
+    elegida = _decidir(texto, agente=agente, dificultad=dificultad, override=override,
+                       reglas_humano=reglas_humano, reglas_nivel=reglas_nivel,
+                       niveles_extra=niveles_extra, alias_persona=alias_persona)
+    if cliente and elegida.por in POR_TAMANO:
+        propio = niveles.del_cliente(elegida.nivel, cliente, niveles_extra)
+        if propio is not elegida.nivel:
+            titulo = clientes.CLIENTES[cliente].titulo if cliente in clientes.CLIENTES else cliente
+            elegida.razon += f" (con {titulo}, el agente del proyecto: {propio.modelo})"
+            elegida.nivel = propio
+    return elegida
+
+
+def _decidir(texto, *, agente="", dificultad="", override="", reglas_humano=None,
+             reglas_nivel=None, niveles_extra=(), alias_persona=None):
     """Quién atiende esta tarea, y por qué.
 
     `agente` y `dificultad` son lo que Cotejo ya sabe de la tarea (`#agente/opus`, `#dificil`);
@@ -124,9 +145,9 @@ def decidir(texto, *, agente="", dificultad="", override="", reglas_humano=None,
 
 
 def de_tarea(tarea, *, override="", reglas_humano=None, reglas_nivel=None,
-             niveles_extra=(), alias_persona=None):
+             niveles_extra=(), alias_persona=None, cliente=""):
     """Lo mismo, a partir de una tarea tal como la devuelve la CLI de Cotejo."""
     return decidir(tarea.get("texto", ""), agente=tarea.get("agente", ""),
                    dificultad=tarea.get("dificultad", ""), override=override,
                    reglas_humano=reglas_humano, reglas_nivel=reglas_nivel,
-                   niveles_extra=niveles_extra, alias_persona=alias_persona)
+                   niveles_extra=niveles_extra, alias_persona=alias_persona, cliente=cliente)

@@ -120,6 +120,14 @@ def cmd_modelos(args):
                       "operacion": "actualizar" if reemplazado else "agregar",
                       "modelo": guardado})
             return OK
+        if args.accion == "vivos":
+            from . import modelos_vivos
+            imprimir({"esquema": ESQUEMA, "agentes": modelos_vivos.resumen(
+                          refrescar=args.refrescar, preguntar_cli=not args.sin_preguntar),
+                      "nota": "Con sesión = instalado y con credenciales en disco. Los modelos "
+                              "salen del propio CLI (opencode models, codex debug models) o de "
+                              "sus alias (Claude, Gemini); se registran con `modelos agregar`."})
+            return OK
         if args.accion == "quitar":
             cambio = cfg.quitar_modelo(args.clave)
             imprimir({"esquema": ESQUEMA, "cambio": cambio, "operacion": "quitar",
@@ -151,7 +159,9 @@ def cmd_decidir(args):
     try:
         elegida = decision.de_tarea(tarea, override=args.modelo, reglas_humano=humano,
                                     reglas_nivel=nivel, niveles_extra=propios,
-                                    alias_persona=config.get("alias_persona"))
+                                    alias_persona=config.get("alias_persona"),
+                                    cliente=cotejo.agente_del_proyecto(tarea.get("proyecto"),
+                                                                       config))
     except ValueError as error:
         raise ErrorCLI(str(error),
                        f"Los nombres válidos: "
@@ -177,7 +187,9 @@ def cmd_plan(args):
     for tarea in tareas:
         elegida = decision.de_tarea(tarea, reglas_humano=humano, reglas_nivel=nivel,
                                     niveles_extra=propios,
-                                    alias_persona=config.get("alias_persona"))
+                                    alias_persona=config.get("alias_persona"),
+                                    cliente=cotejo.agente_del_proyecto(tarea.get("proyecto"),
+                                                                       config))
         clave = elegida.nivel.modelo or niveles.HUMANO
         por_modelo[clave] = por_modelo.get(clave, 0) + 1
         salida.append({"id": tarea.get("id"), "proyecto": tarea.get("proyecto"),
@@ -218,7 +230,9 @@ def cmd_despachar(args):
     try:
         elegida = decision.de_tarea(tarea, override=args.modelo, reglas_humano=humano,
                                     reglas_nivel=nivel, niveles_extra=propios,
-                                    alias_persona=config.get("alias_persona"))
+                                    alias_persona=config.get("alias_persona"),
+                                    cliente=cotejo.agente_del_proyecto(tarea.get("proyecto"),
+                                                                       config))
     except ValueError as error:
         raise ErrorCLI(str(error), "Mira `cotejo modelos`.") from error
 
@@ -974,6 +988,13 @@ def anadir(sub):
     agregar.add_argument("--entrada-mtok", type=float, default=0.0)
     agregar.add_argument("--salida-mtok", type=float, default=0.0)
     agregar.set_defaults(funcion=cmd_modelos)
+    vivos = acciones_modelos.add_parser(
+        "vivos", help="Qué agentes tienen sesión y qué modelos ofrece cada uno hoy")
+    vivos.add_argument("--refrescar", action="store_true",
+                       help="Preguntar a los CLIs aunque haya una lista reciente guardada")
+    vivos.add_argument("--sin-preguntar", action="store_true",
+                       help="Solo lo guardado o los alias, sin lanzar ningún CLI")
+    vivos.set_defaults(funcion=cmd_modelos)
     quitar = acciones_modelos.add_parser("quitar", help="Quitar un modelo personalizado")
     quitar.add_argument("clave")
     quitar.set_defaults(funcion=cmd_modelos)
