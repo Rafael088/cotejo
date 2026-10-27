@@ -71,6 +71,9 @@ class Instaladores(unittest.TestCase):
         self.assertEqual(inst.INSTALADORES["opencode"].url, "https://opencode.ai/install")
         self.assertEqual(inst.INSTALADORES["codex"].interprete, "sh")
         self.assertNotIn("gemini", inst.INSTALADORES)
+        self.assertEqual(inst.INSTALADORES["antigravity"].url,
+                         "https://antigravity.google/cli/install.sh")
+        self.assertEqual(inst.INSTALADORES["antigravity"].interprete, "bash")
         for clave, i in inst.INSTALADORES.items():
             self.assertTrue(i.url.startswith("https://"), clave)
             self.assertTrue(i.fuente.startswith("https://"), clave)
@@ -83,6 +86,7 @@ class Instaladores(unittest.TestCase):
         self.assertEqual(inst.texto_para_copiar("codex"), "codex login")
         self.assertEqual(inst.texto_para_copiar("opencode"), "opencode auth login")
         self.assertEqual(inst.texto_para_copiar("gemini"), "gemini")
+        self.assertEqual(inst.texto_para_copiar("antigravity"), "agy")
         self.assertFalse(inst.SESIONES["codex"].en_terminal)
 
     def test_descargar_solo_https(self):
@@ -167,16 +171,34 @@ class Instalar(Base):
         t = inst.instalar("claude")
         self.assertEqual(t.esperar(10), "sin_descarga")
 
-    def test_gemini_no_se_instala_aqui_y_avisa_si_falta_npm(self):
+    def test_gemini_no_se_instala_aqui(self):
         self.assertFalse(inst.puede_instalar("gemini"))
-        self.assertEqual(inst.falta_para_instalar("gemini"), "npm")
-        ejecutable(self.bin / "npm", "#!/bin/sh\n")
-        self.assertEqual(inst.falta_para_instalar("gemini"), "")
-        self.assertEqual(inst.falta_para_instalar("claude"), "")
 
     def test_en_windows_solo_enlaza(self):
         with mock.patch("tareas.rutas.sistema", return_value="windows"):
             self.assertFalse(inst.puede_instalar("claude"))
+
+
+class Antigravity(Base):
+    def test_se_instala_con_su_oficial_y_queda_en_local_bin(self):
+        self.con_instalador(
+            "mkdir -p \"$HOME/.local/bin\"\n"
+            "printf '#!/bin/sh\\n' > \"$HOME/.local/bin/agy\"\n"
+            "chmod +x \"$HOME/.local/bin/agy\"\n")
+        t = inst.instalar("antigravity")
+        self.assertEqual(t.esperar(10), "hecho")
+        self.assertEqual(self.descargado, "https://antigravity.google/cli/install.sh")
+        self.assertIn("Antigravity CLI quedó instalado", inst.resultado(t, True))
+        e = equipo.revisar()
+        self.assertEqual(e.aparte[0].estado, equipo.INSTALADO)
+
+    def test_abrir_es_agy_en_una_terminal(self):
+        agy = ejecutable(self.bin / "agy", "#!/bin/sh\n")
+        abrir = mock.Mock()
+        with mock.patch.object(inst, "terminal", return_value=["mi-terminal"]):
+            a = inst.iniciar_sesion("antigravity", abrir=abrir)
+        self.assertEqual(a.como, "terminal")
+        abrir.assert_called_once_with(["mi-terminal", str(agy)])
 
 
 class IniciarSesion(Base):
@@ -226,7 +248,8 @@ class EstadosDelEquipo(Base):
         self.assertEqual([a.clave for a in e.agentes if a.recomendado], ["claude"])
         gemini = next(a for a in e.agentes if a.clave == "gemini")
         self.assertFalse(gemini.instalable)
-        self.assertIn("npm", gemini.nota)
+        self.assertIn("licencia de empresa", gemini.nota)
+        self.assertTrue(e.aparte[0].instalable)
         self.assertIn("Instalar", e.mensaje)
 
     def test_instalado_sin_sesion_y_despues_listo(self):

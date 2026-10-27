@@ -24,6 +24,7 @@ PAGINAS = {
     "codex": "https://developers.openai.com/codex/cli",
     "gemini": "https://github.com/google-gemini/gemini-cli",
     "opencode": "https://opencode.ai/docs/",
+    "antigravity": "https://antigravity.google/docs/getting-started/",
     "git": "https://git-scm.com/downloads",
 }
 GIT = "git"
@@ -33,6 +34,14 @@ TITULO_GIT = "git (para guardar versiones)"
 NO_INSTALADO = "No instalado"
 SIN_SESION = "Falta iniciar sesión"
 LISTO = "Listo"
+INSTALADO = "Instalado"     # instalado, pero Cotejo aún no le da tareas (Antigravity CLI)
+
+# Una línea en llano bajo el nombre, por agente, mientras no esté instalado.
+NOTAS = {
+    "gemini": "Solo con licencia de empresa. Con el plan gratuito, Pro o Ultra de Google, "
+              "usa Antigravity CLI.",
+    "antigravity": "Lo que reemplaza a Gemini CLI para cuentas personales de Google.",
+}
 
 
 @dataclass(frozen=True)
@@ -44,33 +53,35 @@ class Pieza:
     con_sesion: bool = True       # git no tiene sesión: cuenta como con sesión
     instalable: bool = False      # Cotejo sabe correr su instalador oficial aquí
     recomendado: bool = False     # el que se sugiere a quien no tiene ninguno
-    falta: str = ""               # lo que necesita para instalarse y no está («npm»)
+    para_tareas: bool = True      # Cotejo le da tareas (Antigravity CLI todavía no)
 
     @property
     def listo(self):
-        return self.instalado and self.con_sesion
+        return self.instalado and self.con_sesion and self.para_tareas
 
     @property
     def estado(self):
         if not self.instalado:
             return NO_INSTALADO
+        if not self.para_tareas:
+            return INSTALADO
         return LISTO if self.con_sesion else SIN_SESION
 
     @property
     def pide_sesion(self):
-        return self.instalado and not self.con_sesion
+        return self.instalado and not self.con_sesion and self.para_tareas
 
     @property
     def nota(self):
         """Una línea en llano bajo el nombre, o ""."""
+        if not self.para_tareas and self.instalado:
+            return ("Instalado. Cotejo todavía no le da tareas; para entrar con tu cuenta, "
+                    "ábrelo con «Abrir».")
         if self.instalado:
             return ""
-        if self.falta:
-            return (f"Se instala con {self.falta} y no lo encontré en este equipo: instala "
-                    f"Node.js primero o elige otro agente.")
         if self.recomendado:
             return "Si no sabes cuál elegir, empieza por este."
-        return ""
+        return NOTAS.get(self.clave, "")
 
     @property
     def texto_enlace(self):
@@ -81,10 +92,11 @@ class Pieza:
 class Equipo:
     agentes: tuple
     git: Pieza
+    aparte: tuple = ()     # los que se instalan aquí pero aún no reciben tareas
 
     @property
     def piezas(self):
-        return (*self.agentes, self.git)
+        return (*self.agentes, *self.aparte, self.git)
 
     @property
     def hay_agente(self):
@@ -131,8 +143,10 @@ def hay_git():
     return shutil.which(GIT) is not None
 
 
-def revisar():
-    """Mira esta máquina ahora mismo (cada llamada vuelve a detectar)."""
+def revisar(preguntar_cli=False):
+    """Mira esta máquina ahora mismo (cada llamada vuelve a detectar). `preguntar_cli` deja
+    preguntar a los CLIs si tienen sesión en el llavero (`modelos_vivos.sesion`): solo desde un
+    hilo, nunca al pintar."""
     from enrutador import clientes, modelos_vivos
     from . import instalar_agentes as inst
     inst.sumar_al_path()
@@ -140,12 +154,16 @@ def revisar():
     ninguno = not puestos
     agentes = tuple(
         Pieza(nombre, cliente.titulo or nombre, nombre in puestos, PAGINAS.get(nombre, ""),
-              con_sesion=nombre in puestos and modelos_vivos.sesion(nombre),
+              con_sesion=nombre in puestos and modelos_vivos.sesion(
+                  nombre, preguntar_cli=preguntar_cli),
               instalable=inst.puede_instalar(nombre),
-              recomendado=ninguno and nombre == inst.RECOMENDADO,
-              falta=inst.falta_para_instalar(nombre))
+              recomendado=ninguno and nombre == inst.RECOMENDADO)
         for nombre, cliente in clientes.CLIENTES.items())
-    return Equipo(agentes, Pieza(GIT, TITULO_GIT, hay_git(), PAGINAS[GIT]))
+    aparte = tuple(
+        Pieza(clave, titulo, inst.instalado(clave), PAGINAS.get(clave, ""), con_sesion=False,
+              instalable=inst.puede_instalar(clave), para_tareas=False)
+        for clave, (_ejecutable, titulo) in inst.APARTE.items())
+    return Equipo(agentes, Pieza(GIT, TITULO_GIT, hay_git(), PAGINAS[GIT]), aparte)
 
 
 def es_primer_arranque(fuente):

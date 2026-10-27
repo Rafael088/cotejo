@@ -107,9 +107,13 @@ solo ahí—, con cada agente **no instalado**, **falta iniciar sesión** o **li
 (cotejo-2j6un7: `tareas/instalar_agentes.py`, sin GTK, corre **solo el instalador oficial**
 documentado de Claude Code, Codex y OpenCode —descargado a `<estado>/agentes/`, ejecutado con
 `bash`/`sh` sin shell ni terminal, en un hilo, con tope, cancelable, log y un `sudo` que se
-niega— y el login oficial de cada CLI, en una terminal si lo pide; Gemini CLI y git siguen
-enlazando), sondea la sesión cada pocos segundos mientras se ve, tiene «revisar otra vez» y
-«Seguir al Inicio») y
+niega— y el login oficial de cada CLI, en una terminal si lo pide; Antigravity CLI, que
+reemplaza a Gemini CLI en cuentas personales, se instala igual pero aún no recibe tareas
+—«Instalado», no «Listo»—; Gemini CLI («solo con licencia de empresa») y git siguen enlazando),
+sondea la sesión en un hilo cada pocos segundos mientras se ve —`modelos_vivos.sesion` pregunta
+a `codex login status` / `claude auth status` si la sesión vive en el llavero, solo con
+`preguntar_cli`, nunca al pintar—, tiene «revisar otra vez» y «Seguir al Inicio»; después del
+primer arranque se llega con «Agentes» en el Inicio o desde «Añadir modelo») y
 pone encima la **constelación** (7wc9hb): cada proyecto un núcleo con sus piezas alrededor,
 por estado y con el verde solo para lo que espera comprobación. Su geometría y su dibujo con
 cairo son puros (`tareas/constelacion.py`, como `dot_dibujo.py`) y el widget

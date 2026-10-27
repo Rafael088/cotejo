@@ -14,8 +14,9 @@ from tareas.fuentes.repo import Repo
 def revisar(agentes, git=True, sin_sesion=()):
     """Sin mirar la máquina: `agentes` instalados, todos con sesión salvo `sin_sesion`."""
     with mock.patch("enrutador.clientes.instalados", return_value=list(agentes)), \
-            mock.patch("enrutador.modelos_vivos.sesion", lambda n: n not in sin_sesion), \
+            mock.patch("enrutador.modelos_vivos.sesion", lambda n, **_: n not in sin_sesion), \
             mock.patch("tareas.instalar_agentes.sumar_al_path", return_value=[]), \
+            mock.patch("tareas.instalar_agentes.instalado", return_value=False), \
             mock.patch("tareas.equipo.hay_git", return_value=git):
         return equipo.revisar()
 
@@ -23,8 +24,8 @@ def revisar(agentes, git=True, sin_sesion=()):
 class Equipo(unittest.TestCase):
     def test_con_todo_instalado(self):
         e = revisar(clientes.CLIENTES, git=True)
-        self.assertTrue(all(p.listo for p in e.piezas))
-        self.assertEqual(e.faltan, ())
+        self.assertTrue(all(p.listo for p in (*e.agentes, e.git)))
+        self.assertEqual([p.clave for p in e.faltan], ["antigravity"])   # aparte, sin instalar
         self.assertTrue(e.hay_agente)
         self.assertEqual(e.titular, "Todo listo: tienes 4 agentes")
 
@@ -32,7 +33,7 @@ class Equipo(unittest.TestCase):
         e = revisar([], git=False)
         self.assertEqual([p.clave for p in e.agentes], list(clientes.CLIENTES))
         self.assertFalse(e.hay_agente)
-        self.assertEqual(len(e.faltan), 5)
+        self.assertEqual(len(e.faltan), 6)                # con Antigravity CLI aparte
         self.assertEqual(e.titular, "Te falta un agente de IA")
         self.assertIn("Instalar", e.mensaje)
         self.assertEqual([a.clave for a in e.agentes if a.recomendado], ["claude"])
@@ -47,7 +48,8 @@ class Equipo(unittest.TestCase):
         self.assertEqual({p.clave for p in e.piezas if p.listo}, {"codex"})
         self.assertEqual(e.titular, "Todo listo para empezar con Codex")
         self.assertIn("git", e.mensaje)
-        self.assertEqual([p.clave for p in e.faltan], ["claude", "opencode", "gemini", "git"])
+        self.assertEqual([p.clave for p in e.faltan],
+                         ["claude", "opencode", "gemini", "antigravity", "git"])
 
     def test_tres_estados_por_agente(self):
         e = revisar(["claude", "codex"], git=True, sin_sesion={"codex"})
@@ -63,6 +65,31 @@ class Equipo(unittest.TestCase):
         self.assertTrue(e.hay_instalado)
         self.assertEqual(e.titular, "Te falta iniciar sesión en OpenCode")
         self.assertIn("navegador", e.mensaje)
+
+    def test_gemini_solo_enlaza_y_manda_a_antigravity(self):
+        e = revisar([])
+        gemini = next(p for p in e.agentes if p.clave == "gemini")
+        self.assertFalse(gemini.instalable)
+        self.assertIn("Solo con licencia de empresa", gemini.nota)
+        self.assertIn("Antigravity CLI", gemini.nota)
+        agy, = e.aparte
+        self.assertEqual((agy.clave, agy.titulo, agy.estado),
+                         ("antigravity", "Antigravity CLI", "No instalado"))
+        self.assertTrue(agy.pagina.startswith("https://antigravity.google/"))
+
+    def test_antigravity_instalado_no_cuenta_para_tareas(self):
+        with mock.patch("enrutador.clientes.instalados", return_value=[]), \
+                mock.patch("enrutador.modelos_vivos.sesion", return_value=True), \
+                mock.patch("tareas.instalar_agentes.sumar_al_path", return_value=[]), \
+                mock.patch("tareas.instalar_agentes.instalado", return_value=True), \
+                mock.patch("tareas.equipo.hay_git", return_value=True):
+            e = equipo.revisar()
+        agy, = e.aparte
+        self.assertEqual(agy.estado, "Instalado")
+        self.assertFalse(agy.listo or agy.pide_sesion)
+        self.assertIn("todavía no le da tareas", agy.nota)
+        self.assertFalse(e.hay_agente)
+        self.assertEqual(e.titular, "Te falta un agente de IA")
 
     def test_cada_revision_vuelve_a_detectar(self):
         self.assertFalse(revisar([]).hay_agente)

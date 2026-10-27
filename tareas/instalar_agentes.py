@@ -13,10 +13,13 @@ Sin GTK. La pantalla (`tareas/app/equipo.py`) pinta; aquí se decide **qué** se
   no pregunta «Start Codex now?».
 - OpenCode: `curl -fsSL https://opencode.ai/install | bash` (fuente: https://opencode.ai/docs/,
   «Install script»). Instala en `~/.opencode/bin/opencode`.
-- Gemini CLI **no**: su instalación oficial es `npm install -g @google/gemini-cli`
-  (https://github.com/google-gemini/gemini-cli), que según dónde tenga npm su prefijo pide
-  permisos de administrador; se queda en su enlace, como git. La pantalla dice en llano si falta
-  npm.
+- Antigravity CLI (`agy`): `curl -fsSL https://antigravity.google/cli/install.sh | bash`
+  (fuente: https://antigravity.google/docs/getting-started/). Instala en `~/.local/bin/agy`.
+  Desde el 18 de junio de 2026 reemplaza a Gemini CLI en el plan gratuito, Pro y Ultra
+  (https://github.com/google-gemini/gemini-cli/discussions/27274). Cotejo aún no le da tareas
+  (no es un cliente de `enrutador.clientes`): se instala y se conecta, nada más.
+- Gemini CLI **no**: desde esa fecha solo sirve con licencia de empresa; se queda en su enlace,
+  como git.
 
 Los tres instalan en la carpeta de la persona, sin sudo. Nunca se usa una shell: el script se
 descarga con `urllib` a `<estado>/agentes/<agente>.sh` y se ejecuta con `bash`/`sh` sobre ese
@@ -42,6 +45,9 @@ cada agente cuyo ejecutable esté ahí, para que el board (y lo que lance) lo en
   terminal: va en una terminal.
 - Gemini CLI: `gemini` (https://github.com/google-gemini/gemini-cli): la sesión se inicia al
   abrirlo («Sign in with Google»): va en una terminal.
+- Antigravity CLI: `agy` (https://antigravity.google/docs/install): al abrirlo por primera vez
+  abre el navegador; guarda la sesión en el llavero del sistema, así que Cotejo no sabe si quedó
+  (y no hace falta: todavía no le da tareas).
 
 La terminal es la del maestro (`enrutador.maestro.terminal` de la config, por defecto
 `xdg-terminal-exec`, la que el escritorio tenga por preferida) o, si no está,
@@ -94,7 +100,14 @@ INSTALADORES = {
                         (("CODEX_NON_INTERACTIVE", "1"),)),
     "opencode": Instalador("https://opencode.ai/install", "bash", _bin_opencode,
                            "https://opencode.ai/docs/"),
+    "antigravity": Instalador("https://antigravity.google/cli/install.sh", "bash",
+                              rutas.bin_local,
+                              "https://antigravity.google/docs/getting-started/"),
 }
+
+# Agentes que se instalan y se conectan desde aquí pero a los que Cotejo aún no da tareas: no
+# están en `enrutador.clientes` (Antigravity CLI, cotejo-r4yg0n).
+APARTE = {"antigravity": ("agy", "Antigravity CLI")}
 
 
 @dataclass(frozen=True)
@@ -109,11 +122,8 @@ SESIONES = {
     "codex": Sesion(("login",), False, "https://developers.openai.com/codex/auth"),
     "opencode": Sesion(("auth", "login"), True, "https://opencode.ai/docs/cli/"),
     "gemini": Sesion((), True, "https://github.com/google-gemini/gemini-cli"),
+    "antigravity": Sesion((), True, "https://antigravity.google/docs/install"),
 }
-
-# Lo que necesita un agente sin instalador aquí para instalarse (se dice si falta).
-NECESITA = {"gemini": "npm"}
-
 
 # --- dónde ------------------------------------------------------------------------------------
 
@@ -127,8 +137,15 @@ def carpeta():
 
 
 def _ejecutable(clave):
+    if clave in APARTE:
+        return APARTE[clave][0]
     from enrutador import clientes
     return clientes.de(clave).ejecutable
+
+
+def instalado(clave):
+    """¿Está en el PATH? (Para los de `APARTE`; los clientes lo dicen con `clientes`.)"""
+    return shutil.which(_ejecutable(clave)) is not None
 
 
 def ruta_oficial(clave, casa=None):
@@ -162,12 +179,6 @@ def puede_instalar(clave):
     instalador = INSTALADORES.get(clave)
     return (instalador is not None and rutas.sistema() != "windows"
             and shutil.which(instalador.interprete) is not None)
-
-
-def falta_para_instalar(clave):
-    """Lo que hace falta y no está («npm»), o ""."""
-    necesita = NECESITA.get(clave)
-    return necesita if necesita and shutil.which(necesita) is None else ""
 
 
 # --- correr algo y enseñar lo que dice ------------------------------------------------------------
@@ -380,6 +391,8 @@ def resultado(trabajo, ahora_instalado=None):
 
 
 def _titulo(clave):
+    if clave in APARTE:
+        return APARTE[clave][1]
     from enrutador import clientes
     cliente = clientes.CLIENTES.get(clave)
     return (cliente.titulo if cliente and cliente.titulo else clave)

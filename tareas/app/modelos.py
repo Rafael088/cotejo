@@ -21,6 +21,7 @@ from enrutador import clientes, config as enrutador_config, modelos_vivos, nivel
 from .. import bitacora, modelo, origen
 from .comun import ESPACIADO_SM, ESPACIADO_XS
 from .escala import px
+from .piezas import con_mano
 
 ESCRIBIR = "Otro (escríbelo abajo)"
 
@@ -95,6 +96,13 @@ class Modelos:
         dialogo.nivel = Gtk.DropDown.new_from_strings([t for _, t in modelos_vivos.NIVELES_TEXTO])
         dialogo.nivel.set_selected(1)
         fila("NIVEL", dialogo.nivel)
+        # Solo salen los agentes listos; el que falta se instala o se conecta en «Revisar el
+        # equipo» (cotejo-2j6un7).
+        dialogo.ir_al_equipo = con_mano(Gtk.Button(
+            label="¿Falta un agente? Instálalo o conéctalo", css_classes=["flat"],
+            halign=Gtk.Align.START))
+        dialogo.ir_al_equipo.connect("clicked", lambda *_: self.ver_equipo())
+        caja.append(dialogo.ir_al_equipo)
         caja.set_margin_top(px(ESPACIADO_XS))
         dialogo.set_extra_child(caja)
         dialogo.add_response("cancelar", "Cancelar")

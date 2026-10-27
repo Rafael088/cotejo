@@ -11,15 +11,24 @@ instalado**, **falta iniciar sesión** o **listo** (cotejo-2j6un7):
 - Falta iniciar sesión: **Iniciar sesión** abre el inicio de sesión oficial del agente
   (`instalar_agentes.iniciar_sesion`): en una terminal si lo pide, en segundo plano con su salida
   aquí si no (Codex), o el comando para copiar si no hay terminal.
+- Antigravity CLI (lo que reemplaza a Gemini CLI en cuentas personales) se instala igual, pero
+  Cotejo aún no le da tareas: instalado dice «Instalado» y «Abrir» lo abre en una terminal para
+  entrar con la cuenta. Gemini CLI queda como enlace, «solo con licencia de empresa».
 - Mientras la pantalla se ve (o hay algo corriendo), cada `SONDEO` segundos se vuelve a detectar
-  (`equipo.revisar`, que mira la sesión con `modelos_vivos.sesion`) y, si algo cambió, se repinta:
-  así se entera sola de que la persona terminó en el navegador.
+  **en un hilo** (`equipo.revisar(preguntar_cli=True)`: la sesión de Codex o Claude Code en el
+  llavero se le pregunta a su CLI) y, si algo cambió, se repinta: así se entera sola de que la
+  persona terminó en el navegador. Al pintar nunca se lanza ningún CLI.
+
+Se llega aquí el primer arranque y, después, con «Agentes» en el Inicio o con «¿Falta un
+agente?» en el diálogo «Añadir modelo» (`ver_equipo`).
 
 «Revisar otra vez» vuelve a detectar y «Seguir al Inicio» pasa a la pestaña Inicio. Es una página
 más de la pila (`"equipo"`, sin botón en el selector). Qué se detecta lo decide
 `tareas/equipo.py`, y qué se corre `tareas/instalar_agentes.py`, los dos sin GTK; aquí solo se
 pinta. Los hilos nunca tocan GTK: avisan con `GLib.idle_add`.
 """
+
+import threading
 
 from gi.repository import Gio, GLib, Gtk
 
@@ -42,11 +51,13 @@ class PestanaEquipo:
         self.equipo_trabajos = {}      # clave → Trabajo (instalar o `codex login`)
         self.equipo_notas = {}         # clave → lo último que se le dijo a la persona
         self.equipo_sondeo = 0
+        self.equipo_sondeando = False   # hay un hilo detectando
         self.equipo_visto = None
         cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_LG),
                          margin_top=px(ESPACIADO_XL) * 2, margin_bottom=px(ESPACIADO_XL) * 2,
                          margin_start=px(ESPACIADO_XL) * 2, margin_end=px(ESPACIADO_XL) * 2)
-        cuerpo.append(Gtk.Label(label="Primer arranque", xalign=0, css_classes=["dato"]))
+        self.equipo_ceja = Gtk.Label(label="Primer arranque", xalign=0, css_classes=["dato"])
+        cuerpo.append(self.equipo_ceja)
         cuerpo.append(Gtk.Label(label="Antes de empezar, Cotejo revisa tu equipo", xalign=0,
                                 wrap=True, css_classes=["inicio-titular"]))
         cuerpo.append(Gtk.Label(
@@ -75,6 +86,8 @@ class PestanaEquipo:
         """Vuelve a detectar (o usa `visto`) y repinta. Devuelve el `Equipo` que vio."""
         visto = visto if visto is not None else equipo.revisar()
         self.equipo_visto = visto
+        self.equipo_ceja.set_label("Primer arranque" if equipo.es_primer_arranque(self.fuente)
+                                   else "Tus agentes")
         vaciar(self.equipo_filas)
         self.equipo_enlaces = {}
         self.equipo_instalar = {}
@@ -108,6 +121,12 @@ class PestanaEquipo:
             boton.connect("clicked", lambda _b, p=pieza: self.iniciar_sesion_agente(p.clave))
             self.equipo_sesion[pieza.clave] = boton
             linea.append(boton)
+        elif pieza.instalado and not pieza.para_tareas and pieza.clave in instalar_agentes.SESIONES:
+            abrir = con_mano(Gtk.Button(label="Abrir", valign=Gtk.Align.CENTER))
+            etiquetar(abrir, f"Abrir {pieza.titulo} en una terminal para entrar con tu cuenta")
+            abrir.connect("clicked", lambda _b, p=pieza: self.iniciar_sesion_agente(p.clave))
+            self.equipo_sesion[pieza.clave] = abrir
+            linea.append(abrir)
         elif not pieza.instalado:
             enlace = con_mano(Gtk.Button(label=pieza.texto_enlace, valign=Gtk.Align.CENTER,
                                          css_classes=["flat"]))
@@ -167,6 +186,9 @@ class PestanaEquipo:
             self.equipo_trabajos[clave] = apertura.trabajo
             self.equipo_notas[clave] = ("Se abre tu navegador para que entres con tu cuenta. "
                                         "Si no se abre, usa el enlace de arriba.")
+        elif apertura.como == "terminal" and clave in instalar_agentes.APARTE:
+            self.equipo_notas[clave] = (
+                f"Abrí una terminal con «{apertura.comando}»: entra con tu cuenta en el navegador.")
         elif apertura.como == "terminal":
             self.equipo_notas[clave] = (
                 f"Abrí una terminal con «{apertura.comando}»: sigue los pasos ahí y en tu "
@@ -207,18 +229,44 @@ class PestanaEquipo:
                 or any(t.corriendo for t in self.equipo_trabajos.values()))
 
     def sondear_equipo(self):
-        """Vuelve a detectar; repinta solo si cambió algún estado. Se apaga sola cuando la
-        pantalla deja de verse y no corre nada."""
+        """Lanza una detección en un hilo (`detectar_en_fondo`) si no hay otra en marcha. Se
+        apaga sola cuando la pantalla deja de verse y no corre nada."""
         if not self._equipo_a_la_vista():
             self.equipo_sondeo = 0
             return GLib.SOURCE_REMOVE
-        visto = equipo.revisar()
+        if not self.equipo_sondeando:
+            self.equipo_sondeando = True
+            self.detectar_en_fondo(self.equipo_detectado)
+        return GLib.SOURCE_CONTINUE
+
+    def detectar_en_fondo(self, al_terminar):
+        """`equipo.revisar(preguntar_cli=True)` en un hilo; vuelve por `GLib.idle_add`."""
+        def correr():
+            try:
+                visto = equipo.revisar(preguntar_cli=True)
+            except Exception:  # noqa: BLE001  (un fallo al detectar no tumba el board)
+                visto = None
+            GLib.idle_add(lambda: al_terminar(visto) and False)
+        threading.Thread(target=correr, daemon=True).start()
+
+    def equipo_detectado(self, visto):
+        """Ya en el hilo de GTK: repinta solo si cambió algún estado."""
+        self.equipo_sondeando = False
+        if visto is None or self.equipo_filas.get_root() is None:
+            return
         if self.equipo_visto is None or _foto(visto) != _foto(self.equipo_visto):
             for p in visto.agentes:
                 if p.listo and p.clave in self.equipo_notas:
                     self.equipo_notas[p.clave] = f"{p.titulo} está listo."
             self.revisar_equipo(visto)
-        return GLib.SOURCE_CONTINUE
+
+    def ver_equipo(self, *_):
+        """Lleva a «Revisar el equipo» desde el Inicio o desde «Añadir modelo»."""
+        dialogo = getattr(self, "dialogo_modelo", None)
+        if dialogo is not None:
+            dialogo.force_close()
+            self.dialogo_modelo = None
+        self.ver_pestana(EQUIPO)
 
     def abrir_pagina(self, url):
         """Abre una página oficial con el lanzador del sistema (las pruebas lo sustituyen)."""
