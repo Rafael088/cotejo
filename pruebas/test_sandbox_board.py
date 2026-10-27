@@ -72,7 +72,7 @@ class Ajustes(unittest.TestCase):
 
     def test_el_comando_del_board_lo_lleva_y_el_prompt_va_al_final(self):
         config = cfg._fundir(json.loads(json.dumps(cfg.DEFECTOS)), {})
-        elegida = mock.Mock(nivel=mock.Mock(modelo="haiku", modelo_id=""))
+        elegida = mock.Mock(nivel=mock.Mock(modelo="haiku", modelo_id="", argumentos=()))
         caja = sandbox.ajustes_claude(CARPETAS)
         argv = despacho_board.comando(config, clientes.de("claude"), elegida, "P", CARPETAS,
                                       ["main"], sandbox=caja)

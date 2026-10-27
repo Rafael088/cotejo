@@ -114,6 +114,7 @@ def cmd_modelos(args):
                 "nivel": args.nivel,
                 "entrada_mtok": args.entrada_mtok,
                 "salida_mtok": args.salida_mtok,
+                **({"argumentos": args.argumento} if args.argumento else {}),
             }
             guardado, reemplazado = cfg.registrar_modelo(definicion)
             imprimir({"esquema": ESQUEMA, "cambio": True,
@@ -313,7 +314,7 @@ def cmd_despachar(args):
             modelo=elegida.nivel.modelo, modelo_id=elegida.nivel.modelo_id,
             directorio=trabajo, tarea_id=tarea.get("id", ""),
             proyecto=tarea.get("proyecto", ""), cliente=elegida.nivel.cliente,
-            origen=directorio, worktree=worktree)
+            origen=directorio, worktree=worktree, argumentos=elegida.nivel.argumentos)
 
     encargo = armar_encargo(tarea, plan_wt)
 
@@ -987,6 +988,9 @@ def anadir(sub):
     agregar.add_argument("--nombre", help="Nombre legible para el catálogo")
     agregar.add_argument("--entrada-mtok", type=float, default=0.0)
     agregar.add_argument("--salida-mtok", type=float, default=0.0)
+    agregar.add_argument("--argumento", action="append", metavar="ARG",
+                         help="Argumento extra para el cliente con este modelo (repetible; "
+                              "p. ej. --argumento=-c --argumento=model_reasoning_effort=high)")
     agregar.set_defaults(funcion=cmd_modelos)
     vivos = acciones_modelos.add_parser(
         "vivos", help="Qué agentes tienen sesión y qué modelos ofrece cada uno hoy")

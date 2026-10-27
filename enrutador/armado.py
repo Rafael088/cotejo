@@ -87,14 +87,14 @@ def sandbox_de(config, cliente, cotejo, tarea_id, trabajo, worktree=None, direct
 
 
 def comando(config, cliente, modelo, modelo_id, prompt, carpetas, ramas=None,
-            politica_gemini=None, sandbox=None):
+            politica_gemini=None, sandbox=None, argumentos=()):
     """El argv sin interfaz: el del motor `headless` para ese cliente, más
     `lanzar.argumentos_extra.<cliente>` y la terminal libre en `carpetas` con los prohibidos
     de fábrica para `ramas` (`clientes.Cliente.terminal_libre`), con el sandbox de Claude si
     viene (`sandbox`, los ajustes de `sandbox_de`). Los permisos no viven en la config: así una
     config propia no se los lleva por delante."""
     propios = preparar._propios(config, cliente)
-    extra = (list(propios.get("argumentos_extra") or ()) +
+    extra = (list(argumentos or ()) + list(propios.get("argumentos_extra") or ()) +
              list(((config.get("lanzar") or {}).get("argumentos_extra") or {})
                   .get(cliente.nombre) or ()) +
              cliente.terminal_libre(carpetas, ramas, politica_gemini, sandbox=sandbox)[0])

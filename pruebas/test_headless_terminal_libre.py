@@ -102,7 +102,7 @@ class ArgumentosDeLosCuatroClientes(Entorno):
         self.assertIn("main", armado.ramas_protegidas(self.repo, self.worktree))
 
     def test_es_el_mismo_armado_que_el_del_board(self):
-        elegida = mock.Mock(nivel=mock.Mock(modelo="haiku", modelo_id=""))
+        elegida = mock.Mock(nivel=mock.Mock(modelo="haiku", modelo_id="", argumentos=()))
         cliente = clientes.de("claude")
         carpetas = armado.carpetas_de_escritura(self.wt, self.worktree)
         delboard = despacho_board.comando(config(), cliente, elegida, "P", carpetas, ["main"])
