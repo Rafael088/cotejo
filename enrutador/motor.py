@@ -28,6 +28,7 @@ class Encargo:
     # donde trabaja, su worktree si lo hay) y el worktree de la tarea (`ruta`, `rama`, `repo`).
     origen: object = None
     worktree: object = None
+    argumentos: tuple = ()      # extra del modelo (`niveles.Nivel.argumentos`), tras `-m`
 
 
 @dataclass

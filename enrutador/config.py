@@ -175,6 +175,11 @@ def _validar_modelos(modelos):
             raise ConfigInvalida(f"cliente inválido para {clave}")
         if nivel not in NIVELES_MODELO:
             raise ConfigInvalida(f"nivel inválido para {clave}: {nivel}")
+        argumentos = modelo.get("argumentos", [])
+        if not isinstance(argumentos, list) or not all(
+                isinstance(a, str) and a and "\n" not in a and "\r" not in a
+                for a in argumentos):
+            raise ConfigInvalida(f"argumentos inválidos para {clave}: una lista de textos")
         vistos.add(clave)
 
 

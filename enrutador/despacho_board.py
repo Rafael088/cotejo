@@ -145,7 +145,8 @@ def comando(config, cliente, elegida, prompt, carpetas, ramas=None, politica_gem
             sandbox=None):
     """`armado.comando` con el modelo de la decisión del enrutador."""
     return armado.comando(config, cliente, elegida.nivel.modelo, elegida.nivel.modelo_id, prompt,
-                          carpetas, ramas, politica_gemini, sandbox)
+                          carpetas, ramas, politica_gemini, sandbox,
+                          elegida.nivel.argumentos)
 
 
 ramas_protegidas = armado.ramas_protegidas
@@ -247,7 +248,7 @@ def _lanzar(tarea_id, al_terminar, config, rechazada, rechazo_dado=None, forzar=
             prompt=enc.armar(tarea_ahora, elegida, directorio, nota, worktree),
             modelo=elegida.nivel.modelo, modelo_id=elegida.nivel.modelo_id,
             directorio=trabajo, tarea_id=tarea_ahora.get("id", ""), proyecto=proyecto,
-            cliente=elegida.nivel.cliente)
+            cliente=elegida.nivel.cliente, argumentos=elegida.nivel.argumentos)
 
     headless = motor.abrir("headless", config)
     for rechazo, problema in despacho.antes_de_tomar(headless, armar(tarea, plan_wt), plan_wt):

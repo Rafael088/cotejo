@@ -145,7 +145,7 @@ class ComandoDelBoard(unittest.TestCase):
         return cfg._fundir(json.loads(json.dumps(cfg.DEFECTOS)), encima or {})
 
     def elegida(self, modelo="sonnet"):
-        nivel = mock.Mock(modelo=modelo, modelo_id="")
+        nivel = mock.Mock(modelo=modelo, modelo_id="", argumentos=())
         return mock.Mock(nivel=nivel)
 
     def test_cada_cliente_lleva_su_terminal_libre(self):

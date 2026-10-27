@@ -64,7 +64,8 @@ class SinTocarNada(PruebaDeEnrutador):
         # Los de Claude y los de fábrica de los otros agentes (cotejo-qixs4j).
         self.assertEqual({n["modelo"] for n in datos["niveles"]},
                          {"humano", "haiku", "sonnet", "opus", "gemini-pro", "gemini-flash",
-                          "gemini-flash-lite", "codex", "opencode"})
+                          "gemini-flash-lite", "codex-rapido", "codex", "codex-fuerte",
+                          "opencode"})
 
     def test_modelos_agregar_deja_el_modelo_disponible_para_cualquier_cliente(self):
         codigo, agregado = self.correr(
@@ -77,6 +78,16 @@ class SinTocarNada(PruebaDeEnrutador):
         luna = next(n for n in catalogo["niveles"] if n["modelo"] == "luna")
         self.assertEqual((luna["modelo_id"], luna["cliente"]),
                          ("opencode-go/gpt-5.6-luna", "opencode"))
+
+    def test_modelos_agregar_guarda_los_argumentos_extra(self):
+        codigo, _ = self.correr(
+            "modelos", "agregar", "--clave", "terra-alto", "--modelo-id", "gpt-5.6-terra",
+            "--cliente", "codex", "--nivel", "n3", "--argumento=-c",
+            "--argumento=model_reasoning_effort=high")
+        self.assertEqual(codigo, verbos.OK)
+        _, catalogo = self.correr("modelos")
+        fila = next(n for n in catalogo["niveles"] if n["modelo"] == "terra-alto")
+        self.assertEqual(fila["argumentos"], ["-c", "model_reasoning_effort=high"])
 
     def test_decidir_un_texto_suelto_no_necesita_que_exista_la_tarea(self):
         codigo, datos = self.correr("decidir", "Comprar", "el", "dominio")

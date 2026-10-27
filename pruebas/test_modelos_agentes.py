@@ -200,7 +200,7 @@ class Catalogo(unittest.TestCase):
                     "nivel": "n2"},
                    {"clave": "raro", "modelo_id": "x", "cliente": "otro", "nivel": "n2"}]
         grupos = niveles.grupos(propios, ["claude", "codex", "opencode"], primero="codex")
-        self.assertEqual(grupos, [("codex", ["codex"]),
+        self.assertEqual(grupos, [("codex", ["codex-fuerte", "codex", "codex-rapido"]),
                                   ("claude", ["opus", "sonnet", "haiku"]),
                                   ("opencode", ["opencode", "kimi"]),
                                   ("otro", ["raro"])])
@@ -219,12 +219,92 @@ class Catalogo(unittest.TestCase):
         self.assertIs(niveles.del_cliente(n2, "claude"), n2)
         self.assertEqual(niveles.del_cliente(n1, "gemini").modelo, "gemini-flash-lite")
         self.assertEqual(niveles.del_cliente(n3, "gemini").modelo, "gemini-pro")
-        self.assertEqual(niveles.del_cliente(n1, "codex").modelo, "codex")
+        self.assertEqual(niveles.del_cliente(n1, "codex").modelo, "codex-rapido")
         propios = [{"clave": "barato", "modelo_id": "p/b", "cliente": "opencode", "nivel": "n1"}]
         self.assertEqual(niveles.del_cliente(n1, "opencode", propios).modelo, "barato")
         # n2 sin registrado de n2: escala al de fábrica (n3), nunca baja al n1.
         self.assertEqual(niveles.del_cliente(n2, "opencode", propios).modelo, "opencode")
         self.assertIs(niveles.del_cliente(niveles.HUMANO_NIVEL, "codex"), niveles.HUMANO_NIVEL)
+
+
+class TamanosDeCodex(unittest.TestCase):
+    """n1/n2/n3 de Codex (cotejo-t46992): luna, el modelo por defecto y ese con razonamiento alto."""
+
+    def argv(self, elegida, config=None):
+        from enrutador import armado, despacho_board
+        return despacho_board.comando(config or {}, clientes.de("codex"), elegida, "hola", [])
+
+    def sin_permisos(self, argv):
+        # Lo que añade la terminal libre (--sandbox, --add-dir…) no es de este tema.
+        return [a for a in argv if a != "--skip-git-repo-check"][:argv.index("hola")]
+
+    def test_el_proyecto_de_codex_reparte_por_tamano(self):
+        for dificultad, modelo, nivel in (("facil", "codex-rapido", "n1"),
+                                          ("medio", "codex", "n2"),
+                                          ("dificil", "codex-fuerte", "n3")):
+            elegida = decision.decidir("algo", dificultad=dificultad, reglas_humano=(),
+                                       reglas_nivel=(), cliente="codex")
+            self.assertEqual((elegida.nivel.modelo, elegida.nivel.nivel_base, elegida.nivel.cliente),
+                             (modelo, nivel, "codex"), dificultad)
+
+    def test_el_argv_de_cada_nivel(self):
+        prefijo = ["codex", "exec"]
+        esperado = {"facil": prefijo + ["-m", "gpt-5.6-luna"],
+                    "medio": prefijo,
+                    "dificil": prefijo + ["-c", "model_reasoning_effort=high"]}
+        for dificultad, inicio in esperado.items():
+            elegida = decision.decidir("algo", dificultad=dificultad, reglas_humano=(),
+                                       reglas_nivel=(), cliente="codex")
+            argv = self.argv(elegida)
+            self.assertEqual(argv[:len(inicio)], inicio, dificultad)
+            self.assertEqual(argv[-1].startswith("hola"), True)
+            self.assertEqual("-m" in argv, dificultad == "facil", dificultad)
+            self.assertEqual("-c" in argv, dificultad == "dificil", dificultad)
+
+    def test_por_el_motor_headless_con_cliente_falso(self):
+        from enrutador import motor
+        from enrutador.motores import claude_cli
+        for dificultad, esperado in (("facil", ["-m", "gpt-5.6-luna"]), ("medio", []),
+                                     ("dificil", ["-c", "model_reasoning_effort=high"])):
+            n = decision.decidir("algo", dificultad=dificultad, reglas_humano=(),
+                                 reglas_nivel=(), cliente="codex").nivel
+            encargo = motor.Encargo(prompt="hola", modelo=n.modelo, modelo_id=n.modelo_id,
+                                    cliente=n.cliente, argumentos=n.argumentos)
+            argv = claude_cli.ClaudeCLI({}).argv(encargo)
+            self.assertEqual(argv, ["codex", "exec"] + esperado + ["hola"], dificultad)
+
+    def test_la_clave_codex_sigue_siendo_n2_y_sin_modelo(self):
+        codex = niveles.por_nombre("codex")
+        self.assertEqual((codex.nivel_base, codex.modelo_id, codex.argumentos), ("n2", "", ()))
+        self.assertEqual(clientes.de("codex").modelo_de("codex-fuerte", ""), "")
+
+    def test_un_registrado_de_codex_con_ese_nivel_manda(self):
+        propios = [{"clave": "terra", "modelo_id": "gpt-5.6-terra", "cliente": "codex",
+                    "nivel": "n3", "argumentos": ["-c", "model_reasoning_effort=max"]}]
+        n3 = niveles.POR_CLAVE["n3"]
+        elegido = niveles.del_cliente(n3, "codex", propios)
+        self.assertEqual((elegido.modelo, elegido.argumentos),
+                         ("terra", ("-c", "model_reasoning_effort=max")))
+        # Los otros tamaños siguen con los de fábrica.
+        self.assertEqual(niveles.del_cliente(niveles.POR_CLAVE["n1"], "codex", propios).modelo,
+                         "codex-rapido")
+        self.assertEqual(niveles.del_cliente(niveles.POR_CLAVE["n2"], "codex", propios).modelo,
+                         "codex")
+        encargo = types.SimpleNamespace(nivel=elegido)
+        self.assertEqual(self.sin_permisos(self.argv(encargo))[:6],
+                         ["codex", "exec", "-m", "gpt-5.6-terra", "-c",
+                          "model_reasoning_effort=max"])
+
+    def test_argumentos_invalidos_en_la_config(self):
+        from enrutador import config as c
+        base = {"clave": "x", "modelo_id": "m", "cliente": "codex", "nivel": "n1"}
+        c._validar_modelos([dict(base, argumentos=["-c", "a=b"])])
+        with self.assertRaises(c.ConfigInvalida):
+            c._validar_modelos([dict(base, argumentos="-c a=b")])
+
+    def test_el_menu_de_codex_va_de_mayor_a_menor(self):
+        self.assertEqual(dict(niveles.grupos((), ["codex"]))["codex"],
+                         ["codex-fuerte", "codex", "codex-rapido"])
 
 
 class Decision(unittest.TestCase):
@@ -270,7 +350,7 @@ class AgenteDelProyecto(ConProyecto):
         with mock.patch("enrutador.preparar.descartar"):
             asignadas = revisar_plan.empezar(self.estado, reglas)
         self.assertEqual(asignadas, [{"id": "cotejo-aaa111", "agente": "codex"},
-                                     {"id": "cotejo-ccc333", "agente": "codex"}])
+                                     {"id": "cotejo-ccc333", "agente": "codex-fuerte"}])
         self.assertIn("#agente/codex ^cotejo-aaa111", self.tareas_md())
         self.assertIn("#agente/persona ^cotejo-bbb222", self.tareas_md())
 
@@ -357,7 +437,7 @@ class EnElBoard(ConMaquinaFalsa):
         lista = falso.lista_de_agentes(types.SimpleNamespace(nombre="Uno"), self.tarea(),
                                        Gtk.Popover())
         vistos = [t for t in textos(lista) if t]
-        self.assertEqual(vistos[:3], ["Codex", "codex", "Añadir modelo…"])
+        self.assertEqual(vistos[:3], ["Codex", "codex-fuerte", "codex"])
         self.assertLess(vistos.index("Claude Code"), vistos.index("Gemini CLI"))
         self.assertIn("gemini-flash-lite", vistos)
         self.assertNotIn("OpenCode", vistos)            # sin sesión
@@ -367,7 +447,8 @@ class EnElBoard(ConMaquinaFalsa):
     def test_preguntar_ofrece_todos_con_la_propuesta_primero(self):
         falso = self.board("codex")
         modelos = falso.modelos_para_preguntar("codex", types.SimpleNamespace(nombre="Uno"))
-        self.assertEqual(modelos[:2], ["codex", "opus"])
+        self.assertEqual(modelos[:2], ["codex", "codex-fuerte"])
+        self.assertIn("opus", modelos)
         self.assertIn("gemini-pro", modelos)
 
     def test_anadir_modelo_con_la_lista_en_vivo_y_asignarlo(self):

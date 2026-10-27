@@ -60,11 +60,12 @@ class ClaudeCLI(motor.Motor):
         if hecho is None:
             return cliente.argv_sin_interfaz(
                 modelo, encargo.prompt, comando=propios.get("comando"),
-                extra=propios.get("argumentos_extra") or ())
+                extra=list(encargo.argumentos or ()) + list(propios.get("argumentos_extra") or ()))
         return armado.comando(
             self.config, cliente, encargo.modelo, encargo.modelo_id,
             encargo.prompt + "\n\n" + armado.nota(hecho["encerrado"]), hecho["carpetas"],
-            hecho["ramas"], guardas.politica_gemini(), hecho["encerrado"]["ajustes"])
+            hecho["ramas"], guardas.politica_gemini(), hecho["encerrado"]["ajustes"],
+            encargo.argumentos)
 
     def comprobar(self, encargo):
         try:

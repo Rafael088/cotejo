@@ -42,6 +42,11 @@ class Cliente:
         """El nombre del modelo tal como lo entiende este cliente. La entrada de fábrica que se
         llama como el cliente (`codex`, `opencode`) y no trae id es «el que tenga por defecto»:
         "" y se lanza sin `-m` (`niveles.DE_FABRICA`)."""
+        if not modelo_id and modelo != self.nombre and not self.usa_alias:
+            from .niveles import DE_FABRICA
+            if any(n.modelo == modelo and n.cliente == self.nombre and not n.modelo_id
+                   for n in DE_FABRICA):
+                return ""
         if modelo == self.nombre and not modelo_id:
             return ""
         if self.usa_alias:

@@ -40,6 +40,9 @@ class Nivel:
     para_que: str
     cliente: str = "claude"  # cliente que sabe ejecutar `modelo_id`, si aplica
     nivel_base: str = ""  # tamaño equivalente en los modelos personalizados
+    # Argumentos extra para el cliente con este modelo (p. ej. `-c model_reasoning_effort=high`
+    # en Codex): van después de `-m` y antes del prompt, en todos los motores.
+    argumentos: tuple = ()
 
     @property
     def despachable(self):
@@ -75,8 +78,17 @@ DE_FABRICA = (
           "Gemini CLI, su modelo rápido (alias flash).", "gemini", "n2"),
     Nivel("gemini-pro", "gemini-pro", "pro", 0.0, 0.0,
           "Gemini CLI, su modelo grande (alias pro).", "gemini", "n3"),
+    # Codex: n1 el «luna» (rápido; los dos que lista `codex debug models` son «antiguos», así
+    # que n2 es el modelo por defecto del agente, sin `-m`) y n3 ese mismo por defecto con el
+    # esfuerzo de razonamiento alto. La clave `codex` se queda como n2: las configs y
+    # asignaciones guardadas la nombran.
+    Nivel("codex-rapido", "codex-rapido", "gpt-5.6-luna", 0.0, 0.0,
+          "Codex, su modelo rápido (gpt-5.6-luna).", "codex", "n1"),
     Nivel("codex", "codex", "", 0.0, 0.0,
-          "Codex con el modelo que tenga por defecto.", "codex", "n3"),
+          "Codex con el modelo que tenga por defecto.", "codex", "n2"),
+    Nivel("codex-fuerte", "codex-fuerte", "", 0.0, 0.0,
+          "Codex con su modelo por defecto y razonamiento alto.", "codex", "n3",
+          ("-c", "model_reasoning_effort=high")),
     Nivel("opencode", "opencode", "", 0.0, 0.0,
           "OpenCode con el modelo que tenga por defecto.", "opencode", "n3"),
 )
@@ -109,6 +121,7 @@ def personalizados(definiciones=()):
                      f"Modelo registrado para {definicion.get('cliente', 'otro')}",
             cliente=definicion.get("cliente", "otro"),
             nivel_base=definicion.get("nivel", "n2"),
+            argumentos=tuple(str(a) for a in definicion.get("argumentos") or ()),
         ))
     return tuple(salida)
 
@@ -214,6 +227,7 @@ def catalogo(definiciones=()):
     return [{"nivel": n.clave, "modelo": n.modelo or HUMANO, "modelo_id": n.modelo_id,
              "cliente": n.cliente if n.despachable else "",
              "nivel_base": n.nivel_base or n.clave,
+             "argumentos": list(n.argumentos),
              "despachable": n.despachable,
              "cliente_instalado": _instalado(n.cliente) if n.despachable else None,
              "para_que": n.para_que,
