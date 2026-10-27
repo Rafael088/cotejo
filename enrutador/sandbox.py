@@ -7,11 +7,14 @@ trae uno propio para su Bash (bubblewrap en Linux, Seatbelt en macOS), que se en
 clave `sandbox` de la config, y Cotejo se la pasa con `--settings` (sin tocar ningún archivo de
 la persona). Con él, todo lo que corre el Bash del agente:
 
-- **escribe solo** en su carpeta de trabajo, el `.git` del repo (sus commits), las carpetas de
-  Cotejo (config y estado: el `cotejo` del PATH escribe ahí la bitácora) y la carpeta donde vive
+- **escribe solo** en su carpeta de trabajo, el `.git` del repo (sus commits), la carpeta de
+  estado de Cotejo (el `cotejo` del PATH escribe ahí la bitácora) y la carpeta donde vive
   el archivo de su tarea (el `.cotejo/` del repo o la carpeta de la nota en el vault: ahí escribe
   `cotejo entregar`). Más un remoto que sea una carpeta (un `git push` a un repo desnudo local es
   escribir en él) y lo que diga `lanzar.sandbox.escritura`;
+- **no escribe** la config de Cotejo (`lanzar.sandbox: false` o un `argumentos_extra` le
+  quitarían el sandbox a los lanzamientos siguientes; cotejo-dgb7l2): su carpeta no es de las
+  suyas y sus archivos van vedados aunque otra carpeta los contenga;
 - **no escribe** dentro de lo anterior en los `hooks` ni el `config` de ese `.git` (un hook o un
   `core.hooksPath` que dejara el agente lo correría después el `git` de la persona, fuera del
   sandbox) ni en los demás worktrees del repo (el trabajo sin commitear de otras tareas). Por
@@ -28,7 +31,7 @@ Lo que cambia para el agente, probado con Claude de verdad:
   agente recibe `GH_TOKEN` (el de `gh auth token`, el mismo que ya usaba fuera del sandbox).
   Un remoto por SSH no funciona dentro del sandbox (no hay DNS ni conexión directa): su push
   falla y se dice en la nota del lanzamiento.
-- `cotejo` funciona: escribe en su config, su estado y el archivo de la tarea.
+- `cotejo` funciona: escribe en su estado y el archivo de la tarea. La config solo la lee.
 - Un navegador sin interfaz arranca si es Firefox (`navegador.py`, cotejo-xrmr3h): Chromium se
   aborta, porque al empezar crea un socket de Unix y el filtro seccomp de Claude niega
   `socket(AF_UNIX)`. Ese filtro no se abre (por ahí se hablaría con el D-Bus y el systemd del
@@ -208,19 +211,21 @@ def token_de_gh(entorno=None, correr=subprocess.run):
 
 
 def del_lanzamiento(escritura, repo=None, propio=None, carpeta_tarea=None, ajustes=None,
-                    entorno=None, token=token_de_gh):
+                    entorno=None, token=token_de_gh, vedadas=()):
     """Lo que el sandbox del agente del board necesita para esta tarea:
     `{"ajustes": <para claude --settings>, "entorno": {...}, "avisos": [...]}`.
 
     `escritura` son las carpetas de siempre (`despacho_board.carpetas_de_escritura`), `repo` el
     repo de la tarea (si lo es), `propio` su worktree, `carpeta_tarea` donde vive el archivo de
-    la tarea en su fuente y `ajustes` lo que diga `lanzar.sandbox` (`dominios`, `escritura`)."""
+    la tarea en su fuente, `ajustes` lo que diga `lanzar.sandbox` (`dominios`, `escritura`) y
+    `vedadas` lo que no escribe aunque caiga dentro de lo anterior (`armado.vedados`: la config
+    de Cotejo, cotejo-dgb7l2). Lo vedado gana."""
     ajustes = ajustes if isinstance(ajustes, dict) else {}
     escribir = list(escritura) + ([carpeta_tarea] if carpeta_tarea else [])
     escribir += [str(Path(c).expanduser()) for c in ajustes.get("escritura") or ()
                  if isinstance(c, str)]
     # `COTEJO_SANDBOX` lo lee la guarda de `git` (`guarda_git.sin_upstream`).
-    vedadas, dominios, avisos, extra = [], [], [], {"COTEJO_SANDBOX": "1"}
+    vedadas, dominios, avisos, extra = list(vedadas), [], [], {"COTEJO_SANDBOX": "1"}
     for carpeta in list(escribir):
         if Path(carpeta).name == ".git":
             vedadas += [str(Path(carpeta) / "hooks"), str(Path(carpeta) / "config")]

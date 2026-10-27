@@ -237,10 +237,17 @@ rama por defecto —`worktrees.rama_por_defecto`—, y `sudo`/`su`/`doas`/`pkexe
 Los prohibidos son sudo/su, `git push --force`, empujar a `main` o a la rama por defecto y borrar
 fuera del worktree (ruta absoluta, `~`, `$HOME` o `..`). Con Claude, además, su Bash va en
 **el sandbox de Claude Code** (cotejo-amui0f, `enrutador/sandbox.py`, por `--settings`): escribe
-solo en el worktree, el `.git` del repo (sin `hooks` ni `config`), las carpetas de Cotejo, la
-carpeta del archivo de la tarea (`Cotejo.carpeta_de_la_tarea`) y un remoto que sea carpeta; no
+solo en el worktree, el `.git` del repo (sin `hooks` ni `config`), la carpeta de estado de Cotejo,
+la carpeta del archivo de la tarea (`Cotejo.carpeta_de_la_tarea`) y un remoto que sea carpeta; no
 escribe en los demás worktrees; la red solo a los servidores de sus remotos (+`api.github.com`) y
-`lanzar.sandbox.dominios`. Lleva `GH_TOKEN` (de `gh auth token`: el llavero no se alcanza desde
+`lanzar.sandbox.dominios`. **La config de Cotejo no la escribe ningún agente de tarea**
+(cotejo-dgb7l2: `lanzar.sandbox: false` o un `argumentos_extra` le quitarían el sandbox a los
+siguientes): su carpeta no está en `armado.carpetas_de_escritura` (para los cuatro clientes; en
+macOS se da solo la de estado, que cuelga de ella), sus archivos (`configuracion.archivos()`) van
+en `denyWrite` y en `--disallowedTools Edit(//…)`, y el entorno lleva `COTEJO_CONFIG_VEDADA=1`,
+con la que `configuracion.guardar` y `guardar_modelos` se niegan (`ConfigVedada`, que `cli.main`
+imprime como un error más). Preparar sí la escribe (`init` registra el repo) y no pasa por aquí.
+`pruebas/test_config_vedada.py` lo prueba en bwrap. Lleva `GH_TOKEN` (de `gh auth token`: el llavero no se alcanza desde
 el sandbox) y `COTEJO_SANDBOX=1`, con el que la guarda de `git` quita el `-u` de un push. Sin
 bwrap/socat (o sin espacio de nombres, o en Windows) no se pide y el registro guarda
 `sandbox.activo: false` con el motivo; `lanzar.sandbox: false` lo apaga. Para ver lo que hace,
