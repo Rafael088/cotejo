@@ -28,7 +28,7 @@ el agente las creó así (`inicio.ENTORNO`), y la fuente activa de la persona pu
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import almacen, bitacora, conocimiento, decision
+from . import almacen, bitacora, conocimiento, decision, origen
 from .fuentes.repo import Repo
 
 VERSION = "v0.1.0"
@@ -83,10 +83,10 @@ def _reglas():
             "alias_persona": config.get("alias_persona")}
 
 
-def _decidir(tarea, reglas):
+def _decidir(tarea, reglas, cliente=""):
     from enrutador import decision as decidir
     return decidir.de_tarea({"texto": tarea.texto, "agente": tarea.agente,
-                             "dificultad": tarea.dificultad}, **reglas)
+                             "dificultad": tarea.dificultad}, cliente=cliente, **reglas)
 
 
 def _de_la_version(tarea):
@@ -99,11 +99,13 @@ def _de_la_version(tarea):
 def _tareas(carpeta, reglas, avisos):
     fuente = fuente_del_proyecto(carpeta)
     proyectos = fuente.escanear(incluir_hechas=False, avisos=avisos)
+    # Creado con Codex (u otro): la propuesta es de ese agente (cotejo-qixs4j).
+    cliente = origen.agente_de(carpeta)
     salida = []
     for proyecto in proyectos:
         for tarea in proyecto.tareas:
             if _de_la_version(tarea):
-                salida.append((fuente, proyecto, tarea, _decidir(tarea, reglas)))
+                salida.append((fuente, proyecto, tarea, _decidir(tarea, reglas, cliente)))
     return salida
 
 

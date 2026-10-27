@@ -138,6 +138,22 @@ llano, y lo para con «Parar», al cerrar la ventana o por `atexit`; el log va a
 `<estado>/ver-app/<proyecto>.log`. El navegador y la carpeta los abre el board con
 `Gio.AppInfo.launch_default_for_uri` (`VerApp.lanzar`), fuera de cualquier sandbox.
 
+**Los modelos de todos los agentes** (v1.3.0, cotejo-qixs4j). `enrutador/modelos_vivos.py` dice
+qué agentes están **listos** (instalados y con sesión: solo mira sus credenciales en disco o su
+variable de entorno, nunca lanza el CLI) y qué modelos ofrece cada uno: `opencode models` y
+`codex debug models` se preguntan (caché en `<estado>/modelos/`, tope de segundos, y si fallan lo
+guardado o el respaldo); Claude y Gemini no listan y su lista son sus alias. Nada de eso gasta
+tokens. `niveles.DE_FABRICA` trae los de fábrica de los otros agentes (`gemini-pro|flash|flash-lite`
+por alias; `codex` y `opencode` = «el modelo que tenga por defecto», sin `-m`), que un registrado
+con la misma clave tapa; `niveles.grupos` arma «Asignar a» por agente y `niveles.del_cliente`
+traduce un tamaño al agente del proyecto sin abaratar. El agente del proyecto es `agente:` en
+`.cotejo/proyecto.md` (`origen.agente_de`), que pone `init` con `COTEJO_AGENTE` (lo añade
+`preparar.lanzar`); con él, lo que el enrutador decide por tamaño se propone con ese agente
+(`decision.decidir(cliente=…)`, en `plan`, `decidir`, `despachar`, el board y «Empezar la 0.1.0»).
+El board (`tareas/app/modelos.py`) agrupa, pone el del proyecto primero y tiene «Añadir modelo…»
+(en «Asignar a» y en el menú de la cabecera), que registra como `cotejo modelos agregar`;
+`cotejo modelos vivos` es lo mismo por la CLI.
+
 `tareas/importar_obsidian.py` es el importador de la 1.2 (D1): `planear()` devuelve un `Plan` —las
 entradas que se crearían con su `origen` estable (`nota#sección:hash`)— sin escribir nada, y
 `importar obsidian` lo enseña (`enrutador/verbos.py`). Es mecánico sobre la plantilla del

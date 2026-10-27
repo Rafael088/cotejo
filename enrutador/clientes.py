@@ -39,7 +39,11 @@ class Cliente:
     fin_de_opciones: bool = False
 
     def modelo_de(self, modelo, modelo_id):
-        """El nombre del modelo tal como lo entiende este cliente."""
+        """El nombre del modelo tal como lo entiende este cliente. La entrada de fábrica que se
+        llama como el cliente (`codex`, `opencode`) y no trae id es «el que tenga por defecto»:
+        "" y se lanza sin `-m` (`niveles.DE_FABRICA`)."""
+        if modelo == self.nombre and not modelo_id:
+            return ""
         if self.usa_alias:
             # Un alias de Claude (`opus`) si lo es; si es un modelo de Claude registrado a
             # mano, su id.

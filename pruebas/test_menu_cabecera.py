@@ -21,7 +21,8 @@ except (ImportError, ValueError):
 @unittest.skipUnless(HAY_GTK, "sin GTK")
 class MenuCabecera(unittest.TestCase):
     def test_el_popover_se_abre_debajo_y_alineado_al_borde_derecho(self):
-        falso = types.SimpleNamespace(ver_atajos=lambda: None, fila_tamano=lambda _p: Gtk.Box())
+        falso = types.SimpleNamespace(ver_atajos=lambda: None, fila_tamano=lambda _p: Gtk.Box(),
+                                      abrir_anadir_modelo=lambda: None)
         boton = ventana.Board.menu_cabecera(falso)
         popover = boton.get_popover()
         self.assertEqual(popover.get_position(), Gtk.PositionType.BOTTOM)

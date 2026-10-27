@@ -312,21 +312,30 @@ class Lanzar:
 
     # --- sin modelo: se pregunta ------------------------------------------------------------
 
-    def modelos_para_preguntar(self, propuesta):
-        """Los modelos que se ofrecen (sin las personas), con la propuesta primero."""
-        modelos = [a for a in self.agentes if a and a not in self.alias_persona]
+    def modelos_para_preguntar(self, propuesta, proyecto=None):
+        """Los modelos que se ofrecen (sin las personas), con la propuesta primero y después
+        los de cada agente con sesión, el del proyecto delante (cotejo-qixs4j)."""
+        if hasattr(self, "grupos_de"):
+            modelos = [n for _c, nombres in self.grupos_de(proyecto) for n in nombres]
+        else:
+            modelos = [a for a in self.agentes if a and a not in self.alias_persona]
         if propuesta in modelos:
             modelos.remove(propuesta)
         return ([propuesta] if propuesta else []) + modelos
 
     def preguntar_modelo(self, proyecto, tarea, propuesta, razon):
         """¿Qué agente la hace? Con la propuesta del enrutador y su porqué."""
-        modelos = self.modelos_para_preguntar(propuesta)
+        modelos = self.modelos_para_preguntar(propuesta, proyecto)
         dialogo = Adw.AlertDialog(
             heading="¿Qué agente la hace?",
             body=(f"Nadie le ha asignado modelo. Propongo {propuesta} porque {razon}.\n\n"
                   f"{tarea.texto}"))
-        desplegable = Gtk.DropDown.new_from_strings(modelos)
+        # Con el agente al lado («codex · Codex»): con varios agentes, el nombre solo no basta.
+        de_quien = ({n: c for c, nombres in self.grupos_de(proyecto) for n in nombres}
+                    if hasattr(self, "grupos_de") else {})
+        from .modelos import titulo_de
+        desplegable = Gtk.DropDown.new_from_strings(
+            [f"{m} · {titulo_de(de_quien[m])}" if m in de_quien else m for m in modelos])
         desplegable.set_selected(0)
         dialogo.set_extra_child(desplegable)
         dialogo.add_response("cancelar", "Cancelar")

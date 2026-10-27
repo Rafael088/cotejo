@@ -87,6 +87,7 @@ INVOCACIONES = [
     ("modelos", "agregar", "--clave", "prueba", "--modelo-id", "cliente/prueba",
      "--cliente", "opencode"),
     ("modelos", "quitar", "prueba"),
+    ("modelos", "vivos", "--sin-preguntar"),
     ("decidir", "arreglar", "un", "typo"),
     ("decidir", "--tarea", "{id2}"),
     ("plan", "--proyecto", "Uno"),

@@ -277,7 +277,9 @@ class Preparar(unittest.TestCase):
             hecho = preparar.abrir_en_terminal(salida["id"], config=self.config)
         self.assertTrue(hecho["abierto"])
         _argv, _dir, entorno = abrir.call_args.args
-        self.assertEqual({k: v for k, v in entorno.items() if k != "PATH"}, inicio.ENTORNO)
+        # Más el agente elegido, que `init` deja en proyecto.md (cotejo-qixs4j).
+        self.assertEqual({k: v for k, v in entorno.items() if k != "PATH"},
+                         {**inicio.ENTORNO, "COTEJO_AGENTE": registro["cliente"]})
         self.assertEqual(entorno["PATH"].split(os.pathsep)[0], str(mismo_cotejo.carpeta()))
         self.assertEqual(preparar.estado(salida["id"])["estado"], preparacion.EN_TERMINAL)
         for _ in range(50):

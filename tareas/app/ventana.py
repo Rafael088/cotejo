@@ -21,6 +21,7 @@ from .columnas import Columnas
 from .decisiones import Decisiones
 from .detalle import Detalle
 from .lanzar import Lanzar
+from .modelos import Modelos
 from .maestro import Maestro
 from .mapa import PestanaMapa
 from .ver_app import VerApp
@@ -38,7 +39,7 @@ from .vista_revision import Revision
 
 class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, PestanaRevisarPlan, PestanaMapa,
             VerApp, Maestro, Columnas, Banda, Pie, Cartas, Detalle, Decisiones, Revision, Resumen, Teclado,
-            Movimientos, Lanzar, CapaDot, Adw.ApplicationWindow):
+            Movimientos, Lanzar, Modelos, CapaDot, Adw.ApplicationWindow):
     """Las tareas en sus cuatro estados, un proyecto a la vez.
 
     Es el lado humano del flujo de agentes: el agente mueve de Pendiente a Haciéndola y de ahí
@@ -255,7 +256,8 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
         popover = Gtk.Popover(child=caja, position=Gtk.PositionType.BOTTOM, halign=Gtk.Align.END)
         boton.set_popover(popover)
         for texto, nombre_icono, atajo, funcion in (
-                ("Atajos de teclado", "teclado", "Ctrl ?", self.ver_atajos),):
+                ("Atajos de teclado", "teclado", "Ctrl ?", self.ver_atajos),
+                ("Añadir modelo…", "agente", "", self.abrir_anadir_modelo)):
             fila = Gtk.Box(spacing=px(ESPACIADO_MD))
             fila.append(icono(nombre_icono, 15))
             rotulo = Gtk.Label(label=texto, xalign=0, hexpand=True)
@@ -395,6 +397,7 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
         # Los menús de asignar se construyen al pintar: si un modelo se registra con el board
         # abierto, tiene que salir en el menú sin reiniciar la app.
         self.agentes = agentes_disponibles()
+        self.leer_modelos()
         poner_avisos(self.banda, self.app.avisos)
         self.pintar_banda()
         self.pintar_columnas()

@@ -277,6 +277,7 @@ def cmd_init(args):
     # Creado desde el Inicio (`COTEJO_ORIGEN=inicio`, lo lleva el agente que lo prepara): la
     # marca va antes del commit inicial, para que viaje con el repo.
     del_inicio = origen.marcar_si_viene_del_inicio(raiz)
+    origen.marcar_agente(raiz)
 
     datos = _config_o_error()
     cambio_config = False
@@ -411,7 +412,10 @@ def cmd_doctor(args):
                                "existe": configuracion.ruta().exists(),
                                "errores": errores, "avisos": avisos},
                     "fuente": fuente, "salida": salida}
-    datos_salida["agentes"] = {"instalados": clientes.instalados()}
+    from enrutador import modelos_vivos
+    # `con_sesion` (cotejo-qixs4j): instalados y con credenciales en disco; sin lanzar nada.
+    datos_salida["agentes"] = {"instalados": clientes.instalados(),
+                               "con_sesion": modelos_vivos.listos()}
     if pista_repo or sin_agentes:
         datos_salida["avisos"] = list(pista_repo) + ([sin_agentes] if sin_agentes else [])
     if de_usuario.get("aplica"):

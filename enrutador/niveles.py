@@ -11,7 +11,7 @@ intenta y las entrega a medias. Por eso `humano` es un destino de primera clase:
 correcta para una tarea puede ser «esto no lo hace ningún modelo», y hace falta poder decirlo.
 
 Los precios son los de la API de Anthropic y salen de la skill `claude-api` (tabla del
-2026-06-24), no de memoria. Están aquí para que `modelos` y `plan` puedan poner un número
+2026-10-06, familia 5.5), no de memoria. Están aquí para que `modelos` y `plan` puedan poner un número
 delante de una decisión; no se cobran por este camino —`claude -p` factura por la suscripción
 de Claude Code— así que lo que dan es la *proporción* entre niveles, que es lo que justifica
 enrutar. Si cambian, se cambian aquí y en ningún otro sitio.
@@ -28,7 +28,7 @@ class Nivel:
 
     Se guardan las dos formas del nombre a propósito: el alias (`opus`) es lo que sobrevive a
     que Anthropic saque un modelo nuevo sin que haya que tocar la config de nadie, y el id
-    exacto (`claude-opus-5`) es lo que hace falta para hablar de precios y para dejar en la
+    exacto (`claude-opus-5-5`) es lo que hace falta para hablar de precios y para dejar en la
     bitácora qué atendió de verdad esta tarea y no cuál era el alias ese día.
     """
 
@@ -50,15 +50,35 @@ NIVELES = (
     Nivel("n0", "", "", 0.0, 0.0,
           "Lo que ningún modelo puede hacer: comprar, firmar, llamar a alguien, tocar algo "
           "físico, abrir una cuenta o decidir por ti."),
-    Nivel("n1", "haiku", "claude-haiku-4-5", 1.0, 5.0,
+    Nivel("n1", "haiku", "claude-haiku-5-5", 0.10, 0.50,
           "Trabajo mecánico y acotado: anotar, renombrar, cambiar un print, documentar un paso "
           "que ya sabes."),
-    Nivel("n2", "sonnet", "claude-sonnet-5", 2.0, 10.0,
+    Nivel("n2", "sonnet", "claude-sonnet-5-5", 2.0, 10.0,
           "El trabajo normal de código: un cambio en uno o dos archivos, con sus pruebas. Es "
           "también el default seguro."),
-    Nivel("n3", "opus", "claude-opus-5", 5.0, 25.0,
+    Nivel("n3", "opus", "claude-opus-5-5", 4.0, 20.0,
           "Arquitectura, contratos, cambios que cruzan varios archivos y lo que haya que "
           "diseñar antes de escribir."),
+)
+
+# Los de fábrica de los otros agentes (v1.3.0, cotejo-qixs4j): lo justo para que un proyecto
+# hecho con Codex, OpenCode o Gemini tenga a quién proponer sin registrar nada a mano, y sin
+# inventar ningún id. Gemini CLI entiende alias estables (`pro`, `flash`, `flash-lite`), como
+# Claude Code. Codex y OpenCode no: su entrada de fábrica es **el modelo que el agente tenga por
+# defecto** (`modelo_id` vacío: se lanza sin `-m`), que vale para cualquier nivel, y los modelos
+# concretos se añaden con «Añadir modelo» o `cotejo modelos agregar`. Un modelo registrado con la
+# misma clave gana a estos (no son reservados: no se rompe la config de nadie).
+DE_FABRICA = (
+    Nivel("gemini-flash-lite", "gemini-flash-lite", "flash-lite", 0.0, 0.0,
+          "Gemini CLI, su modelo ligero (alias flash-lite).", "gemini", "n1"),
+    Nivel("gemini-flash", "gemini-flash", "flash", 0.0, 0.0,
+          "Gemini CLI, su modelo rápido (alias flash).", "gemini", "n2"),
+    Nivel("gemini-pro", "gemini-pro", "pro", 0.0, 0.0,
+          "Gemini CLI, su modelo grande (alias pro).", "gemini", "n3"),
+    Nivel("codex", "codex", "", 0.0, 0.0,
+          "Codex con el modelo que tenga por defecto.", "codex", "n3"),
+    Nivel("opencode", "opencode", "", 0.0, 0.0,
+          "OpenCode con el modelo que tenga por defecto.", "opencode", "n3"),
 )
 
 POR_CLAVE = {n.clave: n for n in NIVELES}
@@ -93,16 +113,74 @@ def personalizados(definiciones=()):
     return tuple(salida)
 
 
+def _de_fabrica(propios):
+    """Los de fábrica de otros agentes que no tapa un modelo registrado con la misma clave."""
+    tapados = {n.clave for n in propios}
+    return tuple(n for n in DE_FABRICA if n.clave not in tapados)
+
+
 def disponibles(definiciones=()):
-    """Los niveles integrados y los modelos que añadió el usuario."""
-    return NIVELES + personalizados(definiciones)
+    """Los niveles integrados, los de fábrica de los otros agentes y los que añadió el usuario."""
+    propios = personalizados(definiciones)
+    return NIVELES + _de_fabrica(propios) + propios
 
 
 def agentes(definiciones=()):
-    """Nombres que puede mostrar CotejoBoard en el menú de asignación."""
+    """Nombres que puede mostrar CotejoBoard en el menú de asignación (sin agrupar: los de
+    Claude, los registrados y `persona`, como siempre). Agrupado por agente, `grupos`."""
     integrados = ("opus", "sonnet", "haiku")
     propios = tuple(n.modelo for n in personalizados(definiciones) if n.modelo)
     return integrados + propios + ("persona",)
+
+
+ORDEN_CLAUDE = ("opus", "sonnet", "haiku")
+
+
+def grupos(definiciones=(), listos=None, primero=""):
+    """El menú de «Asignar a» por agente (v1.3.0, cotejo-qixs4j): `[(cliente, [nombres])]`.
+
+    Salen los agentes de `listos` (instalados y con sesión, `modelos_vivos.listos()`), con
+    `primero` (el agente del proyecto) delante y Claude después; cada uno con sus modelos de
+    fábrica y los registrados. Un modelo registrado para un cliente que Cotejo no conoce
+    (`otro`) sale siempre, al final: de ese no se sabe si tiene sesión. Sin ningún agente listo
+    (una máquina sin agentes, la CI) salen todos, como antes: el board sigue sirviendo para
+    asignar.
+    """
+    propios = personalizados(definiciones)
+    from . import clientes
+    conocidos = list(clientes.CLIENTES)
+    listos = list(conocidos if not listos else [c for c in conocidos if c in listos])
+    orden = [c for c in dict.fromkeys([primero, "claude", *conocidos]) if c in listos]
+    salida = []
+    for cliente in orden:
+        nombres = (list(ORDEN_CLAUDE) if cliente == "claude" else
+                   [n.modelo for n in _de_fabrica(propios) if n.cliente == cliente][::-1])
+        nombres += [n.modelo for n in propios if n.cliente == cliente and n.modelo]
+        if nombres:
+            salida.append((cliente, list(dict.fromkeys(nombres))))
+    otros = [n.modelo for n in propios if n.cliente not in conocidos and n.modelo]
+    if otros:
+        salida.append(("otro", otros))
+    return salida
+
+
+def del_cliente(nivel, cliente, definiciones=()):
+    """El modelo de `cliente` para el tamaño de `nivel` (el agente del proyecto, cotejo-qixs4j).
+
+    Primero un registrado de ese cliente con ese nivel; si no, uno de fábrica; si no hay de
+    ese tamaño, el más pequeño de los que son **más grandes** (ante la duda se escala, nunca se
+    abarata) y, si tampoco, `nivel` tal cual. Con Claude, o sin cliente, `nivel` tal cual.
+    """
+    if not cliente or cliente == "claude" or not nivel.despachable:
+        return nivel
+    propios = personalizados(definiciones)
+    candidatos = [n for n in propios + _de_fabrica(propios) if n.cliente == cliente]
+    exactos = [n for n in candidatos if (n.nivel_base or n.clave) == nivel.clave]
+    if exactos:
+        return exactos[0]
+    mayores = sorted((n for n in candidatos if (n.nivel_base or "n2") > nivel.clave),
+                     key=lambda n: n.nivel_base or "n2")
+    return mayores[0] if mayores else nivel
 
 
 def por_nombre(nombre, extras=(), alias_persona=None):
@@ -120,8 +198,8 @@ def por_nombre(nombre, extras=(), alias_persona=None):
     if nombre in persona_names:
         return HUMANO_NIVEL
     propios = personalizados(extras)
-    por_clave = {n.clave: n for n in propios}
-    por_modelo = {n.modelo: n for n in propios if n.modelo}
+    por_clave = {n.clave: n for n in propios + _de_fabrica(propios)}
+    por_modelo = {n.modelo: n for n in propios + _de_fabrica(propios) if n.modelo}
     return POR_CLAVE.get(nombre) or POR_MODELO.get(nombre) or por_clave.get(nombre) or \
         por_modelo.get(nombre)
 

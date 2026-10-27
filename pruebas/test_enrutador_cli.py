@@ -61,8 +61,10 @@ class SinTocarNada(PruebaDeEnrutador):
     def test_modelos_trae_el_catalogo_entero(self):
         codigo, datos = self.correr("modelos")
         self.assertEqual(codigo, verbos.OK)
+        # Los de Claude y los de fábrica de los otros agentes (cotejo-qixs4j).
         self.assertEqual({n["modelo"] for n in datos["niveles"]},
-                         {"humano", "haiku", "sonnet", "opus"})
+                         {"humano", "haiku", "sonnet", "opus", "gemini-pro", "gemini-flash",
+                          "gemini-flash-lite", "codex", "opencode"})
 
     def test_modelos_agregar_deja_el_modelo_disponible_para_cualquier_cliente(self):
         codigo, agregado = self.correr(

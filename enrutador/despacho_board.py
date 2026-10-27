@@ -105,12 +105,13 @@ def _rechazar(tarea, elegida, rechazo, error):
     raise error
 
 
-def decidir(tarea, config):
-    """La decisión del enrutador para esta tarea (sin override: lo que hay en la nota)."""
+def decidir(tarea, config, cliente=""):
+    """La decisión del enrutador para esta tarea (sin override: lo que hay en la nota); la
+    propuesta, con el agente del proyecto (`cliente`)."""
     humano, nivel = reglas.cargar(config.get("reglas_extra"), config.get("reglas_apagadas"))
     return decision.de_tarea(tarea, reglas_humano=humano, reglas_nivel=nivel,
                              niveles_extra=niveles.personalizados(config.get("modelos")),
-                             alias_persona=config.get("alias_persona"))
+                             alias_persona=config.get("alias_persona"), cliente=cliente)
 
 
 def hueco(config):
@@ -187,7 +188,8 @@ def _lanzar(tarea_id, al_terminar, config, rechazada, rechazo_dado=None, forzar=
     # (`tareas/retomar.py`), y se lee antes de que el nuevo lo pise.
     anterior = lanzados.leer(tarea["id"])
     try:
-        elegida = decidir(tarea, config)
+        elegida = decidir(tarea, config, cotejo.agente_del_proyecto(tarea.get("proyecto"),
+                                                                    config))
     except ValueError as error:
         raise NoSePuede(str(error)) from error
 

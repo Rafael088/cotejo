@@ -261,11 +261,29 @@ class Detalle:
         """Las opciones de «Asignar a», con scroll: con los modelos que registran los clientes
         la lista pasa de treinta, y sin él el popover no cabe en la ventana y GTK no lo abre."""
         agentes = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-        for agente in self.agentes + ("",):
+        # Por agente, con el del proyecto primero (cotejo-qixs4j, `modelos.py`). Un Board falso
+        # de las pruebas viejas no trae `grupos_de`: ahí, la lista plana de siempre.
+        grupos = (self.grupos_de(proyecto) if hasattr(self, "grupos_de")
+                  else [(None, [a for a in self.agentes if a not in self.alias_persona])])
+        agrupado = len(grupos) > 1
+        for cliente, nombres in grupos:
+            if agrupado:
+                from .modelos import titulo_de
+                agentes.append(Gtk.Label(label=titulo_de(cliente), xalign=0,
+                                         css_classes=["menu-titulo"]))
+            for agente in nombres:
+                if agente != tarea.agente:
+                    agentes.append(self.opcion(agente, funcion or self.al_asignar, proyecto,
+                                               tarea, agente, popover, "agente"))
+            if cliente and hasattr(self, "al_anadir_y_asignar"):
+                agentes.append(self.opcion("Añadir modelo…", self.al_anadir_y_asignar, proyecto,
+                                           tarea, cliente, popover, "agente"))
+        personas = tuple(a for a in self.agentes if a in self.alias_persona) or \
+            tuple(self.alias_persona[:1])
+        for agente in personas + ("",):
             if agente == tarea.agente:
                 continue
-            quien = ("sin-agente" if not agente else
-                     "persona" if agente in self.alias_persona else "agente")
+            quien = "sin-agente" if not agente else "persona"
             agentes.append(self.opcion(agente or "Sin agente", funcion or self.al_asignar,
                                        proyecto, tarea, agente, popover, quien))
         return Gtk.ScrolledWindow(child=agentes, hscrollbar_policy=Gtk.PolicyType.NEVER,

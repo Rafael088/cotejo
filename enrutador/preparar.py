@@ -155,7 +155,9 @@ def lanzar(respuestas, cliente=None, modelo=None, al_terminar=None, config=None)
     ident = preparacion.nuevo_id(proyecto)
     registro = {"id": ident, "proyecto": proyecto, "carpeta": r.carpeta,
                 "cliente": elegido.nombre, "modelo": modelo, "prompt": prompt,
-                "comando": argv, "entorno": dict(inicio.ENTORNO), "intentos": 0,
+                "comando": argv,
+                # El agente elegido viaja con el proyecto (`origen.marcar_agente`, cotejo-qixs4j).
+                "entorno": {**inicio.ENTORNO, "COTEJO_AGENTE": elegido.nombre}, "intentos": 0,
                 "log": str(preparacion.CARPETA / f"{ident}.log")}
     otro = _otro_cotejo()
     if otro:
