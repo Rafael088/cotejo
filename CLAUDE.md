@@ -102,8 +102,14 @@ avance con las tareas. La pinta `tareas/app/pestana_inicio.py`, que abre antes q
 (salvo con la fuente rota: ahí va al tablero; y sin fuente configurada, la primera vez, abre en
 **revisar el equipo**, que reemplaza al viejo primer arranque: `tareas/equipo.py`, sin GTK, mira qué
 agentes (`clientes.instalados()`) y git hay y la página oficial de cada uno —las direcciones viven
-solo ahí—; `tareas/app/equipo.py` lo pinta, enlaza si falta (nunca instala), tiene «revisar otra
-vez» y «Seguir al Inicio») y
+solo ahí—, con cada agente **no instalado**, **falta iniciar sesión** o **listo**
+(`modelos_vivos.sesion`); `tareas/app/equipo.py` lo pinta, con «Instalar» y «Iniciar sesión»
+(cotejo-2j6un7: `tareas/instalar_agentes.py`, sin GTK, corre **solo el instalador oficial**
+documentado de Claude Code, Codex y OpenCode —descargado a `<estado>/agentes/`, ejecutado con
+`bash`/`sh` sin shell ni terminal, en un hilo, con tope, cancelable, log y un `sudo` que se
+niega— y el login oficial de cada CLI, en una terminal si lo pide; Gemini CLI y git siguen
+enlazando), sondea la sesión cada pocos segundos mientras se ve, tiene «revisar otra vez» y
+«Seguir al Inicio») y
 pone encima la **constelación** (7wc9hb): cada proyecto un núcleo con sus piezas alrededor,
 por estado y con el verde solo para lo que espera comprobación. Su geometría y su dibujo con
 cairo son puros (`tareas/constelacion.py`, como `dot_dibujo.py`) y el widget

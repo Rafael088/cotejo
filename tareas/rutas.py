@@ -74,6 +74,12 @@ def estado():
     return _entorno("XDG_STATE_HOME", Path.home() / ".local" / "state") / ESTADO_LINUX
 
 
+def bin_local(casa=None):
+    """`~/.local/bin`: donde dejan su ejecutable los instaladores oficiales de Claude Code y Codex
+    (`tareas/instalar_agentes.py`). Cotejo no escribe ahí; solo lo mira y lo suma al PATH."""
+    return Path(casa if casa is not None else Path.home()) / ".local" / "bin"
+
+
 def datos_xdg():
     """`$XDG_DATA_HOME` o `~/.local/share`: donde otros programas (OpenCode) dejan sus datos.
     Cotejo no escribe ahí; `enrutador/modelos_vivos.py` solo mira si OpenCode tiene sesión."""

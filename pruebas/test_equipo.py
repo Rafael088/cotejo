@@ -11,8 +11,11 @@ from tareas import equipo
 from tareas.fuentes.repo import Repo
 
 
-def revisar(agentes, git=True):
+def revisar(agentes, git=True, sin_sesion=()):
+    """Sin mirar la máquina: `agentes` instalados, todos con sesión salvo `sin_sesion`."""
     with mock.patch("enrutador.clientes.instalados", return_value=list(agentes)), \
+            mock.patch("enrutador.modelos_vivos.sesion", lambda n: n not in sin_sesion), \
+            mock.patch("tareas.instalar_agentes.sumar_al_path", return_value=[]), \
             mock.patch("tareas.equipo.hay_git", return_value=git):
         return equipo.revisar()
 
@@ -31,7 +34,8 @@ class Equipo(unittest.TestCase):
         self.assertFalse(e.hay_agente)
         self.assertEqual(len(e.faltan), 5)
         self.assertEqual(e.titular, "Te falta un agente de IA")
-        self.assertIn("no instala nada", e.mensaje)
+        self.assertIn("Instalar", e.mensaje)
+        self.assertEqual([a.clave for a in e.agentes if a.recomendado], ["claude"])
         for p in e.piezas:
             self.assertEqual(p.estado, "No instalado")
             self.assertTrue(p.pagina.startswith("https://"), p.clave)
@@ -44,6 +48,21 @@ class Equipo(unittest.TestCase):
         self.assertEqual(e.titular, "Todo listo para empezar con Codex")
         self.assertIn("git", e.mensaje)
         self.assertEqual([p.clave for p in e.faltan], ["claude", "opencode", "gemini", "git"])
+
+    def test_tres_estados_por_agente(self):
+        e = revisar(["claude", "codex"], git=True, sin_sesion={"codex"})
+        estados = {p.clave: p.estado for p in e.agentes}
+        self.assertEqual(estados, {"claude": "Listo", "codex": "Falta iniciar sesión",
+                                   "opencode": "No instalado", "gemini": "No instalado"})
+        self.assertEqual(e.titular, "Todo listo para empezar con Claude Code")
+        self.assertFalse(any(p.recomendado for p in e.agentes))
+
+    def test_instalado_sin_sesion_no_cuenta_como_listo(self):
+        e = revisar(["opencode"], sin_sesion={"opencode"})
+        self.assertFalse(e.hay_agente)
+        self.assertTrue(e.hay_instalado)
+        self.assertEqual(e.titular, "Te falta iniciar sesión en OpenCode")
+        self.assertIn("navegador", e.mensaje)
 
     def test_cada_revision_vuelve_a_detectar(self):
         self.assertFalse(revisar([]).hay_agente)
