@@ -19,7 +19,7 @@ from unittest import mock
 
 from apoyo import PruebaDeEnrutador, proyecto
 
-from enrutador import capacidad, despacho_board
+from enrutador import bitacora as despachos_bitacora, capacidad, despacho_board
 from tareas import lanzados, preparacion, retomar, worktrees
 
 FALSO = str(Path(__file__).resolve().parent / "cliente_falso.py")
@@ -151,6 +151,28 @@ class Lanzar(ConClienteFalso):
         # Las dos mitades en la bitácora de despachos, con su motor.
         fases = [(d.get("fase"), d.get("motor")) for d in self.despachados()]
         self.assertEqual(fases, [("lanzado", "board"), ("terminado", "board")])
+
+    def test_la_ruta_de_despachos_se_resuelve_al_usar_y_no_al_importar(self):
+        """cotejo-lr1vj6: calcularla al importar dejaba a las pruebas que cambian
+        `COTEJO_ESTADO` después escribiendo en el archivo real de la persona."""
+        with mock.patch.object(despachos_bitacora, "ARCHIVO", None), \
+                mock.patch.dict(os.environ, {"COTEJO_ESTADO": str(self.fuera)}):
+            self.assertEqual(despachos_bitacora.ruta(), self.fuera / "despachos.jsonl")
+            despachos_bitacora.anotar(tarea="cotejo-de-mentira")
+            anotado = self.fuera / "despachos.jsonl"
+            self.assertIn("cotejo-de-mentira", anotado.read_text(encoding="utf-8"))
+
+    def test_el_terminado_va_a_la_bitacora_del_lanzamiento_aunque_la_ruta_cambie(self):
+        """El hilo que vigila se queda con la ruta del lanzamiento: si la leyera al despertar,
+        una prueba ya la habría devuelto a la de la persona y el «terminado» caería allí."""
+        with mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):
+            terminado = []
+            self.lanzar("cotejo-asig", al_terminar=terminado.append)
+        with mock.patch.object(despachos_bitacora, "ARCHIVO",
+                               Path("/proc/no-se-puede/despachos.jsonl")):
+            despacho_board.detener("cotejo-asig", "lo pidió la prueba")
+            self.assertTrue(esperar(lambda: terminado))
+        self.assertEqual(self.despachados()[-1]["fase"], "terminado")
 
     def test_sin_modelo_no_se_toma_y_trae_la_propuesta_con_su_porque(self):
         with self.assertRaises(despacho_board.FaltaModelo) as error:

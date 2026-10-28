@@ -91,9 +91,10 @@ class SinHueco(NoSePuede):
 
 # --- lo que decide ------------------------------------------------------------------------------
 
-def _anotar(tarea, elegida, **extra):
+def _anotar(tarea, elegida, archivo=None, **extra):
     return bitacora.anotar(
-        tarea=tarea.get("id"), texto=tarea.get("texto"), proyecto=tarea.get("proyecto"),
+        archivo=archivo, tarea=tarea.get("id"), texto=tarea.get("texto"),
+        proyecto=tarea.get("proyecto"),
         nivel=elegida.nivel.clave, modelo=elegida.nivel.modelo,
         modelo_id=elegida.nivel.modelo_id, por=elegida.por, regla=elegida.regla, motor=MOTOR,
         **extra)
@@ -380,6 +381,9 @@ def vigilar(proceso, tarea, elegida, timeout, al_terminar=None):
     hace el fin (`fin`: entregó, o vuelve a Pendiente) y llama `al_terminar(estado)`. Devuelve
     el hilo."""
     _VIGILADOS.add(proceso.pid)
+    # La ruta del lanzamiento, no la de cuando el hilo despierte: al acabar pueden haberla
+    # devuelto a su sitio y el «terminado» acabaría en el archivo de la persona (cotejo-lr1vj6).
+    archivo = bitacora.ruta()
 
     def esperar():
         try:
@@ -394,8 +398,8 @@ def vigilar(proceso, tarea, elegida, timeout, al_terminar=None):
                     proceso.wait()
                 codigo = 124
             registro = lanzados.anotar_terminado(tarea["id"], codigo, pid=proceso.pid)
-            _anotar(tarea, elegida, tomada=True, fase="terminado", ok=codigo == 0,
-                    codigo=codigo, pid=proceso.pid)
+            _anotar(tarea, elegida, archivo=archivo, tomada=True, fase="terminado",
+                    ok=codigo == 0, codigo=codigo, pid=proceso.pid)
             if registro and registro.get("fase") == lanzados.TERMINADO:
                 registro = fin(tarea["id"], proceso.pid) or registro
         finally:

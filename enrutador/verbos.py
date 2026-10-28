@@ -756,7 +756,7 @@ def cmd_revisar(args):
 
     imprimir({
         "esquema": ESQUEMA,
-        "archivo": str(bitacora.ARCHIVO),
+        "archivo": str(bitacora.ruta()),
         "dias_para_colgada": umbral,
         "resumen": {"decisiones": len(lineas) - lanzamientos, "repartidas": len(repartidas),
                     "ensayos": ensayos, "rechazos": rechazos,
@@ -838,7 +838,7 @@ def cmd_capacidad(args):
 
 def cmd_despachos(args):
     """Qué se repartió, a quién y cómo salió."""
-    imprimir({"esquema": ESQUEMA, "archivo": str(bitacora.ARCHIVO),
+    imprimir({"esquema": ESQUEMA, "archivo": str(bitacora.ruta()),
               "despachos": bitacora.ultimos(args.limite, args.tarea)})
     return OK
 
