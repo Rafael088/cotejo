@@ -61,6 +61,11 @@ DEPENDENCIAS_LINUX = ("bwrap", "socat")
 DOMINIOS_EXTRA = {"github.com": ("api.github.com",)}
 
 _DISPONIBLE = {}
+_DISPONIBLE_BWRAP = {}
+
+
+class SandboxNoDisponible(Exception):
+    """Antigravity no se lanza sin la jaula de Cotejo (cotejo-b1iwpj)."""
 
 
 def _sistema():
@@ -117,6 +122,54 @@ def _probar_bwrap(bwrap):
     except (OSError, subprocess.SubprocessError):
         return False
     return hecho.returncode == 0
+
+
+def disponible_bwrap(sistema=None, which=shutil.which, probar=None):
+    """Si la jaula propia de Antigravity puede arrancar aquí: Linux y bwrap de verdad.
+
+    No necesita `socat` (no hace un proxy de red) ni el sandbox de Claude. Antigravity sale a
+    la red para hablar con sus modelos; lo que se encierra es todo su sistema de archivos.
+    """
+    sistema = sistema or _sistema()
+    clave = (sistema, which, probar)
+    if clave in _DISPONIBLE_BWRAP:
+        return _DISPONIBLE_BWRAP[clave]
+    if sistema != "linux":
+        resultado = (False, "la jaula de Antigravity de Cotejo necesita Linux y bubblewrap")
+    elif not which("bwrap"):
+        resultado = (False, "falta bwrap en esta máquina (instala bubblewrap)")
+    elif not (probar or _probar_bwrap)(which("bwrap")):
+        resultado = (False, "bubblewrap está instalado pero no puede crear su espacio de "
+                            "nombres en esta máquina")
+    else:
+        resultado = (True, "")
+    _DISPONIBLE_BWRAP[clave] = resultado
+    return resultado
+
+
+def envolver_antigravity(comando, ajustes, trabajo, bwrap=None):
+    """Todo `agy` dentro de bubblewrap, no solo sus comandos de terminal.
+
+    `ajustes` es lo que arma `del_lanzamiento`: la raíz se lee, solo `allowWrite` se escribe y
+    `denyWrite` vuelve a quedar en solo lectura aunque cuelgue de una carpeta permitida. Un
+    `/tmp` privado deja correr builds sin abrir escritura fuera. La red sigue disponible para
+    el CLI; este límite es de archivos, como pide cotejo-b1iwpj.
+    """
+    caja = (ajustes or {}).get("sandbox")
+    if not caja:
+        raise SandboxNoDisponible("Antigravity CLI no se lanza sin la jaula de Cotejo.")
+    argv = [bwrap or shutil.which("bwrap") or "bwrap", "--new-session", "--die-with-parent",
+            "--ro-bind", "/", "/"]
+    for ruta in caja["filesystem"]["allowWrite"]:
+        if os.path.exists(ruta):
+            argv += ["--bind", ruta, ruta]
+    for ruta in caja["filesystem"]["denyWrite"]:
+        if os.path.exists(ruta):
+            argv += ["--ro-bind", ruta, ruta]
+    argv += ["--tmpfs", "/tmp", "--dev", "/dev", "--proc", "/proc", "--unshare-pid",
+             "--unshare-user", "--disable-userns", "--cap-drop", "ALL", "--chdir",
+             str(trabajo), "--"]
+    return argv + list(comando)
 
 
 def ajustes_claude(escritura, vedadas=(), dominios=()):
@@ -254,5 +307,6 @@ def del_lanzamiento(escritura, repo=None, propio=None, carpeta_tarea=None, ajust
             "avisos": avisos}
 
 
-__all__ = ["disponible", "ajustes_claude", "argumentos_claude", "del_lanzamiento",
-           "leer_remoto", "remotos", "otros_worktrees", "token_de_gh"]
+__all__ = ["disponible", "disponible_bwrap", "envolver_antigravity", "SandboxNoDisponible",
+           "ajustes_claude", "argumentos_claude", "del_lanzamiento", "leer_remoto", "remotos",
+           "otros_worktrees", "token_de_gh"]

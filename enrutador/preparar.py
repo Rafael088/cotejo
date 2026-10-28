@@ -50,7 +50,7 @@ import threading
 from pathlib import Path
 
 from tareas import inicio, preparacion
-from . import clientes, config as cfg, mismo_cotejo, procesos
+from . import clientes, config as cfg, mismo_cotejo, procesos, sandbox
 from .motores import fondo, terminal
 
 
@@ -77,18 +77,36 @@ def _propios(config, cliente):
         (headless.get("clientes") or {}).get(cliente.nombre) or {})
 
 
+def _carpetas_para(cliente, carpeta):
+    """Preparar no da la config a Antigravity: el repo lo registra Cotejo antes de lanzar."""
+    from tareas import configuracion
+    carpetas = carpetas_de_escritura(carpeta)
+    if cliente.nombre != "antigravity":
+        return carpetas
+    config = os.path.abspath(Path(configuracion.ruta()).expanduser().parent)
+    return [c for c in carpetas if os.path.abspath(c) != config]
+
+
 def comando(config, cliente, modelo, prompt, carpeta=None):
-    """El argv sin interfaz, como lo arma el motor `headless` para ese cliente, más los
-    `preparar.argumentos_extra.<cliente>` (el permiso de usar `cotejo`, en Claude y Gemini) y,
-    con `carpeta`, las banderas que le dejan escribir donde hace falta (`carpetas_de_escritura`)."""
+    """El argv sin interfaz y, para Antigravity, su jaula obligatoria de bubblewrap."""
     propios = _propios(config, cliente)
     extra = (list(propios.get("argumentos_extra") or ()) +
              list(((config.get("preparar") or {}).get("argumentos_extra") or {})
                   .get(cliente.nombre) or ()))
     if carpeta:
-        extra += cliente.permisos(carpetas_de_escritura(carpeta))[0]
-    return cliente.argv_sin_interfaz(cliente.modelo_de(modelo, ""), prompt,
+        extra += cliente.permisos(_carpetas_para(cliente, carpeta))[0]
+    argv = cliente.argv_sin_interfaz(cliente.modelo_de(modelo, ""), prompt,
                                      comando=propios.get("comando"), extra=extra)
+    if carpeta and cliente.nombre == "antigravity":
+        hay, motivo = sandbox.disponible_bwrap()
+        if not hay:
+            raise NoSePuede(f"Antigravity CLI no se lanzó sin protección: {motivo}.")
+        from tareas import configuracion
+        ajustes = sandbox.del_lanzamiento(
+            _carpetas_para(cliente, carpeta), ajustes=(config.get("lanzar") or {}).get("sandbox"),
+            vedadas=configuracion.archivos(), token=None)["ajustes"]
+        return sandbox.envolver_antigravity(argv, ajustes, _donde(carpeta))
+    return argv
 
 
 def _donde(carpeta):
@@ -173,14 +191,15 @@ def _otro_cotejo():
 
 
 def entorno_del_agente(registro):
-    """Lo que se añade al entorno del agente: el del registro (`inicio.ENTORNO`), lo que su
-    cliente necesita para escribir donde hace falta (`clientes.Cliente.permisos`) y el PATH
-    con el mismo `cotejo` que el board primero."""
+    """El entorno del agente; Antigravity además tiene vedada la config como en una tarea."""
+    from tareas import configuracion
     extra = dict(registro.get("entorno") or {})
     nombre = registro.get("cliente")
     if nombre in clientes.CLIENTES and registro.get("carpeta"):
         extra.update(clientes.de(nombre).permisos(
-            carpetas_de_escritura(registro["carpeta"]))[1])
+            _carpetas_para(clientes.de(nombre), registro["carpeta"]))[1])
+    if nombre == "antigravity":
+        extra.update({configuracion.VEDADA: "1", "COTEJO_SANDBOX": "1"})
     try:
         return mismo_cotejo.entorno(extra)
     except OSError as error:
@@ -206,8 +225,33 @@ def marcar_propuestas_previas(registro):
     return ids
 
 
+def _registrar_repo_para_antigravity(carpeta):
+    """La única escritura de config que pide `init`, hecha por Cotejo y no por el agente.
+
+    Después `init` es idempotente y no necesita escribirla dentro de la jaula. Si la fuente
+    activa está rota y `init` tendría que cambiarla, la guarda se lo impedirá en vez de abrir
+    una excepción de escritura para `agy`.
+    """
+    from tareas import conexion, configuracion
+    raiz = Path(carpeta).expanduser().resolve()
+    datos = configuracion.cargar()
+    if conexion._repo_registrado(raiz, datos):
+        return
+    fuentes = dict(datos.get("fuentes") or {})
+    params = dict(fuentes.get("repo") or {})
+    repos = [r for r in (params.get("repos") or []) if isinstance(r, str) and r.strip()]
+    params["repos"] = [*repos, str(raiz)]
+    fuentes["repo"] = params
+    configuracion.guardar({**datos, "fuentes": fuentes})
+
+
 def _arrancar(registro, config, al_terminar):
     ajustes = (config.get("motores") or {}).get("headless") or {}
+    if registro.get("cliente") == "antigravity":
+        try:
+            _registrar_repo_para_antigravity(registro["carpeta"])
+        except Exception as error:  # la preparación no empieza si su `init` no puede terminar
+            raise NoSePuede(f"No pude registrar el proyecto para Antigravity: {error}") from error
     registro["intentos"] = int(registro.get("intentos") or 0) + 1
     try:
         proceso = fondo.lanzar(registro["comando"], _donde(registro["carpeta"]),
