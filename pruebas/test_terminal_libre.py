@@ -100,7 +100,9 @@ class TerminalLibre(unittest.TestCase):
 
     def test_codex_su_sandbox_de_escritura_y_nada_mas(self):
         argv, entorno = clientes.de("codex").terminal_libre(CARPETAS, "trunk")
-        self.assertEqual(argv, clientes.de("codex").permisos(CARPETAS)[0])
+        # Lo de `permisos` y, detrás, el worktree como proyecto sin confianza (cotejo-j42qfc).
+        self.assertEqual(argv, clientes.de("codex").permisos(CARPETAS)[0] +
+                         clientes._codex_sin_confianza(CARPETAS[0]))
         self.assertEqual(argv[:2], ["--sandbox", "workspace-write"])
         self.assertNotIn("--dangerously-bypass-approvals-and-sandbox", argv)
         self.assertNotIn("danger-full-access", argv)

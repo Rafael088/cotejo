@@ -68,6 +68,9 @@ class ConClienteFalso(PruebaDeEnrutador):
                        mock.patch.object(capacidad, "leer", return_value=dict(FOTO_CON_HUECO))):
             parche.start()
             self.addCleanup(parche.stop)
+        # Ningún cliente falso se queda vivo al terminar (uno frenado por `lanzar_vivo` también
+        # se para aquí, sin importar si la prueba lo soltó o no).
+        self.addCleanup(lambda: [despacho_board.detener(i) for i in lanzados.todos()])
         self.escribir_nota("Uno.md", proyecto(
             "- [ ] Arreglar el parseo de los tags #agente/sonnet ^cotejo-asig",
             "- [ ] Revisar el contrato con el abogado #agente/persona ^cotejo-hum",
@@ -85,12 +88,24 @@ class ConClienteFalso(PruebaDeEnrutador):
     def lanzar(self, tarea_id, **kwargs):
         return despacho_board.lanzar(tarea_id, **kwargs)
 
+    def lanzar_vivo(self, tarea_id, **kwargs):
+        """`lanzar` con el cliente falso frenado (espera a `FALSO_ESPERA_HASTA`): el estado
+        «trabajando» que devuelve no depende de que el proceso no haya acabado aún de salir.
+        Suéltalo con `soltar()` cuando ya no importe (o déjalo: el cleanup lo detiene)."""
+        self.freno = self.fuera / "soltar"
+        with mock.patch.dict(os.environ, {"FALSO_ESPERA_HASTA": str(self.freno)}):
+            return self.lanzar(tarea_id, **kwargs)
+
+    def soltar(self):
+        """Deja salir al cliente falso frenado por `lanzar_vivo`."""
+        self.freno.write_text("ya")
+
 
 @unittest.skipUnless(HAY_GIT, "sin git")
 class Lanzar(ConClienteFalso):
     def test_con_modelo_se_toma_se_aisla_y_se_lanza_con_su_cliente(self):
         terminado = []
-        estado = self.lanzar("cotejo-asig", al_terminar=terminado.append)
+        estado = self.lanzar_vivo("cotejo-asig", al_terminar=terminado.append)
         self.assertEqual(estado["estado"], lanzados.TRABAJANDO)
         self.assertEqual(estado["modelo"], "sonnet")
         self.assertIsInstance(estado["pid"], int)
@@ -106,6 +121,7 @@ class Lanzar(ConClienteFalso):
         self.assertEqual(registro["worktree"]["rama"], "cotejo/cotejo-asig")
         self.assertTrue(Path(registro["worktree"]["ruta"]).is_dir())
 
+        self.soltar()
         self.assertTrue(esperar(lambda: terminado), "el cliente falso no terminó")
         # Terminó sin entregar (cotejo-o253bs): vuelve a Pendiente, pausada para retomarla.
         self.assertEqual(terminado[0]["estado"], lanzados.DETENIDO)
@@ -176,7 +192,7 @@ class Lanzar(ConClienteFalso):
 
         # Con hueco otra vez, moverla la lanza y deja de estar en espera.
         self.configurar()
-        self.assertEqual(self.lanzar("cotejo-asig")["estado"], lanzados.TRABAJANDO)
+        self.assertEqual(self.lanzar_vivo("cotejo-asig")["estado"], lanzados.TRABAJANDO)
         self.assertEqual(lanzados.en_espera(), {})
 
     def test_lanzar_de_todos_modos_se_salta_la_capacidad_solo_esa_vez(self):
@@ -186,7 +202,7 @@ class Lanzar(ConClienteFalso):
         # El aviso dice qué hacer, en llano, y nombra el botón.
         self.assertIn("Cierra algo", str(error.exception))
         self.assertIn("Lanzar de todos modos", str(error.exception))
-        estado = despacho_board.lanzar("cotejo-asig", forzar=True)
+        estado = self.lanzar_vivo("cotejo-asig", forzar=True)
         self.assertEqual(estado["estado"], lanzados.TRABAJANDO)
         self.assertEqual(lanzados.en_espera(), {})
 
@@ -228,7 +244,6 @@ class PausarYRetomar(ConClienteFalso):
                        mock.patch.object(worktrees, "BASE", self.fuera / "wt")):
             parche.start()
             self.addCleanup(parche.stop)
-        self.addCleanup(lambda: [despacho_board.detener(i) for i in lanzados.todos()])
 
     def a_pendiente(self, marca):
         """Lo que escribe el board al devolverla: quita `#en-curso` y deja el modelo."""
@@ -262,7 +277,7 @@ class PausarYRetomar(ConClienteFalso):
             self.argv_falso.unlink()
 
             # Volver a Haciendo: otro agente, el mismo worktree, encargo + nota de retomar.
-            segundo = self.lanzar("cotejo-asig")
+            segundo = self.lanzar_vivo("cotejo-asig")
         self.assertEqual(segundo["estado"], lanzados.TRABAJANDO)
         self.assertNotEqual(segundo["pid"], primero["pid"])
         self.assertIn("#en-curso #agente/sonnet ^cotejo-asig", self.leer_nota("Uno.md"))
@@ -298,7 +313,7 @@ class PausarYRetomar(ConClienteFalso):
         # Pausar y retomar otra vez no apila notas: el encargo es el de siempre.
         despacho_board.pausar("cotejo-asig")
         self.a_pendiente("cotejo-asig")
-        tercero = self.lanzar("cotejo-asig")
+        tercero = self.lanzar_vivo("cotejo-asig")
         prompt = lanzados.leer("cotejo-asig")["prompt"]
         self.assertEqual(prompt.count(retomar.TITULO), 1)
         self.assertEqual(lanzados.leer("cotejo-asig")["reanudacion"]["vez"], 3)
