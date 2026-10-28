@@ -267,7 +267,7 @@ class Catalogo(unittest.TestCase):
 
     def test_sin_ningun_agente_listo_salen_todos(self):
         self.assertEqual([c for c, _ in niveles.grupos((), [])],
-                         ["claude", "opencode", "codex", "gemini"])
+                         ["claude", "opencode", "codex", "gemini", "antigravity"])
 
     def test_del_cliente_nunca_abarata(self):
         n1, n2, n3 = (niveles.POR_CLAVE[c] for c in ("n1", "n2", "n3"))

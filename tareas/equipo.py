@@ -10,6 +10,10 @@ instalador oficial que Cotejo sabe correr (`instalar_agentes.INSTALADORES`) se i
 la pantalla; los demás (Gemini CLI, git) siguen enlazando a su página. A quien no tiene ninguno
 se le recomienda uno (`instalar_agentes.RECOMENDADO`).
 
+Antigravity CLI (cotejo-r4yg0n) guarda la sesión en el llavero y no tiene cómo preguntársela
+(`modelos_vivos.SESION_INVISIBLE`): instalado dice «Instalado», cuenta como listo y su «Abrir»
+lo abre en una terminal para entrar con la cuenta.
+
 Ni la detección ni el git se reinventan: los agentes son `clientes.instalados()` (después de
 `instalar_agentes.sumar_al_path`, para ver lo recién instalado) y git es `shutil.which("git")`,
 lo mismo que mira `cotejo init`.
@@ -34,7 +38,7 @@ TITULO_GIT = "git (para guardar versiones)"
 NO_INSTALADO = "No instalado"
 SIN_SESION = "Falta iniciar sesión"
 LISTO = "Listo"
-INSTALADO = "Instalado"     # instalado, pero Cotejo aún no le da tareas (Antigravity CLI)
+INSTALADO = "Instalado"     # instalado, y Cotejo no puede ver si tiene sesión (Antigravity CLI)
 
 # Una línea en llano bajo el nombre, por agente, mientras no esté instalado.
 NOTAS = {
@@ -53,30 +57,35 @@ class Pieza:
     con_sesion: bool = True       # git no tiene sesión: cuenta como con sesión
     instalable: bool = False      # Cotejo sabe correr su instalador oficial aquí
     recomendado: bool = False     # el que se sugiere a quien no tiene ninguno
-    para_tareas: bool = True      # Cotejo le da tareas (Antigravity CLI todavía no)
+    sesion_visible: bool = True   # Cotejo sabe si tiene sesión (Antigravity CLI no)
+
+    @property
+    def sesion_desconocida(self):
+        """Instalado, sin una sesión que Cotejo vea, y sin forma de preguntarla."""
+        return self.instalado and not self.con_sesion and not self.sesion_visible
 
     @property
     def listo(self):
-        return self.instalado and self.con_sesion and self.para_tareas
+        return self.instalado and (self.con_sesion or not self.sesion_visible)
 
     @property
     def estado(self):
         if not self.instalado:
             return NO_INSTALADO
-        if not self.para_tareas:
+        if self.sesion_desconocida:
             return INSTALADO
         return LISTO if self.con_sesion else SIN_SESION
 
     @property
     def pide_sesion(self):
-        return self.instalado and not self.con_sesion and self.para_tareas
+        return self.instalado and not self.con_sesion and self.sesion_visible
 
     @property
     def nota(self):
         """Una línea en llano bajo el nombre, o ""."""
-        if not self.para_tareas and self.instalado:
-            return ("Instalado. Cotejo todavía no le da tareas; para entrar con tu cuenta, "
-                    "ábrelo con «Abrir».")
+        if self.sesion_desconocida:
+            return ("Cotejo no puede ver si ya entraste con tu cuenta. Si no, ábrelo con "
+                    "«Abrir» y entra; sin sesión, la tarea que le toque se para y lo dice.")
         if self.instalado:
             return ""
         if self.recomendado:
@@ -92,11 +101,10 @@ class Pieza:
 class Equipo:
     agentes: tuple
     git: Pieza
-    aparte: tuple = ()     # los que se instalan aquí pero aún no reciben tareas
 
     @property
     def piezas(self):
-        return (*self.agentes, *self.aparte, self.git)
+        return (*self.agentes, self.git)
 
     @property
     def hay_agente(self):
@@ -157,13 +165,10 @@ def revisar(preguntar_cli=False):
               con_sesion=nombre in puestos and modelos_vivos.sesion(
                   nombre, preguntar_cli=preguntar_cli),
               instalable=inst.puede_instalar(nombre),
-              recomendado=ninguno and nombre == inst.RECOMENDADO)
+              recomendado=ninguno and nombre == inst.RECOMENDADO,
+              sesion_visible=modelos_vivos.sesion_visible(nombre))
         for nombre, cliente in clientes.CLIENTES.items())
-    aparte = tuple(
-        Pieza(clave, titulo, inst.instalado(clave), PAGINAS.get(clave, ""), con_sesion=False,
-              instalable=inst.puede_instalar(clave), para_tareas=False)
-        for clave, (_ejecutable, titulo) in inst.APARTE.items())
-    return Equipo(agentes, Pieza(GIT, TITULO_GIT, hay_git(), PAGINAS[GIT]), aparte)
+    return Equipo(agentes, Pieza(GIT, TITULO_GIT, hay_git(), PAGINAS[GIT]))
 
 
 def es_primer_arranque(fuente):

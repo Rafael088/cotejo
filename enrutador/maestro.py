@@ -81,7 +81,7 @@ def instruccion(proyecto, asignadas, directorio=None, indicacion=""):
     partes += [
         "",
         "Para cada una, despáchala a su modelo. Cotejo lanza el cliente que lo ejecuta "
-        "(claude -p, opencode run, codex exec, gemini -p) y le pasa el encargo:",
+        "(claude -p, opencode run, codex exec, gemini -p, agy -p) y le pasa el encargo:",
         "",
         "    cotejo despachar <id> --motor headless",
         "",

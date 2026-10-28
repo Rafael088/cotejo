@@ -82,7 +82,7 @@ pregunta antes de inventarlo.
 
 ```sh
 cotejo modelos agregar --clave <clave-corta> --nombre "Nombre legible" \
-  --modelo-id <id-del-cliente> --cliente <claude|opencode|codex|gemini> --nivel n2
+  --modelo-id <id-del-cliente> --cliente <claude|opencode|codex|gemini|antigravity> --nivel n2
 ```
 
 Después, `cotejo asignar <id> <clave>`. Cotejo no lanza clientes externos por su cuenta; el

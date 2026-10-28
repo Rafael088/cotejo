@@ -65,7 +65,7 @@ class SinTocarNada(PruebaDeEnrutador):
         self.assertEqual({n["modelo"] for n in datos["niveles"]},
                          {"humano", "haiku", "sonnet", "opus", "gemini-pro", "gemini-flash",
                           "gemini-flash-lite", "codex-rapido", "codex", "codex-fuerte",
-                          "opencode"})
+                          "opencode", "antigravity"})
 
     def test_modelos_agregar_deja_el_modelo_disponible_para_cualquier_cliente(self):
         codigo, agregado = self.correr(
