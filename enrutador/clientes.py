@@ -149,7 +149,11 @@ class Cliente:
           no arrancan ni aunque la persona tenga `enableAllProjectMcpServers`, y los suyos (los
           de `~/.claude.json`, los conectores de claude.ai y los de sus plugins) siguen.
         - **Codex**: su sandbox `workspace-write` (`permisos`): solo escribe en las carpetas de
-          la tarea, no tiene red (no puede empujar nada) y no puede subir privilegios. Y el
+          la tarea, no tiene red (no puede empujar nada) y no puede subir privilegios. Con
+          `sandbox` (lo que arma `sandbox.del_lanzamiento`, como para Claude), en vez de
+          `--sandbox` va un perfil de permisos propio (`_codex_perfil`, cotejo-srkywv) con las
+          mismas carpetas: así puede commitear en su worktree y escribir la carpeta de la tarea,
+          y sacar capturas con Firefox. Y el
           worktree va como proyecto sin confianza (`_codex_sin_confianza`, cotejo-j42qfc): un
           worktree hereda la confianza de su repo, y con ella Codex carga el
           `.codex/config.toml` que haya dentro, que puede arrancar servidores MCP fuera de su
@@ -185,6 +189,9 @@ class Cliente:
                      *[f"Edit({_ruta_de_permiso(v)})" for v in vedados]], env)
         trabajo = next((str(c) for c in carpetas if c), None)
         if self.nombre == "codex":
+            if sandbox:
+                return (["--skip-git-repo-check", *_codex_perfil(sandbox, trabajo),
+                         *_codex_sin_confianza(trabajo)], env)
             return argv + _codex_sin_confianza(trabajo), env
         if self.nombre == "opencode":
             return argv, _opencode_sin_mcp_del_proyecto(trabajo, {
@@ -320,6 +327,69 @@ def _codex_sin_confianza(trabajo):
         return []
     ruta = json.dumps(os.path.abspath(trabajo), ensure_ascii=False)   # cadena TOML básica
     return ["-c", f'projects={{{ruta}={{trust_level="untrusted"}}}}']
+
+
+# --- el perfil de permisos de Codex para el agente del board (cotejo-srkywv) ---------------------
+
+# Con `--sandbox workspace-write` Codex no podía entregar ni commitear: el `.git` de cada carpeta
+# que escribe —y, si es un puntero `gitdir:` como el de un worktree, la carpeta a la que apunta—
+# queda de solo lectura sin forma de abrirlo (`git commit` fallaba con `index.lock`), y sin red su
+# seccomp niega hasta los sockets locales, así que Firefox no arranca ni se abre un puerto. Los
+# perfiles de permisos (https://developers.openai.com/codex/permissions, beta) sí lo permiten:
+# reglas `write`/`read` por ruta, donde gana la más concreta y una regla explícita reabre esas
+# rutas protegidas. Probado con Codex 0.154 en un worktree real.
+PERFIL_CODEX = "cotejo-tarea"
+# La red del perfil: solo lo local, por el proxy de Codex (`network_proxy`, experimental), que
+# aplica la lista de dominios. Con la red encendida y sin proxy saldría a todo internet.
+LOCALES_CODEX = ("localhost", "127.0.0.1")
+
+
+def _gitdir_de(trabajo):
+    """La carpeta a la que apunta el `.git` de un worktree (`gitdir: …`), o None."""
+    if not trabajo:
+        return None
+    puntero = os.path.join(str(trabajo), ".git")
+    try:
+        with open(puntero, encoding="utf-8") as archivo:
+            linea = archivo.readline().strip()
+    except OSError:   # no existe, o es una carpeta (un repo normal)
+        return None
+    if not linea.startswith("gitdir:"):
+        return None
+    return os.path.abspath(os.path.join(str(trabajo), linea[len("gitdir:"):].strip()))
+
+
+def _codex_perfil(caja, trabajo):
+    """Los argumentos que lanzan Codex con el perfil `PERFIL_CODEX` en vez de `--sandbox`.
+
+    `caja` es lo que arma `sandbox.del_lanzamiento` (las mismas carpetas que el sandbox de
+    Claude): cada `allowWrite` va con `write` —el worktree, el `.git` del repo, la carpeta del
+    archivo de la tarea, la de estado de Cotejo— más la carpeta propia del worktree dentro del
+    `.git`, y cada `denyWrite` con `read`, que gana por ser más concreta o por venir después: los
+    `hooks` y la `config` del `.git`, los demás worktrees y los archivos de la config de Cotejo.
+    Hereda de `:workspace` (la carpeta donde arranca, y el resto se lee) y la red queda solo para
+    lo local, por el proxy de Codex. Todo por `-c`: el `~/.codex/config.toml` no se toca."""
+    caja = ((caja or {}).get("sandbox") or {}).get("filesystem") or {}
+    reglas = {}
+    for ruta in caja.get("allowWrite") or ():
+        reglas[os.path.abspath(str(ruta))] = "write"
+    propio = _gitdir_de(trabajo)
+    if propio:
+        reglas[propio] = "write"
+    for ruta in caja.get("denyWrite") or ():
+        reglas[os.path.abspath(str(ruta))] = "read"
+
+    def cadena(texto):   # cadena TOML básica
+        return json.dumps(texto, ensure_ascii=False)
+
+    def tabla(datos):
+        return "{" + ",".join(f"{cadena(k)}={cadena(v)}" for k, v in datos.items()) + "}"
+
+    perfil = ("{extends=\":workspace\",filesystem=" + tabla(reglas) +
+              ",network={enabled=true,domains=" + tabla({d: "allow" for d in LOCALES_CODEX}) +
+              "}}")
+    return ["--enable", "network_proxy", "-c", f'default_permissions="{PERFIL_CODEX}"',
+            "-c", f"permissions.{PERFIL_CODEX}={perfil}"]
 
 
 # Donde OpenCode lee la config de un proyecto, desde la carpeta donde arranca
