@@ -99,6 +99,8 @@ class BarraMaestro(unittest.TestCase):
             opciones[1].emit("clicked")
         abrir.assert_not_called()
         self.assertEqual(self.guardado["cliente_maestro"], "codex")
+        # Lo elegido se ve sin abrir el menú: la ayuda del botón dice con cuál va a abrir.
+        self.assertIn("Codex", falso.boton_maestro.get_tooltip_text())
         # Lanzar es del botón, y usa el cliente elegido, no el primero instalado.
         with mock.patch("enrutador.verbos.abrir_maestro", return_value=abierto()) as abrir:
             falso.al_ejecutar_maestro()

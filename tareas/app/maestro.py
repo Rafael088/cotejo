@@ -56,6 +56,7 @@ class Maestro:
         """
         comun.guardar_board(cliente_maestro=cliente)
         popover.popdown()
+        self.poner_maestro()            # la ayuda del botón dice con cuál va a abrir
 
     def cliente_del_maestro(self, instalados):
         """El último cliente con el que se abrió el maestro, si sigue instalado; si no, el primero."""
@@ -146,8 +147,8 @@ class Maestro:
             ayuda = "Elige un proyecto para abrir su maestro"
         elif sin_agente:
             ayuda = clientes.SIN_AGENTE_TEXTO   # por qué el botón no abre nada
-        elif con_texto:
-            ayuda = "Abrir el maestro con tu indicación"
         else:
-            ayuda = "Abrir un agente que reparta las tareas asignadas de este proyecto"
+            titulo = clientes.de(self.cliente_del_maestro(clientes.instalados())).titulo
+            ayuda = (f"Abrir el maestro en {titulo} con tu indicación" if con_texto else
+                     f"Abrir {titulo} para que reparta las tareas asignadas de este proyecto")
         self.boton_maestro.set_tooltip_text(ayuda)
