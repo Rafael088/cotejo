@@ -3,7 +3,9 @@
 Escribe a su salida (que el lanzador manda al `.log` de la tarea) unas líneas como las de
 `claude -p --output-format stream-json`, espera `FALSO_ESPERA` segundos y sale con
 `FALSO_CODIGO`. Si hay `FALSO_ARGV`, deja ahí su argv y su carpeta, para que la prueba vea con
-qué se lanzó.
+qué se lanzó. Con `FALSO_ESPERA_HASTA=<archivo>`, en vez de esperar un tiempo fijo se queda
+vivo hasta que ese archivo exista: es el freno que usan las pruebas para verla «trabajando» sin
+que eso dependa de que no haya acabado de salir.
 
 Con `FALSO_ENTREGAR=<id>` hace lo que haría un agente que termina bien (cotejo-o253bs): un
 commit en su carpeta y `cotejo entregar <id>` con el `cotejo` que le pusieron en el PATH, antes
@@ -19,6 +21,17 @@ import time
 
 def linea(datos):
     print(json.dumps(datos), flush=True)
+
+
+def esperar():
+    """Espera antes de terminar: `FALSO_ESPERA` segundos, o hasta que exista `FALSO_ESPERA_HASTA`
+    (el freno de las pruebas: se queda viva todo lo que haga falta, sin depender del reloj)."""
+    hasta = os.environ.get("FALSO_ESPERA_HASTA")
+    if hasta:
+        while not os.path.exists(hasta):
+            time.sleep(0.01)
+        return
+    time.sleep(float(os.environ.get("FALSO_ESPERA", "0")))
 
 
 def entregar(tarea_id):
@@ -44,7 +57,7 @@ def main():
     linea({"type": "assistant", "message": {"content": [
         {"type": "text", "text": "Voy a mirar el repo."},
         {"type": "tool_use", "name": "Bash", "input": {"command": "git status"}}]}})
-    time.sleep(float(os.environ.get("FALSO_ESPERA", "0")))
+    esperar()
     if os.environ.get("FALSO_ENTREGAR"):
         entregar(os.environ["FALSO_ENTREGAR"])
         time.sleep(float(os.environ.get("FALSO_ESPERA_FIN", "0")))
