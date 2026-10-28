@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 from apoyo import RAIZ, PruebaDeEnrutador, proyecto
@@ -314,6 +315,26 @@ class Maestro(PruebaDeEnrutador):
         self.assertEqual(codigo, verbos.OK)
         self.assertEqual(datos["cliente"], "codex")
         self.assertTrue(abrir.called)
+
+    def test_el_maestro_lleva_la_carpeta_del_repo_sin_proyectos_en_la_config(self):
+        # Un proyecto creado desde el Inicio vive en la fuente repo y no está en
+        # enrutador.proyectos: la instrucción del maestro tiene que llevar su carpeta
+        # (fuente.carpeta_de) para que el agente no pregunte en qué carpeta está el código.
+        temporal = tempfile.TemporaryDirectory()
+        self.addCleanup(temporal.cleanup)
+        repo = Path(temporal.name) / "Repomio"
+        (repo / ".git").mkdir(parents=True)
+        (repo / ".cotejo").mkdir()
+        (repo / ".cotejo" / "tareas.md").write_text(
+            "# Tareas\n\n- [ ] Arreglar el build #agente/kimi-k2.7-code ^cotejo-repo1\n",
+            encoding="utf-8")
+        with mock.patch.dict(os.environ, {"COTEJO_FUENTE": "repo",
+                                          "COTEJO_REPOS": str(repo)}), \
+                mock.patch("enrutador.clientes.shutil.which", return_value="/usr/bin/x"):
+            codigo, datos = self.correr("maestro", "--proyecto", "Repomio", "--simular")
+        self.assertEqual(codigo, verbos.OK)
+        self.assertEqual(datos["directorio"], str(repo))
+        self.assertIn(str(repo), datos["comando"][-1])
 
     def test_sin_agentes_modelos_decidir_y_plan_avisan_sin_cambiar_despachable(self):
         con = {}

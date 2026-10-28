@@ -49,7 +49,7 @@ def abrir(config, cotejo, humano, nivel, propios, proyecto, cliente, modelo, sim
                        "`cotejo asignar <id> <modelo>`—: el maestro solo reparte lo que una "
                        "persona ya asignó.")
 
-    directorio = cfg.directorio_de(config, nombre)
+    directorio = cfg.directorio_de(config, nombre) or cotejo.carpeta_de(nombre)
     comando = maestro.argv(elegido.nombre,
                            maestro.instruccion(nombre, asignadas, directorio, indicacion),
                            modelo, ajustes.get("terminal") or ())
