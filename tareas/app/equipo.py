@@ -11,9 +11,10 @@ instalado**, **falta iniciar sesión** o **listo** (cotejo-2j6un7):
 - Falta iniciar sesión: **Iniciar sesión** abre el inicio de sesión oficial del agente
   (`instalar_agentes.iniciar_sesion`): en una terminal si lo pide, en segundo plano con su salida
   aquí si no (Codex), o el comando para copiar si no hay terminal.
-- Antigravity CLI (lo que reemplaza a Gemini CLI en cuentas personales) se instala igual, pero
-  Cotejo aún no le da tareas: instalado dice «Instalado» y «Abrir» lo abre en una terminal para
-  entrar con la cuenta. Gemini CLI queda como enlace, «solo con licencia de empresa».
+- Antigravity CLI (lo que reemplaza a Gemini CLI en cuentas personales) se instala igual y
+  recibe tareas, pero Cotejo no puede ver su sesión (vive en el llavero): instalado dice
+  «Instalado» y «Abrir» lo abre en una terminal para entrar con la cuenta. Gemini CLI queda
+  como enlace, «solo con licencia de empresa».
 - Mientras la pantalla se ve (o hay algo corriendo), cada `SONDEO` segundos se vuelve a detectar
   **en un hilo** (`equipo.revisar(preguntar_cli=True)`: la sesión de Codex o Claude Code en el
   llavero se le pregunta a su CLI) y, si algo cambió, se repinta: así se entera sola de que la
@@ -31,6 +32,8 @@ pinta. Los hilos nunca tocan GTK: avisan con `GLib.idle_add`.
 import threading
 
 from gi.repository import Gio, GLib, Gtk
+
+from enrutador import modelos_vivos
 
 from .. import equipo, instalar_agentes
 from .comun import ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XL, ESPACIADO_XS
@@ -121,7 +124,7 @@ class PestanaEquipo:
             boton.connect("clicked", lambda _b, p=pieza: self.iniciar_sesion_agente(p.clave))
             self.equipo_sesion[pieza.clave] = boton
             linea.append(boton)
-        elif pieza.instalado and not pieza.para_tareas and pieza.clave in instalar_agentes.SESIONES:
+        elif pieza.sesion_desconocida and pieza.clave in instalar_agentes.SESIONES:
             abrir = con_mano(Gtk.Button(label="Abrir", valign=Gtk.Align.CENTER))
             etiquetar(abrir, f"Abrir {pieza.titulo} en una terminal para entrar con tu cuenta")
             abrir.connect("clicked", lambda _b, p=pieza: self.iniciar_sesion_agente(p.clave))
@@ -186,7 +189,7 @@ class PestanaEquipo:
             self.equipo_trabajos[clave] = apertura.trabajo
             self.equipo_notas[clave] = ("Se abre tu navegador para que entres con tu cuenta. "
                                         "Si no se abre, usa el enlace de arriba.")
-        elif apertura.como == "terminal" and clave in instalar_agentes.APARTE:
+        elif apertura.como == "terminal" and not modelos_vivos.sesion_visible(clave):
             self.equipo_notas[clave] = (
                 f"Abrí una terminal con «{apertura.comando}»: entra con tu cuenta en el navegador.")
         elif apertura.como == "terminal":

@@ -150,7 +150,7 @@ class ConSandbox(Entorno):
 
     def test_los_otros_clientes_no_llevan_el_de_claude(self):
         with mock.patch.object(sandbox, "disponible", return_value=(True, "")):
-            for nombre in ("codex", "opencode", "gemini"):
+            for nombre in ("codex", "opencode", "gemini", "antigravity"):
                 self.assertNotIn("--settings", self.motor({}).argv(self.encargo(nombre)))
 
 

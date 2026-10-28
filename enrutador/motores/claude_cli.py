@@ -1,5 +1,5 @@
 """Mandar la tarea a un cliente de IA que corre solo, sin que nadie lo vea: `claude -p`,
-`opencode run`, `codex exec`, `gemini -p`.
+`opencode run`, `codex exec`, `gemini -p`, `agy -p`.
 
 Es el camino desatendido, y por eso **no es el defecto**: se pide. Sirve para un script, un
 hook, algo que corre de madrugada, o un `maestro` que reparte las tareas de un proyecto; para el

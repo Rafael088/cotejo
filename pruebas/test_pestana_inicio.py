@@ -375,10 +375,15 @@ class SinFuente(PestanaInicio):
         b = self.board
         self.revisar(["claude", "opencode", "codex", "gemini"], git=True)
         filas = self.filas()
-        self.assertEqual(filas.pop("Antigravity CLI"), "No instalado")   # aparte (cotejo-r4yg0n)
+        self.assertEqual(filas.pop("Antigravity CLI"), "No instalado")   # cotejo-r4yg0n
         self.assertEqual(set(filas.values()), {"Listo"})
         self.assertEqual(set(b.equipo_enlaces), {"antigravity"})
         self.assertEqual(b.equipo_titular.get_label(), "Todo listo: tienes 4 agentes")
+
+        self.revisar(["antigravity"], git=True, sin_sesion={"antigravity"})
+        self.assertEqual(self.filas()["Antigravity CLI"], "Instalado")   # su sesión no se ve
+        self.assertEqual(b.equipo_titular.get_label(),
+                         "Todo listo para empezar con Antigravity CLI")
 
         self.revisar([], git=False)
         self.assertEqual(set(self.filas().values()), {"No instalado"})

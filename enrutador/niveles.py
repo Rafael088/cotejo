@@ -64,13 +64,14 @@ NIVELES = (
           "diseñar antes de escribir."),
 )
 
-# Los de fábrica de los otros agentes (v1.3.0, cotejo-qixs4j): lo justo para que un proyecto
-# hecho con Codex, OpenCode o Gemini tenga a quién proponer sin registrar nada a mano, y sin
-# inventar ningún id. Gemini CLI entiende alias estables (`pro`, `flash`, `flash-lite`), como
-# Claude Code. Codex y OpenCode no: su entrada de fábrica es **el modelo que el agente tenga por
-# defecto** (`modelo_id` vacío: se lanza sin `-m`), que vale para cualquier nivel, y los modelos
-# concretos se añaden con «Añadir modelo» o `cotejo modelos agregar`. Un modelo registrado con la
-# misma clave gana a estos (no son reservados: no se rompe la config de nadie).
+# Los de fábrica de los otros agentes (v1.3.0, cotejo-qixs4j): lo justo para que un proyecto hecho
+# con Codex, OpenCode, Gemini o Antigravity tenga a quién proponer sin registrar nada a mano, y
+# sin inventar ningún id. Gemini CLI entiende alias estables (`pro`, `flash`, `flash-lite`), como
+# Claude Code. Codex, OpenCode y Antigravity no: su entrada de fábrica es **el modelo que el
+# agente tenga por defecto** (`modelo_id` vacío: se lanza sin `-m`), que vale para cualquier
+# nivel, y los modelos concretos se añaden con «Añadir modelo» o `cotejo modelos agregar`. Un
+# modelo registrado con la misma clave gana a estos (no son reservados: no se rompe la config de
+# nadie).
 DE_FABRICA = (
     Nivel("gemini-flash-lite", "gemini-flash-lite", "flash-lite", 0.0, 0.0,
           "Gemini CLI, su modelo ligero (alias flash-lite).", "gemini", "n1"),
@@ -91,6 +92,11 @@ DE_FABRICA = (
           ("-c", "model_reasoning_effort=high")),
     Nivel("opencode", "opencode", "", 0.0, 0.0,
           "OpenCode con el modelo que tenga por defecto.", "opencode", "n3"),
+    # Antigravity CLI (cotejo-r4yg0n), como OpenCode: el modelo que tenga elegido (sin
+    # `--model`). Qué slugs hay depende del plan de cada cuenta (`agy models`): los concretos
+    # se añaden con «Añadir modelo», nunca un id de fábrica que en otra cuenta no exista.
+    Nivel("antigravity", "antigravity", "", 0.0, 0.0,
+          "Antigravity CLI con el modelo que tenga elegido.", "antigravity", "n3"),
 )
 
 POR_CLAVE = {n.clave: n for n in NIVELES}

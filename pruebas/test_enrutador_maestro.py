@@ -273,7 +273,8 @@ class Maestro(PruebaDeEnrutador):
         self.sin_clientes()
         _, datos = self.correr("maestro", "--proyecto", "Uno")
         self.assertEqual(f"{datos['error']}. {datos['salida']}.", clientes.SIN_AGENTE_TEXTO)
-        self.assertIn("Claude Code, Codex, Gemini CLI u opencode", clientes.SIN_AGENTE_TEXTO)
+        self.assertIn("Claude Code, Codex, Antigravity CLI, Gemini CLI u opencode",
+                      clientes.SIN_AGENTE_TEXTO)
 
     def test_sin_ningun_agente_pedir_un_cliente_concreto_si_lo_nombra(self):
         self.sin_clientes()

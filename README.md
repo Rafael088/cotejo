@@ -10,7 +10,7 @@ Sirve para que cualquier persona, programe o no, construya software con IA de fo
 - Cada tarea va al modelo adecuado: el [enrutador](#quién-atiende-cada-tarea) decide a quién le toca y por qué.
 - Nada se da por hecho sin evidencia y sin tu revisión: el agente entrega con pruebas, y marcar una tarea como hecha es siempre cosa tuya, en CotejoBoard.
 
-Se usa con cualquier agente de terminal (Claude Code, Codex, Gemini CLI, opencode) o con cualquier agente que hable MCP. Es gratis, en Windows y Linux.
+Se usa con cualquier agente de terminal (Claude Code, Codex, Antigravity CLI, Gemini CLI, opencode) o con cualquier agente que hable MCP. Es gratis, en Windows y Linux.
 
 > [!WARNING]
 > **Cotejo 1.2 es software en fase beta.** Todavía puede tener fallos o comportarse de forma
@@ -294,11 +294,11 @@ Las reglas **proponen, no autorizan**: si nadie asignó el modelo, `despachar` s
 
 `cotejo evaluar` mide las reglas contra 42 tareas reales del vault etiquetadas a mano: hoy, **85,7 % de acierto y 0 abaratadas**. Ese número es el que decide si algún día hace falta un clasificador; mientras siga así, pagarle a un modelo para decidir a qué modelo mandar las cosas es gastar por gusto.
 
-**El trabajo lo hace un agente vivo, no la API.** El motor por defecto (`agente`) no lanza nada: toma la tarea y te devuelve el encargo para que lo hagas tú o se lo pases a un subagente con ese modelo. `--motor sesion` abre una instancia de verdad (`claude --bg --model`), que se dirige con `claude attach`. `--motor headless` existe para lo desatendido y hay que pedirlo: lanza **el cliente que ejecuta el modelo** según el catálogo —`claude -p` para los de Claude, `opencode run -m opencode-go/kimi-k2.7-code` para una tarea de `#agente/kimi-k2.7-code`, `codex exec`, `gemini -p`—. `sesion` solo sabe abrir Claude Code y lo dice antes de tomar nada; y si el cliente no está instalado, `despachar` se niega **sin tomar la tarea**, en vez de dejarla en *Haciéndola* a nombre de un modelo que nunca empezó.
+**El trabajo lo hace un agente vivo, no la API.** El motor por defecto (`agente`) no lanza nada: toma la tarea y te devuelve el encargo para que lo hagas tú o se lo pases a un subagente con ese modelo. `--motor sesion` abre una instancia de verdad (`claude --bg --model`), que se dirige con `claude attach`. `--motor headless` existe para lo desatendido y hay que pedirlo: lanza **el cliente que ejecuta el modelo** según el catálogo —`claude -p` para los de Claude, `opencode run -m opencode-go/kimi-k2.7-code` para una tarea de `#agente/kimi-k2.7-code`, `codex exec`, `gemini -p`, `agy -p` (Antigravity CLI)—. `sesion` solo sabe abrir Claude Code y lo dice antes de tomar nada; y si el cliente no está instalado, `despachar` se niega **sin tomar la tarea**, en vez de dejarla en *Haciéndola* a nombre de un modelo que nunca empezó.
 
 ### El maestro
 
-Con un proyecto elegido en CotejoBoard, la barra del Maestro del pie lo abre. En la barra se puede escribir una indicación opcional («solo las de la v1.2.4», «primero las de la web») que el maestro lee al abrirse; acota qué reparte y en qué orden, pero no le deja saltarse ninguna regla. **Abrir maestro** (o Enter; con texto el botón dice **Enviar al maestro**) usa el último cliente con que se abrió, y la flecha del mismo botón despliega todos los instalados —Claude Code, OpenCode, Codex, Gemini CLI— para elegir otro. Al abrir el maestro se abre **en una terminal nueva que se ve** con una primera instrucción: ser el maestro de ese proyecto. Lo mismo desde la CLI:
+Con un proyecto elegido en CotejoBoard, la barra del Maestro del pie lo abre. En la barra se puede escribir una indicación opcional («solo las de la v1.2.4», «primero las de la web») que el maestro lee al abrirse; acota qué reparte y en qué orden, pero no le deja saltarse ninguna regla. **Abrir maestro** (o Enter; con texto el botón dice **Enviar al maestro**) usa el último cliente con que se abrió, y la flecha del mismo botón despliega todos los instalados —Claude Code, OpenCode, Codex, Gemini CLI, Antigravity CLI— para elegir otro. Al abrir el maestro se abre **en una terminal nueva que se ve** con una primera instrucción: ser el maestro de ese proyecto. Lo mismo desde la CLI:
 
 ```sh
 cotejo maestro --proyecto Cotejo --cliente opencode [--modelo opencode-go/kimi-k3] [--indicacion "..."] [--simular]

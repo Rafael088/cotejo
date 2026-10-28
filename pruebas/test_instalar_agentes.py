@@ -190,7 +190,9 @@ class Antigravity(Base):
         self.assertEqual(self.descargado, "https://antigravity.google/cli/install.sh")
         self.assertIn("Antigravity CLI quedó instalado", inst.resultado(t, True))
         e = equipo.revisar()
-        self.assertEqual(e.aparte[0].estado, equipo.INSTALADO)
+        agy = next(a for a in e.agentes if a.clave == "antigravity")
+        self.assertEqual(agy.estado, equipo.INSTALADO)
+        self.assertTrue(agy.listo)             # recibe tareas aunque no se vea su sesión
 
     def test_abrir_es_agy_en_una_terminal(self):
         agy = ejecutable(self.bin / "agy", "#!/bin/sh\n")
@@ -249,7 +251,7 @@ class EstadosDelEquipo(Base):
         gemini = next(a for a in e.agentes if a.clave == "gemini")
         self.assertFalse(gemini.instalable)
         self.assertIn("licencia de empresa", gemini.nota)
-        self.assertTrue(e.aparte[0].instalable)
+        self.assertTrue(next(a for a in e.agentes if a.clave == "antigravity").instalable)
         self.assertIn("Instalar", e.mensaje)
 
     def test_instalado_sin_sesion_y_despues_listo(self):

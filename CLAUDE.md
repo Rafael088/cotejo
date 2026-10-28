@@ -66,6 +66,17 @@ repo donde se para (`_pista_repo_actual`) y, sin tocar `ok`, avisa en «avisos»
 si ya está registrado pero toca `fuentes usar repo`, o si tiene `.cotejo/tareas.md` sin
 registrar y toca `cotejo init`.
 
+**Antigravity CLI** (`agy`, cotejo-r4yg0n) es el quinto cliente de `enrutador/clientes.py`
+(`antigravity`), con las banderas de https://antigravity.google/docs/cli/reference y
+…/docs/cli/headless, ninguna inventada: sin interfaz `agy --print-timeout 0 [--model <slug>] …
+-p <prompt>` (`0` espera al final del turno: el tope lo pone Cotejo), en terminal `-i`, sus
+carpetas con `--add-dir` y sus comandos aprobados con `--dangerously-skip-permissions` (al
+preparar y en la terminal libre), porque sus reglas `allow`/`deny` solo viven en la
+`~/.gemini/antigravity-cli/settings.json` de la persona, que Cotejo no toca: sus prohibidos son
+las guardas del PATH. Su `--sandbox` no va por defecto (en Linux esconde lo que no monta, como
+el lanzador de `cotejo`); se pide en `lanzar.argumentos_extra.antigravity`. De fábrica, el
+modelo que tenga elegido (`niveles.DE_FABRICA`, sin `--model`); `agy models` es su lista.
+
 `tareas/worktrees.py` es el aislamiento de la 1.1 (B3): si la tarea es de un repo de git
 (`enrutador.proyectos` o, en la fuente repo, `Fuente.carpeta_de`), `despachar` le crea un
 worktree con rama `cotejo/<id>` **fuera del repo y del vault** (por defecto en
@@ -108,8 +119,10 @@ solo ahí—, con cada agente **no instalado**, **falta iniciar sesión** o **li
 documentado de Claude Code, Codex y OpenCode —descargado a `<estado>/agentes/`, ejecutado con
 `bash`/`sh` sin shell ni terminal, en un hilo, con tope, cancelable, log y un `sudo` que se
 niega— y el login oficial de cada CLI, en una terminal si lo pide; Antigravity CLI, que
-reemplaza a Gemini CLI en cuentas personales, se instala igual pero aún no recibe tareas
-—«Instalado», no «Listo»—; Gemini CLI («solo con licencia de empresa») y git siguen enlazando),
+reemplaza a Gemini CLI en cuentas personales, se instala igual y recibe tareas, pero guarda la
+sesión en el llavero sin forma documentada de preguntarla —«Instalado», que cuenta como listo,
+`modelos_vivos.SESION_INVISIBLE`—; Gemini CLI («solo con licencia de empresa») y git siguen
+enlazando),
 sondea la sesión en un hilo cada pocos segundos mientras se ve —`modelos_vivos.sesion` pregunta
 a `codex login status` / `claude auth status` si la sesión vive en el llavero, solo con
 `preguntar_cli`, nunca al pintar—, tiene «revisar otra vez» y «Seguir al Inicio»; después del

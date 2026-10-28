@@ -25,15 +25,15 @@ class Equipo(unittest.TestCase):
     def test_con_todo_instalado(self):
         e = revisar(clientes.CLIENTES, git=True)
         self.assertTrue(all(p.listo for p in (*e.agentes, e.git)))
-        self.assertEqual([p.clave for p in e.faltan], ["antigravity"])   # aparte, sin instalar
+        self.assertEqual(e.faltan, ())
         self.assertTrue(e.hay_agente)
-        self.assertEqual(e.titular, "Todo listo: tienes 4 agentes")
+        self.assertEqual(e.titular, "Todo listo: tienes 5 agentes")
 
     def test_sin_nada_marca_todo_y_manda_a_las_paginas_oficiales(self):
         e = revisar([], git=False)
         self.assertEqual([p.clave for p in e.agentes], list(clientes.CLIENTES))
         self.assertFalse(e.hay_agente)
-        self.assertEqual(len(e.faltan), 6)                # con Antigravity CLI aparte
+        self.assertEqual(len(e.faltan), 6)                # cinco agentes y git
         self.assertEqual(e.titular, "Te falta un agente de IA")
         self.assertIn("Instalar", e.mensaje)
         self.assertEqual([a.clave for a in e.agentes if a.recomendado], ["claude"])
@@ -55,7 +55,8 @@ class Equipo(unittest.TestCase):
         e = revisar(["claude", "codex"], git=True, sin_sesion={"codex"})
         estados = {p.clave: p.estado for p in e.agentes}
         self.assertEqual(estados, {"claude": "Listo", "codex": "Falta iniciar sesión",
-                                   "opencode": "No instalado", "gemini": "No instalado"})
+                                   "opencode": "No instalado", "gemini": "No instalado",
+                                   "antigravity": "No instalado"})
         self.assertEqual(e.titular, "Todo listo para empezar con Claude Code")
         self.assertFalse(any(p.recomendado for p in e.agentes))
 
@@ -72,24 +73,28 @@ class Equipo(unittest.TestCase):
         self.assertFalse(gemini.instalable)
         self.assertIn("Solo con licencia de empresa", gemini.nota)
         self.assertIn("Antigravity CLI", gemini.nota)
-        agy, = e.aparte
-        self.assertEqual((agy.clave, agy.titulo, agy.estado),
-                         ("antigravity", "Antigravity CLI", "No instalado"))
+        agy = next(p for p in e.agentes if p.clave == "antigravity")
+        self.assertEqual((agy.titulo, agy.estado), ("Antigravity CLI", "No instalado"))
+        self.assertTrue(agy.instalable)
         self.assertTrue(agy.pagina.startswith("https://antigravity.google/"))
 
-    def test_antigravity_instalado_no_cuenta_para_tareas(self):
-        with mock.patch("enrutador.clientes.instalados", return_value=[]), \
-                mock.patch("enrutador.modelos_vivos.sesion", return_value=True), \
-                mock.patch("tareas.instalar_agentes.sumar_al_path", return_value=[]), \
-                mock.patch("tareas.instalar_agentes.instalado", return_value=True), \
-                mock.patch("tareas.equipo.hay_git", return_value=True):
-            e = equipo.revisar()
-        agy, = e.aparte
+    def test_antigravity_instalado_cuenta_para_tareas_sin_ver_su_sesion(self):
+        # Su sesión vive en el llavero y no hay cómo preguntarla (cotejo-r4yg0n): instalado
+        # cuenta como listo, dice «Instalado» (no «Listo») y no pide iniciar sesión.
+        e = revisar(["antigravity"], sin_sesion={"antigravity"})
+        agy = next(p for p in e.agentes if p.clave == "antigravity")
         self.assertEqual(agy.estado, "Instalado")
-        self.assertFalse(agy.listo or agy.pide_sesion)
-        self.assertIn("todavía no le da tareas", agy.nota)
-        self.assertFalse(e.hay_agente)
-        self.assertEqual(e.titular, "Te falta un agente de IA")
+        self.assertTrue(agy.listo and agy.sesion_desconocida)
+        self.assertFalse(agy.pide_sesion)
+        self.assertIn("no puede ver si ya entraste", agy.nota)
+        self.assertTrue(e.hay_agente)
+        self.assertEqual(e.titular, "Todo listo para empezar con Antigravity CLI")
+
+    def test_antigravity_con_sesion_por_entorno_dice_listo(self):
+        e = revisar(["antigravity"])
+        agy = next(p for p in e.agentes if p.clave == "antigravity")
+        self.assertEqual(agy.estado, "Listo")
+        self.assertFalse(agy.sesion_desconocida)
 
     def test_cada_revision_vuelve_a_detectar(self):
         self.assertFalse(revisar([]).hay_agente)

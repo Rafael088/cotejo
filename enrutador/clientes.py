@@ -92,6 +92,11 @@ class Cliente:
           proyecto nuevo nunca lo es: `GEMINI_CLI_TRUST_WORKSPACE`, solo para esta sesión. Su
           shell no está encerrado; el permiso de correr `cotejo` va aparte, como el de Claude
           (`preparar.argumentos_extra`).
+        - **Antigravity CLI** (`agy`, cotejo-r4yg0n): `--add-dir` por carpeta, que la suma al
+          espacio de trabajo, donde leer y escribir archivos está permitido sin preguntar
+          (https://antigravity.google/docs/cli/reference y …/docs/cli/headless). Sus comandos
+          de shell sí preguntan, y sin interfaz se niegan solos: el permiso va aparte
+          (`preparar.argumentos_extra`, `terminal_libre`).
         - **Claude Code** no necesita nada: su Bash no está encerrado y `cotejo` ya tiene
           permiso (`--allowedTools Bash(cotejo:*)`).
         """
@@ -109,6 +114,8 @@ class Cliente:
                 carpetas, entorno.get("OPENCODE_CONFIG_CONTENT"))}
         if self.nombre == "gemini":
             return [], {"GEMINI_CLI_TRUST_WORKSPACE": "true"}
+        if self.nombre == "antigravity":
+            return [a for carpeta in carpetas for a in ("--add-dir", carpeta)], {}
         return [], {}
 
     def terminal_libre(self, carpetas, ramas=None, politica_gemini=None, entorno=None,
@@ -134,8 +141,15 @@ class Cliente:
         - **Gemini CLI**: `auto_edit` y una política (`--policy`, `politica_gemini`, el archivo
           que escribe `guardas.preparar` con `politica_gemini_toml`) que deja todo el shell y
           niega los prohibidos.
+        - **Antigravity CLI**: `--dangerously-skip-permissions`, la única forma documentada de
+          aprobar sus comandos en una sola invocación (sin ella, sin interfaz, todo comando se
+          niega solo). Sus reglas `deny` solo se leen de `~/.gemini/antigravity-cli/settings.json`,
+          la config de la persona, que Cotejo no toca: los prohibidos de este quedan en las
+          guardas del PATH. Su sandbox (`--sandbox`) no va por defecto: en Linux esconde lo que
+          no monta, y el lanzador de `cotejo` vive fuera del worktree; quien lo quiera lo pone en
+          `lanzar.argumentos_extra.antigravity`.
 
-        Debajo de los cuatro, el PATH del agente lleva las guardas de `guardas.py` (un `git`
+        Debajo de todos, el PATH del agente lleva las guardas de `guardas.py` (un `git`
         que no deja empujar a la fuerza ni a esas ramas, y un `sudo`/`su` que se niega).
         """
         ramas = ramas_protegidas(ramas)
@@ -151,6 +165,8 @@ class Cliente:
         if self.nombre == "gemini":
             return (["--approval-mode", "auto_edit"] +
                     (["--policy", str(politica_gemini)] if politica_gemini else []), env)
+        if self.nombre == "antigravity":
+            return argv + ["--dangerously-skip-permissions"], env
         return argv, env
 
     @property
@@ -284,6 +300,15 @@ CLIENTES = {
     "codex": Cliente("codex", "codex", ("exec",), "-m", titulo="Codex"),
     "gemini": Cliente("gemini", "gemini", (), "-m", prompt_sin_interfaz=("-p",),
                       prompt_interactivo=("-i",), titulo="Gemini CLI"),
+    # Antigravity CLI (cotejo-r4yg0n): lo que Google da desde el 18-jun-2026 al plan gratuito,
+    # Pro y Ultra en vez de Gemini CLI. Sus banderas, de https://antigravity.google/docs/cli/
+    # reference y …/headless: `-p` corre un prompt sin interfaz, `-i` uno inicial y sigue la
+    # sesión, `--model <slug>` (los que lista `agy models`). `--print-timeout 0` espera hasta
+    # que termine el turno: la guía de headless dice que por defecto corta a los cinco minutos,
+    # y el tope ya lo pone Cotejo (`timeout_seg`).
+    "antigravity": Cliente("antigravity", "agy", ("--print-timeout", "0"), "--model",
+                           prompt_sin_interfaz=("-p",), prompt_interactivo=("-i",),
+                           titulo="Antigravity CLI"),
 }
 
 
@@ -317,7 +342,8 @@ def esta_instalado(nombre):
 # fuente para que digan lo mismo. No se inventa un comando de instalación: cada agente se
 # instala como dice su propia documentación.
 SIN_AGENTE = "El maestro necesita un agente de terminal y no encontré ninguno"
-SIN_AGENTE_SALIDA = ("Instala uno (Claude Code, Codex, Gemini CLI u opencode) y vuelve a probar; "
+SIN_AGENTE_SALIDA = ("Instala uno (Claude Code, Codex, Antigravity CLI, Gemini CLI u opencode) "
+                     "y vuelve a probar; "
                      "mientras tanto puedes trabajar las tareas desde cualquier agente con MCP")
 SIN_AGENTE_TEXTO = f"{SIN_AGENTE}. {SIN_AGENTE_SALIDA}."
 

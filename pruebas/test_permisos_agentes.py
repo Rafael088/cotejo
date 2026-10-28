@@ -26,7 +26,7 @@ from apoyo import RAIZ  # noqa: F401
 from enrutador import clientes, config as cfg, mismo_cotejo, preparar, procesos
 from tareas import inicio, preparacion
 
-CLIENTES = ("claude", "codex", "opencode", "gemini")
+CLIENTES = ("claude", "codex", "opencode", "gemini", "antigravity")
 
 # Hace lo que haría el agente en el primer paso del prompt de inicio: `cotejo init --repo` con
 # el `cotejo` del PATH (el del board), y apunta qué argv y qué entorno recibió.
@@ -163,6 +163,8 @@ class Comando(Base):
                       *add, "P"],
             "opencode": ["opencode", "run", "P"],
             "gemini": ["gemini", "--allowed-tools", "run_shell_command(cotejo)", "-p", "P"],
+            "antigravity": ["agy", "--print-timeout", "0", "--dangerously-skip-permissions",
+                            *add, "-p", "P"],
         }
         for nombre in CLIENTES:
             with self.subTest(nombre):
@@ -240,6 +242,12 @@ class ConElPromptDeInicio(Base):
                                                 "--skip-git-repo-check"])
                     self.assertEqual([argv[i + 1] for i, a in enumerate(argv)
                                       if a == "--add-dir"], carpetas)
+                elif nombre == "antigravity":
+                    self.assertEqual([argv[i + 1] for i, a in enumerate(argv)
+                                      if a == "--add-dir"], carpetas)
+                    self.assertIn("--dangerously-skip-permissions", argv)
+                    self.assertEqual(argv[-2], "-p")
+                    self.assertNotIn("--sandbox", argv)
                 else:
                     self.assertNotIn("--sandbox", argv)
                 if nombre == "opencode":

@@ -16,8 +16,8 @@ Sin GTK. La pantalla (`tareas/app/equipo.py`) pinta; aquí se decide **qué** se
 - Antigravity CLI (`agy`): `curl -fsSL https://antigravity.google/cli/install.sh | bash`
   (fuente: https://antigravity.google/docs/getting-started/). Instala en `~/.local/bin/agy`.
   Desde el 18 de junio de 2026 reemplaza a Gemini CLI en el plan gratuito, Pro y Ultra
-  (https://github.com/google-gemini/gemini-cli/discussions/27274). Cotejo aún no le da tareas
-  (no es un cliente de `enrutador.clientes`): se instala y se conecta, nada más.
+  (https://github.com/google-gemini/gemini-cli/discussions/27274). Es un cliente más de
+  `enrutador.clientes` (`antigravity`, ejecutable `agy`, cotejo-r4yg0n).
 - Gemini CLI **no**: desde esa fecha solo sirve con licencia de empresa; se queda en su enlace,
   como git.
 
@@ -46,8 +46,8 @@ cada agente cuyo ejecutable esté ahí, para que el board (y lo que lance) lo en
 - Gemini CLI: `gemini` (https://github.com/google-gemini/gemini-cli): la sesión se inicia al
   abrirlo («Sign in with Google»): va en una terminal.
 - Antigravity CLI: `agy` (https://antigravity.google/docs/install): al abrirlo por primera vez
-  abre el navegador; guarda la sesión en el llavero del sistema, así que Cotejo no sabe si quedó
-  (y no hace falta: todavía no le da tareas).
+  abre el navegador; guarda la sesión en el llavero del sistema y no documenta cómo preguntarla,
+  así que Cotejo no sabe si quedó (`modelos_vivos.SESION_INVISIBLE`).
 
 La terminal es la del maestro (`enrutador.maestro.terminal` de la config, por defecto
 `xdg-terminal-exec`, la que el escritorio tenga por preferida) o, si no está,
@@ -105,10 +105,6 @@ INSTALADORES = {
                               "https://antigravity.google/docs/getting-started/"),
 }
 
-# Agentes que se instalan y se conectan desde aquí pero a los que Cotejo aún no da tareas: no
-# están en `enrutador.clientes` (Antigravity CLI, cotejo-r4yg0n).
-APARTE = {"antigravity": ("agy", "Antigravity CLI")}
-
 
 @dataclass(frozen=True)
 class Sesion:
@@ -137,14 +133,12 @@ def carpeta():
 
 
 def _ejecutable(clave):
-    if clave in APARTE:
-        return APARTE[clave][0]
     from enrutador import clientes
     return clientes.de(clave).ejecutable
 
 
 def instalado(clave):
-    """¿Está en el PATH? (Para los de `APARTE`; los clientes lo dicen con `clientes`.)"""
+    """¿Está en el PATH?"""
     return shutil.which(_ejecutable(clave)) is not None
 
 
@@ -391,8 +385,6 @@ def resultado(trabajo, ahora_instalado=None):
 
 
 def _titulo(clave):
-    if clave in APARTE:
-        return APARTE[clave][1]
     from enrutador import clientes
     cliente = clientes.CLIENTES.get(clave)
     return (cliente.titulo if cliente and cliente.titulo else clave)

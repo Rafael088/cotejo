@@ -3,7 +3,7 @@ Preparando de CotejoBoard.
 
 Con las respuestas de la entrevista, `lanzar` arma el prompt de inicio (`tareas/inicio.py`) y
 lanza **el cliente que eligió la persona** sin interfaz (`claude -p`, `codex exec`,
-`opencode run`, `gemini -p`), con la misma tabla y la misma config que el motor `headless`
+`opencode run`, `gemini -p`, `agy -p`), con la misma tabla y la misma config que el motor `headless`
 (`clientes.py`, `motores.headless`). Es la única excepción a «nada en segundo plano» (la
 decisión del inicio en la app): solo para preparar un proyecto y con el progreso a la vista.
 

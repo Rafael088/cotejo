@@ -10,11 +10,16 @@ Dos preguntas, las dos sin gastar un token ni abrir un navegador:
   `~/.claude/.credentials.json` (o `oauthAccount` en `~/.claude.json`, que es lo que queda en
   macOS, donde la credencial va al llavero); Codex, `~/.codex/auth.json` (o `CODEX_HOME`);
   OpenCode, alguna credencial en su `auth.json` (`opencode auth list` lee ese mismo archivo);
-  Gemini CLI, `~/.gemini/oauth_creds.json`. Instalado es lo de siempre,
-  `clientes.instalados()`.
+  Gemini CLI, `~/.gemini/oauth_creds.json`. Antigravity CLI guarda su sesión en el llavero y no
+  documenta cómo preguntarle si la tiene (`SESION_INVISIBLE`): solo se ve la que va por entorno
+  (`AGY_ADC_AUTH=true`, o `GEMINI_API_KEY` con `modelProvider: "gemini"` en su settings.json,
+  https://antigravity.google/docs/install), y si no, instalado cuenta como listo y un `agy -p`
+  sin sesión sale con «authentication required» (…/docs/cli/headless). Instalado es lo de
+  siempre, `clientes.instalados()`.
 - **¿Qué modelos tiene?** (`listar`). Se le pregunta al CLI solo cuando sabe listarlos sin
   hablar con ningún modelo: `opencode models` (una línea `proveedor/modelo` por modelo) y
-  `codex debug models` (el catálogo en JSON; cuentan los de `visibility: list`). Claude Code y
+  `codex debug models` (el catálogo en JSON; cuentan los de `visibility: list`) y `agy models`
+  (una línea `slug  Nombre` por modelo, https://antigravity.google/docs/cli/headless). Claude Code y
   Gemini CLI no listan: aceptan alias que sobreviven a cada modelo nuevo (`claude --model opus`;
   `gemini -m pro|flash|flash-lite|auto`) y esos son su lista, `RESPALDO`. Lo que contesta el CLI
   se guarda en `<estado>/modelos/<cliente>.json` (`CADUCA` segundos) y la llamada tiene tope
@@ -27,6 +32,7 @@ desde «Añadir modelo». Las pruebas ponen CLIs falsos en un PATH temporal y `H
 
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -46,13 +52,19 @@ RESPALDO = {
     "gemini": ("pro", "flash", "flash-lite", "auto"),
     "codex": (),
     "opencode": (),
+    "antigravity": (),
 }
 
 # Cómo se le pregunta a cada CLI (sin modelo, sin prompt, sin red de pago).
 PREGUNTA = {
     "opencode": ("models",),
     "codex": ("debug", "models"),
+    "antigravity": ("models",),
 }
+
+# Los que guardan la sesión donde Cotejo no la ve ni sabe preguntarla: instalados, cuentan como
+# listos (`listos`) y la pantalla del equipo dice que no puede saberlo (`tareas/equipo.py`).
+SESION_INVISIBLE = ("antigravity",)
 
 
 # --- sesión -------------------------------------------------------------------------------------
@@ -183,13 +195,33 @@ def _en_disco(nombre, entorno):
         return bool(entorno.get("GEMINI_API_KEY") or entorno.get("GOOGLE_API_KEY")
                     or entorno.get("GOOGLE_GENAI_USE_VERTEXAI")
                     or (casa / ".gemini" / "oauth_creds.json").is_file())
+    if nombre == "antigravity":
+        # Solo lo que documenta https://antigravity.google/docs/install: la clave de Gemini
+        # vale únicamente con `modelProvider: "gemini"` en su settings.json.
+        return bool(str(entorno.get("AGY_ADC_AUTH", "")).lower() == "true"
+                    or (entorno.get("GEMINI_API_KEY") and _proveedor_agy(casa) == "gemini"))
     return False
 
 
+def _proveedor_agy(casa):
+    try:
+        datos = json.loads((casa / ".gemini" / "antigravity-cli" / "settings.json")
+                           .read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ""
+    return datos.get("modelProvider", "") if isinstance(datos, dict) else ""
+
+
+def sesion_visible(nombre):
+    """¿Puede Cotejo saber si este agente tiene sesión? (No, con `SESION_INVISIBLE`.)"""
+    return nombre not in SESION_INVISIBLE
+
+
 def listos(preguntar_cli=False):
-    """Los agentes instalados y con sesión, en el orden de `clientes.CLIENTES`."""
+    """Los agentes instalados y con sesión, en el orden de `clientes.CLIENTES`. Los de sesión
+    invisible cuentan con estar instalados."""
     return [nombre for nombre in clientes.instalados()
-            if sesion(nombre, preguntar_cli=preguntar_cli)]
+            if not sesion_visible(nombre) or sesion(nombre, preguntar_cli=preguntar_cli)]
 
 
 # --- modelos ------------------------------------------------------------------------------------
@@ -245,7 +277,21 @@ def leer_codex(salida):
     return [m["slug"] for m in visibles]
 
 
-LECTORES = {"opencode": leer_opencode, "codex": leer_codex}
+def leer_agy(salida):
+    """`agy models`: una línea por modelo, el slug y su nombre (`gemini-3.8-flash-medium
+    Gemini 3.8 Flash (Medium)`); cuenta la primera palabra si parece un slug."""
+    vistos = []
+    for linea in salida.splitlines():
+        partes = linea.split()
+        slug = partes[0] if partes else ""
+        if SLUG.fullmatch(slug) and slug not in vistos:
+            vistos.append(slug)
+    return vistos
+
+
+SLUG = re.compile(r"[a-z0-9][a-z0-9._-]*[a-z0-9]")
+
+LECTORES = {"opencode": leer_opencode, "codex": leer_codex, "antigravity": leer_agy}
 
 
 def preguntar(nombre, tope=TOPE):
@@ -296,10 +342,12 @@ def resumen(refrescar=False, preguntar_cli=True):
     for nombre, cliente in clientes.CLIENTES.items():
         instalado = nombre in puestos
         con_sesion = instalado and sesion(nombre, preguntar_cli=preguntar_cli)
+        visible = sesion_visible(nombre)
         modelos = ((listar(nombre, refrescar) if preguntar_cli else en_cache(nombre))
-                   if con_sesion else [])
+                   if con_sesion or (instalado and not visible) else [])
         salida.append({"cliente": nombre, "titulo": cliente.titulo or nombre,
                        "instalado": instalado, "sesion": con_sesion,
+                       "sesion_visible": visible,
                        "lista_el_cli": nombre in PREGUNTA, "modelos": modelos})
     return salida
 

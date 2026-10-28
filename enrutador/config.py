@@ -71,12 +71,16 @@ DEFECTOS = {
     # Preparar un proyecto nuevo en segundo plano (`enrutador/preparar.py`, v1.3.0). Corre con
     # los ajustes de `motores.headless` y además con estos argumentos por cliente: Claude sin
     # interfaz no puede pedir permiso, así que se le da solo el de correr `cotejo` (y lo mismo a
-    # Gemini, que sin interfaz niega todo comando que pediría confirmación). Pasados
+    # Gemini, que sin interfaz niega todo comando que pediría confirmación). Antigravity CLI no
+    # tiene cómo permitir un solo comando en la invocación (sus reglas `allow` viven en la
+    # settings.json de la persona): se le aprueba todo con `--dangerously-skip-permissions`, la
+    # bandera documentada, y trabaja solo en las carpetas de `--add-dir`. Pasados
     # `minutos_sin_actividad` sin que nada se mueva en `.cotejo/` del proyecto, cuenta como
     # colgado y la pantalla ofrece reintentar o abrirlo en una terminal.
     "preparar": {"minutos_sin_actividad": 10,
                  "argumentos_extra": {"claude": ["--allowedTools", "Bash(cotejo:*)"],
-                                      "gemini": ["--allowed-tools", "run_shell_command(cotejo)"]}},
+                                      "gemini": ["--allowed-tools", "run_shell_command(cotejo)"],
+                                      "antigravity": ["--dangerously-skip-permissions"]}},
     # Lanzar desde el board (`enrutador/despacho_board.py`, v1.3.0): pasar a mano una tarea de
     # Pendiente a Haciendo la despacha sin interfaz, con los ajustes de `motores.headless` y
     # además estos argumentos por cliente. Los permisos no están aquí (cotejo-7yfw1e,
