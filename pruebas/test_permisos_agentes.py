@@ -23,10 +23,11 @@ from pathlib import Path
 from unittest import mock
 
 from apoyo import RAIZ  # noqa: F401
-from enrutador import clientes, config as cfg, mismo_cotejo, preparar, procesos
+from enrutador import clientes, config as cfg, mismo_cotejo, preparar, procesos, sandbox
 from tareas import inicio, preparacion
 
 CLIENTES = ("claude", "codex", "opencode", "gemini", "antigravity")
+HAY_BWRAP = sandbox.disponible_bwrap()[0]
 
 # Hace lo que haría el agente en el primer paso del prompt de inicio: `cotejo init --repo` con
 # el `cotejo` del PATH (el del board), y apunta qué argv y qué entorno recibió.
@@ -168,10 +169,22 @@ class Comando(Base):
             "antigravity": ["agy", "--print-timeout", "0", "--dangerously-skip-permissions",
                              *add_agy, "-p", "P"],
         }
+        hay_bwrap = sandbox.disponible_bwrap()[0]
         for nombre in CLIENTES:
             with self.subTest(nombre):
-                self.assertEqual(preparar.comando(self.config(), clientes.de(nombre), "", "P",
-                                                  carpeta=str(self.carpeta)), esperado[nombre])
+                if nombre == "antigravity" and not hay_bwrap:
+                    # Preparar tampoco lanza agy sin la jaula: `--dangerously-skip-permissions`
+                    # fuera de bubblewrap escribiría en toda la máquina (cotejo-b1iwpj).
+                    with self.assertRaises(preparar.NoSePuede):
+                        preparar.comando(self.config(), clientes.de(nombre), "", "P",
+                                         carpeta=str(self.carpeta))
+                    continue
+                argv = preparar.comando(self.config(), clientes.de(nombre), "", "P",
+                                        carpeta=str(self.carpeta))
+                if nombre == "antigravity":
+                    self.assertEqual(Path(argv[0]).name, "bwrap")
+                    argv = argv[argv.index("--") + 1:]
+                self.assertEqual(argv, esperado[nombre])
 
     def test_el_entorno_de_cada_cliente(self):
         for nombre in CLIENTES:
@@ -229,6 +242,12 @@ class ConElPromptDeInicio(Base):
                 carpeta.parent.mkdir()
                 r = inicio.Respuestas(que_es="Una app de turnos", que_hace="Reservar",
                                       carpeta=str(carpeta))
+                if nombre == "antigravity" and not HAY_BWRAP:
+                    # Sin jaula no se lanza: se avisa antes de dejar a agy sin protección.
+                    with self.assertRaises(preparar.NoSePuede):
+                        preparar.lanzar(r, cliente=nombre, config=self.config)
+                    self.assertFalse((carpeta.parent / "visto.json").exists())
+                    continue
                 salida = preparar.lanzar(r, cliente=nombre, config=self.config)
                 self.hilos[-1].join(60)
                 visto = json.loads((carpeta.parent / "visto.json").read_text())
@@ -245,8 +264,14 @@ class ConElPromptDeInicio(Base):
                     self.assertEqual([argv[i + 1] for i, a in enumerate(argv)
                                       if a == "--add-dir"], carpetas)
                 elif nombre == "antigravity":
+                    # agy va entero dentro de la jaula. Preparar no le da la carpeta de la
+                    # config: Cotejo registra el repo antes de lanzar y se la veda al agente.
+                    self.assertEqual(Path(preparacion.leer(salida["id"])["comando"][0]).name,
+                                     "bwrap")
+                    sin_config = [c for c in carpetas if c != str(self.config_json.parent)]
                     self.assertEqual([argv[i + 1] for i, a in enumerate(argv)
-                                      if a == "--add-dir"], carpetas)
+                                      if a == "--add-dir"], sin_config)
+                    self.assertNotIn(str(self.config_json.parent), argv)
                     self.assertIn("--dangerously-skip-permissions", argv)
                     self.assertEqual(argv[-2], "-p")
                     self.assertNotIn("--sandbox", argv)
