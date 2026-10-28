@@ -93,7 +93,11 @@ class ArgumentosDeLosCuatroClientes(Entorno):
                 propios = cliente.terminal_libre(
                     armado.carpetas_de_escritura(self.wt, self.worktree), ["main"],
                     guardas.politica_gemini(), entorno={})[0]
-                if propios:
+                if nombre == "codex" and os.name != "nt":
+                    # Codex lleva su perfil de permisos, no `--sandbox` (test_codex_perfil.py).
+                    self.assertIn(f'default_permissions="{clientes.PERFIL_CODEX}"', argv)
+                    self.assertNotIn("--sandbox", argv)
+                elif propios:
                     self.assertIn(" ".join(propios), " ".join(argv))
                 self.assertIn(armado.NOTA_TERMINAL, argv[-1])
                 self.assertTrue(argv[-1].startswith("Haz la tarea"))

@@ -253,7 +253,19 @@ sin interfaz (`motores/fondo.py`, con `PWD` igual al worktree: OpenCode trabaja 
 `PWD`) con el mismo `cotejo` en el PATH y **terminal libre en el worktree con prohibidos de
 fábrica** (cotejo-7yfw1e, dec-kiik): `clientes.Cliente.terminal_libre` (Claude: `acceptEdits`,
 `--allowedTools Bash` y `--disallowedTools` con `clientes.prohibidos`; Codex: su sandbox
-`workspace-write` de `permisos`; OpenCode: `permission.bash` todo `allow` y los prohibidos `deny`
+con un **perfil de permisos** en vez de `--sandbox workspace-write` (cotejo-srkywv,
+`clientes._codex_perfil`, por `-c default_permissions=… -c permissions.cotejo-tarea=…`, sin tocar
+`~/.codex/config.toml`): con `--sandbox` el `.git` de cada carpeta y el `gitdir:` de un worktree
+quedan en solo lectura sin remedio (`git commit` caía con `index.lock`), la carpeta de la tarea
+no estaba (`entregar`/`bloquear` fallaban) y sin red su seccomp niega hasta los sockets locales
+(ni Firefox ni un puerto). El perfil (https://developers.openai.com/codex/permissions, beta)
+escribe donde el sandbox de Claude (`armado.sandbox_de` le da el `del_lanzamiento` sin token),
+más el gitdir del worktree, y deja en `read` lo vedado (hooks, config del `.git`, los otros
+worktrees, la config de Cotejo); su red es solo `localhost`/`127.0.0.1` por el proxy de Codex
+(`--enable network_proxy`, experimental): no empuja, y Firefox y un servidor local sí van
+(`curl --noproxy '*'`; Chromium no). `lanzar.sandbox: false` no se lo quita. En Windows, como
+antes. `COTEJO_PRUEBA_CLIENTES=1 python3 -m unittest discover pruebas -p test_codex_perfil.py`
+lo corre en `codex sandbox` de verdad, sin modelo; OpenCode: `permission.bash` todo `allow` y los prohibidos `deny`
 al final; Gemini: `auto_edit` y `--policy` con `politica_gemini_toml`) y, debajo, las guardas del
 PATH (`guardas.py`: un `git` que lee los argumentos y no deja `push` a la fuerza ni a `main`/la
 rama por defecto —`worktrees.rama_por_defecto`—, y `sudo`/`su`/`doas`/`pkexec` que se niegan).

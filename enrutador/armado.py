@@ -47,10 +47,22 @@ NOTA_SANDBOX_ANTIGRAVITY = (
     "de trabajo, el .git del repo, la carpeta de la tarea y el estado de Cotejo (su config no); "
     "el resto se lee. La red sigue disponible para el CLI. No intentes rodear la jaula; si te "
     "impide terminar, bloquea la tarea con el motivo.")
+# Codex con su perfil de permisos (cotejo-srkywv, `clientes._codex_perfil`): escribe donde Claude
+# y commitea, pero no tiene más red que la local, y esa pasa por el proxy de Codex.
+SANDBOX_CODEX = ("Tu terminal corre dentro del sandbox de Codex: solo puedes escribir en tu "
+                 "carpeta de trabajo, el .git del repo (haz ahí tus commits; sus hooks y su "
+                 "config no), la carpeta del archivo de la tarea y la de estado de Cotejo (su "
+                 "config no). No hay red fuera de esta máquina: no puedes empujar la rama ni "
+                 "instalar nada (déjala commiteada; la empuja quien revisa). Si algo falla con "
+                 "«sistema de ficheros de solo lectura» o una conexión denegada, es a propósito: "
+                 "no intentes rodearlo; si te impide terminar, bloquea la tarea con el motivo. ")
+NOTA_SANDBOX_CODEX = (SANDBOX_CODEX + NOTA_NAVEGADOR + " Para probar tu servidor con curl, "
+                      "sáltate el proxy: `curl --noproxy '*' http://127.0.0.1:<puerto>`.")
 # Sin Firefox no se da un comando que va a fallar (cotejo-0e17vu): se dice y se pide avisar.
-NOTA_SIN_NAVEGADOR = (SANDBOX_BASE + "En esta máquina no hay un navegador sin interfaz para ver tu "
-                      "trabajo: no podrás sacarle capturas. Dilo en la entrega y propón a la "
-                      "persona instalar Firefox.")
+SIN_NAVEGADOR = ("En esta máquina no hay un navegador sin interfaz para ver tu trabajo: no "
+                 "podrás sacarle capturas. Dilo en la entrega y propón a la persona instalar "
+                 "Firefox.")
+NOTA_SIN_NAVEGADOR = SANDBOX_BASE + SIN_NAVEGADOR
 
 
 def nota_sandbox(disponible=None):
@@ -87,28 +99,41 @@ def vedados():
 
 
 def sandbox_de(config, cliente, cotejo, tarea_id, trabajo, worktree=None, directorio=None):
-    """El sandbox del agente de esta tarea: el de Claude, o la jaula propia de Antigravity.
+    """El sandbox del agente de esta tarea: el de Claude, la jaula propia de Antigravity o las
+    carpetas del perfil de permisos de Codex (`clientes._codex_perfil`, cotejo-srkywv).
 
     Claude conserva el comportamiento anterior si el suyo falta. Antigravity, en cambio, no se
     lanza sin jaula: `--dangerously-skip-permissions` sin contención dejaría escribir en toda la
     máquina (cotejo-b1iwpj). Aquí se anota el motivo y `comando`/`comprobar` impiden el lanzamiento.
     """
     apagado = {"activo": False, "motivo": "", "ajustes": None, "entorno": {}, "avisos": []}
+    ajustes = (config.get("lanzar") or {}).get("sandbox")
+    if cliente.nombre == "codex" and os.name != "nt":
+        # Codex lleva siempre su sandbox; aquí solo se le dan las carpetas de Claude para su
+        # perfil de permisos (cotejo-srkywv). `lanzar.sandbox: false` apaga el de Claude, no
+        # el de Codex: sin perfil volvería a no poder commitear. Sin token: no tiene red.
+        return {"activo": True, "motivo": "", "cliente": "codex",
+                **_del_lanzamiento(cotejo, tarea_id, trabajo, worktree, directorio,
+                                   ajustes if isinstance(ajustes, dict) else None, token=None)}
     if cliente.nombre not in ("claude", "antigravity"):
         return {**apagado, "motivo": f"{cliente.titulo or cliente.nombre} no usa el de Claude"}
-    ajustes = (config.get("lanzar") or {}).get("sandbox")
     if ajustes is False:
         return {**apagado, "motivo": "apagado en la config (lanzar.sandbox)"}
     hay, motivo = caja.disponible() if cliente.nombre == "claude" else caja.disponible_bwrap()
     if not hay:
         return {**apagado, "motivo": motivo}
+    hecho = _del_lanzamiento(cotejo, tarea_id, trabajo, worktree, directorio, ajustes)
+    return {"activo": True, "motivo": "", "cliente": cliente.nombre, **hecho}
+
+
+def _del_lanzamiento(cotejo, tarea_id, trabajo, worktree, directorio, ajustes, **mas):
+    """`sandbox.del_lanzamiento` con las carpetas de esta tarea."""
     repo = (worktree or {}).get("repo") or (worktrees.raiz_repo(directorio) if directorio
                                             else None)
-    hecho = caja.del_lanzamiento(
+    return caja.del_lanzamiento(
         carpetas_de_escritura(trabajo, worktree), repo=repo,
         propio=(worktree or {}).get("ruta"), carpeta_tarea=cotejo.carpeta_de_la_tarea(tarea_id),
-        ajustes=ajustes, vedadas=vedados())
-    return {"activo": True, "motivo": "", "cliente": cliente.nombre, **hecho}
+        ajustes=ajustes, vedadas=vedados(), **mas)
 
 
 def comando(config, cliente, modelo, modelo_id, prompt, carpetas, ramas=None,
@@ -151,7 +176,16 @@ def nota_jaula(encerrado):
     """La parte del encargo que explica la jaula que de verdad lleva este agente."""
     if encerrado.get("cliente") == "antigravity":
         return NOTA_SANDBOX_ANTIGRAVITY
+    if encerrado.get("cliente") == "codex":
+        return nota_codex()
     return nota_sandbox()
+
+
+def nota_codex(disponible=None):
+    """La nota de Codex con su perfil: con la línea de captura si hay Firefox (con la red
+    local del perfil arranca en su sandbox; Chromium no), y si no, la que avisa."""
+    hay = navegador.disponible_para_el_agente() if disponible is None else disponible
+    return NOTA_SANDBOX_CODEX if hay else SANDBOX_CODEX + SIN_NAVEGADOR
 
 
 def nota(encerrado):

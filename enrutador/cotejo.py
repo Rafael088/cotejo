@@ -138,9 +138,9 @@ class Cotejo:
         """La carpeta local donde la fuente escribe esta tarea (el `.cotejo/` de su repo, o la
         carpeta de su nota en el vault), o None si no vive en un archivo de esta máquina (una
         fuente externa). Es donde escribe `cotejo entregar`, y el sandbox del agente del board
-        tiene que dejarle (cotejo-amui0f)."""
-        fuente, proyectos = self._abrir()
+        tiene que dejarle (cotejo-amui0f). Sin fuente que abrir, None: no hay archivo que dar."""
         try:
+            fuente, proyectos = self._abrir()
             _, tarea = cotejo.tomar_tarea(fuente, proyectos, tarea_id)
         except cotejo.ErrorCLI:
             return None

@@ -252,7 +252,8 @@ class SandboxDe(unittest.TestCase):
                                          self.cotejo, {"id": "cotejo-x"}, Path("/w/tarea"))
 
     def test_solo_claude(self):
-        for nombre in ("codex", "opencode", "gemini"):
+        # Codex sí: sus carpetas van a su perfil de permisos (test_codex_perfil.py).
+        for nombre in ("opencode", "gemini"):
             with self.subTest(nombre):
                 hecho = self.de(nombre)
                 self.assertFalse(hecho["activo"])
