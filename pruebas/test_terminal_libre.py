@@ -87,9 +87,9 @@ class TerminalLibre(unittest.TestCase):
     def test_claude_todo_el_bash_menos_los_prohibidos(self):
         argv, entorno = clientes.de("claude").terminal_libre(CARPETAS, "trunk")
         self.assertEqual(entorno, {})
-        self.assertEqual(argv[:5], ["--permission-mode", "acceptEdits", "--allowedTools", "Bash",
-                                    "--disallowedTools"])
-        negados = argv[5:]
+        self.assertEqual(argv[:7], ["--permission-mode", "acceptEdits", "--allowedTools", "Bash",
+                                    "--setting-sources", "user", "--disallowedTools"])
+        negados = argv[7:]
         self.assertEqual(negados, [f"Bash({p})" for p in clientes.prohibidos("trunk")])
         for esperado in ("Bash(sudo *)", "Bash(su *)", "Bash(git push *--force*)",
                          "Bash(git push * main)", "Bash(git push *:main)",

@@ -135,7 +135,14 @@ class Cliente:
           remotos, así que borrar fuera del worktree falla también por `python3 -c`, `find
           -delete` o `cd /x && rm y`, que los patrones no ven. Sus herramientas de editar no
           pasan por ese sandbox: `vedados` (rutas absolutas, o relativas a donde arranca) va
-          en `--disallowedTools` como `Edit(...)`, que vale para todas (cotejo-dgb7l2).
+          en `--disallowedTools` como `Edit(...)`, que vale para todas (cotejo-dgb7l2). Y
+          `--setting-sources user` (`SOLO_AJUSTES_DE_LA_PERSONA`, cotejo-0hgn6x): los
+          `.claude/settings*.json` del worktree no se cargan, ni al arrancar ni a media sesión,
+          los escriba quien los escriba (otro agente que tuvo la tarea antes, o este con el
+          sandbox apagado). Vedar la carpeta no basta: `denyWrite` no para un archivo que no
+          existe, y Codex u OpenCode en el mismo worktree no pasan por el sandbox de Claude.
+          Lo que se pierde son las skills de `.claude/skills` del repo (sin ajustes del
+          proyecto, Claude no las lee); el `CLAUDE.md` y las skills de la persona siguen.
         - **Codex**: su sandbox `workspace-write` (`permisos`): solo escribe en las carpetas de
           la tarea, no tiene red (no puede empujar nada) y no puede subir privilegios.
         - **OpenCode**: `permission.bash` con todo en `allow` y los prohibidos en `deny` al
@@ -159,6 +166,7 @@ class Cliente:
         if self.nombre == "claude":
             from . import sandbox as caja
             return (["--permission-mode", "acceptEdits", "--allowedTools", "Bash",
+                     *SOLO_AJUSTES_DE_LA_PERSONA,
                      *(caja.argumentos_claude(sandbox) if sandbox else []),
                      "--disallowedTools", *[f"Bash({p})" for p in prohibidos(ramas)],
                      *[f"Edit({_ruta_de_permiso(v)})" for v in vedados]], env)
@@ -219,6 +227,11 @@ ESCALAR = ("sudo", "su", "doas", "pkexec")
 # Lo que borra: con ruta absoluta, desde la casa o subiendo con `..` se sale del worktree; con
 # ruta relativa sin `..`, se queda dentro.
 BORRAR = ("rm", "rmdir", "unlink", "shred")
+# Claude Code sin los ajustes del proyecto (cotejo-0hgn6x): ni `.claude/settings.json` ni
+# `.claude/settings.local.json` del worktree, solo los de la persona (`~/.claude`) y lo que pasa
+# Cotejo por `--settings`. Un hook dejado ahí correría fuera del sandbox, y un `allowWrite` o un
+# `env` lo cambiarían; el `CLAUDE.md` del repo y las skills de la persona siguen cargando.
+SOLO_AJUSTES_DE_LA_PERSONA = ("--setting-sources", "user")
 
 
 def ramas_protegidas(ramas=None):
