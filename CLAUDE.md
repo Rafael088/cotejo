@@ -270,7 +270,7 @@ macOS se da solo la de estado, que cuelga de ella), sus archivos (`configuracion
 en `denyWrite` y en `--disallowedTools Edit(//…)`, y el entorno lleva `COTEJO_CONFIG_VEDADA=1`,
 con la que `configuracion.guardar` y `guardar_modelos` se niegan (`ConfigVedada`, que `cli.main`
 imprime como un error más). Preparar sí la escribe (`init` registra el repo) y no pasa por aquí.
-`pruebas/test_config_vedada.py` lo prueba en bwrap. Lleva `GH_TOKEN` (de `gh auth token`: el llavero no se alcanza desde
+`pruebas/test_config_vedada.py` lo prueba en bwrap. **Tampoco carga los ajustes del proyecto** (cotejo-0hgn6x): Claude va con `--setting-sources user` (`clientes.SOLO_AJUSTES_DE_LA_PERSONA`), así que un `.claude/settings.json` o `settings.local.json` del worktree —con un hook que correría fuera del sandbox— no se lee al retomar ni a media sesión; vedar `.claude` no bastaba (`denyWrite` no para un archivo que no existe, y Codex u OpenCode en el mismo worktree no pasan por el sandbox de Claude). El `CLAUDE.md` del repo y las skills de la persona siguen; las de `.claude/skills` del repo no. Con Claude de verdad: `COTEJO_PRUEBA_CLAUDE=1 python3 -m unittest discover pruebas -p test_ajustes_del_proyecto.py` (haiku). Lleva `GH_TOKEN` (de `gh auth token`: el llavero no se alcanza desde
 el sandbox) y `COTEJO_SANDBOX=1`, con el que la guarda de `git` quita el `-u` de un push. Sin
 bwrap/socat (o sin espacio de nombres, o en Windows) no se pide y el registro guarda
 `sandbox.activo: false` con el motivo; `lanzar.sandbox: false` lo apaga. Para ver lo que hace,
