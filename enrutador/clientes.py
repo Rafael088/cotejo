@@ -18,6 +18,7 @@ import json
 import os
 import re
 import shutil
+import sys
 from dataclasses import dataclass
 
 
@@ -163,10 +164,15 @@ class Cliente:
           final (en OpenCode gana la última regla que casa), encima de lo que da `permisos`. Y
           los servidores MCP que defina el proyecto (`opencode.json[c]` del worktree o de su
           `.opencode/`) apagados con `enabled: false` en esa misma config, que pesa más que la
-          del proyecto (`_opencode_sin_mcp_del_proyecto`, cotejo-j42qfc).
+          del proyecto (`_opencode_sin_mcp_del_proyecto`, cotejo-j42qfc); si el proyecto trae
+          plugins o herramientas en JavaScript, sin su config entera
+          (`_opencode_sin_plugins_del_proyecto`, cotejo-lbwsq4).
         - **Gemini CLI**: `auto_edit` y una política (`--policy`, `politica_gemini`, el archivo
           que escribe `guardas.preparar` con `politica_gemini_toml`) que deja todo el shell y
-          niega los prohibidos.
+          niega los prohibidos. Y lo que el `.gemini/settings.json` del worktree le haría
+          arrancar, fuera (`_gemini_sin_lo_del_proyecto`, cotejo-lbwsq4): sus servidores MCP,
+          por `--allowed-mcp-server-names` con los de la persona; y si trae hooks o comandos que
+          corren solos, el worktree va sin confianza y Gemini no arranca.
         - **Antigravity CLI**: `--dangerously-skip-permissions`, la única forma documentada de
           aprobar sus comandos en una sola invocación (sin ella, sin interfaz, todo comando se
           niega solo). Sus reglas `deny` solo se leen de `~/.gemini/antigravity-cli/settings.json`,
@@ -194,12 +200,14 @@ class Cliente:
                          *_codex_sin_confianza(trabajo)], env)
             return argv + _codex_sin_confianza(trabajo), env
         if self.nombre == "opencode":
-            return argv, _opencode_sin_mcp_del_proyecto(trabajo, {
-                "OPENCODE_CONFIG_CONTENT": _opencode_con_prohibidos(
-                    env["OPENCODE_CONFIG_CONTENT"], prohibidos(ramas))})
+            return argv, _opencode_sin_plugins_del_proyecto(
+                trabajo, _opencode_sin_mcp_del_proyecto(trabajo, {
+                    "OPENCODE_CONFIG_CONTENT": _opencode_con_prohibidos(
+                        env["OPENCODE_CONFIG_CONTENT"], prohibidos(ramas))}))
         if self.nombre == "gemini":
-            return (["--approval-mode", "auto_edit"] +
-                    (["--policy", str(politica_gemini)] if politica_gemini else []), env)
+            return _gemini_sin_lo_del_proyecto(
+                trabajo, ["--approval-mode", "auto_edit"] +
+                (["--policy", str(politica_gemini)] if politica_gemini else []), env, entorno)
         if self.nombre == "antigravity":
             return argv + ["--dangerously-skip-permissions"], env
         return argv, env
@@ -462,6 +470,171 @@ def _sin_comentarios_jsonc(texto):
             salida.append(c)
         i += 1
     return re.sub(r",(\s*[}\]])", r"\1", "".join(salida))
+
+
+# --- los plugins de OpenCode y la config de Gemini CLI del proyecto (cotejo-lbwsq4) -------------
+
+# Donde OpenCode busca código JavaScript/TypeScript del proyecto, que importa él mismo al
+# arrancar —fuera de cualquier permiso, como un servidor MCP—: sus plugins
+# (https://opencode.ai/docs/plugins/) y sus herramientas propias
+# (https://opencode.ai/docs/custom-tools/). Con la carpeta en singular también los carga.
+CODIGO_OPENCODE_DEL_PROYECTO = (".opencode/plugin", ".opencode/plugins", ".opencode/tool",
+                                ".opencode/tools")
+
+
+def _opencode_sin_plugins_del_proyecto(trabajo, entorno):
+    """El entorno de OpenCode sin la config del proyecto si el worktree trae código que
+    OpenCode cargaría solo: un archivo en sus carpetas de plugins o herramientas, o un `plugin`
+    en un `opencode.json[c]` del proyecto (que OpenCode instala y carga al arrancar).
+
+    No hay forma de apagar solo esos (`OPENCODE_CONFIG_CONTENT` añade plugins, no los quita):
+    `OPENCODE_DISABLE_PROJECT_CONFIG` deja fuera toda la config del proyecto y su `AGENTS.md`
+    (https://opencode.ai/docs/cli/, «Disable project configuration and project instruction
+    files»), y los plugins de la persona —su carpeta y los de su `opencode.json`— siguen. Sin
+    código del proyecto, nada cambia."""
+    if not trabajo:
+        return entorno
+    codigo = any(os.path.isdir(os.path.join(trabajo, carpeta)) and
+                 any(archivos for _, _, archivos in os.walk(os.path.join(trabajo, carpeta)))
+                 for carpeta in CODIGO_OPENCODE_DEL_PROYECTO)
+    for relativa in CONFIG_OPENCODE_DEL_PROYECTO:
+        archivo = os.path.join(trabajo, relativa)
+        if codigo or not os.path.isfile(archivo):
+            continue
+        try:
+            with open(archivo, encoding="utf-8") as f:
+                datos = json.loads(_sin_comentarios_jsonc(f.read()))
+            codigo = bool(isinstance(datos, dict) and datos.get("plugin"))
+        except (OSError, ValueError, UnicodeDecodeError):
+            codigo = True
+    return {**entorno, "OPENCODE_DISABLE_PROJECT_CONFIG": "1"} if codigo else entorno
+
+
+# Gemini CLI lee la config del proyecto de `<donde arranca>/.gemini/settings.json` en cuanto el
+# espacio de trabajo es de confianza, y sin interfaz se niega a correr en uno que no lo sea
+# (https://geminicli.com/docs/cli/trusted-folders/): Cotejo le da la confianza
+# (`GEMINI_CLI_TRUST_WORKSPACE`) y con ella venían los servidores MCP del proyecto, sus hooks
+# y sus comandos. Probado con Gemini CLI 0.61 (`pruebas/test_config_gemini_opencode.py`).
+AJUSTES_GEMINI_DEL_PROYECTO = os.path.join(".gemini", "settings.json")
+# El servidor que arma `mcp.serverCommand` se llama así.
+SERVIDOR_DE_COMANDO_GEMINI = "mcp"
+# Lo que `--allowed-mcp-server-names` deja cuando la persona no tiene ninguno: con la lista
+# vacía Gemini no filtraría nada.
+NINGUN_SERVIDOR_GEMINI = "cotejo-ninguno"
+
+
+def _gemini_ajustes(ruta):
+    """Los ajustes de Gemini de ese archivo (JSON con comentarios), `{}` si no existe o no
+    es un objeto. Levanta `ValueError` si no se entiende."""
+    try:
+        with open(ruta, encoding="utf-8") as f:
+            texto = f.read()
+    except FileNotFoundError:
+        return {}
+    except (OSError, UnicodeDecodeError) as error:
+        raise ValueError(str(error))
+    datos = json.loads(_sin_comentarios_jsonc(texto))
+    return datos if isinstance(datos, dict) else {}
+
+
+def _gemini_servidores(ajustes):
+    """Los nombres de los servidores MCP que definen unos ajustes de Gemini."""
+    servidores = ajustes.get("mcpServers")
+    nombres = list(servidores) if isinstance(servidores, dict) else []
+    mcp = ajustes.get("mcp")
+    if isinstance(mcp, dict) and mcp.get("serverCommand"):
+        nombres.append(SERVIDOR_DE_COMANDO_GEMINI)
+    return nombres
+
+
+def _gemini_corre_codigo(ajustes):
+    """¿Traen estos ajustes del proyecto algo que Gemini corre solo y que ninguna bandera
+    apaga? Los hooks (`hooks.<evento>`, que se suman a los de la persona y corren sin
+    preguntar), los comandos de herramientas propias (`tools.discoveryCommand`, que corre al
+    arrancar, y `tools.callCommand`) y las políticas que el proyecto se cargaría
+    (`policyPaths`, `adminPolicyPaths`: las de administrador pesarían más que los prohibidos)."""
+    hooks = ajustes.get("hooks")
+    if isinstance(hooks, dict) and any(isinstance(v, list) and v for v in hooks.values()):
+        return True
+    herramientas = ajustes.get("tools")
+    if isinstance(herramientas, dict) and (herramientas.get("discoveryCommand") or
+                                           herramientas.get("callCommand")):
+        return True
+    return bool(ajustes.get("policyPaths") or ajustes.get("adminPolicyPaths"))
+
+
+def _gemini_de_la_persona(entorno):
+    """`(servidores, permitidos, excluidos)` de la config de Gemini de la persona: los nombres
+    de sus servidores MCP (sus ajustes, los del sistema y los de sus extensiones) y sus listas
+    `mcp.allowed` (`None` si no tiene) y `mcp.excluded`. Solo se leen nombres. Un archivo que no
+    se entiende no suma nada: con él roto, Gemini tampoco arrancaría."""
+    casa = entorno.get("GEMINI_CLI_HOME") or os.path.expanduser("~")
+    sistema = entorno.get("GEMINI_CLI_SYSTEM_SETTINGS_PATH") or {
+        "darwin": "/Library/Application Support/GeminiCli/settings.json",
+        "win32": "C:\\ProgramData\\gemini-cli\\settings.json"}.get(
+            sys.platform, "/etc/gemini-cli/settings.json")
+    defectos = (entorno.get("GEMINI_CLI_SYSTEM_DEFAULTS_PATH") or
+                os.path.join(os.path.dirname(sistema), "system-defaults.json"))
+    servidores, permitidos, excluidos = [], None, set()
+    for ruta in (defectos, os.path.join(casa, ".gemini", "settings.json"), sistema):
+        try:
+            ajustes = _gemini_ajustes(ruta)
+        except ValueError:
+            continue
+        servidores += _gemini_servidores(ajustes)
+        mcp = ajustes.get("mcp") if isinstance(ajustes.get("mcp"), dict) else {}
+        if isinstance(mcp.get("allowed"), list) and mcp["allowed"]:
+            permitidos = (permitidos or set()) | {str(n) for n in mcp["allowed"]}
+        if isinstance(mcp.get("excluded"), list):
+            excluidos |= {str(n) for n in mcp["excluded"]}
+    extensiones = os.path.join(casa, ".gemini", "extensions")
+    for nombre in sorted(os.listdir(extensiones)) if os.path.isdir(extensiones) else []:
+        try:
+            ajustes = _gemini_ajustes(os.path.join(extensiones, nombre, "gemini-extension.json"))
+        except ValueError:
+            continue
+        servidores += _gemini_servidores(ajustes)
+    return list(dict.fromkeys(servidores)), permitidos, excluidos
+
+
+def _gemini_sin_lo_del_proyecto(trabajo, argv, env, entorno=None):
+    """`(argumentos, variables)` de Gemini CLI sin lo que el `.gemini/settings.json` del
+    worktree le haría arrancar.
+
+    - **Servidores MCP del proyecto**: `--allowed-mcp-server-names` con los de la persona
+      (https://geminicli.com/docs/reference/configuration/, «A comma-separated list of MCP
+      server names to allow for the session»), sin los que el proyecto define —uno que
+      redefine con el nombre de uno suyo ya no sería el suyo—, y respetando su `mcp.allowed` y
+      su `mcp.excluded` (la bandera reemplaza a los dos). Sin ninguno suyo, un nombre que no
+      existe: la lista vacía no filtraría nada.
+    - **Hooks y comandos** (`_gemini_corre_codigo`) o unos ajustes que no se entienden: no hay
+      bandera ni variable que los apague sin llevarse los de la persona (los ajustes de
+      sistema, que pesarían más, tienen que ser de root). El worktree va sin confianza
+      (`GEMINI_CLI_TRUST_WORKSPACE=false`): Gemini no lee nada del proyecto y, sin interfaz,
+      se niega a arrancar con `FatalUntrustedWorkspaceError`. Mejor una tarea que no arranca,
+      con el motivo en su log, que un programa del repo corriendo sin que nadie lo pida.
+
+    Sin `.gemini/settings.json` en el worktree, nada cambia. Se lee al lanzar (Gemini tampoco
+    relee sus servidores a media sesión)."""
+    if not trabajo:
+        return argv, env
+    try:
+        proyecto = _gemini_ajustes(os.path.join(trabajo, AJUSTES_GEMINI_DEL_PROYECTO))
+    except ValueError:
+        proyecto = None
+    if proyecto is None or _gemini_corre_codigo(proyecto):
+        return argv, {**env, "GEMINI_CLI_TRUST_WORKSPACE": "false"}
+    suyos = set(_gemini_servidores(proyecto))
+    if not suyos:
+        return argv, env
+    servidores, permitidos, excluidos = _gemini_de_la_persona(
+        os.environ if entorno is None else entorno)
+    lista = [n for n in servidores if n not in suyos and n not in excluidos and "," not in n
+             and (permitidos is None or n in permitidos)]
+    ninguno = NINGUN_SERVIDOR_GEMINI
+    while ninguno in suyos:
+        ninguno += "-"
+    return argv + ["--allowed-mcp-server-names", ",".join(lista) or ninguno], env
 
 
 def _regex_gemini(patron):
