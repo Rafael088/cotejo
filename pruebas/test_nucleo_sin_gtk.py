@@ -215,6 +215,7 @@ class NucleoSinGTK(unittest.TestCase):
         entorno = {k: v for k, v in os.environ.items()
                    if not k.startswith(("COTEJO_", "XDG_", "PYTHON"))}
         entorno.update({
+            "COTEJO_NO_PREGUNTAR_CLI": "1",
             "HOME": str(raiz / "home"),
             "XDG_STATE_HOME": str(raiz / "estado"),
             "XDG_CONFIG_HOME": str(raiz / "config"),

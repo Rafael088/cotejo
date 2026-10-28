@@ -120,5 +120,20 @@ class NingunaRutaAMano(unittest.TestCase):
         self.assertEqual(culpables, [], "usa tareas.rutas en vez de escribir la ruta a mano")
 
 
+class BoardJsonSigueAlEstado(unittest.TestCase):
+    def test_board_json_se_mira_en_cada_uso(self):
+        # Calculado al importar, las pruebas del board (que cambian COTEJO_ESTADO después)
+        # leían y escribían el board.json de la persona: el proyecto elegido se colaba.
+        try:
+            from tareas.app import comun
+        except (ImportError, ValueError):
+            self.skipTest("sin GTK")
+        with tempfile.TemporaryDirectory() as temporal, \
+                mock.patch.dict(os.environ, {"COTEJO_ESTADO": temporal}):
+            comun.guardar_board(proyecto="Prueba")
+            self.assertEqual(comun.ruta_board(), Path(temporal) / "board.json")
+            self.assertEqual(comun.cargar_board()["proyecto"], "Prueba")
+
+
 if __name__ == "__main__":
     unittest.main()
