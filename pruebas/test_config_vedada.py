@@ -12,7 +12,7 @@ prueba sola:
   en sus herramientas de editar;
 - **la jaula de verdad**: en bubblewrap con las reglas del sandbox, los verbos que usa el agente
   durante una tarea funcionan, y escribir la config falla por la guarda, sin ella, y aunque una
-  carpeta de escritura la contenga. Se salta sin bwrap.
+  carpeta de escritura la contenga. Se salta sin bwrap o si no puede arrancar.
 """
 
 import json
@@ -31,7 +31,8 @@ sys.path.insert(0, str(RAIZ / "pruebas"))
 
 from enrutador import armado, clientes, config as cfg, sandbox  # noqa: E402
 from tareas import cli, configuracion, rutas  # noqa: E402
-from test_navegador_sandbox import BWRAP, bwrap_como_claude, filtro_sin_sockets_unix  # noqa: E402
+from test_navegador_sandbox import (  # noqa: E402
+    BWRAP, bwrap_arranca, bwrap_como_claude, filtro_sin_sockets_unix)
 
 ORIGINAL = {"fuente": "repo", "fuentes": {"repo": {"repos": []}}, "lanzar": {"sandbox": {}}}
 
@@ -157,7 +158,8 @@ class Armado(ConConfig):
         self.assertEqual(clientes._ruta_de_permiso(".claude/x.json"), ".claude/x.json")
 
 
-@unittest.skipUnless(BWRAP and filtro_sin_sockets_unix(), "sin bwrap o sin filtro")
+@unittest.skipUnless(BWRAP and filtro_sin_sockets_unix() and bwrap_arranca(),
+                     "sin bwrap, sin filtro o sin namespaces")
 class EnLaJaula(unittest.TestCase):
     """Los verbos de verdad, en bubblewrap con las reglas que arma el lanzamiento."""
 

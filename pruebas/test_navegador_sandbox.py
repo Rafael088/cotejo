@@ -29,6 +29,15 @@ from enrutador import armado, navegador, sandbox  # noqa: E402
 BWRAP = shutil.which("bwrap")
 FIREFOX = shutil.which("firefox")
 
+
+def bwrap_arranca():
+    """Que bwrap esté no basta: en el runner de GitHub el kernel no deja crear namespaces."""
+    try:
+        return subprocess.run([BWRAP, "--ro-bind", "/", "/", "true"], capture_output=True,
+                              timeout=10).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
 # Lo justo de seccomp: (arquitectura de audit, número de `socket`).
 ARQUITECTURAS = {"x86_64": (0xC000003E, 41), "aarch64": (0xC00000B7, 198)}
 AF_UNIX, EPERM = 1, 1
@@ -77,8 +86,8 @@ def bwrap_como_claude(ajustes, tmpdir, fd_seccomp):
     return argv
 
 
-@unittest.skipUnless(BWRAP and FIREFOX and filtro_sin_sockets_unix(),
-                     "sin bwrap, sin firefox o en una arquitectura sin filtro")
+@unittest.skipUnless(BWRAP and FIREFOX and filtro_sin_sockets_unix() and bwrap_arranca(),
+                     "sin bwrap, sin firefox, en una arquitectura sin filtro o sin namespaces")
 class NavegadorEnElSandbox(unittest.TestCase):
 
     def setUp(self):
