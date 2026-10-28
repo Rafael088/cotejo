@@ -16,6 +16,7 @@ proveedor (`opencode-go/kimi-k2.7-code`).
 
 import json
 import os
+import re
 import shutil
 from dataclasses import dataclass
 
@@ -142,11 +143,23 @@ class Cliente:
           sandbox apagado). Vedar la carpeta no basta: `denyWrite` no para un archivo que no
           existe, y Codex u OpenCode en el mismo worktree no pasan por el sandbox de Claude.
           Lo que se pierde son las skills de `.claude/skills` del repo (sin ajustes del
-          proyecto, Claude no las lee); el `CLAUDE.md` y las skills de la persona siguen.
+          proyecto, Claude no las lee); el `CLAUDE.md` y las skills de la persona siguen. La
+          misma bandera deja fuera el `.mcp.json` del worktree (cotejo-j42qfc): sin interfaz,
+          Claude arranca sus servidores sin preguntar, y correrían fuera del sandbox; con ella
+          no arrancan ni aunque la persona tenga `enableAllProjectMcpServers`, y los suyos (los
+          de `~/.claude.json`, los conectores de claude.ai y los de sus plugins) siguen.
         - **Codex**: su sandbox `workspace-write` (`permisos`): solo escribe en las carpetas de
-          la tarea, no tiene red (no puede empujar nada) y no puede subir privilegios.
+          la tarea, no tiene red (no puede empujar nada) y no puede subir privilegios. Y el
+          worktree va como proyecto sin confianza (`_codex_sin_confianza`, cotejo-j42qfc): un
+          worktree hereda la confianza de su repo, y con ella Codex carga el
+          `.codex/config.toml` que haya dentro, que puede arrancar servidores MCP fuera de su
+          sandbox (o cambiarlo). Sin confianza, se salta esa capa del proyecto (config, hooks y
+          reglas); la config de la persona y el `AGENTS.md` siguen.
         - **OpenCode**: `permission.bash` con todo en `allow` y los prohibidos en `deny` al
-          final (en OpenCode gana la última regla que casa), encima de lo que da `permisos`.
+          final (en OpenCode gana la última regla que casa), encima de lo que da `permisos`. Y
+          los servidores MCP que defina el proyecto (`opencode.json[c]` del worktree o de su
+          `.opencode/`) apagados con `enabled: false` en esa misma config, que pesa más que la
+          del proyecto (`_opencode_sin_mcp_del_proyecto`, cotejo-j42qfc).
         - **Gemini CLI**: `auto_edit` y una política (`--policy`, `politica_gemini`, el archivo
           que escribe `guardas.preparar` con `politica_gemini_toml`) que deja todo el shell y
           niega los prohibidos.
@@ -170,9 +183,13 @@ class Cliente:
                      *(caja.argumentos_claude(sandbox) if sandbox else []),
                      "--disallowedTools", *[f"Bash({p})" for p in prohibidos(ramas)],
                      *[f"Edit({_ruta_de_permiso(v)})" for v in vedados]], env)
+        trabajo = next((str(c) for c in carpetas if c), None)
+        if self.nombre == "codex":
+            return argv + _codex_sin_confianza(trabajo), env
         if self.nombre == "opencode":
-            return argv, {"OPENCODE_CONFIG_CONTENT": _opencode_con_prohibidos(
-                env["OPENCODE_CONFIG_CONTENT"], prohibidos(ramas))}
+            return argv, _opencode_sin_mcp_del_proyecto(trabajo, {
+                "OPENCODE_CONFIG_CONTENT": _opencode_con_prohibidos(
+                    env["OPENCODE_CONFIG_CONTENT"], prohibidos(ramas))})
         if self.nombre == "gemini":
             return (["--approval-mode", "auto_edit"] +
                     (["--policy", str(politica_gemini)] if politica_gemini else []), env)
@@ -231,6 +248,11 @@ BORRAR = ("rm", "rmdir", "unlink", "shred")
 # `.claude/settings.local.json` del worktree, solo los de la persona (`~/.claude`) y lo que pasa
 # Cotejo por `--settings`. Un hook dejado ahí correría fuera del sandbox, y un `allowWrite` o un
 # `env` lo cambiarían; el `CLAUDE.md` del repo y las skills de la persona siguen cargando.
+# Tampoco carga el `.mcp.json` del worktree (cotejo-j42qfc, probado con Claude 2.1.304 y en
+# https://code.claude.com/docs/en/mcp: «Exclude project settings entirely with
+# --setting-sources»), y los servidores MCP de la persona siguen. `--strict-mcp-config` también
+# lo cerraría, pero solo deja los de `--mcp-config`: se llevaría los conectores de claude.ai y
+# los de sus plugins, y pasarle los suyos sería copiar sus secretos a un archivo.
 SOLO_AJUSTES_DE_LA_PERSONA = ("--setting-sources", "user")
 
 
@@ -281,6 +303,95 @@ def _opencode_con_prohibidos(previo, patrones):
     permiso["bash"] = bash
     permiso.setdefault("edit", "allow")
     return json.dumps(datos, ensure_ascii=False)
+
+
+# --- los servidores MCP del proyecto, fuera del agente del board (cotejo-j42qfc) ----------------
+
+def _codex_sin_confianza(trabajo):
+    """`-c projects={"<trabajo>"={trust_level="untrusted"}}`: Codex trata el worktree como un
+    proyecto sin confianza en esta sesión, sin tocar su `~/.codex/config.toml`. Un worktree
+    hereda la confianza del repo (`codex mcp list` dentro de uno lo muestra), y un proyecto de
+    confianza carga su `.codex/config.toml`: ahí un `[mcp_servers.x]` arranca un programa fuera
+    del sandbox de Codex. Sin confianza, Codex se salta las capas `.codex/` del proyecto
+    (https://developers.openai.com/codex/config-advanced); la config de la persona, con sus
+    servidores, sigue. La forma de tabla entera es la que funciona: con la clave en puntos
+    (`projects."<ruta>".trust_level`) Codex 0.154 seguía cargando la capa del proyecto."""
+    if not trabajo:
+        return []
+    ruta = json.dumps(os.path.abspath(trabajo), ensure_ascii=False)   # cadena TOML básica
+    return ["-c", f'projects={{{ruta}={{trust_level="untrusted"}}}}']
+
+
+# Donde OpenCode lee la config de un proyecto, desde la carpeta donde arranca
+# (https://opencode.ai/docs/config/): el `opencode.json[c]` y el de `.opencode/`.
+CONFIG_OPENCODE_DEL_PROYECTO = ("opencode.json", "opencode.jsonc", ".opencode/opencode.json",
+                                ".opencode/opencode.jsonc")
+
+
+def _opencode_sin_mcp_del_proyecto(trabajo, entorno):
+    """El entorno de OpenCode con los servidores MCP del proyecto apagados: cada nombre que
+    defina un `opencode.json[c]` del worktree (`mcp.<nombre>`) va con `enabled: false` en
+    `OPENCODE_CONFIG_CONTENT`, que OpenCode funde por encima de la del proyecto. Los de la
+    persona siguen, salvo uno que el proyecto redefina con el mismo nombre: ese ya no sería el
+    suyo, y se apaga también. Se lee al lanzar, así que lo que se escriba a media sesión cuenta
+    en el siguiente lanzamiento (OpenCode tampoco relee la config a media sesión).
+
+    Si hay una config del proyecto que no se entiende, va `OPENCODE_DISABLE_PROJECT_CONFIG`:
+    OpenCode no lee ninguna del proyecto (ni su `AGENTS.md`), mejor que dejar pasar lo que no
+    se pudo mirar."""
+    if not trabajo:
+        return entorno
+    nombres = []
+    for relativa in CONFIG_OPENCODE_DEL_PROYECTO:
+        archivo = os.path.join(trabajo, relativa)
+        if not os.path.isfile(archivo):
+            continue
+        try:
+            with open(archivo, encoding="utf-8") as f:
+                datos = json.loads(_sin_comentarios_jsonc(f.read()))
+            mcp = datos.get("mcp") if isinstance(datos, dict) else None
+            nombres += list(mcp) if isinstance(mcp, dict) else []
+        except (OSError, ValueError, UnicodeDecodeError):
+            return {**entorno, "OPENCODE_DISABLE_PROJECT_CONFIG": "1"}
+    if not nombres:
+        return entorno
+    datos = json.loads(entorno["OPENCODE_CONFIG_CONTENT"])
+    mcp = datos.get("mcp") if isinstance(datos.get("mcp"), dict) else {}
+    for nombre in dict.fromkeys(nombres):
+        propio = mcp.get(nombre)
+        mcp[nombre] = {**(propio if isinstance(propio, dict) else {}), "enabled": False}
+    datos["mcp"] = mcp
+    return {**entorno, "OPENCODE_CONFIG_CONTENT": json.dumps(datos, ensure_ascii=False)}
+
+
+def _sin_comentarios_jsonc(texto):
+    """JSONC a JSON: sin comentarios `//` y `/* */` (fuera de las cadenas) ni comas sueltas
+    antes de `}` o `]`."""
+    salida, i, n, cadena = [], 0, len(texto), False
+    while i < n:
+        c = texto[i]
+        if cadena:
+            salida.append(c)
+            if c == "\\" and i + 1 < n:
+                salida.append(texto[i + 1])
+                i += 1
+            elif c == '"':
+                cadena = False
+        elif c == '"':
+            cadena = True
+            salida.append(c)
+        elif texto.startswith("//", i):
+            fin = texto.find("\n", i)
+            i = n if fin < 0 else fin
+            continue
+        elif texto.startswith("/*", i):
+            fin = texto.find("*/", i + 2)
+            i = n if fin < 0 else fin + 2
+            continue
+        else:
+            salida.append(c)
+        i += 1
+    return re.sub(r",(\s*[}\]])", r"\1", "".join(salida))
 
 
 def _regex_gemini(patron):
