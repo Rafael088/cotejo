@@ -374,6 +374,24 @@ def _tamano(ruta):
 
 # Los pids que espera un hilo de este proceso: `recoger` no se los adelanta.
 _VIGILADOS = set()
+# Los hilos de `vigilar` que siguen vivos: `esperar_vigilantes` los une (las pruebas lo usan
+# para no borrar su carpeta temporal mientras uno de ellos todavía escribe en ella).
+_HILOS = []
+_CANDADO = threading.Lock()
+
+
+def esperar_vigilantes(timeout=10):
+    """Espera hasta `timeout` segundos a que terminen los hilos de `vigilar` vivos.
+
+    Sin esto, el cleanup de una prueba puede borrar su carpeta temporal mientras el hilo del
+    «terminado» aún está escribiendo en ella (cotejo-lr1vj6). No lanza si alguno sigue vivo al
+    agotarse el tiempo: devuelve los que quedaron, para que quien llame decida."""
+    limite = time.monotonic() + timeout
+    with _CANDADO:
+        hilos = list(_HILOS)
+    for hilo in hilos:
+        hilo.join(max(0, limite - time.monotonic()))
+    return [h for h in hilos if h.is_alive()]
 
 
 def vigilar(proceso, tarea, elegida, timeout, al_terminar=None):
@@ -386,6 +404,7 @@ def vigilar(proceso, tarea, elegida, timeout, al_terminar=None):
     archivo = bitacora.ruta()
 
     def esperar():
+        registro = None
         try:
             try:
                 codigo = proceso.wait(timeout=timeout)
@@ -402,12 +421,17 @@ def vigilar(proceso, tarea, elegida, timeout, al_terminar=None):
                     ok=codigo == 0, codigo=codigo, pid=proceso.pid)
             if registro and registro.get("fase") == lanzados.TERMINADO:
                 registro = fin(tarea["id"], proceso.pid) or registro
+            if al_terminar and registro:
+                al_terminar(lanzados.estado(registro))
         finally:
-            _VIGILADOS.discard(proceso.pid)
-        if al_terminar and registro:
-            al_terminar(lanzados.estado(registro))
+            with _CANDADO:
+                _VIGILADOS.discard(proceso.pid)
+                if hilo in _HILOS:
+                    _HILOS.remove(hilo)
 
     hilo = threading.Thread(target=esperar, name=f"lanzar-{tarea['id']}", daemon=True)
+    with _CANDADO:
+        _HILOS.append(hilo)
     hilo.start()
     return hilo
 
@@ -602,5 +626,5 @@ def pausar(tarea_id, motivo=PAUSA):
 
 
 __all__ = ["NoSePuede", "pausar", "fin", "recoger", "rechazar", "motivo_sin_entregar", "EsDeUnaPersona", "FaltaModelo", "SinHueco", "lanzar", "estado",
-           "detener", "vigilar", "decidir", "hueco", "comando", "carpetas_de_escritura",
-           "ramas_protegidas"]
+           "detener", "vigilar", "esperar_vigilantes", "decidir", "hueco", "comando",
+           "carpetas_de_escritura", "ramas_protegidas"]

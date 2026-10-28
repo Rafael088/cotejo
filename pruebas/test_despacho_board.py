@@ -69,7 +69,9 @@ class ConClienteFalso(PruebaDeEnrutador):
             parche.start()
             self.addCleanup(parche.stop)
         # Ningún cliente falso se queda vivo al terminar (uno frenado por `lanzar_vivo` también
-        # se para aquí, sin importar si la prueba lo soltó o no).
+        # se para aquí, sin importar si la prueba lo soltó o no). El hilo vigilante se espera
+        # después de detenerlo y antes de que se borre la carpeta temporal (cotejo-lr1vj6).
+        self.addCleanup(despacho_board.esperar_vigilantes)
         self.addCleanup(lambda: [despacho_board.detener(i) for i in lanzados.todos()])
         self.escribir_nota("Uno.md", proyecto(
             "- [ ] Arreglar el parseo de los tags #agente/sonnet ^cotejo-asig",
