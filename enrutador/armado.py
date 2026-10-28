@@ -42,6 +42,11 @@ SANDBOX_BASE = ("Tu terminal corre dentro de un sandbox: solo puedes escribir en
                 "una conexión denegada, es a propósito: no intentes rodearlo; si te impide "
                 "terminar, bloquea la tarea con el motivo. ")
 NOTA_SANDBOX = SANDBOX_BASE + NOTA_NAVEGADOR
+NOTA_SANDBOX_ANTIGRAVITY = (
+    "Antigravity corre entero dentro de la jaula de Cotejo: solo puedes escribir en tu carpeta "
+    "de trabajo, el .git del repo, la carpeta de la tarea y el estado de Cotejo (su config no); "
+    "el resto se lee. La red sigue disponible para el CLI. No intentes rodear la jaula; si te "
+    "impide terminar, bloquea la tarea con el motivo.")
 # Sin Firefox no se da un comando que va a fallar (cotejo-0e17vu): se dice y se pide avisar.
 NOTA_SIN_NAVEGADOR = (SANDBOX_BASE + "En esta máquina no hay un navegador sin interfaz para ver tu "
                       "trabajo: no podrás sacarle capturas. Dilo en la entrega y propón a la "
@@ -82,17 +87,19 @@ def vedados():
 
 
 def sandbox_de(config, cliente, cotejo, tarea_id, trabajo, worktree=None, directorio=None):
-    """El sandbox del agente de esta tarea (cotejo-amui0f): `{"activo", "motivo", "ajustes",
-    "entorno", "avisos"}`. Solo Claude Code lo lleva (Codex trae el suyo; OpenCode y Gemini no
-    tienen); sin él disponible en la máquina, o con `lanzar.sandbox: false`, va apagado con el
-    motivo y el agente trabaja con los prohibidos de siempre (`sandbox.py`)."""
+    """El sandbox del agente de esta tarea: el de Claude, o la jaula propia de Antigravity.
+
+    Claude conserva el comportamiento anterior si el suyo falta. Antigravity, en cambio, no se
+    lanza sin jaula: `--dangerously-skip-permissions` sin contención dejaría escribir en toda la
+    máquina (cotejo-b1iwpj). Aquí se anota el motivo y `comando`/`comprobar` impiden el lanzamiento.
+    """
     apagado = {"activo": False, "motivo": "", "ajustes": None, "entorno": {}, "avisos": []}
-    if cliente.nombre != "claude":
+    if cliente.nombre not in ("claude", "antigravity"):
         return {**apagado, "motivo": f"{cliente.titulo or cliente.nombre} no usa el de Claude"}
     ajustes = (config.get("lanzar") or {}).get("sandbox")
     if ajustes is False:
         return {**apagado, "motivo": "apagado en la config (lanzar.sandbox)"}
-    hay, motivo = caja.disponible()
+    hay, motivo = caja.disponible() if cliente.nombre == "claude" else caja.disponible_bwrap()
     if not hay:
         return {**apagado, "motivo": motivo}
     repo = (worktree or {}).get("repo") or (worktrees.raiz_repo(directorio) if directorio
@@ -101,7 +108,7 @@ def sandbox_de(config, cliente, cotejo, tarea_id, trabajo, worktree=None, direct
         carpetas_de_escritura(trabajo, worktree), repo=repo,
         propio=(worktree or {}).get("ruta"), carpeta_tarea=cotejo.carpeta_de_la_tarea(tarea_id),
         ajustes=ajustes, vedadas=vedados())
-    return {"activo": True, "motivo": "", **hecho}
+    return {"activo": True, "motivo": "", "cliente": cliente.nombre, **hecho}
 
 
 def comando(config, cliente, modelo, modelo_id, prompt, carpetas, ramas=None,
@@ -117,9 +124,17 @@ def comando(config, cliente, modelo, modelo_id, prompt, carpetas, ramas=None,
                   .get(cliente.nombre) or ()) +
              cliente.terminal_libre(carpetas, ramas, politica_gemini, sandbox=sandbox,
                                     vedados=vedados())[0])
-    return cliente.argv_sin_interfaz(
+    argv = cliente.argv_sin_interfaz(
         cliente.modelo_de(modelo, modelo_id), prompt,
         comando=propios.get("comando"), extra=extra)
+    if cliente.nombre == "antigravity":
+        if not sandbox:
+            raise caja.SandboxNoDisponible(
+                "Antigravity CLI no se lanzó: la jaula de Cotejo no está disponible. Instala "
+                "bubblewrap y comprueba que puede crear espacios de nombres; no se lanzará "
+                "sin protección.")
+        return caja.envolver_antigravity(argv, sandbox, carpetas[0])
+    return argv
 
 
 def entorno(cliente, carpetas, ramas, encerrado):
@@ -132,6 +147,13 @@ def entorno(cliente, carpetas, ramas, encerrado):
     return mismo_cotejo.entorno(con_guardas, base=con_guardas)
 
 
+def nota_jaula(encerrado):
+    """La parte del encargo que explica la jaula que de verdad lleva este agente."""
+    if encerrado.get("cliente") == "antigravity":
+        return NOTA_SANDBOX_ANTIGRAVITY
+    return nota_sandbox()
+
+
 def nota(encerrado):
     """Lo que se le dice al agente de su terminal, y de su sandbox si lo lleva."""
-    return NOTA_TERMINAL + (" " + nota_sandbox() if encerrado["activo"] else "")
+    return NOTA_TERMINAL + (" " + nota_jaula(encerrado) if encerrado["activo"] else "")

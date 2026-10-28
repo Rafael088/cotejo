@@ -26,7 +26,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from .. import aislamiento, armado, clientes, cotejo as f, guardas, motor
+from .. import aislamiento, armado, clientes, cotejo as f, guardas, motor, sandbox
 
 
 class ClaudeCLI(motor.Motor):
@@ -58,6 +58,10 @@ class ClaudeCLI(motor.Motor):
         modelo = cliente.modelo_de(encargo.modelo, encargo.modelo_id)
         hecho = hecho or self._armado(encargo, cliente)
         if hecho is None:
+            if cliente.nombre == "antigravity":
+                raise sandbox.SandboxNoDisponible(
+                    "Antigravity CLI necesita una carpeta y la jaula de Cotejo; no se lanzará "
+                    "sin protección.")
             return cliente.argv_sin_interfaz(
                 modelo, encargo.prompt, comando=propios.get("comando"),
                 extra=list(encargo.argumentos or ()) + list(propios.get("argumentos_extra") or ()))
@@ -73,6 +77,8 @@ class ClaudeCLI(motor.Motor):
         except clientes.ClienteDesconocido as error:
             return (f"{error} Cambia el cliente del modelo con `cotejo modelos agregar`, o usa "
                     f"--motor agente y pásale el encargo tú a quien lo vaya a hacer.")
+        except sandbox.SandboxNoDisponible as error:
+            return str(error)
         if shutil.which(comando[0]) is None:
             return (f"No encontré «{comando[0]}» en esta máquina, y es el cliente que ejecuta "
                     f"{encargo.modelo}. Instálalo, o usa --motor agente para quedarte con el "
@@ -89,6 +95,8 @@ class ClaudeCLI(motor.Motor):
         except clientes.ClienteDesconocido as error:
             return motor.Resultado(False, [], 127, ejecutado=False,
                                    error=f"{error} Usa --motor agente.")
+        except sandbox.SandboxNoDisponible as error:
+            return motor.Resultado(False, [], 126, ejecutado=False, error=str(error))
         timeout = self.ajustes.get("timeout_seg", 1800)
         arranque = time.monotonic()
         if shutil.which(comando[0]) is None:

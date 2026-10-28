@@ -20,7 +20,8 @@ from unittest import mock
 
 from apoyo import PruebaDeEnrutador  # noqa: F401  (pone la raíz del repo en sys.path)
 
-from enrutador import clientes, config as cfg, despacho_board, guardas, motor, preparar
+from enrutador import (clientes, config as cfg, despacho_board, guardas, motor, preparar,
+                       sandbox)
 from enrutador.motores import agente
 
 HAY_GIT = shutil.which("git") is not None
@@ -151,13 +152,27 @@ class ComandoDelBoard(unittest.TestCase):
         return mock.Mock(nivel=nivel)
 
     def test_cada_cliente_lleva_su_terminal_libre(self):
+        hay_bwrap, _ = sandbox.disponible_bwrap()
         for nombre in clientes.CLIENTES:
             with self.subTest(nombre):
                 cliente = clientes.de(nombre)
-                argv = despacho_board.comando(self.config(), cliente, self.elegida(), "P",
-                                              CARPETAS, ["main", "trunk"], "/e/g.toml")
                 propios = cliente.terminal_libre(CARPETAS, ["main", "trunk"], "/e/g.toml",
                                                  entorno={})[0]
+                if nombre == "antigravity" and not hay_bwrap:
+                    # Sin jaula no se lanza: su terminal libre va dentro de bubblewrap
+                    # (cotejo-b1iwpj), no suelta con --dangerously-skip-permissions.
+                    with self.assertRaises(sandbox.SandboxNoDisponible):
+                        despacho_board.comando(self.config(), cliente, self.elegida(), "P",
+                                               CARPETAS, ["main", "trunk"], "/e/g.toml")
+                    continue
+                ajustes = (sandbox.ajustes_claude(CARPETAS)
+                           if nombre == "antigravity" else None)
+                argv = despacho_board.comando(self.config(), cliente, self.elegida(), "P",
+                                              CARPETAS, ["main", "trunk"], "/e/g.toml",
+                                              sandbox=ajustes)
+                if nombre == "antigravity":
+                    self.assertEqual(Path(argv[0]).name, "bwrap")
+                    argv = argv[argv.index("--") + 1:]
                 if propios:
                     texto = " ".join(argv)
                     self.assertIn(" ".join(propios), texto)

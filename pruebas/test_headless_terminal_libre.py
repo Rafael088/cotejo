@@ -73,6 +73,15 @@ class Entorno(unittest.TestCase):
         instancia.config = config({"lanzar": {"sandbox": False}} if encima is None else encima)
         return instancia
 
+    def argv_cliente(self, nombre):
+        if nombre != "antigravity":
+            return self.motor().argv(self.encargo(nombre))
+        cotejo = mock.Mock()
+        cotejo.carpeta_de_la_tarea.return_value = self.repo / ".cotejo"
+        with mock.patch.object(sandbox, "disponible_bwrap", return_value=(True, "")), \
+                mock.patch.object(claude_cli.f, "Cotejo", return_value=cotejo):
+            return self.motor({"lanzar": {"sandbox": {}}}).argv(self.encargo(nombre))
+
 
 @unittest.skipUnless(HAY_GIT, "sin git")
 class ArgumentosDeLosCuatroClientes(Entorno):
@@ -80,7 +89,7 @@ class ArgumentosDeLosCuatroClientes(Entorno):
         for nombre in clientes.CLIENTES:
             with self.subTest(nombre):
                 cliente = clientes.de(nombre)
-                argv = self.motor().argv(self.encargo(nombre))
+                argv = self.argv_cliente(nombre)
                 propios = cliente.terminal_libre(
                     armado.carpetas_de_escritura(self.wt, self.worktree), ["main"],
                     guardas.politica_gemini(), entorno={})[0]
@@ -151,7 +160,7 @@ class ConSandbox(Entorno):
     def test_los_otros_clientes_no_llevan_el_de_claude(self):
         with mock.patch.object(sandbox, "disponible", return_value=(True, "")):
             for nombre in ("codex", "opencode", "gemini", "antigravity"):
-                self.assertNotIn("--settings", self.motor({}).argv(self.encargo(nombre)))
+                self.assertNotIn("--settings", self.argv_cliente(nombre))
 
 
 @unittest.skipUnless(HAY_GIT and os.name != "nt", "sin git o en Windows")
