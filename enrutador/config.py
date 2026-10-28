@@ -233,6 +233,7 @@ def directorio_de(config, proyecto):
 
 def guardar_modelos(modelos, ruta=None):
     """Guarda el catálogo sin tocar el resto de la configuración de Cotejo."""
+    configuracion.sin_vedar()
     _validar_modelos(modelos)
     ruta = Path(ruta) if ruta else ruta_config()
     entero = _leer_entero(ruta)

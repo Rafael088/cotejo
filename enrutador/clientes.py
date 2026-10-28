@@ -119,7 +119,7 @@ class Cliente:
         return [], {}
 
     def terminal_libre(self, carpetas, ramas=None, politica_gemini=None, entorno=None,
-                       sandbox=None):
+                       sandbox=None, vedados=()):
         """Los permisos del agente que lanza el board (v1.3.0, cotejo-7yfw1e, dec-kiik):
         `(argumentos, variables de entorno)`.
 
@@ -133,7 +133,9 @@ class Cliente:
           (la clave `sandbox` que arma `sandbox.del_lanzamiento`, cotejo-amui0f), además su
           Bash corre encerrado: escribe solo en esas carpetas y sale a la red solo a sus
           remotos, así que borrar fuera del worktree falla también por `python3 -c`, `find
-          -delete` o `cd /x && rm y`, que los patrones no ven.
+          -delete` o `cd /x && rm y`, que los patrones no ven. Sus herramientas de editar no
+          pasan por ese sandbox: `vedados` (rutas absolutas, o relativas a donde arranca) va
+          en `--disallowedTools` como `Edit(...)`, que vale para todas (cotejo-dgb7l2).
         - **Codex**: su sandbox `workspace-write` (`permisos`): solo escribe en las carpetas de
           la tarea, no tiene red (no puede empujar nada) y no puede subir privilegios.
         - **OpenCode**: `permission.bash` con todo en `allow` y los prohibidos en `deny` al
@@ -158,7 +160,8 @@ class Cliente:
             from . import sandbox as caja
             return (["--permission-mode", "acceptEdits", "--allowedTools", "Bash",
                      *(caja.argumentos_claude(sandbox) if sandbox else []),
-                     "--disallowedTools", *[f"Bash({p})" for p in prohibidos(ramas)]], env)
+                     "--disallowedTools", *[f"Bash({p})" for p in prohibidos(ramas)],
+                     *[f"Edit({_ruta_de_permiso(v)})" for v in vedados]], env)
         if self.nombre == "opencode":
             return argv, {"OPENCODE_CONFIG_CONTENT": _opencode_con_prohibidos(
                 env["OPENCODE_CONFIG_CONTENT"], prohibidos(ramas))}
@@ -172,6 +175,13 @@ class Cliente:
     @property
     def instalado(self):
         return shutil.which(self.ejecutable) is not None
+
+
+def _ruta_de_permiso(ruta):
+    """Una ruta como la pide una regla de permisos de Claude Code: absoluta con `//` delante
+    (una sola barra sería relativa a la config), relativa tal cual."""
+    ruta = str(ruta).replace(os.sep, "/")
+    return "/" + ruta if os.path.isabs(str(ruta)) else ruta
 
 
 def _opencode_con_permiso(carpetas, previo=None):
