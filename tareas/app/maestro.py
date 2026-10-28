@@ -18,8 +18,9 @@ class Maestro:
     def menu_maestro(self, boton):
         """El desplegable del botón del maestro: con qué cliente abrirlo.
 
-        Elegir uno lo abre ya, con lo que haya escrito, y lo deja como el de siempre: el botón
-        principal recuerda el último que se usó en vez de volver cada vez al primero instalado.
+        Elegir uno solo lo deja como el de siempre (el botón principal recuerda el último elegido);
+        abrir el maestro es del botón o de Enter, nunca de elegir: un desplegable no debería
+        lanzar un agente sin que se pulse «Abrir maestro».
         """
         from enrutador import clientes
         caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
@@ -39,13 +40,22 @@ class Maestro:
                 fila.append(Gtk.Label(label="Enter", css_classes=["menu-atajo"]))
             opcion = Gtk.Button(css_classes=["flat", "menu-item"]
                                 + (["sugerida"] if nombre == actual else []), child=fila)
-            opcion.connect("clicked", lambda _b, n=nombre: (popover.popdown(),
-                                                            self.abrir_maestro(n)))
+            opcion.connect("clicked",
+                           lambda _b, n=nombre: self.elegir_cliente_maestro(n, popover))
             caja.append(opcion)
         if not instalados:
             caja.append(Gtk.Label(label=clientes.SIN_AGENTE_TEXTO, xalign=0, wrap=True,
                                   max_width_chars=36, css_classes=["menu-titulo"]))
         popover.set_child(caja)
+
+    def elegir_cliente_maestro(self, cliente, popover):
+        """Elegir solo elige: recuerda el cliente para el botón y cierra el menú, sin abrir.
+
+        Lanzar es del botón o de Enter, que usan el último elegido; si elegir lanzara, abrir el
+        desplegable para mirar dispararía un agente sin que nadie pulsara «Abrir maestro».
+        """
+        comun.guardar_board(cliente_maestro=cliente)
+        popover.popdown()
 
     def cliente_del_maestro(self, instalados):
         """El último cliente con el que se abrió el maestro, si sigue instalado; si no, el primero."""

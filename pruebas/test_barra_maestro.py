@@ -25,7 +25,7 @@ def board_falso(seleccion="Uno"):
                                   fuente=types.SimpleNamespace(problema=None))
     falso.aviso = lambda texto, segundos=4: falso.avisos.append(texto)
     for metodo in ("barra_maestro", "al_ejecutar_maestro", "abrir_maestro", "poner_maestro",
-                   "menu_maestro", "cliente_del_maestro"):
+                   "menu_maestro", "cliente_del_maestro", "elegir_cliente_maestro"):
         setattr(falso, metodo, types.MethodType(getattr(app.Board, metodo), falso))
     falso.barra = falso.barra_maestro()
     return falso
@@ -84,7 +84,7 @@ class BarraMaestro(unittest.TestCase):
         self.assertEqual(falso.entrada_maestro.get_text(), "solo la web")
         self.assertTrue(falso.avisos)
 
-    def test_elegir_otro_cliente_lo_abre_y_lo_recuerda(self):
+    def test_elegir_otro_cliente_solo_elige_y_lo_recuerda(self):
         falso = board_falso()
         falso.menu_maestro(falso.boton_maestro)
         caja = falso.boton_maestro.get_popover().get_child()
@@ -95,10 +95,14 @@ class BarraMaestro(unittest.TestCase):
                 opciones.append(hijo)
             hijo = hijo.get_next_sibling()
         self.assertEqual(len(opciones), 2)
-        with mock.patch("enrutador.verbos.abrir_maestro", return_value=abierto()) as abrir:
+        with mock.patch("enrutador.verbos.abrir_maestro") as abrir:
             opciones[1].emit("clicked")
+        abrir.assert_not_called()
+        self.assertEqual(self.guardado["cliente_maestro"], "codex")
+        # Lanzar es del botón, y usa el cliente elegido, no el primero instalado.
+        with mock.patch("enrutador.verbos.abrir_maestro", return_value=abierto()) as abrir:
             falso.al_ejecutar_maestro()
-        self.assertEqual([c.args[1] for c in abrir.call_args_list], ["codex", "codex"])
+        abrir.assert_called_once_with("Uno", "codex", indicacion="")
 
     def test_con_todos_los_proyectos_la_barra_no_se_usa(self):
         falso = board_falso(seleccion=app.comun.TODOS)
