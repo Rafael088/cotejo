@@ -27,6 +27,12 @@ Los tokens no se guardan aquí: se guarda el **nombre** de la variable de entorn
 (`token_env`). `validar` se queja de cualquier clave que parezca un secreto en claro.
 
 Ninguna ruta se calcula al importar: `ruta()` resuelve al llamarla, igual que el enrutador.
+
+**El agente de una tarea no escribe la config** (v1.3.0, cotejo-dgb7l2). Ahí viven
+`lanzar.sandbox` y `lanzar.argumentos_extra`: el agente que pudiera cambiarlos le quitaría el
+sandbox y los prohibidos a los lanzamientos siguientes. El armado del agente lleva
+`COTEJO_CONFIG_VEDADA=1` en su entorno y entonces `guardar` se niega (`ConfigVedada`) antes de
+tocar nada; debajo, su sandbox no le deja escribir los `archivos()` ni su carpeta.
 """
 
 import json
@@ -49,8 +55,38 @@ DEFECTO_NUEVO = "repo"
 UMBRAL_LIMPIAR = 50
 
 
+# La marca que lleva en su entorno el agente de una tarea (`enrutador/armado.py`).
+VEDADA = "COTEJO_CONFIG_VEDADA"
+
+
 class ConfigRota(Exception):
     """El archivo existe y no se puede usar. Escribir encima perdería lo que el usuario puso."""
+
+
+class ConfigVedada(Exception):
+    """La pide escribir el agente de una tarea. Lleva lo mismo que un `ErrorCLI` (`cli.main` la
+    imprime igual) sin que este módulo tenga que importar la CLI."""
+
+    def __init__(self):
+        self.mensaje = ("La config de Cotejo no se cambia desde una tarea: la escribe solo una "
+                        "persona.")
+        self.salida = ("Sigue con la tarea sin cambiarla. Si de verdad hace falta un cambio de "
+                       "config, dilo en la entrega o bloquea la tarea con el motivo.")
+        self.reintentable = False
+        self.codigo = 3
+        self.avisos = []
+        super().__init__(self.mensaje)
+
+
+def vedada(entorno=None):
+    """¿Corre esto dentro del agente de una tarea, que no puede escribir la config?"""
+    return bool((os.environ if entorno is None else entorno).get(VEDADA))
+
+
+def sin_vedar():
+    """Levanta `ConfigVedada` si quien llama es el agente de una tarea. Va antes de escribir."""
+    if vedada():
+        raise ConfigVedada()
 
 
 def _base():
@@ -76,6 +112,13 @@ def nueva():
 
 def legado():
     return _base() / "tareas-obsidian" / "config.json"
+
+
+def archivos():
+    """Todos los archivos por los que Cotejo podría leer su config: el que manda hoy y los que
+    mandarían si ese faltara (el nuevo, el viejo, el de `~/.config/foco`). Sin repetir."""
+    candidatos = [ruta(), nueva(), legado(), _base() / "foco" / "config.json"]
+    return list(dict.fromkeys(os.path.abspath(Path(c).expanduser()) for c in candidatos))
 
 
 def ruta():
@@ -160,6 +203,7 @@ def guardar(datos, donde=None):
     """Escribe el archivo entero de forma atómica: o queda el nuevo, o sigue el de antes."""
     import tempfile  # aquí y no arriba: `--estado` importa este módulo y nunca escribe
 
+    sin_vedar()
     donde = Path(donde) if donde else ruta()
     donde.parent.mkdir(parents=True, exist_ok=True)
     texto = json.dumps(datos, indent=2, ensure_ascii=False) + "\n"

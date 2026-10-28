@@ -791,5 +791,5 @@ def main(argumentos=None):
     args = analizador().parse_args(argumentos)
     try:
         return args.funcion(args)
-    except ErrorCLI as error:
+    except (ErrorCLI, configuracion.ConfigVedada) as error:
         return _imprimir_error(error)
