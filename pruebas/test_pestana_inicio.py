@@ -269,18 +269,87 @@ class ConProyectos(PestanaInicio):
         girar()
         self.assertEqual(b.pestana_actual(), pestana_inicio.INICIO)
 
+    def test_agentes_lleva_a_revisar_el_equipo_despues_del_primer_arranque(self):
+        b = self.board
+        with mock.patch("enrutador.clientes.instalados", return_value=[]), \
+                mock.patch("tareas.instalar_agentes.sumar_al_path", return_value=[]), \
+                mock.patch("tareas.instalar_agentes.instalado", return_value=False):
+            b.inicio_agentes.emit("clicked")
+        self.assertEqual(b.pestana_actual(), "equipo")
+        self.assertEqual(b.equipo_ceja.get_label(), "Tus agentes")
+        b.equipo_seguir.emit("clicked")
+        self.assertEqual(b.pestana_actual(), pestana_inicio.INICIO)
+
+    def test_anadir_modelo_lleva_a_revisar_el_equipo(self):
+        b = self.board
+        with mock.patch.object(b, "listar_en_fondo"):
+            dialogo = b.abrir_anadir_modelo()
+        self.assertIn("Instálalo o conéctalo", dialogo.ir_al_equipo.get_label())
+        with mock.patch("enrutador.clientes.instalados", return_value=[]), \
+                mock.patch("tareas.instalar_agentes.sumar_al_path", return_value=[]), \
+                mock.patch("tareas.instalar_agentes.instalado", return_value=False):
+            dialogo.ir_al_equipo.emit("clicked")
+        girar()
+        self.assertEqual(b.pestana_actual(), "equipo")
+        self.assertIsNone(b.dialogo_modelo)
+
     def test_buscar_lleva_al_tablero(self):
         self.app.buscar()
         self.assertEqual(self.board.pestana_actual(), pestana_inicio.TABLERO)
 
 
+def girar_hasta(condicion, tope=10.0):
+    limite = GLib.get_monotonic_time() + int(tope * 1e6)
+    contexto = GLib.MainContext.default()
+    while GLib.get_monotonic_time() < limite:
+        if condicion():
+            return True
+        contexto.iteration(False)
+    return condicion()
+
+
 class SinFuente(PestanaInicio):
+    """Sin de dónde leer: «Revisar el equipo». HOME y PATH son de mentira (cotejo-2j6un7): ni
+    los agentes ni las sesiones de esta máquina cuentan, y lo que se «instala» es un script
+    falso que escribe un CLI falso en `~/.local/bin` de esa casa."""
     con_vault = False
 
-    def revisar(self, agentes, git=True):
+    def entorno_extra(self, raiz):
+        import shutil
+        self.casa = raiz / "casa"
+        self.bin = raiz / "bin"
+        sistema = raiz / "sistema"
+        for carpeta in (self.casa, self.bin, sistema):
+            carpeta.mkdir()
+        for nombre in ("sh", "bash", "mkdir", "chmod", "sleep", "cat", "git"):
+            real = shutil.which(nombre)
+            if real:
+                (sistema / nombre).symlink_to(real)
+        return {"HOME": str(self.casa), "XDG_DATA_HOME": str(self.casa / ".local" / "share"),
+                "PATH": f"{self.bin}{os.pathsep}{sistema}", "ANTHROPIC_API_KEY": "",
+                "CLAUDE_CODE_OAUTH_TOKEN": "", "OPENAI_API_KEY": "", "CODEX_HOME": "",
+                "GEMINI_API_KEY": "", "GOOGLE_API_KEY": "", "GOOGLE_GENAI_USE_VERTEXAI": "",
+                # Aquí los CLIs son de mentira: sí se les pregunta.
+                "COTEJO_NO_PREGUNTAR_CLI": ""}
+
+    def revisar(self, agentes, git=True, sin_sesion=()):
         with mock.patch("enrutador.clientes.instalados", return_value=list(agentes)), \
+                mock.patch("enrutador.modelos_vivos.sesion", lambda n, **_: n not in sin_sesion), \
                 mock.patch("tareas.equipo.hay_git", return_value=git):
             return self.board.revisar_equipo()
+
+    def con_instalador(self, texto):
+        from tareas import instalar_agentes
+
+        def falso(url, destino, tope=None):
+            destino.write_text(texto, encoding="utf-8")
+        parche = mock.patch.object(instalar_agentes, "descargar", side_effect=falso)
+        parche.start()
+        self.addCleanup(parche.stop)
+
+    def progreso(self, clave):
+        etiqueta = self.board.equipo_progreso[clave]
+        return etiqueta.get_label() if etiqueta.get_visible() else ""
 
     def filas(self):
         """{titulo: estado} de lo que pinta la pantalla."""
@@ -305,13 +374,16 @@ class SinFuente(PestanaInicio):
     def test_marca_cada_uno_con_todo_ninguno_o_algunos(self):
         b = self.board
         self.revisar(["claude", "opencode", "codex", "gemini"], git=True)
-        self.assertEqual(set(self.filas().values()), {"Listo"})
-        self.assertEqual(b.equipo_enlaces, {})
+        filas = self.filas()
+        self.assertEqual(filas.pop("Antigravity CLI"), "No instalado")   # aparte (cotejo-r4yg0n)
+        self.assertEqual(set(filas.values()), {"Listo"})
+        self.assertEqual(set(b.equipo_enlaces), {"antigravity"})
         self.assertEqual(b.equipo_titular.get_label(), "Todo listo: tienes 4 agentes")
 
         self.revisar([], git=False)
         self.assertEqual(set(self.filas().values()), {"No instalado"})
-        self.assertEqual(set(b.equipo_enlaces), {"claude", "opencode", "codex", "gemini", "git"})
+        self.assertEqual(set(b.equipo_enlaces),
+                         {"claude", "opencode", "codex", "gemini", "antigravity", "git"})
         self.assertEqual(b.equipo_titular.get_label(), "Te falta un agente de IA")
 
         self.revisar(["gemini"], git=True)
@@ -345,6 +417,7 @@ class SinFuente(PestanaInicio):
         self.revisar([], git=True)
         self.assertEqual(self.filas()["Claude Code"], "No instalado")
         with mock.patch("enrutador.clientes.instalados", return_value=["claude"]), \
+                mock.patch("enrutador.modelos_vivos.sesion", return_value=True), \
                 mock.patch("tareas.equipo.hay_git", return_value=True):
             b.equipo_revisar.emit("clicked")
         self.assertEqual(self.filas()["Claude Code"], "Listo")
@@ -356,6 +429,128 @@ class SinFuente(PestanaInicio):
         b.equipo_seguir.emit("clicked")
         self.assertEqual(b.pestana_actual(), pestana_inicio.INICIO)
         self.assertTrue(b.botones_pestana[pestana_inicio.INICIO].get_active())
+
+    def test_sin_ningun_agente_ofrece_instalar_y_recomienda_uno(self):
+        b = self.board
+        b.revisar_equipo()
+        filas = self.filas()
+        filas.pop("git (para guardar versiones)")
+        self.assertEqual(set(filas.values()), {"No instalado"})
+        self.assertEqual(set(b.equipo_instalar), {"claude", "codex", "opencode", "antigravity"})
+        self.assertIn("gemini", b.equipo_enlaces)          # Gemini CLI y git, solo enlace
+        self.assertEqual(b.equipo_sesion, {})
+        todo = " | ".join(textos(b.pestanas.get_child_by_name("equipo")))
+        self.assertIn("Si no sabes cuál elegir, empieza por este.", todo)
+        self.assertIn("Solo con licencia de empresa", todo)
+        self.assertIn("Primer arranque", todo)
+        self.assertEqual(b.equipo_titular.get_label(), "Te falta un agente de IA")
+
+    def test_instalar_corre_el_oficial_y_ensena_el_progreso(self):
+        b = self.board
+        b.revisar_equipo()
+        self.con_instalador(
+            "echo 'Bajando Claude Code'\nsleep 0.4\n"
+            "mkdir -p \"$HOME/.local/bin\"\n"
+            "printf '#!/bin/sh\\n' > \"$HOME/.local/bin/claude\"\n"
+            "chmod +x \"$HOME/.local/bin/claude\"\necho 'Instalación completa'\n")
+        with mock.patch.object(b, "abrir_pagina") as abrir:
+            b.equipo_instalar["claude"].emit("clicked")
+        abrir.assert_not_called()
+        self.assertTrue(girar_hasta(lambda: "Bajando Claude Code" in self.progreso("claude")))
+        self.assertIn("claude", b.equipo_cancelar)                  # mientras corre, Cancelar
+        self.assertFalse(b.equipo_instalar["codex"].get_sensitive())  # uno a la vez
+        trabajo = b.equipo_trabajos["claude"]
+        self.assertTrue(girar_hasta(lambda: not trabajo.corriendo and
+                                    "quedó instalado" in self.progreso("claude")))
+        self.assertEqual(self.filas()["Claude Code"], "Falta iniciar sesión")
+        self.assertIn("claude", b.equipo_sesion)
+        self.assertTrue(b.equipo_instalar["codex"].get_sensitive())
+
+    def test_cancelar_un_instalador(self):
+        b = self.board
+        b.revisar_equipo()
+        self.con_instalador("echo empiezo\nsleep 30\n")
+        b.equipo_instalar["opencode"].emit("clicked")
+        self.assertTrue(girar_hasta(lambda: "empiezo" in self.progreso("opencode")))
+        b.equipo_cancelar["opencode"].emit("clicked")
+        self.assertTrue(girar_hasta(lambda: "Cancelado" in self.progreso("opencode")))
+        self.assertEqual(self.filas()["OpenCode"], "No instalado")
+        self.assertIn("opencode", b.equipo_instalar)
+
+    def test_iniciar_sesion_abre_el_login_oficial_y_el_sondeo_nota_que_quedo(self):
+        from tareas import instalar_agentes
+        b = self.board
+        claude = self.bin / "claude"
+        claude.write_text("#!/bin/sh\n", encoding="utf-8")
+        claude.chmod(0o755)
+        b.revisar_equipo()
+        self.assertEqual(self.filas()["Claude Code"], "Falta iniciar sesión")
+        self.assertEqual(b.equipo_titular.get_label(), "Te falta iniciar sesión en Claude Code")
+        with mock.patch.object(instalar_agentes, "terminal", return_value=["mi-terminal"]), \
+                mock.patch("enrutador.motores.terminal.abrir") as abrir:
+            b.equipo_sesion["claude"].emit("clicked")
+        abrir.assert_called_once_with(["mi-terminal", str(claude), "auth", "login"])
+        self.assertIn("claude auth login", self.progreso("claude"))
+        self.assertEqual(self.filas()["Claude Code"], "Falta iniciar sesión")
+        (self.casa / ".claude").mkdir()
+        (self.casa / ".claude" / ".credentials.json").write_text("{}", encoding="utf-8")
+        self.assertTrue(b.sondear_equipo())                 # detecta en un hilo
+        self.assertTrue(girar_hasta(lambda: self.filas()["Claude Code"] == "Listo"))
+        self.assertIn("Claude Code está listo.", self.progreso("claude"))
+        self.assertNotIn("claude", b.equipo_sesion)
+
+    def test_sin_terminal_ensena_el_comando_para_copiar(self):
+        from tareas import instalar_agentes
+        b = self.board
+        opencode = self.bin / "opencode"
+        opencode.write_text("#!/bin/sh\n", encoding="utf-8")
+        opencode.chmod(0o755)
+        b.revisar_equipo()
+        with mock.patch.object(instalar_agentes, "terminal", return_value=None):
+            b.equipo_sesion["opencode"].emit("clicked")
+        self.assertIn("escribe: opencode auth login", self.progreso("opencode"))
+
+    def test_el_sondeo_pregunta_al_cli_por_el_llavero_en_un_hilo(self):
+        """Codex con la sesión en el llavero: sin archivo, `codex login status` dice que sí."""
+        import threading
+        from enrutador import modelos_vivos
+        modelos_vivos.olvidar_estados()
+        self.addCleanup(modelos_vivos.olvidar_estados)
+        codex = self.bin / "codex"
+        codex.write_text("#!/bin/sh\necho 'Logged in using ChatGPT'\n", encoding="utf-8")
+        codex.chmod(0o755)
+        b = self.board
+        b.revisar_equipo()                                  # al pintar no se pregunta
+        self.assertEqual(self.filas()["Codex"], "Falta iniciar sesión")
+        hilos = []
+        real = threading.Thread
+        with mock.patch("tareas.app.equipo.threading.Thread",
+                        side_effect=lambda *a, **k: hilos.append(1) or real(*a, **k)):
+            b.sondear_equipo()
+        self.assertEqual(hilos, [1])
+        self.assertTrue(girar_hasta(lambda: self.filas()["Codex"] == "Listo"))
+
+    def test_antigravity_instalado_dice_instalado_y_se_abre(self):
+        from tareas import instalar_agentes
+        b = self.board
+        agy = self.bin / "agy"
+        agy.write_text("#!/bin/sh\n", encoding="utf-8")
+        agy.chmod(0o755)
+        b.revisar_equipo()
+        self.assertEqual(self.filas()["Antigravity CLI"], "Instalado")
+        with mock.patch.object(instalar_agentes, "terminal", return_value=["mi-terminal"]), \
+                mock.patch("enrutador.motores.terminal.abrir") as abrir:
+            b.equipo_sesion["antigravity"].emit("clicked")
+        abrir.assert_called_once_with(["mi-terminal", str(agy)])
+        self.assertIn("entra con tu cuenta", self.progreso("antigravity"))
+
+    def test_el_sondeo_se_apaga_al_salir_de_la_pantalla(self):
+        b = self.board
+        self.assertTrue(b.equipo_sondeo)
+        self.assertTrue(b.sondear_equipo())
+        b.ver_pestana(pestana_inicio.INICIO)
+        self.assertFalse(b.sondear_equipo())
+        self.assertEqual(b.equipo_sondeo, 0)
 
     def test_el_tablero_sin_proyectos_manda_al_inicio(self):
         b = self.board

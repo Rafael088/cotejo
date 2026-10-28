@@ -37,6 +37,7 @@ class ConUnRepoQueFalta(unittest.TestCase):
         self.entorno = {k: v for k, v in os.environ.items() if not k.startswith("COTEJO_")}
         self.entorno.update(HOME=str(self.raiz / "home"), XDG_CONFIG_HOME=str(self.raiz / "xc"),
                             XDG_STATE_HOME=str(self.raiz / "xs"), COTEJO_CONFIG=str(config),
+                            COTEJO_NO_PREGUNTAR_CLI="1",
                             COTEJO_ESTADO=str(self.raiz / "estado"))
         (self.raiz / "home").mkdir()
 

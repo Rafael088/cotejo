@@ -46,7 +46,7 @@ class Instalador(unittest.TestCase):
         self.entorno = {k: v for k, v in os.environ.items()
                         if not k.startswith(("XDG_", "COTEJO_", "FOCO_", "PYTHON", "FORCE_COLOR"))}
         # argparse (3.14) pinta la ayuda si cree que hay una terminal.
-        self.entorno.update(HOME=str(self.hogar), NO_COLOR="1")
+        self.entorno.update(HOME=str(self.hogar), NO_COLOR="1", COTEJO_NO_PREGUNTAR_CLI="1")
         # fc-cache tarda dos segundos por instalación y no es lo que se prueba aquí.
         falsos = self.tmp / "falsos"
         falsos.mkdir()

@@ -2,6 +2,7 @@
 
 import types
 import unittest
+from unittest import mock
 
 import apoyo  # noqa: F401
 try:
@@ -136,9 +137,11 @@ class Volver(unittest.TestCase):
     def setUp(self):
         self.t = _tablero_falso("A")
         self.t.crear_pie()
-        app.guardar_board_real = app.comun.guardar_board
-        app.comun.guardar_board = lambda **k: None
-        self.addCleanup(lambda: setattr(app, "guardar_board", app.guardar_board_real))
+        # Se restaura al terminar: antes se dejaba guardar_board sin hacer nada para el resto
+        # de la suite.
+        parche = mock.patch.object(app.comun, "guardar_board", lambda **k: None)
+        parche.start()
+        self.addCleanup(parche.stop)
 
     def test_apagado_sin_anterior(self):
         self.assertFalse(self.t.boton_volver.get_sensitive())

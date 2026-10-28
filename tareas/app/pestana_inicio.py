@@ -124,6 +124,12 @@ class PestanaInicio:
         textos.append(self.inicio_saludo)
         textos.append(self.inicio_titular)
         cabeza.append(textos)
+        # «Revisar el equipo» después del primer arranque (cotejo-2j6un7): instalar o conectar
+        # un agente más tarde.
+        self.inicio_agentes = con_mano(Gtk.Button(label="Agentes", valign=Gtk.Align.END))
+        etiquetar(self.inicio_agentes, "Agentes: instalar o conectar uno")
+        self.inicio_agentes.connect("clicked", self.ver_equipo)
+        cabeza.append(self.inicio_agentes)
         nuevo = con_mano(Gtk.Button(label="+  Nuevo proyecto",
                                     valign=Gtk.Align.END, css_classes=["suggested-action"]))
         etiquetar(nuevo, "Nuevo proyecto")

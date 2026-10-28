@@ -19,7 +19,10 @@ APP_ID = "io.github.cotejoapp.Cotejo"
 DATOS = Path(__file__).resolve().parents[2] / "data"
 
 
-BOARD_PATH = rutas.estado() / "board.json"
+def ruta_board():
+    """`board.json`, mirado en cada uso: calcularlo al importar dejaba a las pruebas (que
+    cambian `COTEJO_ESTADO` después) leyendo y escribiendo el de la persona."""
+    return rutas.estado() / "board.json"
 
 
 TODOS = "\x00todos"  # opción "Todos los proyectos" del board
@@ -28,7 +31,7 @@ TODOS = "\x00todos"  # opción "Todos los proyectos" del board
 def cargar_board():
     """Lo que se guardó de la interfaz, entero: `board.json` es un diccionario, no un valor."""
     try:
-        datos = json.loads(BOARD_PATH.read_text())
+        datos = json.loads(ruta_board().read_text())
         return datos if isinstance(datos, dict) else {}
     except (OSError, ValueError, AttributeError):
         return {}
@@ -40,8 +43,9 @@ def guardar_board(**cambios):
     datos = cargar_board()
     datos.update(cambios)
     try:
-        BOARD_PATH.parent.mkdir(parents=True, exist_ok=True)
-        BOARD_PATH.write_text(json.dumps(datos, ensure_ascii=False))
+        ruta = ruta_board()
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        ruta.write_text(json.dumps(datos, ensure_ascii=False))
     except OSError:
         pass
 
