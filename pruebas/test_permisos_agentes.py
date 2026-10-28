@@ -157,6 +157,8 @@ class Comando(Base):
     def test_el_argv_de_cada_cliente_con_la_carpeta(self):
         carpetas = preparar.carpetas_de_escritura(str(self.carpeta))
         add = [x for c in carpetas for x in ("--add-dir", c)]
+        sin_config = [c for c in carpetas if c != str(self.config_json.parent)]
+        add_agy = [x for c in sin_config for x in ("--add-dir", c)]
         esperado = {
             "claude": ["claude", "-p", "--allowedTools", "Bash(cotejo:*)", "--", "P"],
             "codex": ["codex", "exec", "--sandbox", "workspace-write", "--skip-git-repo-check",
@@ -164,7 +166,7 @@ class Comando(Base):
             "opencode": ["opencode", "run", "P"],
             "gemini": ["gemini", "--allowed-tools", "run_shell_command(cotejo)", "-p", "P"],
             "antigravity": ["agy", "--print-timeout", "0", "--dangerously-skip-permissions",
-                            *add, "-p", "P"],
+                             *add_agy, "-p", "P"],
         }
         for nombre in CLIENTES:
             with self.subTest(nombre):

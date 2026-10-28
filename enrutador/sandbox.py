@@ -166,9 +166,11 @@ def envolver_antigravity(comando, ajustes, trabajo, bwrap=None):
     for ruta in caja["filesystem"]["denyWrite"]:
         if os.path.exists(ruta):
             argv += ["--ro-bind", ruta, ruta]
-    argv += ["--tmpfs", "/tmp", "--dev", "/dev", "--proc", "/proc", "--unshare-pid",
-             "--unshare-user", "--disable-userns", "--cap-drop", "ALL", "--chdir",
-             str(trabajo), "--"]
+    # No se monta el tmpfs sobre /tmp: eso escondería un proyecto que viva bajo /tmp. Un punto
+    # propio da temporal a los builds sin abrir el /tmp de la persona ni tapar su trabajo.
+    argv += ["--dev", "/dev", "--proc", "/proc", "--tmpfs", "/dev/shm",
+             "--setenv", "TMPDIR", "/dev/shm", "--unshare-pid", "--unshare-user",
+             "--disable-userns", "--cap-drop", "ALL", "--chdir", str(trabajo), "--"]
     return argv + list(comando)
 
 
