@@ -328,7 +328,9 @@ class SinFuente(PestanaInicio):
         return {"HOME": str(self.casa), "XDG_DATA_HOME": str(self.casa / ".local" / "share"),
                 "PATH": f"{self.bin}{os.pathsep}{sistema}", "ANTHROPIC_API_KEY": "",
                 "CLAUDE_CODE_OAUTH_TOKEN": "", "OPENAI_API_KEY": "", "CODEX_HOME": "",
-                "GEMINI_API_KEY": "", "GOOGLE_API_KEY": "", "GOOGLE_GENAI_USE_VERTEXAI": ""}
+                "GEMINI_API_KEY": "", "GOOGLE_API_KEY": "", "GOOGLE_GENAI_USE_VERTEXAI": "",
+                # Aquí los CLIs son de mentira: sí se les pregunta.
+                "COTEJO_NO_PREGUNTAR_CLI": ""}
 
     def revisar(self, agentes, git=True, sin_sesion=()):
         with mock.patch("enrutador.clientes.instalados", return_value=list(agentes)), \
