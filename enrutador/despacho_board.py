@@ -288,7 +288,8 @@ def _lanzar(tarea_id, al_terminar, config, rechazada, rechazo_dado=None, forzar=
             soltar(f"No se pudo crear su worktree: {error.mensaje}", "worktree")
     trabajo = Path(worktree["ruta"]) if worktree else directorio
     encerrado = sandbox_de(config, cliente, cotejo, tarea, trabajo, worktree, directorio)
-    encargo = armar(tarea, worktree, NOTA + (" " + armado.nota_sandbox() if encerrado["activo"] else ""))
+    encargo = armar(tarea, worktree, NOTA + (" " + armado.nota_jaula(encerrado)
+                                             if encerrado["activo"] else ""))
     trabajo = Path(encargo.directorio)
     prompt, reanudacion = encargo.prompt, None
     if retomar.es_retomable(anterior):

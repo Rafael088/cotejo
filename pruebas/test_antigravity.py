@@ -16,6 +16,7 @@ import json
 import os
 import shutil
 import stat
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -23,7 +24,7 @@ from unittest import mock
 
 import apoyo  # noqa: F401  (pone la raíz del repo en sys.path)
 
-from enrutador import armado, clientes, config as cfg, maestro, modelos_vivos, niveles, preparar
+from enrutador import armado, clientes, config as cfg, maestro, modelos_vivos, niveles, preparar, sandbox
 from enrutador import motor
 from enrutador.motores import claude_cli
 
@@ -46,6 +47,7 @@ class Argumentos(unittest.TestCase):
 
     def setUp(self):
         self.agy = clientes.de("antigravity")
+        self.ajustes = sandbox.ajustes_claude(self.CARPETAS, ["/c/cotejo/config.json"])
 
     def test_se_llama_agy_y_esta_en_la_tabla(self):
         self.assertEqual((self.agy.ejecutable, self.agy.titulo), ("agy", "Antigravity CLI"))
@@ -78,23 +80,36 @@ class Argumentos(unittest.TestCase):
                       "--permission-mode", "--mode"):
             self.assertNotIn(ajena, argv)
 
-    def test_el_armado_del_board_lleva_carpetas_aprobacion_y_prompt_al_final(self):
+    def test_el_armado_del_board_lleva_jaula_aprobacion_y_prompt_al_final(self):
         argv = armado.comando(config(), self.agy, "antigravity", "", "Haz la tarea",
-                              self.CARPETAS, ["main"])
-        self.assertEqual(argv[:3], ["agy", "--print-timeout", "0"])
-        self.assertNotIn("--model", argv)                  # el de fábrica: el que tenga elegido
-        self.assertIn("--dangerously-skip-permissions", argv)
-        self.assertEqual(argv[-2:], ["-p", "Haz la tarea"])
+                              self.CARPETAS, ["main"], sandbox=self.ajustes)
+        self.assertEqual(Path(argv[0]).name, "bwrap")
+        agy = argv[argv.index("--") + 1:]
+        self.assertEqual(agy[:3], ["agy", "--print-timeout", "0"])
+        self.assertNotIn("--model", agy)                   # el de fábrica: el que tenga elegido
+        self.assertIn("--dangerously-skip-permissions", agy)
+        self.assertEqual(agy[-2:], ["-p", "Haz la tarea"])
 
-    def test_no_lleva_el_sandbox_de_claude(self):
-        encerrado = armado.sandbox_de({}, self.agy, mock.Mock(), "t1", Path("/p/wt"))
+    def test_usa_la_jaula_propia_no_el_sandbox_de_claude(self):
+        cotejo = mock.Mock()
+        cotejo.carpeta_de_la_tarea.return_value = None
+        with mock.patch.object(sandbox, "disponible_bwrap", return_value=(True, "")):
+            encerrado = armado.sandbox_de({}, self.agy, cotejo, "t1", Path("/p/wt"))
+        self.assertTrue(encerrado["activo"])
+        self.assertEqual(encerrado["cliente"], "antigravity")
+        self.assertIn("allowWrite", encerrado["ajustes"]["sandbox"]["filesystem"])
+
+    def test_sin_bwrap_no_se_lanza(self):
+        with mock.patch.object(sandbox, "disponible_bwrap", return_value=(False, "falta bwrap")):
+            encerrado = armado.sandbox_de({}, self.agy, mock.Mock(), "t1", Path("/p/wt"))
         self.assertFalse(encerrado["activo"])
-        self.assertIn("Antigravity CLI", encerrado["motivo"])
+        with self.assertRaisesRegex(sandbox.SandboxNoDisponible, "no se lanzará"):
+            armado.comando(config(), self.agy, "antigravity", "", "P", self.CARPETAS)
 
-    def test_su_sandbox_se_pide_en_la_config(self):
+    def test_su_sandbox_se_pide_en_la_config_dentro_de_la_jaula(self):
         argv = armado.comando(config({"lanzar": {"argumentos_extra": {
             "antigravity": ["--sandbox"]}}}), self.agy, "antigravity", "", "P",
-            self.CARPETAS, ["main"])
+            self.CARPETAS, ["main"], sandbox=self.ajustes)
         self.assertIn("--sandbox", argv)
         self.assertLess(argv.index("--sandbox"), argv.index("-p"))
 
@@ -102,6 +117,30 @@ class Argumentos(unittest.TestCase):
         argv = preparar.comando(config(), self.agy, "", "P")
         self.assertEqual(argv, ["agy", "--print-timeout", "0",
                                 "--dangerously-skip-permissions", "-p", "P"])
+
+    def test_preparar_con_carpeta_tambien_va_en_la_jaula(self):
+        with tempfile.TemporaryDirectory() as carpeta, \
+                mock.patch.object(sandbox, "disponible_bwrap", return_value=(True, "")), \
+                mock.patch.dict(os.environ, {"COTEJO_CONFIG": str(Path(carpeta) / "config.json")}):
+            argv = preparar.comando(config(), self.agy, "", "P", carpeta=carpeta)
+        self.assertEqual(Path(argv[0]).name, "bwrap")
+        agy = argv[argv.index("--") + 1:]
+        self.assertIn("--dangerously-skip-permissions", agy)
+        self.assertNotIn(str(Path(carpeta) / "config.json"), agy)
+        self.assertEqual(agy[-2:], ["-p", "P"])
+
+    def test_preparar_registra_el_repo_fuera_de_la_jaula_una_sola_vez(self):
+        from tareas import configuracion
+        with tempfile.TemporaryDirectory() as temporal:
+            raiz = Path(temporal)
+            config_real = raiz / "config" / "cotejo" / "config.json"
+            with mock.patch.dict(os.environ, {"COTEJO_CONFIG": str(config_real),
+                                              "XDG_CONFIG_HOME": str(raiz / "config")}):
+                os.environ.pop(configuracion.VEDADA, None)
+                preparar._registrar_repo_para_antigravity(raiz / "proyecto")
+                preparar._registrar_repo_para_antigravity(raiz / "proyecto")
+                datos = configuracion.cargar()
+        self.assertEqual(datos["fuentes"]["repo"]["repos"], [str(raiz / "proyecto")])
 
 
 class Catalogo(unittest.TestCase):
@@ -201,15 +240,72 @@ class Sesion(ConMaquinaFalsa):
 
 
 class PorElMotorHeadless(unittest.TestCase):
-    def test_despachar_headless_lanza_agy_con_su_argv(self):
+    def test_sin_carpeta_no_lanza_agy_desprotegido(self):
         instancia = claude_cli.ClaudeCLI({})
         instancia.config = config()
         encargo = motor.Encargo(prompt="Haz la tarea", modelo="antigravity", modelo_id="",
                                 cliente="antigravity")
-        argv = instancia.argv(encargo)
-        self.assertEqual(argv, ["agy", "--print-timeout", "0", "-p", "Haz la tarea"])
-        with mock.patch("shutil.which", return_value=None):
-            self.assertIn("«agy»", instancia.comprobar(encargo))
+        with self.assertRaises(sandbox.SandboxNoDisponible):
+            instancia.argv(encargo)
+        self.assertIn("no se lanzará", instancia.comprobar(encargo))
+
+    def test_con_carpeta_lanza_la_jaula(self):
+        instancia = claude_cli.ClaudeCLI({})
+        instancia.config = config()
+        encargo = motor.Encargo(prompt="Haz la tarea", modelo="antigravity", modelo_id="",
+                                cliente="antigravity", directorio="/p/wt", tarea_id="t1")
+        ajustes = sandbox.ajustes_claude(["/p/wt"])
+        hecho = {"carpetas": ["/p/wt"], "ramas": ["main"],
+                 "encerrado": {"activo": True, "cliente": "antigravity", "ajustes": ajustes,
+                               "entorno": {}, "avisos": []}}
+        with mock.patch.object(instancia, "_armado", return_value=hecho):
+            argv = instancia.argv(encargo)
+        self.assertEqual(Path(argv[0]).name, "bwrap")
+        self.assertEqual(argv[-2:], ["-p", mock.ANY])
+        self.assertIn("Haz la tarea", argv[-1])
+
+
+@unittest.skipUnless(shutil.which("bwrap") and sandbox.disponible_bwrap()[0],
+                     "sin bwrap o sin namespaces")
+class EnLaJaula(unittest.TestCase):
+    """Un `agy` de mentira, jamás el real: la jaula deja trabajar y bloquea el resto."""
+
+    def setUp(self):
+        self.base = Path(tempfile.mkdtemp(prefix="cotejo-b1iwpj-"))
+        self.addCleanup(shutil.rmtree, self.base, True)
+        self.trabajo = self.base / "trabajo"
+        self.fuera = self.base / "fuera"
+        self.bin = self.base / "bin"
+        for carpeta in (self.trabajo, self.fuera, self.bin):
+            carpeta.mkdir()
+        self.config = self.base / "config" / "cotejo" / "config.json"
+        self.config.parent.mkdir(parents=True)
+        self.config.write_text("original\n", encoding="utf-8")
+        self.agy = self.bin / "agy"
+        self.agy.write_text("""#!/bin/sh
+printf dentro > \"$TRABAJO/dentro\"
+printf fuera > \"$FUERA/archivo\" 2>/dev/null && echo ESCRIBIO_FUERA || echo FUERA_BLOQUEADA
+printf config > \"$CONFIG\" 2>/dev/null && echo ESCRIBIO_CONFIG || echo CONFIG_BLOQUEADA
+printf '%s\\n' \"$@\" > \"$TRABAJO/argumentos\"
+""", encoding="utf-8")
+        self.agy.chmod(0o755)
+
+    def test_el_agy_falso_escribe_solo_lo_suyo(self):
+        ajustes = sandbox.ajustes_claude([str(self.trabajo)], [str(self.config)])
+        argv = sandbox.envolver_antigravity(
+            [str(self.agy), "--dangerously-skip-permissions", "-p", "P"], ajustes, self.trabajo)
+        hecho = subprocess.run(argv, cwd=self.trabajo, capture_output=True, text=True, timeout=30,
+                               env={**os.environ, "PATH": str(self.bin) + os.pathsep + os.environ["PATH"],
+                                    "TRABAJO": str(self.trabajo), "FUERA": str(self.fuera),
+                                    "CONFIG": str(self.config)})
+        self.assertEqual(hecho.returncode, 0, hecho.stdout + hecho.stderr)
+        self.assertEqual((self.trabajo / "dentro").read_text(), "dentro")
+        self.assertIn("--dangerously-skip-permissions",
+                      (self.trabajo / "argumentos").read_text())
+        self.assertIn("FUERA_BLOQUEADA", hecho.stdout)
+        self.assertIn("CONFIG_BLOQUEADA", hecho.stdout)
+        self.assertFalse((self.fuera / "archivo").exists())
+        self.assertEqual(self.config.read_text(), "original\n")
 
 
 if __name__ == "__main__":
