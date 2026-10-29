@@ -65,7 +65,9 @@ class LanzarDesdeElBoard(base.PestanaInicio):
         parche = mock.patch.object(capacidad, "leer", return_value=dict(FOTO_CON_HUECO))
         parche.start()
         self.addCleanup(parche.stop)
-        # Ningún cliente falso se queda vivo al terminar la prueba.
+        # Ningún cliente falso se queda vivo al terminar la prueba, y su hilo vigilante se
+        # espera antes de que se borre la carpeta temporal (cotejo-lr1vj6).
+        self.addCleanup(despacho_board.esperar_vigilantes)
         self.addCleanup(lambda: [despacho_board.detener(i) for i in lanzados.todos()])
         return {"FALSO_ARGV": str(self.argv_falso), "COTEJO_MOTOR": "agente"}
 

@@ -91,9 +91,10 @@ class SinHueco(NoSePuede):
 
 # --- lo que decide ------------------------------------------------------------------------------
 
-def _anotar(tarea, elegida, **extra):
+def _anotar(tarea, elegida, archivo=None, **extra):
     return bitacora.anotar(
-        tarea=tarea.get("id"), texto=tarea.get("texto"), proyecto=tarea.get("proyecto"),
+        archivo=archivo, tarea=tarea.get("id"), texto=tarea.get("texto"),
+        proyecto=tarea.get("proyecto"),
         nivel=elegida.nivel.clave, modelo=elegida.nivel.modelo,
         modelo_id=elegida.nivel.modelo_id, por=elegida.por, regla=elegida.regla, motor=MOTOR,
         **extra)
@@ -373,6 +374,24 @@ def _tamano(ruta):
 
 # Los pids que espera un hilo de este proceso: `recoger` no se los adelanta.
 _VIGILADOS = set()
+# Los hilos de `vigilar` que siguen vivos: `esperar_vigilantes` los une (las pruebas lo usan
+# para no borrar su carpeta temporal mientras uno de ellos todavía escribe en ella).
+_HILOS = []
+_CANDADO = threading.Lock()
+
+
+def esperar_vigilantes(timeout=10):
+    """Espera hasta `timeout` segundos a que terminen los hilos de `vigilar` vivos.
+
+    Sin esto, el cleanup de una prueba puede borrar su carpeta temporal mientras el hilo del
+    «terminado» aún está escribiendo en ella (cotejo-lr1vj6). No lanza si alguno sigue vivo al
+    agotarse el tiempo: devuelve los que quedaron, para que quien llame decida."""
+    limite = time.monotonic() + timeout
+    with _CANDADO:
+        hilos = list(_HILOS)
+    for hilo in hilos:
+        hilo.join(max(0, limite - time.monotonic()))
+    return [h for h in hilos if h.is_alive()]
 
 
 def vigilar(proceso, tarea, elegida, timeout, al_terminar=None):
@@ -380,8 +399,12 @@ def vigilar(proceso, tarea, elegida, timeout, al_terminar=None):
     hace el fin (`fin`: entregó, o vuelve a Pendiente) y llama `al_terminar(estado)`. Devuelve
     el hilo."""
     _VIGILADOS.add(proceso.pid)
+    # La ruta del lanzamiento, no la de cuando el hilo despierte: al acabar pueden haberla
+    # devuelto a su sitio y el «terminado» acabaría en el archivo de la persona (cotejo-lr1vj6).
+    archivo = bitacora.ruta()
 
     def esperar():
+        registro = None
         try:
             try:
                 codigo = proceso.wait(timeout=timeout)
@@ -394,16 +417,21 @@ def vigilar(proceso, tarea, elegida, timeout, al_terminar=None):
                     proceso.wait()
                 codigo = 124
             registro = lanzados.anotar_terminado(tarea["id"], codigo, pid=proceso.pid)
-            _anotar(tarea, elegida, tomada=True, fase="terminado", ok=codigo == 0,
-                    codigo=codigo, pid=proceso.pid)
+            _anotar(tarea, elegida, archivo=archivo, tomada=True, fase="terminado",
+                    ok=codigo == 0, codigo=codigo, pid=proceso.pid)
             if registro and registro.get("fase") == lanzados.TERMINADO:
                 registro = fin(tarea["id"], proceso.pid) or registro
+            if al_terminar and registro:
+                al_terminar(lanzados.estado(registro))
         finally:
-            _VIGILADOS.discard(proceso.pid)
-        if al_terminar and registro:
-            al_terminar(lanzados.estado(registro))
+            with _CANDADO:
+                _VIGILADOS.discard(proceso.pid)
+                if hilo in _HILOS:
+                    _HILOS.remove(hilo)
 
     hilo = threading.Thread(target=esperar, name=f"lanzar-{tarea['id']}", daemon=True)
+    with _CANDADO:
+        _HILOS.append(hilo)
     hilo.start()
     return hilo
 
@@ -598,5 +626,5 @@ def pausar(tarea_id, motivo=PAUSA):
 
 
 __all__ = ["NoSePuede", "pausar", "fin", "recoger", "rechazar", "motivo_sin_entregar", "EsDeUnaPersona", "FaltaModelo", "SinHueco", "lanzar", "estado",
-           "detener", "vigilar", "decidir", "hueco", "comando", "carpetas_de_escritura",
-           "ramas_protegidas"]
+           "detener", "vigilar", "esperar_vigilantes", "decidir", "hueco", "comando",
+           "carpetas_de_escritura", "ramas_protegidas"]
