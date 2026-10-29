@@ -83,7 +83,7 @@ cotejo despachar <id>                              # tomarla a nombre de ese mod
 cotejo modelos                                     # el catálogo de niveles y modelos registrados
 cotejo revisar                                     # qué pasó con lo que se repartió
 cotejo protocolo                                   # el trato entero, para leerlo
-cotejo maestro --proyecto Cotejo --cliente claude    # abrir un agente que reparte las asignadas
+cotejo maestro --proyecto Cotejo --pedido "¿qué falta?"  # hablar con el maestro del proyecto
 cotejo importar plan plan.md --proyecto Cotejo       # qué tareas sacaría; ensayo por defecto
 cotejo importar obsidian Cotejo --detalle            # qué entradas de .cotejo/ saldrían de la nota; ensayo
 cotejo importar notion Cotejo --destino <carpeta>    # igual, desde una base de Notion
@@ -298,16 +298,20 @@ Las reglas **proponen, no autorizan**: si nadie asignó el modelo, `despachar` s
 
 ### El maestro
 
-Con un proyecto elegido en CotejoBoard, la barra del Maestro del pie lo abre. En la barra se puede escribir una indicación opcional («solo las de la v1.2.4», «primero las de la web») que el maestro lee al abrirse; acota qué reparte y en qué orden, pero no le deja saltarse ninguna regla. **Abrir maestro** (o Enter; con texto el botón dice **Enviar al maestro**) usa el último cliente con que se abrió, y la flecha del mismo botón despliega todos los instalados —Claude Code, OpenCode, Codex, Gemini CLI, Antigravity CLI— para elegir otro. Al abrir el maestro se abre **en una terminal nueva que se ve** con una primera instrucción: ser el maestro de ese proyecto. Lo mismo desde la CLI:
+Con un proyecto elegido en CotejoBoard, el maestro es **una conversación dentro del board**: le escribes en la barra del pie, en llano, y la conversación sube encima del tablero con lo que le dijiste, lo que va haciendo mientras contesta y su respuesta. Nunca se abre una terminal. Sirve para tres cosas:
+
+- **Añadir tareas**: «apunta que falta el login» → las apunta en el proyecto (`cotejo crear`) y salen en Pendiente al contestar.
+- **Preguntar por el proyecto**: «¿qué falta para la 0.1.0?», «¿cómo va?», «¿qué hace la pieza Fuente?» → lo mira con la CLI (tareas, contexto, arquitectura) y, si hace falta, lee el código, sin tocarlo.
+- **Repartir lo asignado**: «reparte lo asignado» → propone las pendientes que **una persona asignó a un modelo** y su respuesta trae un botón **Repartir**, que las pasa a Haciendo como si las arrastraras: cada una con su agente, su worktree y su ficha en vivo, y la capacidad de la máquina manda. El maestro no lanza nada por su cuenta, y lo que proponga que no esté asignado no sale en el botón.
+
+**Enviar** (o Enter) usa el último agente elegido; la flecha del mismo botón despliega los instalados —Claude Code, OpenCode, Codex, Gemini CLI, Antigravity CLI— y elegir uno **solo lo elige**. Con la barra vacía, el botón enseña u oculta la conversación de ese proyecto; «Empezar de nuevo» la borra. Cada mensaje es un turno del agente **sin interfaz** que solo puede leer y correr `cotejo` (Claude con `--allowedTools Bash(cotejo:*)`; Codex en su sandbox, escribiendo solo donde van las tareas; OpenCode con `edit` y todo el shell en `deny` salvo `cotejo`; Gemini con `run_shell_command(cotejo)`; Antigravity en la jaula de Cotejo). La conversación se guarda en la carpeta de estado (`maestro/<proyecto>.json`) y viaja recortada en cada turno. Lo mismo desde la CLI, que espera la respuesta:
 
 ```sh
-cotejo maestro --proyecto Cotejo --cliente opencode [--modelo opencode-go/kimi-k3] [--indicacion "..."] [--simular]
-cotejo maestro --clientes            # cuáles sabe abrir y cuáles están instalados
+cotejo maestro --proyecto Cotejo --pedido "¿qué falta?" [--cliente opencode] [--modelo …] [--olvidar] [--simular]
+cotejo maestro --clientes            # con cuáles sabe hablar y cuáles están instalados
 ```
 
-El maestro reparte **solo las tareas pendientes que una persona asignó a un modelo** (`#agente/<modelo>`, lo mismo que `plan --solo-asignadas`): cada una con `despachar --motor headless`, que lanza el cliente de ese modelo. Después comprueba que cada modelo entregó; si uno no pudo —se quedó sin permisos, se cortó—, mira qué hizo y entrega con evidencia o bloquea con el motivo. No usa `--auto` ni `--modelo`, y tampoco finaliza: `[x]` sigue siendo tuyo. Sin tareas asignadas no se abre nada, y el aviso dice cómo asignarlas.
-
-Se abre en una terminal y no en segundo plano por la misma razón por la que el motor por defecto no lanza nada: el trabajo que nadie ve es el que no se quería. Si el proyecto no tiene carpeta en `enrutador.proyectos`, la instrucción le pide al maestro que te pregunte dónde trabajar antes de despachar.
+Tampoco entrega ni finaliza: `[x]` sigue siendo tuyo. Si el proyecto no tiene carpeta conocida (ni en `enrutador.proyectos` ni en su fuente), el maestro lo dice en vez de buscar el código.
 
 Para que un modelo que trabaja sin interfaz pueda editar archivos y correr `cotejo entregar`, su cliente tiene que tener permisos: `motores.headless.argumentos_extra` para Claude (por ejemplo `["--permission-mode", "acceptEdits", "--allowedTools", "Bash(cotejo:*)"]`) y `motores.headless.clientes.<cliente>.argumentos_extra` para los demás. Cotejo no pone ninguno por su cuenta: qué puede tocar un modelo sin que lo mires lo decides tú.
 
@@ -638,7 +642,7 @@ Los ajustes del enrutador van en ese mismo archivo, bajo la clave `enrutador` �
 - `proyectos`: en qué carpeta trabaja el agente para cada proyecto. Sin entrada, corre donde estés.
 - `modelos`: catálogo de modelos añadidos por clientes de IA. Cada entrada tiene `clave`, `modelo_id`, `cliente` y `nivel`; se gestiona con `cotejo modelos agregar` y `modelos quitar`.
 - `reglas_extra` y `reglas_apagadas`: las reglas propias ganan a las de fábrica, y cualquiera de fábrica se apaga por su nombre (`cotejo config` las lista).
-- `maestro`: `terminal` es con qué se abre. Sin entrada, sale de la plataforma: `["xdg-terminal-exec"]` en Linux, `["cmd", "/c", "start", ""]` en Windows; con otra, por ejemplo `["alacritty", "-e"]`. `modelos` es el modelo con que se abre cada cliente (`{"claude": "opus"}`; sin entrada, el que ese cliente tenga por defecto).
+- `maestro`: `modelos` es el modelo con que habla el maestro en cada cliente (`{"claude": "opus"}`; sin entrada, el que ese cliente tenga por defecto), `timeout_seg` cuánto espera cada turno (600) y `argumentos_extra.<cliente>` lo que se le añade (solo añade: sus permisos van siempre). `terminal` ya no es del maestro: es con qué se abre una preparación que se colgó («abrir en una terminal»). Sin entrada, sale de la plataforma: `["xdg-terminal-exec"]` en Linux, `["cmd", "/c", "start", ""]` en Windows.
 - `motores.headless.clientes.<cliente>`: `comando` y `argumentos_extra` para lanzar un cliente que no es Claude.
 - `motores.headless.aislar` (`true` por defecto) y `motores.headless.memoria_max` (`"50%"` por defecto): el scope de systemd en que corre cada headless y su tope de memoria. `memoria_max` admite el porcentaje que entiende systemd —de la RAM física del equipo, para no tener que adivinar cuánta tiene quien instale Cotejo— o un valor absoluto (`"2G"`, `"512M"`). `aislar: false` lo apaga sin tocar nada más.
 - `COTEJO_MOTOR` fija el motor en una sola invocación, y es lo que impide que las pruebas llamen a un modelo por descuido.

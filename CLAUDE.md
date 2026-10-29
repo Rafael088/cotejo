@@ -6,7 +6,7 @@ antes de tocar nada.
 ## Antes de empezar
 
 ```sh
-python3 -m unittest discover pruebas   # 2007, deben estar todas en verde
+python3 -m unittest discover pruebas   # 2218, deben estar todas en verde
 tareas-obsidian evaluar | head -3      # 85,7 % y 0 abaratados
 git log --oneline | head -3
 git status --short                     # si no está limpio, averigua por qué antes de seguir
@@ -344,6 +344,26 @@ sin volver a tomarla, con el encargo (sin repetir motivo ni evidencia), la nota 
 vuelve a Pendiente con el rechazo guardado y el siguiente lanzamiento lo lleva mientras no haya
 una entrega más nueva (`retomar.rechazo_vigente`).
 
+`enrutador/conversacion.py` es **el maestro como conversación** (v1.3.0, cotejo-9ybn1a). La
+barra del pie (`tareas/app/maestro.py`) le manda lo que escribe la persona a
+`verbos.hablar_maestro` → `apertura.hablar`, que arma el turno (`apertura.armar`: proyecto,
+pendientes asignadas, carpeta de `fuente.carpeta_de`, instrucción con la conversación de
+`maestro.instruccion`) y lo lanza sin interfaz por `motores/fondo.lanzar_aparte` (stdout y stderr
+aparte: la respuesta de Codex es su stdout). La conversación de cada proyecto vive en
+`<estado>/maestro/<proyecto>.json` y viaja entera, recortada (`TURNOS_DE_MEMORIA`), en cada turno:
+no todos los clientes documentan cómo retomar su sesión sin interfaz. Un hilo espera el turno, lo
+anota con lo que propuso repartir y el board repinta y refresca (lo apuntado sale en el tablero);
+un turno con el proceso muerto se cierra al leer. Permisos por cliente en `conversacion.comando`:
+Claude `--allowedTools Bash(cotejo:*)`, `Edit`/`Write` vedados y `--setting-sources user`; Codex
+`workspace-write` con la carpeta de las tareas como directorio de trabajo y la de estado (el código
+queda en solo lectura); OpenCode `edit: deny` y `bash` todo `deny` salvo `cotejo`, sin MCP ni
+plugins del proyecto; Gemini `run_shell_command(cotejo)` y sin lo de su `.gemini/`; Antigravity en
+la jaula de bwrap o no habla. Todos con la config vedada y el mismo `cotejo` del board. El panel
+(`tareas/app/conversacion.py`, `PanelMaestro`) es un `Gtk.Revealer` sobre el pie; «Repartir» va
+por `mover`. La CLI es la misma: `cotejo maestro --proyecto X --pedido "…"` espera la respuesta.
+`pruebas/test_maestro_conversacion.py` (sin GTK) y `pruebas/test_barra_maestro.py` (board de
+verdad) lo prueban de punta a punta con `cliente_falso.py`.
+
 `tareas/revisar_plan.py` es «Revisar el plan» (v1.3.0, cotejo-m195bn), sin GTK; la pinta
 `tareas/app/revisar_plan.py`, una página más de la pila (`"plan"`) a la que lleva el botón de
 Preparando (`Board.revisar_plan(estado)`). Enseña objetivo y siguiente paso (de `proyecto.md`),
@@ -476,18 +496,29 @@ sea un verbo de la CLI no es una tool. Su única bandera, `--perfil nucleo|compl
 - **El motor por defecto es `agente`, que no lanza nada.** El trabajo lo hace un agente vivo.
   `headless` (`claude -p`) existe para lo desatendido y hay que pedirlo: que el defecto mande
   trabajo a un proceso que nadie ve es justo lo que no se quería.
-- **Las excepciones son dos, y las pide una persona en el board.** Preparar un proyecto
+- **Las excepciones son tres, y las pide una persona en el board.** Preparar un proyecto
   (dec-hgq7, decisión del inicio en la app, v1.3.0): `enrutador/preparar.py` lanza el agente sin
   interfaz solo para eso, con el progreso a la vista en el board y aviso por la barra al
   terminar; si se cuelga o falla, se ofrece reintentar o abrirlo en una terminal que se ve. Y
   mover a mano una tarea de Pendiente a Haciendo (cotejo-7xsjb8): `enrutador/despacho_board.py`
-  la lanza con su modelo asignado y lo que hace se ve en vivo en su ficha. Nada más usa
-  `motores/fondo.py`, y ninguna de las dos lanza nada que la persona no haya pedido.
-- **El maestro se abre en una terminal que se ve, y solo reparte lo asignado.** `maestro` (y el
-  botón del board) abre un cliente con una instrucción que despacha las tareas con
-  `#agente/<modelo>` puestas por una persona; ni `--auto` ni `--modelo`. Abrirlo en segundo
-  plano sería el «proceso que nadie ve» de arriba. `enrutador/maestro.py` arma la instrucción
-  sin E/S; lo que abre la terminal está en `motores/terminal.py`.
+  la lanza con su modelo asignado y lo que hace se ve en vivo en su ficha. Y cada mensaje al
+  maestro (cotejo-9ybn1a): `enrutador/conversacion.py` lanza un turno que solo corre `cotejo`,
+  con la conversación a la vista. Nada más usa `motores/fondo.py`, y ninguna de las tres lanza
+  nada que la persona no haya pedido.
+- **El maestro es una conversación dentro del board, nunca una terminal, y solo propone
+  repartir lo asignado** (decisión del dueño del 2026-10-27, cotejo-9ybn1a; antes «se abre en
+  una terminal que se ve»). Por qué cambió: la terminal era una ventana fuera de la app que
+  quien no programa no sabe leer, interrumpir ni cerrar sin miedo, y lo que hacía ahí el board
+  no lo veía; la regla vieja quería evitar el «proceso que nadie ve», y eso se cumple mejor con
+  la conversación a la vista en el board —lo que dice, cada `cotejo` que corre y su respuesta—
+  que con una terminal aparte. Cada mensaje es un turno sin interfaz que **solo lee y corre
+  `cotejo`** (`conversacion.comando`, con los permisos de cada cliente; ninguno edita
+  archivos), lo pide siempre una persona escribiendo, y el maestro **no lanza agentes**: para
+  repartir termina con `REPARTIR: <ids>`, Cotejo filtra a las pendientes con `#agente/<modelo>`
+  puestas por una persona (`maestro.pedidas`) y el board enseña un botón que las mueve a
+  Haciendo por `Movimientos.mover`, con todas sus reglas. Ni `--auto` ni `--modelo`, ni
+  despachar, ni entregar, ni finalizar. `enrutador/maestro.py` arma la instrucción sin E/S;
+  `motores/terminal.py` ya solo lo usa preparar («abrir en una terminal» si se cuelga).
 - **Cada modelo se lanza con su cliente** (`enrutador/clientes.py`), no siempre con `claude`. Un
   motor que no puede lanzar un encargo lo dice en `comprobar()`, que `despachar` llama **antes**
   de tomar la tarea.

@@ -29,7 +29,8 @@ ESQUEMA = 1
 # de Cotejo (qué fuente, qué vault) y no se toca desde aquí.
 CLAVE = "enrutador"
 
-# Con qué se abre el maestro (`enrutador.maestro.terminal`) si la config no dice otra, según el
+# La terminal que se abre (`enrutador.maestro.terminal`, preparar «en una terminal») si la
+# config no dice otra, según el
 # sistema. `xdg-terminal-exec` pide al escritorio la terminal preferida del usuario por el portal
 # XDG; no existe en Windows, que no tiene un equivalente estándar, pero sí tiene `start`: abre una
 # consola nueva y visible sin que Cotejo tenga que adivinar qué terminal hay instalada. El `""`
@@ -41,7 +42,7 @@ TERMINAL_POR_SISTEMA = {
 
 
 def _terminal_por_defecto():
-    """La terminal del maestro para este sistema.
+    """La terminal para este sistema (el maestro ya no abre ninguna: la usa preparar).
 
     Se calcula al llamar `cargar()`, nunca al importar: es lo que deja que una prueba finja otra
     plataforma (`mock.patch.object(rutas.sys, "platform", ...)`) y vea el defecto que le tocaría,
@@ -63,10 +64,12 @@ DEFECTOS = {
         "headless": {"comando": ["claude"], "argumentos_extra": [], "timeout_seg": 1800,
                      "aislar": True, "memoria_max": "50%"},
     },
-    # El agente que reparte las tareas asignadas de un proyecto (`cotejo maestro`, y el botón
-    # del board). Se abre siempre en una terminal que se ve: `terminal` es con qué (sin entrada,
-    # `_terminal_por_defecto()` según la plataforma; `cargar()` la rellena), y `modelos` el
-    # modelo con que se abre cada cliente (sin entrada, el que ese cliente tenga por defecto).
+    # El maestro de un proyecto (`cotejo maestro`, y la conversación del board, cotejo-9ybn1a):
+    # cada mensaje es un turno sin interfaz que solo corre `cotejo`. `modelos` es el modelo con
+    # que habla cada cliente (sin entrada, el que ese cliente tenga por defecto); `timeout_seg`
+    # y `argumentos_extra.<cliente>` (solo añaden) son opcionales. `terminal` ya no es suya: es
+    # con qué abre preparar una sesión «en una terminal» (sin entrada,
+    # `_terminal_por_defecto()` según la plataforma; `cargar()` la rellena).
     "maestro": {"terminal": None, "modelos": {"claude": "opus"}},
     # Preparar un proyecto nuevo en segundo plano (`enrutador/preparar.py`, v1.3.0). Corre con
     # los ajustes de `motores.headless` y además con estos argumentos por cliente: Claude sin
