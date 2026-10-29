@@ -9,6 +9,7 @@ que ya tiene su batería.
 import contextlib
 import io
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -79,6 +80,18 @@ class ResolverRepo(PruebaDeBuscar):
             "salida": "`cotejo init` se corre dentro de un repo (o con --repo apuntando a "
                       "uno). Si todavía no lo es, `git init` primero.",
             "reintentable": False})
+
+    def test_el_techo_git_para_la_busqueda(self):
+        # Una temporal dentro de un repo (o de /tmp, si /tmp lo es) no hereda ese repo.
+        from tareas import conexion
+        techo = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(techo, ignore_errors=True))
+        (techo / ".git").mkdir()
+        dentro = techo / "temporal"
+        dentro.mkdir()
+        with mock.patch.dict(os.environ, {"GIT_CEILING_DIRECTORIES": str(techo)}):
+            self.assertIsNone(conexion._raiz_git(dentro))
+        self.assertEqual(conexion._raiz_git(dentro), techo)
 
     def test_repo_con_git_pero_sin_cotejo_pide_init(self):
         # Con repo de git pero sin `.cotejo/` el arreglo es otro (`cotejo init`, no `git init`),
