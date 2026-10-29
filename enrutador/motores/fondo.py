@@ -31,3 +31,18 @@ def lanzar(comando, directorio, registro, ajustes=None, entorno=None, etiqueta="
             env={**os.environ, **(entorno or {})},
             stdin=subprocess.DEVNULL, stdout=salida, stderr=subprocess.STDOUT,
             start_new_session=True)
+
+
+def lanzar_aparte(comando, directorio, salida, errores, ajustes=None, entorno=None,
+                  etiqueta=""):
+    """Como `lanzar`, con stderr en su propio archivo. Lo usa el maestro (cotejo-9ybn1a): la
+    respuesta de un cliente sin interfaz es su stdout (Codex escribe ahí solo el mensaje
+    final y el progreso en stderr), y mezclarlos la ensuciaría."""
+    lanzar_ = aislamiento.envolver(comando, ajustes or {}, etiqueta)
+    entorno = {**(entorno or {}), **({"PWD": str(directorio)} if directorio else {})}
+    os.makedirs(os.path.dirname(salida), exist_ok=True)
+    with open(salida, "ab") as out, open(errores, "ab") as err:
+        return subprocess.Popen(
+            lanzar_, cwd=str(directorio) if directorio else None,
+            env={**os.environ, **entorno}, stdin=subprocess.DEVNULL, stdout=out, stderr=err,
+            start_new_session=True)

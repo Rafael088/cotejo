@@ -148,6 +148,8 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
         self.scroll_tablero.get_hadjustment().connect(
             "notify::page-size", lambda *_a: self.ajustar_columnas())
 
+        # La conversación con el maestro sube encima del pie (cotejo-9ybn1a).
+        cuerpo.append(self.crear_conversacion())
         self.pie = self.crear_pie()
         cuerpo.append(self.pie)
         # El dot (D5) va en un overlay sobre el tablero y el pie: no empuja ni tapa nada.

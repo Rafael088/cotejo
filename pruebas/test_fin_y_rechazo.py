@@ -55,6 +55,7 @@ class FinYRechazo(ConClienteFalso):
             parche = mock.patch.object(objetivo, atributo, valor)
             parche.start()
             self.addCleanup(parche.stop)
+        self.addCleanup(despacho_board.esperar_vigilantes)
         self.addCleanup(lambda: [despacho_board.detener(i) for i in lanzados.todos()])
 
     # --- ayudas -----------------------------------------------------------------------------

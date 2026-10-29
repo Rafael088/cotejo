@@ -92,7 +92,7 @@ class Bitacora(PruebaDeEnrutador):
         # Aquella cuenta qué pasó con la tarea y la lee el board; esta, qué pasó con el
         # reparto. Mezclarlas obligaría al board a saber qué es un modelo.
         bitacora.anotar(tarea="a", modelo="opus")
-        self.assertNotEqual(bitacora.ARCHIVO, self.bitacora)
+        self.assertNotEqual(bitacora.ruta(), self.bitacora)
         self.assertEqual(self.operaciones(), [])
 
     def test_la_salida_larga_se_recorta_y_se_dice(self):
@@ -110,7 +110,7 @@ class Bitacora(PruebaDeEnrutador):
 
     def test_una_linea_rota_no_se_lleva_por_delante_el_resto(self):
         bitacora.anotar(tarea="a")
-        with open(bitacora.ARCHIVO, "a", encoding="utf-8") as archivo:
+        with open(bitacora.ruta(), "a", encoding="utf-8") as archivo:
             archivo.write("{esto no es json\n")
         bitacora.anotar(tarea="b")
         self.assertEqual(len(bitacora.ultimos()), 2)

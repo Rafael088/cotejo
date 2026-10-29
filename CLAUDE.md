@@ -6,7 +6,7 @@ antes de tocar nada.
 ## Antes de empezar
 
 ```sh
-python3 -m unittest discover pruebas   # 2200, deben estar todas en verde
+python3 -m unittest discover pruebas   # 2244, deben estar todas en verde
 tareas-obsidian evaluar | head -3      # 85,7 % y 0 abaratados
 git log --oneline | head -3
 git status --short                     # si no está limpio, averigua por qué antes de seguir
@@ -282,7 +282,7 @@ macOS se da solo la de estado, que cuelga de ella), sus archivos (`configuracion
 en `denyWrite` y en `--disallowedTools Edit(//…)`, y el entorno lleva `COTEJO_CONFIG_VEDADA=1`,
 con la que `configuracion.guardar` y `guardar_modelos` se niegan (`ConfigVedada`, que `cli.main`
 imprime como un error más). Preparar sí la escribe (`init` registra el repo) y no pasa por aquí.
-`pruebas/test_config_vedada.py` lo prueba en bwrap. **Tampoco carga los ajustes del proyecto** (cotejo-0hgn6x): Claude va con `--setting-sources user` (`clientes.SOLO_AJUSTES_DE_LA_PERSONA`), así que un `.claude/settings.json` o `settings.local.json` del worktree —con un hook que correría fuera del sandbox— no se lee al retomar ni a media sesión; vedar `.claude` no bastaba (`denyWrite` no para un archivo que no existe, y Codex u OpenCode en el mismo worktree no pasan por el sandbox de Claude). El `CLAUDE.md` del repo y las skills de la persona siguen; las de `.claude/skills` del repo no. Con Claude de verdad: `COTEJO_PRUEBA_CLAUDE=1 python3 -m unittest discover pruebas -p test_ajustes_del_proyecto.py` (haiku). **Ni lo que el proyecto le haría arrancar a los demás** (cotejo-j42qfc, cotejo-lbwsq4): Codex va con el worktree sin confianza; OpenCode, con los servidores MCP del proyecto en `enabled: false` y, si el proyecto trae plugins o herramientas en JavaScript (`.opencode/plugin(s)`, `.opencode/tool(s)`, `plugin` en su `opencode.json`), con `OPENCODE_DISABLE_PROJECT_CONFIG` (se pierde su `AGENTS.md` en ese lanzamiento); Gemini CLI, que solo corre sin interfaz en un espacio de confianza y con ella lee el `.gemini/settings.json` del worktree, con `--allowed-mcp-server-names` y los servidores de la persona (`_gemini_sin_lo_del_proyecto`), y si ese archivo trae hooks, `tools.discoveryCommand`/`callCommand` o rutas de políticas —nada los apaga sin llevarse los de la persona—, con `GEMINI_CLI_TRUST_WORKSPACE=false`: no arranca. Con los clientes de verdad, sin modelo: `COTEJO_PRUEBA_CLIENTES=1 python3 -m unittest discover pruebas -p test_config_gemini_opencode.py` (la sesión de Gemini va sin red, con `unshare -rn`). Lleva `GH_TOKEN` (de `gh auth token`: el llavero no se alcanza desde
+`pruebas/test_config_vedada.py` lo prueba en bwrap. **Tampoco carga los ajustes del proyecto** (cotejo-0hgn6x): Claude va con `--setting-sources user` (`clientes.SOLO_AJUSTES_DE_LA_PERSONA`), así que un `.claude/settings.json` o `settings.local.json` del worktree —con un hook que correría fuera del sandbox— no se lee al retomar ni a media sesión; vedar `.claude` no bastaba (`denyWrite` no para un archivo que no existe, y Codex u OpenCode en el mismo worktree no pasan por el sandbox de Claude). El `CLAUDE.md` del repo y las skills de la persona siguen; las de `.claude/skills` del repo no. Con Claude de verdad: `COTEJO_PRUEBA_CLAUDE=1 python3 -m unittest discover pruebas -p test_ajustes_del_proyecto.py` (haiku). **Ni lo que el proyecto le haría arrancar a los demás** (cotejo-j42qfc, cotejo-lbwsq4): Codex va con el worktree sin confianza; OpenCode, con los servidores MCP del proyecto en `enabled: false` y, si el proyecto trae plugins o herramientas en JavaScript (`.opencode/plugin(s)`, `.opencode/tool(s)`, `plugin` en su `opencode.json`), con `OPENCODE_DISABLE_PROJECT_CONFIG` (se pierde su `AGENTS.md` en ese lanzamiento); Gemini CLI, que solo corre sin interfaz en un espacio de confianza y con ella lee el `.gemini/settings.json` del worktree, con `--allowed-mcp-server-names` y los servidores de la persona (`_gemini_sin_lo_del_proyecto`), y si ese archivo trae hooks, `tools.discoveryCommand`/`callCommand` o rutas de políticas —nada los apaga sin llevarse los de la persona—, con `GEMINI_CLI_TRUST_WORKSPACE=false`: no arranca. Con la confianza Gemini carga además el primer `.env` (o `.gemini/.env`) que encuentra subiendo desde el worktree y añade las variables que no existan (cotejo-4gvdy5): una `BASH_ENV` ahí corría un archivo del repo antes de cada `bash -c`, por debajo de los prohibidos y las guardas. `enrutador/gemini_env.py` define antes, vacías, las de `gemini_env.VEDADAS` (+ `VEDADAS_PREFIJOS`: shells, `LD_*`, `NODE_*`, `GIT_*`, `PYTHON*`, proxies…) que traiga un `.env` que no es de la casa de la persona; las demás (`GEMINI_API_KEY`, `DATABASE_URL`…) siguen. Codex solo lee `~/.codex/.env` y OpenCode va compilado con `autoloadDotenv: false`: no cargan el del proyecto. Preparar no lo mira (la carpeta es de la persona). `COTEJO_PRUEBA_CLIENTES=1 python3 -m unittest discover pruebas -p test_env_del_proyecto.py` lo prueba con los tres CLI, sin modelo. Con los clientes de verdad, sin modelo: `COTEJO_PRUEBA_CLIENTES=1 python3 -m unittest discover pruebas -p test_config_gemini_opencode.py` (la sesión de Gemini va sin red, con `unshare -rn`). Lleva `GH_TOKEN` (de `gh auth token`: el llavero no se alcanza desde
 el sandbox) y `COTEJO_SANDBOX=1`, con el que la guarda de `git` quita el `-u` de un push. Sin
 bwrap/socat (o sin espacio de nombres, o en Windows) no se pide y el registro guarda
 `sandbox.activo: false` con el motivo; `lanzar.sandbox: false` lo apaga. Para ver lo que hace,
@@ -343,6 +343,26 @@ sin volver a tomarla, con el encargo (sin repetir motivo ni evidencia), la nota 
 «Lo que te pidieron cambiar» (`retomar.armar_rechazo`). Si no se puede lanzar (sin hueco…),
 vuelve a Pendiente con el rechazo guardado y el siguiente lanzamiento lo lleva mientras no haya
 una entrega más nueva (`retomar.rechazo_vigente`).
+
+`enrutador/conversacion.py` es **el maestro como conversación** (v1.3.0, cotejo-9ybn1a). La
+barra del pie (`tareas/app/maestro.py`) le manda lo que escribe la persona a
+`verbos.hablar_maestro` → `apertura.hablar`, que arma el turno (`apertura.armar`: proyecto,
+pendientes asignadas, carpeta de `fuente.carpeta_de`, instrucción con la conversación de
+`maestro.instruccion`) y lo lanza sin interfaz por `motores/fondo.lanzar_aparte` (stdout y stderr
+aparte: la respuesta de Codex es su stdout). La conversación de cada proyecto vive en
+`<estado>/maestro/<proyecto>.json` y viaja entera, recortada (`TURNOS_DE_MEMORIA`), en cada turno:
+no todos los clientes documentan cómo retomar su sesión sin interfaz. Un hilo espera el turno, lo
+anota con lo que propuso repartir y el board repinta y refresca (lo apuntado sale en el tablero);
+un turno con el proceso muerto se cierra al leer. Permisos por cliente en `conversacion.comando`:
+Claude `--allowedTools Bash(cotejo:*)`, `Edit`/`Write` vedados y `--setting-sources user`; Codex
+`workspace-write` con la carpeta de las tareas como directorio de trabajo y la de estado (el código
+queda en solo lectura); OpenCode `edit: deny` y `bash` todo `deny` salvo `cotejo`, sin MCP ni
+plugins del proyecto; Gemini `run_shell_command(cotejo)` y sin lo de su `.gemini/`; Antigravity en
+la jaula de bwrap o no habla. Todos con la config vedada y el mismo `cotejo` del board. El panel
+(`tareas/app/conversacion.py`, `PanelMaestro`) es un `Gtk.Revealer` sobre el pie; «Repartir» va
+por `mover`. La CLI es la misma: `cotejo maestro --proyecto X --pedido "…"` espera la respuesta.
+`pruebas/test_maestro_conversacion.py` (sin GTK) y `pruebas/test_barra_maestro.py` (board de
+verdad) lo prueban de punta a punta con `cliente_falso.py`.
 
 `tareas/revisar_plan.py` es «Revisar el plan» (v1.3.0, cotejo-m195bn), sin GTK; la pinta
 `tareas/app/revisar_plan.py`, una página más de la pila (`"plan"`) a la que lleva el botón de
@@ -476,18 +496,29 @@ sea un verbo de la CLI no es una tool. Su única bandera, `--perfil nucleo|compl
 - **El motor por defecto es `agente`, que no lanza nada.** El trabajo lo hace un agente vivo.
   `headless` (`claude -p`) existe para lo desatendido y hay que pedirlo: que el defecto mande
   trabajo a un proceso que nadie ve es justo lo que no se quería.
-- **Las excepciones son dos, y las pide una persona en el board.** Preparar un proyecto
+- **Las excepciones son tres, y las pide una persona en el board.** Preparar un proyecto
   (dec-hgq7, decisión del inicio en la app, v1.3.0): `enrutador/preparar.py` lanza el agente sin
   interfaz solo para eso, con el progreso a la vista en el board y aviso por la barra al
   terminar; si se cuelga o falla, se ofrece reintentar o abrirlo en una terminal que se ve. Y
   mover a mano una tarea de Pendiente a Haciendo (cotejo-7xsjb8): `enrutador/despacho_board.py`
-  la lanza con su modelo asignado y lo que hace se ve en vivo en su ficha. Nada más usa
-  `motores/fondo.py`, y ninguna de las dos lanza nada que la persona no haya pedido.
-- **El maestro se abre en una terminal que se ve, y solo reparte lo asignado.** `maestro` (y el
-  botón del board) abre un cliente con una instrucción que despacha las tareas con
-  `#agente/<modelo>` puestas por una persona; ni `--auto` ni `--modelo`. Abrirlo en segundo
-  plano sería el «proceso que nadie ve» de arriba. `enrutador/maestro.py` arma la instrucción
-  sin E/S; lo que abre la terminal está en `motores/terminal.py`.
+  la lanza con su modelo asignado y lo que hace se ve en vivo en su ficha. Y cada mensaje al
+  maestro (cotejo-9ybn1a): `enrutador/conversacion.py` lanza un turno que solo corre `cotejo`,
+  con la conversación a la vista. Nada más usa `motores/fondo.py`, y ninguna de las tres lanza
+  nada que la persona no haya pedido.
+- **El maestro es una conversación dentro del board, nunca una terminal, y solo propone
+  repartir lo asignado** (decisión del dueño del 2026-10-27, cotejo-9ybn1a; antes «se abre en
+  una terminal que se ve»). Por qué cambió: la terminal era una ventana fuera de la app que
+  quien no programa no sabe leer, interrumpir ni cerrar sin miedo, y lo que hacía ahí el board
+  no lo veía; la regla vieja quería evitar el «proceso que nadie ve», y eso se cumple mejor con
+  la conversación a la vista en el board —lo que dice, cada `cotejo` que corre y su respuesta—
+  que con una terminal aparte. Cada mensaje es un turno sin interfaz que **solo lee y corre
+  `cotejo`** (`conversacion.comando`, con los permisos de cada cliente; ninguno edita
+  archivos), lo pide siempre una persona escribiendo, y el maestro **no lanza agentes**: para
+  repartir termina con `REPARTIR: <ids>`, Cotejo filtra a las pendientes con `#agente/<modelo>`
+  puestas por una persona (`maestro.pedidas`) y el board enseña un botón que las mueve a
+  Haciendo por `Movimientos.mover`, con todas sus reglas. Ni `--auto` ni `--modelo`, ni
+  despachar, ni entregar, ni finalizar. `enrutador/maestro.py` arma la instrucción sin E/S;
+  `motores/terminal.py` ya solo lo usa preparar («abrir en una terminal» si se cuelga).
 - **Cada modelo se lanza con su cliente** (`enrutador/clientes.py`), no siempre con `claude`. Un
   motor que no puede lanzar un encargo lo dice en `comprobar()`, que `despachar` llama **antes**
   de tomar la tarea.

@@ -50,8 +50,8 @@ pregunta antes de despachar o usa `--modelo <clave>` para una decisión puntual.
 Con el motor por defecto (`agente`) Cotejo no lanza nada: devuelve el encargo al cliente que está
 trabajando. Con `despachar <id> --motor headless` sí lanza **el cliente del modelo** —`opencode run
 -m <modelo-id>`, `codex exec -m`, `gemini -p`, `agy -p --model`, `claude -p`—, así que `cliente`
-tiene que ser uno de los que sabe abrir (`cotejo maestro --clientes`). Es lo que usa el maestro de
-un proyecto (`cotejo maestro --proyecto X`) para repartir las tareas asignadas.
+tiene que ser uno de los que sabe lanzar (`cotejo maestro --clientes`). Es lo que usa el board al
+repartir las tareas asignadas (también las que propone el maestro del proyecto).
 
 ## Quitar un modelo
 
