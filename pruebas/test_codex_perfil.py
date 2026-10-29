@@ -67,6 +67,7 @@ class Perfil(unittest.TestCase):
         datos = perfil(self.argv())
         self.assertEqual(datos["extends"], ":workspace")
         self.assertEqual(datos["filesystem"], {
+            ":slash_tmp": "deny",
             "/w/t": "write", "/r/.git": "write", "/e": "write", "/r/.cotejo": "write",
             "/r/.git/hooks": "read", "/r/.git/config": "read", "/e/wt/otra": "read"})
 
@@ -127,6 +128,13 @@ class SandboxDe(unittest.TestCase):
     def test_apagar_el_de_claude_no_le_quita_el_perfil(self):
         self.assertTrue(self.de({"lanzar": {"sandbox": False}})["activo"])
 
+    def test_el_temporal_va_al_estado_y_no_a_tmp(self):
+        encerrado = self.de()
+        entorno = armado.entorno(clientes.de("codex"), ["/w/t"], "main", encerrado)
+        temporal = self.tmp / "estado" / "agente" / "tmp"
+        self.assertEqual(entorno["TMPDIR"], str(temporal))
+        self.assertTrue(temporal.is_dir())
+
     def test_en_windows_como_antes(self):
         with mock.patch.object(armado.os, "name", "nt"):
             self.assertFalse(self.de()["activo"])
@@ -167,6 +175,9 @@ class ConCodexDeVerdad(unittest.TestCase):
         base.mkdir(exist_ok=True)
         self.tmp = Path(tempfile.mkdtemp(prefix="cotejo-codex-perfil-", dir=base))
         self.addCleanup(shutil.rmtree, self.tmp, True)
+        # Como el board: el temporal fuera de /tmp, que el perfil niega (cotejo-wwrzyf).
+        self.temporal = self.tmp / "tmp"
+        self.temporal.mkdir()
         entorno = mock.patch.dict(os.environ, {"COTEJO_ESTADO": str(self.tmp / "estado"),
                                                "COTEJO_CONFIG": str(self.tmp / "c" / "c.json")})
         entorno.start()
@@ -206,7 +217,8 @@ class ConCodexDeVerdad(unittest.TestCase):
             limpias.append(a)
         return subprocess.run(["codex", "sandbox", "-P", clientes.PERFIL_CODEX, *limpias,
                                "-C", str(self.wt), "--", "bash", "-c", guion],
-                              cwd=self.wt, capture_output=True, text=True, timeout=120)
+                              cwd=self.wt, capture_output=True, text=True, timeout=120,
+                              env={**os.environ, "TMPDIR": str(self.temporal)})
 
     def test_commitea_y_escribe_la_tarea_y_nada_mas(self):
         git_repo = self.repo / ".git"
@@ -216,9 +228,11 @@ class ConCodexDeVerdad(unittest.TestCase):
             f" touch {git_repo}/hooks/pre-commit && echo HOOK;"
             f" echo x >> {git_repo}/config && echo CONFIG;"
             f" touch {self.otro}/z && echo OTRO;"
-            f" touch {self.repo}/z && echo REPO")
+            f" touch {self.repo}/z && echo REPO;"
+            " touch /tmp/cotejo-perfil-probe && echo TMP")
         lineas = hecho.stdout.split()
         self.assertEqual(lineas, ["C", "T"], hecho.stdout + hecho.stderr)
+        self.assertFalse(Path("/tmp/cotejo-perfil-probe").exists())
         self.assertIn("hecho", git(self.wt, "log", "--oneline", "-1").stdout)
 
     @unittest.skipUnless(shutil.which("firefox"), "sin firefox")
