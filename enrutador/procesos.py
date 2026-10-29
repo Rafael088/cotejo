@@ -9,6 +9,10 @@ Un pid se recicla. Por eso, donde se puede mirar qué programa es (`/proc/<pid>/
 Linux), un pid vivo que ya es otro programa cuenta como muerto. Donde no, vivo es vivo: más vale
 una «trabajando» de más que dar por perdida una tarea que alguien sigue haciendo.
 
+Con `systemd-run --scope` de por medio hay un instante en que el pid ya es el del cliente pero
+su `/proc/<pid>/cmdline` todavía es el del envoltorio («systemd-run … -- cliente»): ese caso
+también cuenta como vivo, o el board diría «murió» justo al lanzar (cotejo-ovw2xt).
+
 En Windows no se usa `os.kill(pid, 0)`: allí la señal 0 es CTRL_C_EVENT y la mandaría de verdad.
 """
 
@@ -84,7 +88,19 @@ def _es_el_mismo(pid, programa):
     nombre = Path(programa).name
     # El cliente puede ser un script (`node …/claude`, `python …/codex`): basta con que el
     # nombre esté en cualquiera de las primeras palabras.
-    return any(Path(p).name == nombre for p in partes[:3])
+    if any(Path(p).name == nombre for p in partes[:3]):
+        return True
+    # `systemd-run --scope` hace `execve` sobre sí mismo, pero entre que `Popen` vuelve del
+    # `fork` y ese exec termina, `/proc/<pid>/cmdline` todavía dice «systemd-run … -- cliente»:
+    # ahí el pid ya es el del cliente aunque su argv aún sea el del envoltorio. Sin esto,
+    # `lanzados.estado` lo daba por muerto justo al lanzar (cotejo-ovw2xt).
+    if partes and Path(partes[0]).name == "systemd-run":
+        try:
+            resto = partes[partes.index("--") + 1:]
+        except ValueError:
+            return False
+        return any(Path(p).name == nombre for p in resto[:3])
+    return False
 
 
 def _vivo_en_windows(pid):
