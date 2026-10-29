@@ -1,33 +1,44 @@
-"""La barra del maestro: elegir cliente y abrirlo con la indicación."""
+"""El maestro en el board: la barra del pie y la conversación que sube encima (cotejo-9ybn1a).
 
-from gi.repository import Adw, Gtk
+La persona le escribe en llano y ve la conversación en la app: añade tareas, contesta sobre el
+proyecto y propone repartir lo asignado. Nunca se abre una terminal: cada mensaje es un turno
+sin interfaz (`enrutador/conversacion.py`, por `verbos.hablar_maestro`) que el board sigue en
+vivo. Repartir lo hace el board al pulsar el botón, por el mismo camino que mover la carta a
+Haciendo (`Movimientos.mover`): su agente, su worktree, su ficha en vivo y la capacidad.
+"""
 
+from gi.repository import Adw, GLib, Gtk
+
+from .. import modelo
 from . import comun
 from .comun import ESPACIADO_MD, ESPACIADO_SM, TODOS
+from .conversacion import PanelMaestro
 from .escala import px
 from .piezas import con_mano, etiquetar, icono
 
 
 # El aviso de «no hay agente» trae una instrucción: da tiempo de leerla.
 SEGUNDOS_SIN_AGENTE = 15
+# Cada cuánto se mira lo que va haciendo el maestro mientras contesta (solo entonces).
+MS_EN_VIVO = 700
 
 
 class Maestro:
-    """La barra del maestro: elegir cliente y abrirlo con la indicación."""
+    """La barra del maestro y su conversación."""
 
     def menu_maestro(self, boton):
-        """El desplegable del botón del maestro: con qué cliente abrirlo.
+        """El desplegable del botón: con qué agente habla el maestro.
 
-        Elegir uno solo lo deja como el de siempre (el botón principal recuerda el último elegido);
-        abrir el maestro es del botón o de Enter, nunca de elegir: un desplegable no debería
-        lanzar un agente sin que se pulse «Abrir maestro».
+        Elegir uno solo lo deja como el de siempre (el botón principal recuerda el último
+        elegido); enviar es del botón o de Enter, nunca de elegir: un desplegable no debería
+        lanzar un agente sin que se pulse «Enviar».
         """
         from enrutador import clientes
         caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
                        margin_top=px(ESPACIADO_SM), margin_bottom=px(ESPACIADO_SM),
                        margin_start=px(ESPACIADO_SM), margin_end=px(ESPACIADO_SM))
         popover = boton.get_popover()
-        caja.append(Gtk.Label(label="ABRIR EL MAESTRO CON", xalign=0,
+        caja.append(Gtk.Label(label="EL MAESTRO HABLA CON", xalign=0,
                               css_classes=["menu-titulo"]))
         instalados = clientes.instalados()
         actual = self.cliente_del_maestro(instalados)
@@ -49,46 +60,39 @@ class Maestro:
         popover.set_child(caja)
 
     def elegir_cliente_maestro(self, cliente, popover):
-        """Elegir solo elige: recuerda el cliente para el botón y cierra el menú, sin abrir.
-
-        Lanzar es del botón o de Enter, que usan el último elegido; si elegir lanzara, abrir el
-        desplegable para mirar dispararía un agente sin que nadie pulsara «Abrir maestro».
-        """
+        """Elegir solo elige: recuerda el agente para el botón y cierra el menú, sin enviar."""
         comun.guardar_board(cliente_maestro=cliente)
         popover.popdown()
-        self.poner_maestro()            # la ayuda del botón dice con cuál va a abrir
+        self.poner_maestro()            # la ayuda del botón dice con cuál va a hablar
 
     def cliente_del_maestro(self, instalados):
-        """El último cliente con el que se abrió el maestro, si sigue instalado; si no, el primero."""
+        """El último agente elegido para el maestro, si sigue instalado; si no, el primero."""
         recordado = comun.cargar_board().get("cliente_maestro")
         if recordado in instalados:
             return recordado
         return instalados[0] if instalados else None
 
     def barra_maestro(self):
-        """El maestro en el pie: una indicación opcional y un solo botón para abrirlo.
+        """El maestro en el pie: lo que se le dice y un solo botón para enviarlo.
 
-        Lo que se escribe no es una tarea: es lo que el maestro lee al abrirse («solo las de la
-        v1.2.4», «primero las de la web»), y se le pasa en su instrucción. Enter y el botón
-        hacen lo mismo; el desplegable del botón elige el cliente. Antes había dos botones que
-        abrían el maestro y Enter anotaba la frase como carta en Pendiente, que el maestro
-        nunca leía.
+        Enter y el botón hacen lo mismo; el desplegable del botón elige el agente. Con la caja
+        vacía, el botón enseña (u oculta) la conversación sin enviar nada.
         """
         barra = Gtk.Box(spacing=px(ESPACIADO_SM), halign=Gtk.Align.CENTER,
                         valign=Gtk.Align.CENTER, css_classes=["maestro-barra"])
         barra.append(icono("agente", 14, "maestro-chispa"))
-        self.entrada_maestro = Gtk.Entry(placeholder_text="Indicación para el maestro (opcional)",
-                                         width_chars=22, hexpand=True)
-        etiquetar(self.entrada_maestro, "Indicación para el maestro: la lee al abrirse")
+        self.entrada_maestro = Gtk.Entry(
+            placeholder_text="Pídele algo al maestro: «apunta…», «¿qué falta?», «reparte»",
+            width_chars=22, hexpand=True)
+        etiquetar(self.entrada_maestro, "Lo que le dices al maestro, en llano")
         self.entrada_maestro.connect("activate", self.al_ejecutar_maestro)
         self.entrada_maestro.connect("changed", lambda *_: self.poner_maestro())
         barra.append(self.entrada_maestro)
-        # Un botón dividido: la parte grande abre el maestro con el cliente de siempre; la
-        # flecha, el menú para elegir otro. El menú se arma al abrirlo, porque los clientes
-        # instalados pueden cambiar con el board abierto.
-        self.boton_maestro = Adw.SplitButton(label="Abrir maestro",
-                                             css_classes=["maestro-ejecutar"],
-                                             dropdown_tooltip="Elegir con qué cliente abrirlo")
+        # Un botón dividido: la parte grande envía con el agente de siempre; la flecha, el
+        # menú para elegir otro. El menú se arma al abrirlo, porque los agentes instalados
+        # pueden cambiar con el board abierto.
+        self.boton_maestro = Adw.SplitButton(label="Enviar", css_classes=["maestro-ejecutar"],
+                                             dropdown_tooltip="Elegir con qué agente habla")
         self.boton_maestro.connect("clicked", self.al_ejecutar_maestro)
         # Adw.SplitButton no tiene create_popup_func: el menú se rehace cada vez que se abre.
         popover = Gtk.Popover()
@@ -97,41 +101,146 @@ class Maestro:
         barra.append(con_mano(self.boton_maestro))
         return barra
 
+    def crear_conversacion(self):
+        """El panel de la conversación, oculto hasta que se le habla al maestro."""
+        self.panel_maestro = PanelMaestro(self.repartir_del_maestro, self.parar_maestro,
+                                          self.olvidar_maestro, self.cerrar_conversacion)
+        self.reloj_maestro = None
+        return self.panel_maestro
+
+    # --- hablar ---------------------------------------------------------------------------------
+
     def al_ejecutar_maestro(self, *_args):
         from enrutador import clientes
         instalados = clientes.instalados()
         if not instalados:
             self.aviso(clientes.SIN_AGENTE_TEXTO, segundos=SEGUNDOS_SIN_AGENTE)
             return
-        self.abrir_maestro(self.cliente_del_maestro(instalados))
+        texto = " ".join(self.entrada_maestro.get_text().split())
+        if not texto:
+            if self.panel_maestro.get_reveal_child():
+                self.cerrar_conversacion()
+            else:
+                self.ver_conversacion()
+            return
+        self.hablar_al_maestro(self.cliente_del_maestro(instalados), texto)
 
-    def abrir_maestro(self, cliente):
-        """Abre el maestro del proyecto elegido —lo mismo que `cotejo maestro --indicacion`—.
-
-        La indicación solo se borra si el maestro se abrió: si se niega (sin tareas asignadas,
-        sin terminal), lo escrito se queda para no tener que volver a teclearlo.
+    def hablar_al_maestro(self, cliente, texto):
+        """Un mensaje al maestro del proyecto elegido. Lo escrito solo se borra si salió: si
+        se niega (ya está contestando, el agente no está), se queda para no volver a teclearlo.
         """
-        from enrutador import clientes, verbos
+        from enrutador import verbos
         from ..cli import ErrorCLI
-        indicacion = " ".join(self.entrada_maestro.get_text().split())
+        # El nombre exacto llega con la respuesta del verbo; la vuelta del turno la lee aquí,
+        # y siempre después: `idle_add` corre en este mismo bucle, cuando esta función acabó.
+        destino = [self.seleccion]
         try:
-            hecho = verbos.abrir_maestro(self.seleccion, cliente, indicacion=indicacion)
+            hecho = verbos.hablar_maestro(
+                self.seleccion, texto, cliente,
+                al_terminar=lambda turno: GLib.idle_add(self.maestro_contesto, destino[0],
+                                                        turno))
         except ErrorCLI as error:
             self.aviso(f"{error.mensaje}. {error.salida}")
             return
+        destino[0] = hecho["proyecto"]
         comun.guardar_board(cliente_maestro=cliente)
         self.entrada_maestro.set_text("")
-        titulo = clientes.CLIENTES[cliente].titulo or cliente
-        cuantas = len(hecho["asignadas"])
-        self.aviso(f"{titulo} abierto como maestro de {hecho['proyecto']}: "
-                   f"{cuantas} tarea{'s' if cuantas != 1 else ''} para repartir"
-                   + (", con tu indicación" if indicacion else ""))
+        self.titulo_maestro = hecho.get("titulo") or cliente
+        self.ver_conversacion()
+
+    def maestro_contesto(self, proyecto, _turno=None):
+        """Vuelve el turno (desde el hilo que lo esperaba): lo apuntado sale en el tablero."""
+        self.app.refrescar()
+        if proyecto == self.proyecto_del_maestro():
+            self.pintar_conversacion()
+        return False
+
+    # --- la conversación ----------------------------------------------------------------------
+
+    def proyecto_del_maestro(self):
+        return None if self.seleccion == TODOS or self.fuente.problema else self.seleccion
+
+    def ver_conversacion(self):
+        if self.proyecto_del_maestro() is None:
+            return
+        self.pintar_conversacion()
+        self.panel_maestro.set_reveal_child(True)
+
+    def cerrar_conversacion(self):
+        self.panel_maestro.set_reveal_child(False)
+        self.parar_reloj_maestro()
+
+    def pintar_conversacion(self):
+        """Repinta el panel y, mientras el maestro contesta, vuelve a mirar cada poco."""
+        from enrutador import conversacion
+        proyecto = self.proyecto_del_maestro()
+        if proyecto is None:
+            self.cerrar_conversacion()
+            return False
+        datos = conversacion.leer(proyecto)
+        vivo = conversacion.en_vivo(proyecto) if datos.get("en_curso") else []
+        self.panel_maestro.pintar(proyecto, getattr(self, "titulo_maestro", ""), datos, vivo)
+        if datos.get("en_curso"):
+            if self.reloj_maestro is None:
+                self.reloj_maestro = GLib.timeout_add(MS_EN_VIVO, self.tic_maestro)
+        else:
+            self.parar_reloj_maestro()
+        return False
+
+    def tic_maestro(self):
+        self.reloj_maestro = None
+        if self.panel_maestro.get_reveal_child():
+            self.pintar_conversacion()
+        return False
+
+    def parar_reloj_maestro(self):
+        if getattr(self, "reloj_maestro", None) is not None:
+            GLib.source_remove(self.reloj_maestro)
+            self.reloj_maestro = None
+
+    def parar_maestro(self):
+        from enrutador import conversacion
+        proyecto = self.proyecto_del_maestro()
+        if proyecto is not None:
+            conversacion.parar(proyecto)
+        self.pintar_conversacion()
+
+    def olvidar_maestro(self):
+        from enrutador import conversacion
+        proyecto = self.proyecto_del_maestro()
+        if proyecto is not None:
+            conversacion.olvidar(proyecto)
+        self.pintar_conversacion()
+
+    def repartir_del_maestro(self, indice, ids):
+        """«Repartir» en una respuesta: cada una por el camino de pasarla a Haciendo a mano.
+
+        Solo las que siguen en Pendiente; las demás se dicen. Cotejo ya filtró que una persona
+        les asignó un modelo (`maestro.pedidas`), y `mover` vuelve a mirarlo al lanzar.
+        """
+        from enrutador import conversacion
+        proyecto = self.proyecto_del_maestro()
+        if proyecto is None:
+            return
+        conversacion.marcar_repartido(proyecto, indice)
+        sueltas = []
+        for ident in ids:
+            # Se busca otra vez cada vez: lanzar una repinta y relee las tareas.
+            dueno, tarea = next(((p, t) for p in self.app.proyectos if p.nombre == proyecto
+                                 for t in p.tareas if t.id == ident), (None, None))
+            if tarea is None or tarea.columna != modelo.PENDIENTE:
+                sueltas.append(ident)
+                continue
+            self.mover(dueno, tarea, "en-curso")
+        if sueltas:
+            self.aviso(f"No lancé {', '.join(sueltas)}: ya no están en Pendiente.")
+        self.pintar_conversacion()
 
     def poner_maestro(self):
-        """El maestro es de un proyecto: con «Todos los proyectos» no hay a cuál abrírselo.
+        """El maestro es de un proyecto: con «Todos los proyectos» no hay a cuál hablarle.
 
-        El botón dice qué va a pasar: «Abrir maestro» sin nada escrito, «Enviar al maestro»
-        cuando lo escrito viaja con él.
+        El botón dice qué va a pasar: «Enviar» con algo escrito, «Conversación» sin nada (la
+        enseña u oculta). Al cambiar de proyecto, la conversación abierta es la del nuevo.
         """
         sin_fuente = bool(self.fuente.problema)
         de_uno = self.seleccion != TODOS and not sin_fuente
@@ -140,15 +249,21 @@ class Maestro:
         from enrutador import clientes
         sin_agente = not clientes.instalados()
         con_texto = bool(self.entrada_maestro.get_text().strip())
-        self.boton_maestro.set_label("Enviar al maestro" if con_texto else "Abrir maestro")
+        self.boton_maestro.set_label("Enviar" if con_texto else "Conversación")
         if sin_fuente:
             ayuda = "Aún no hay de dónde leer las tareas: configura una fuente primero"
         elif not de_uno:
-            ayuda = "Elige un proyecto para abrir su maestro"
+            ayuda = "Elige un proyecto para hablar con su maestro"
         elif sin_agente:
-            ayuda = clientes.SIN_AGENTE_TEXTO   # por qué el botón no abre nada
+            ayuda = clientes.SIN_AGENTE_TEXTO   # por qué el botón no hace nada
         else:
             titulo = clientes.de(self.cliente_del_maestro(clientes.instalados())).titulo
-            ayuda = (f"Abrir el maestro en {titulo} con tu indicación" if con_texto else
-                     f"Abrir {titulo} para que reparta las tareas asignadas de este proyecto")
+            ayuda = (f"Enviárselo al maestro, que habla con {titulo}" if con_texto else
+                     "Ver la conversación con el maestro de este proyecto")
         self.boton_maestro.set_tooltip_text(ayuda)
+        panel = getattr(self, "panel_maestro", None)
+        if panel is not None and panel.get_reveal_child():
+            if de_uno:
+                self.pintar_conversacion()
+            else:
+                self.cerrar_conversacion()

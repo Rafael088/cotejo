@@ -1,16 +1,26 @@
-"""La barra del Maestro en el pie: una indicación opcional y un solo botón para abrirlo.
+"""El maestro en el board: la barra del pie y la conversación que sube encima (cotejo-9ybn1a).
 
-Construye la barra de verdad con un Board falso, sin abrir ventana. Se salta sin GTK. Lo que se
-escribe viaja al maestro como indicación (no se anota como tarea), Enter y el botón hacen lo
-mismo, y el desplegable del botón elige el cliente y lo recuerda.
+Dos partes, las dos con GTK (sin él, o sin pantalla, se saltan):
+
+- La barra con un Board falso, sin ventana: lo escrito viaja al maestro, Enter y el botón hacen
+  lo mismo, el desplegable solo elige el agente y lo recuerda, y nunca se abre una terminal.
+- De punta a punta en el board de verdad, con el cliente falso (`cliente_falso.py`) en lugar de
+  un agente: escribir «apunta…» lanza un turno sin interfaz, la conversación sube con lo que
+  dijo la persona y la respuesta, la tarea que apuntó sale en el tablero, y si propone repartir,
+  el botón «Repartir» las pasa a Haciendo por `mover`, solo las que una persona asignó.
 """
 
+import json
+import os
+import sys
 import types
 import unittest
 from unittest import mock
 
 import apoyo  # noqa: F401  (pone la raíz del repo en sys.path)
 from enrutador import clientes
+
+import test_pestana_inicio as base
 
 try:
     from tareas import app
@@ -19,20 +29,31 @@ try:
 except (ImportError, ValueError):
     HAY_GTK = False
 
+FALSO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cliente_falso.py")
+
+
+def _nunca_una_terminal(*_a, **_k):
+    raise AssertionError("el maestro no puede abrir una terminal")
+
 
 def board_falso(seleccion="Uno"):
     falso = types.SimpleNamespace(seleccion=seleccion, avisos=[],
                                   fuente=types.SimpleNamespace(problema=None))
     falso.aviso = lambda texto, segundos=4: falso.avisos.append(texto)
-    for metodo in ("barra_maestro", "al_ejecutar_maestro", "abrir_maestro", "poner_maestro",
-                   "menu_maestro", "cliente_del_maestro", "elegir_cliente_maestro"):
+    for metodo in ("barra_maestro", "al_ejecutar_maestro", "hablar_al_maestro", "poner_maestro",
+                   "menu_maestro", "cliente_del_maestro", "elegir_cliente_maestro",
+                   "crear_conversacion", "ver_conversacion", "cerrar_conversacion",
+                   "pintar_conversacion", "proyecto_del_maestro", "parar_reloj_maestro",
+                   "tic_maestro", "maestro_contesto", "parar_maestro", "olvidar_maestro",
+                   "repartir_del_maestro"):
         setattr(falso, metodo, types.MethodType(getattr(app.Board, metodo), falso))
+    falso.panel = falso.crear_conversacion()
     falso.barra = falso.barra_maestro()
     return falso
 
 
-def abierto(proyecto="Uno", asignadas=2):
-    return {"proyecto": proyecto, "asignadas": [{}] * asignadas}
+def hablado(proyecto="Uno"):
+    return {"proyecto": proyecto, "titulo": "Claude Code", "asignadas": [], "lanzado": True}
 
 
 @unittest.skipUnless(HAY_GTK, "sin GTK o sin pantalla no se puede construir la barra")
@@ -45,11 +66,15 @@ class BarraMaestro(unittest.TestCase):
             parche.start()
             self.addCleanup(parche.stop)
         self.guardado = guardado
-        parche = mock.patch("enrutador.clientes.instalados", return_value=["claude", "codex"])
-        parche.start()
-        self.addCleanup(parche.stop)
+        for parche in (mock.patch("enrutador.clientes.instalados",
+                                  return_value=["claude", "codex"]),
+                       mock.patch("enrutador.motores.terminal.abrir", _nunca_una_terminal),
+                       mock.patch("enrutador.conversacion.leer",
+                                  return_value={"proyecto": "Uno", "turnos": []})):
+            parche.start()
+            self.addCleanup(parche.stop)
 
-    def test_un_solo_boton_para_abrir_el_maestro(self):
+    def test_un_solo_boton_para_enviar(self):
         falso = board_falso()
         botones = []
         hijo = falso.boton_maestro.get_parent().get_first_child()
@@ -59,32 +84,43 @@ class BarraMaestro(unittest.TestCase):
             hijo = hijo.get_next_sibling()
         self.assertEqual(botones, [falso.boton_maestro])
 
-    def test_enter_abre_el_maestro_con_la_indicacion(self):
+    def test_enter_le_habla_al_maestro_y_sube_la_conversacion(self):
         falso = board_falso()
-        falso.entrada_maestro.set_text("  haz las tareas   de la v1.2.4 ")
-        with mock.patch("enrutador.verbos.abrir_maestro", return_value=abierto()) as abrir:
+        falso.entrada_maestro.set_text("  apunta que falta   el login ")
+        with mock.patch("enrutador.verbos.hablar_maestro", return_value=hablado()) as hablar:
             falso.entrada_maestro.emit("activate")
-        abrir.assert_called_once_with("Uno", "claude", indicacion="haz las tareas de la v1.2.4")
+        self.assertEqual(hablar.call_args.args, ("Uno", "apunta que falta el login", "claude"))
+        self.assertIn("al_terminar", hablar.call_args.kwargs)
         self.assertEqual(falso.entrada_maestro.get_text(), "")
-        self.assertIn("indicación", falso.avisos[-1])
+        self.assertTrue(falso.panel_maestro.get_reveal_child())
 
     def test_el_boton_dice_que_envia_cuando_hay_texto(self):
         falso = board_falso()
         falso.poner_maestro()
-        self.assertEqual(falso.boton_maestro.get_label(), "Abrir maestro")
-        falso.entrada_maestro.set_text("solo la web")
-        self.assertEqual(falso.boton_maestro.get_label(), "Enviar al maestro")
+        self.assertEqual(falso.boton_maestro.get_label(), "Conversación")
+        falso.entrada_maestro.set_text("qué falta")
+        self.assertEqual(falso.boton_maestro.get_label(), "Enviar")
+
+    def test_sin_texto_el_boton_ensena_y_oculta_la_conversacion(self):
+        falso = board_falso()
+        with mock.patch("enrutador.verbos.hablar_maestro") as hablar:
+            falso.al_ejecutar_maestro()
+            self.assertTrue(falso.panel_maestro.get_reveal_child())
+            falso.al_ejecutar_maestro()
+            self.assertFalse(falso.panel_maestro.get_reveal_child())
+        hablar.assert_not_called()
 
     def test_si_el_maestro_se_niega_lo_escrito_se_queda(self):
         from tareas.cli import ErrorCLI
         falso = board_falso()
         falso.entrada_maestro.set_text("solo la web")
-        with mock.patch("enrutador.verbos.abrir_maestro", side_effect=ErrorCLI("No", "Asígnalas")):
+        with mock.patch("enrutador.verbos.hablar_maestro",
+                        side_effect=ErrorCLI("Todavía está contestando", "Espera")):
             falso.al_ejecutar_maestro()
         self.assertEqual(falso.entrada_maestro.get_text(), "solo la web")
         self.assertTrue(falso.avisos)
 
-    def test_elegir_otro_cliente_solo_elige_y_lo_recuerda(self):
+    def test_elegir_otro_agente_solo_elige_y_lo_recuerda(self):
         falso = board_falso()
         falso.menu_maestro(falso.boton_maestro)
         caja = falso.boton_maestro.get_popover().get_child()
@@ -95,16 +131,15 @@ class BarraMaestro(unittest.TestCase):
                 opciones.append(hijo)
             hijo = hijo.get_next_sibling()
         self.assertEqual(len(opciones), 2)
-        with mock.patch("enrutador.verbos.abrir_maestro") as abrir:
+        with mock.patch("enrutador.verbos.hablar_maestro") as hablar:
             opciones[1].emit("clicked")
-        abrir.assert_not_called()
+        hablar.assert_not_called()
         self.assertEqual(self.guardado["cliente_maestro"], "codex")
-        # Lo elegido se ve sin abrir el menú: la ayuda del botón dice con cuál va a abrir.
+        falso.entrada_maestro.set_text("hola")
         self.assertIn("Codex", falso.boton_maestro.get_tooltip_text())
-        # Lanzar es del botón, y usa el cliente elegido, no el primero instalado.
-        with mock.patch("enrutador.verbos.abrir_maestro", return_value=abierto()) as abrir:
+        with mock.patch("enrutador.verbos.hablar_maestro", return_value=hablado()) as hablar:
             falso.al_ejecutar_maestro()
-        abrir.assert_called_once_with("Uno", "codex", indicacion="")
+        self.assertEqual(hablar.call_args.args, ("Uno", "hola", "codex"))
 
     def test_con_todos_los_proyectos_la_barra_no_se_usa(self):
         falso = board_falso(seleccion=app.comun.TODOS)
@@ -114,11 +149,86 @@ class BarraMaestro(unittest.TestCase):
 
     def test_sin_clientes_avisa(self):
         falso = board_falso()
+        falso.entrada_maestro.set_text("hola")
         with mock.patch("enrutador.clientes.instalados", return_value=[]), \
-                mock.patch("enrutador.verbos.abrir_maestro") as abrir:
+                mock.patch("enrutador.verbos.hablar_maestro") as hablar:
             falso.al_ejecutar_maestro()
-        abrir.assert_not_called()
+        hablar.assert_not_called()
         self.assertEqual(falso.avisos, [clientes.SIN_AGENTE_TEXTO])
+
+
+TAREAS = ("- [ ] Arreglar el parseo #agente/sonnet ^cotejo-asig\n"
+          "- [ ] Mejorar el mensaje de error ^cotejo-sinm\n")
+
+
+@unittest.skipUnless(base.HAY_GTK, "sin GTK o sin pantalla")
+class ConversacionEnElBoard(base.PestanaInicio):
+    def entorno_extra(self, raiz):
+        nota = raiz / "vault" / "01-Proyectos" / "Faro.md"
+        nota.write_text(f"---\ntipo: proyecto\n---\n\n# Faro\n\n{TAREAS}", encoding="utf-8")
+        self.nota = nota
+        (raiz / "config.json").write_text(json.dumps({"enrutador": {"motores": {"headless": {
+            "comando": [sys.executable, FALSO], "aislar": False}}}}), encoding="utf-8")
+        from tareas import preparacion
+        for parche in (mock.patch.object(preparacion, "CARPETA", raiz / "estado" / "prep"),
+                       mock.patch("enrutador.motores.terminal.abrir", _nunca_una_terminal),
+                       mock.patch("enrutador.clientes.shutil.which",
+                                  side_effect=lambda n, **_k: None
+                                  if n in ("codex", "opencode", "gemini", "agy")
+                                  else "/usr/bin/" + os.path.basename(n))):
+            parche.start()
+            self.addCleanup(parche.stop)
+        return {"COTEJO_MOTOR": "agente", "FALSO_PROYECTO": "Faro"}
+
+    def elegir_faro(self):
+        self.board.ver_pestana("tablero")
+        self.board.al_elegir_chip(self.board.botones_chip["Faro"])
+        base.girar(60)
+
+    def turnos(self):
+        from enrutador import conversacion
+        return conversacion.leer("Faro")["turnos"]
+
+    def hablar(self, texto, **entorno):
+        with mock.patch.dict(os.environ, entorno):
+            self.board.entrada_maestro.set_text(texto)
+            self.board.entrada_maestro.emit("activate")
+            self.assertTrue(self.board.panel_maestro.get_reveal_child())
+            ok = base.girar_hasta(lambda: len(self.turnos()) >= 2
+                                  and self.board.panel_maestro.boton_parar is None, tope=15)
+        self.assertTrue(ok, self.turnos())
+        base.girar(100)
+
+    def test_apuntar_una_tarea_desde_la_conversacion(self):
+        self.elegir_faro()
+        self.hablar("apunta que falta el login", FALSO_CREAR="Hacer el login",
+                    FALSO_RESPUESTA="Apunté «Hacer el login».")
+        todo = base.textos(self.board.panel_maestro)
+        self.assertIn("apunta que falta el login", todo)
+        self.assertIn("Apunté «Hacer el login».", todo)
+        self.assertIn("Hacer el login", self.nota.read_text(encoding="utf-8"))
+        # El tablero ya la enseña: se refrescó al volver el turno.
+        tareas = [t.texto for p in self.board.app.proyectos if p.nombre == "Faro"
+                  for t in p.tareas]
+        self.assertTrue(any("Hacer el login" in t for t in tareas), tareas)
+
+    def test_repartir_pasa_a_haciendo_solo_lo_asignado(self):
+        self.elegir_faro()
+        self.hablar("reparte lo asignado",
+                    FALSO_RESPUESTA="Va esta.\nREPARTIR: cotejo-asig cotejo-sinm")
+        botones = self.board.panel_maestro.botones_repartir
+        self.assertEqual(len(botones), 1)
+        self.assertEqual(botones[0].get_label(), "Repartir 1 tarea")
+        self.assertFalse(any("REPARTIR" in t for t in base.textos(self.board.panel_maestro)))
+        movidas = []
+        with mock.patch.object(type(self.board), "mover",
+                               lambda _b, proyecto, tarea, destino: movidas.append(
+                                   (proyecto.nombre, tarea.id, destino))):
+            botones[0].emit("clicked")
+        self.assertEqual(movidas, [("Faro", "cotejo-asig", "en-curso")])
+        # El botón no vuelve a salir para repartirlas otra vez.
+        self.assertTrue(self.turnos()[-1].get("repartido"))
+        self.assertFalse(self.board.panel_maestro.botones_repartir[0].get_sensitive())
 
 
 if __name__ == "__main__":

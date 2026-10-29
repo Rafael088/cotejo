@@ -274,6 +274,22 @@ window.sin-animaciones .vida-punto { transition: none; opacity: 1; }
 .maestro-ejecutar > separator { background: var(--k-sobre-senal); opacity: 0.25; min-width: 1px; }
 .maestro-ejecutar:disabled > button, .maestro-ejecutar:disabled > menubutton > button {
     color: var(--k-tenue); background: var(--k-velo); }
+/* La conversación con el maestro (cotejo-9ybn1a): sube encima del pie. La persona a la
+   derecha sobre el velo del acento; el maestro a la izquierda, en superficie; el verde solo
+   en el botón que lanza algo (Repartir). */
+.maestro-panel { border: 1px solid var(--k-borde); border-radius: 12px; background: var(--k-fondo);
+                 padding: var(--k-espacio-md); }
+.maestro-burbuja { border-radius: 10px; padding: var(--k-espacio-sm) var(--k-espacio-md); }
+.maestro-persona { background: var(--k-senal-suave); }
+.maestro-respuesta { background: var(--k-superficie); border: 1px solid var(--k-borde-hondo); }
+.maestro-fallo { border-color: var(--k-ambar); }
+.maestro-texto { font-size: var(--k-contenido); color: var(--k-texto); }
+.maestro-pista, .maestro-vivo { font-size: var(--k-dato); color: var(--k-tenue); }
+.maestro-vivo { font-family: "IBM Plex Mono"; }
+.maestro-accion { font-size: var(--k-dato); color: var(--k-tenue); }
+.maestro-repartir { font-family: "Sora"; font-weight: 600; font-size: var(--k-dato);
+                    color: var(--k-sobre-senal); background: var(--k-senal); border-radius: 8px; }
+.maestro-repartir:disabled { color: var(--k-tenue); background: var(--k-velo); }
 /* Derecha: Volver, al proyecto anterior mientras no exista el home. */
 .pie-derecha { padding: 14px 0 18px 0; }
 .pie-volver { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue);

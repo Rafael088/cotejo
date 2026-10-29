@@ -77,6 +77,8 @@ class PestanaInicio(unittest.TestCase):
         ajustes.set_property("gtk-enable-animations", False)
         self.addCleanup(ajustes.set_property, "gtk-enable-animations", antes)
 
+        from tareas.app import escala
+        self.factor_antes = escala.FACTOR
         self.app = app.App()
         PestanaInicio.apps += 1
         self.app.set_application_id(f"io.github.cotejoapp.CotejoPruebaInicio{os.getpid()}n{self.apps}")
@@ -98,6 +100,18 @@ class PestanaInicio(unittest.TestCase):
         if self.app.board is not None:
             self.app.board.destroy()
         self.app.release()
+        # Lo que la App deja en el proceso y no en su ventana: su CSS en la pantalla, el DPI de
+        # la letra y el factor de escala. Sin quitarlos, las pruebas que corren después (las
+        # que miden un widget suelto, como `test_columnas_fijas`) medían con el tema y la letra
+        # del board y no con los suyos (cotejo-9ybn1a).
+        from gi.repository import Gdk
+        from tareas.app import escala
+        if self.app.proveedor is not None and Gdk.Display.get_default() is not None:
+            Gtk.StyleContext.remove_provider_for_display(Gdk.Display.get_default(),
+                                                         self.app.proveedor)
+        if self.app.dpi_de_letra is not None and Gtk.Settings.get_default() is not None:
+            Gtk.Settings.get_default().props.gtk_xft_dpi = self.app.dpi_de_letra
+        escala.FACTOR = self.factor_antes
 
 
 class ConProyectos(PestanaInicio):

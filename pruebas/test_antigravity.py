@@ -24,7 +24,7 @@ from unittest import mock
 
 import apoyo  # noqa: F401  (pone la raíz del repo en sys.path)
 
-from enrutador import armado, clientes, config as cfg, maestro, modelos_vivos, niveles, preparar, sandbox
+from enrutador import armado, clientes, config as cfg, modelos_vivos, niveles, preparar, sandbox
 from enrutador import motor
 from enrutador.motores import claude_cli
 
@@ -63,7 +63,6 @@ class Argumentos(unittest.TestCase):
     def test_en_una_terminal_sigue_la_sesion_con_i(self):
         self.assertEqual(self.agy.argv_interactivo("P", "gemini-4-argon-high"),
                          ["agy", "--model", "gemini-4-argon-high", "-i", "P"])
-        self.assertEqual(maestro.argv("antigravity", "P", terminal=["t"]), ["t", "agy", "-i", "P"])
 
     def test_permisos_una_add_dir_por_carpeta_y_nada_por_entorno(self):
         argv, entorno = self.agy.permisos(self.CARPETAS)

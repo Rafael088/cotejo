@@ -9,7 +9,7 @@
     capacidad          cuántos despachos caben ahora en esta máquina (sin tocar nada)
     despachos          la bitácora en crudo                      (sin tocar nada)
     protocolo          las instrucciones para un agente, en Markdown
-    maestro            abrir en una terminal un agente que reparte las asignadas de un proyecto
+    maestro            hablar con el maestro de un proyecto: tareas, preguntas, repartir
     importar plan      qué tareas sacaría un plan.md, con dificultad y modelo propuestos
     importar obsidian  qué entradas de .cotejo/ saldrían de un proyecto del vault (ensayo)
                         (ensayo por defecto; escribe con `crear` solo con --aplicar)
@@ -38,10 +38,9 @@ from tareas.cli import (ESQUEMA, ErrorCLI, imprimir as imprimir_json, cargar as 
                         un_proyecto, escribir as escribir_cotejo)
 from tareas.cli import como_json as como_json_cotejo
 from tareas.modelo import NoSeCreaAqui, PENDIENTE, id_actual
-from . import (apertura, bitacora, capacidad, clientes, config as cfg, decision, despacho,
-               encargo as enc,
-               importar as imp, cotejo as f, maestro, motor, niveles, procesos, reglas)
-from .motores import terminal
+from . import (apertura, bitacora, capacidad, clientes, config as cfg, decision,
+               despacho, encargo as enc,
+               importar as imp, cotejo as f, motor, niveles, procesos, reglas)
 
 # Códigos de salida, para que un script pueda distinguir sin leer el JSON. Los dos primeros son
 # los de Cotejo y significan lo mismo; los dos últimos son de aquí.
@@ -420,25 +419,24 @@ def cmd_despachar(args):
     return OK if resultado.ok else ERROR
 
 
-def abrir_maestro(proyecto, cliente=None, modelo=None, simular=False, indicacion=""):
-    """Abre el maestro de un proyecto y devuelve qué se abrió. Lo usan la CLI y CotejoBoard.
-
-    Se niega antes de abrir nada si el proyecto no tiene tareas asignadas a un modelo: un
-    maestro sin nada que repartir es una terminal que gasta en averiguar que no hay trabajo.
-    """
-    return apertura.abrir(*preparar(), proyecto, cliente, modelo, simular, indicacion)
+def hablar_maestro(proyecto, pedido, cliente=None, modelo=None, simular=False,
+                   al_terminar=None, esperar=False, olvidar=False):
+    """Un turno de la conversación con el maestro (cotejo-9ybn1a): la CLI espera la respuesta,
+    CotejoBoard la sigue en vivo. Nunca abre una terminal; ver `apertura.hablar`."""
+    return apertura.hablar(preparar(), proyecto, pedido, cliente, modelo, simular,
+                           al_terminar, esperar, olvidar)
 
 
 def cmd_maestro(args):
-    """Abrir el maestro de un proyecto en una terminal nueva."""
+    """Decirle algo al maestro de un proyecto y esperar su respuesta."""
     if args.clientes:
         imprimir({"esquema": ESQUEMA, "clientes": sorted(clientes.CLIENTES),
                   "instalados": clientes.instalados()})
         return OK
     if not args.proyecto:
         raise ErrorCLI("Falta el proyecto", "`cotejo maestro --proyecto <nombre>`.")
-    imprimir(abrir_maestro(args.proyecto, args.cliente, args.modelo, args.simular,
-                          args.indicacion or ""))
+    imprimir(hablar_maestro(args.proyecto, args.pedido or "", args.cliente, args.modelo,
+                            args.simular, esperar=True, olvidar=args.olvidar))
     return OK
 
 
@@ -1068,19 +1066,19 @@ def anadir(sub):
     config.set_defaults(funcion=cmd_config)
 
     maestro_ = sub.add_parser(
-        "maestro", help="Abrir en una terminal un agente que reparte las tareas asignadas "
-                        "de un proyecto a sus modelos")
+        "maestro", help="Hablar con el maestro de un proyecto: añade tareas, contesta sobre "
+                        "el proyecto y propone repartir lo asignado")
     maestro_.add_argument("--proyecto")
     maestro_.add_argument("--cliente",
-                          help=f"Con qué se abre el maestro: {' | '.join(clientes.CLIENTES)} "
+                          help=f"Con qué agente habla el maestro: {' | '.join(clientes.CLIENTES)} "
                                f"(por defecto, el primero que esté instalado)")
     maestro_.add_argument("--modelo", help="El modelo del maestro (por defecto, el de "
                                            "enrutador.maestro.modelos o el del cliente)")
-    maestro_.add_argument("--indicacion",
-                          help="Qué quieres que haga, en una frase («solo las de la v1.2.4»): "
-                               "acota lo que reparte, sin saltarse ninguna regla")
+    maestro_.add_argument("--pedido", "--indicacion", dest="pedido",
+                          help="Lo que le dices, en llano («apunta que falta el login»)")
+    maestro_.add_argument("--olvidar", action="store_true", help="Empezar la conversación")
     maestro_.add_argument("--simular", action="store_true",
-                          help="Enseña qué abriría y con qué instrucción, sin abrir nada")
+                          help="Enseña qué lanzaría y con qué instrucción, sin lanzar nada")
     maestro_.add_argument("--clientes", action="store_true",
                           help="Qué clientes sabe abrir y cuáles están instalados")
     maestro_.set_defaults(funcion=cmd_maestro)

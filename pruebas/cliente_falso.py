@@ -10,6 +10,11 @@ que eso dependa de que no haya acabado de salir.
 Con `FALSO_ENTREGAR=<id>` hace lo que haría un agente que termina bien (cotejo-o253bs): un
 commit en su carpeta y `cotejo entregar <id>` con el `cotejo` que le pusieron en el PATH, antes
 de salir (y espera `FALSO_ESPERA_FIN` segundos más, vivo ya entregada).
+
+Para el maestro (cotejo-9ybn1a): con `FALSO_CREAR=<texto>` y `FALSO_PROYECTO=<nombre>` corre
+`cotejo crear` como lo haría el maestro al apuntar una tarea; `FALSO_RESPUESTA` es el texto de su
+`result` (por defecto «Listo.»), y con `FALSO_PLANO=1` escribe solo ese texto, sin JSON, como
+`codex exec` u `opencode run` en su salida.
 """
 
 import json
@@ -47,13 +52,35 @@ def entregar(tarea_id):
         {"type": "text", "text": f"Entregué (código {hecho.returncode})."}]}})
 
 
+def crear(texto, proyecto):
+    hecho = subprocess.run(["cotejo", "crear", texto, "--proyecto", proyecto],
+                           capture_output=True, text=True)
+    if os.environ.get("FALSO_PLANO"):
+        print(f"(corrí cotejo crear: código {hecho.returncode})", file=sys.stderr, flush=True)
+    else:
+        linea({"type": "assistant", "message": {"content": [
+            {"type": "tool_use", "name": "Bash",
+             "input": {"command": f'cotejo crear "{texto}" --proyecto "{proyecto}"'}}]}})
+    if hecho.returncode:
+        print(hecho.stdout + hecho.stderr, file=sys.stderr, flush=True)
+
+
 def main():
     if os.environ.get("FALSO_ARGV"):
         with open(os.environ["FALSO_ARGV"], "w", encoding="utf-8") as archivo:
             json.dump({"argv": sys.argv[1:], "cwd": os.getcwd(),
                        "path": os.environ.get("PATH", ""),
                        "pwd": os.environ.get("PWD", "")}, archivo)
+    respuesta = os.environ.get("FALSO_RESPUESTA", "Listo.")
+    if os.environ.get("FALSO_PLANO"):
+        if os.environ.get("FALSO_CREAR"):
+            crear(os.environ["FALSO_CREAR"], os.environ.get("FALSO_PROYECTO", ""))
+        esperar()
+        print(respuesta, flush=True)
+        return int(os.environ.get("FALSO_CODIGO", "0"))
     linea({"type": "system", "subtype": "init", "model": "falso"})
+    if os.environ.get("FALSO_CREAR"):
+        crear(os.environ["FALSO_CREAR"], os.environ.get("FALSO_PROYECTO", ""))
     linea({"type": "assistant", "message": {"content": [
         {"type": "text", "text": "Voy a mirar el repo."},
         {"type": "tool_use", "name": "Bash", "input": {"command": "git status"}}]}})
@@ -61,7 +88,7 @@ def main():
     if os.environ.get("FALSO_ENTREGAR"):
         entregar(os.environ["FALSO_ENTREGAR"])
         time.sleep(float(os.environ.get("FALSO_ESPERA_FIN", "0")))
-    linea({"type": "result", "subtype": "success", "is_error": False, "result": "Listo."})
+    linea({"type": "result", "subtype": "success", "is_error": False, "result": respuesta})
     return int(os.environ.get("FALSO_CODIGO", "0"))
 
 

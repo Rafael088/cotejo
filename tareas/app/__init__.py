@@ -16,6 +16,8 @@ clase con los métodos de una parte (la banda, las columnas, la revisión…) qu
   páginas del inicio sin botón en el selector: `entrevista`, `preparando`, `revisar_plan` y
   `mapa` (el mapa del proyecto, al que lleva `abrir_proyecto`).
 - `constelacion.py`: el widget de la constelación de proyectos del Inicio (no es una mezcla).
+- `conversacion.py`: el panel de la conversación con el maestro (no es una mezcla: lo maneja
+  `maestro`).
 - `aplicacion.py`: `App` y `main`.
 
 Algo nuevo va en la parte a la que pertenece, o en un módulo nuevo si no es de ninguna; nunca
