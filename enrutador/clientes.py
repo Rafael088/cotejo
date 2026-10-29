@@ -21,6 +21,8 @@ import shutil
 import sys
 from dataclasses import dataclass
 
+from . import gemini_env
+
 
 @dataclass(frozen=True)
 class Cliente:
@@ -172,7 +174,14 @@ class Cliente:
           niega los prohibidos. Y lo que el `.gemini/settings.json` del worktree le haría
           arrancar, fuera (`_gemini_sin_lo_del_proyecto`, cotejo-lbwsq4): sus servidores MCP,
           por `--allowed-mcp-server-names` con los de la persona; y si trae hooks o comandos que
-          corren solos, el worktree va sin confianza y Gemini no arranca.
+          corren solos, el worktree va sin confianza y Gemini no arranca. Con la confianza
+          Gemini también carga el `.env` (o `.gemini/.env`) del worktree o de una carpeta de
+          arriba: las variables que corren código (`BASH_ENV`, `NODE_OPTIONS`, `LD_*`,
+          `GIT_*`…, `gemini_env.VEDADAS`) que traiga van definidas vacías antes, y como Gemini
+          solo añade las que no existen, no las pone (`gemini_env.sin_env_del_proyecto`,
+          cotejo-4gvdy5); las demás siguen llegando. Codex (solo `~/.codex/.env`, sin
+          `CODEX_*`) y OpenCode (compilado con `autoloadDotenv: false`) no cargan el del
+          proyecto.
         - **Antigravity CLI**: `--dangerously-skip-permissions`, la única forma documentada de
           aprobar sus comandos en una sola invocación (sin ella, sin interfaz, todo comando se
           niega solo). Sus reglas `deny` solo se leen de `~/.gemini/antigravity-cli/settings.json`,
@@ -205,9 +214,10 @@ class Cliente:
                     "OPENCODE_CONFIG_CONTENT": _opencode_con_prohibidos(
                         env["OPENCODE_CONFIG_CONTENT"], prohibidos(ramas))}))
         if self.nombre == "gemini":
-            return _gemini_sin_lo_del_proyecto(
+            argv, env = _gemini_sin_lo_del_proyecto(
                 trabajo, ["--approval-mode", "auto_edit"] +
                 (["--policy", str(politica_gemini)] if politica_gemini else []), env, entorno)
+            return argv, gemini_env.sin_env_del_proyecto(trabajo, env, entorno)
         if self.nombre == "antigravity":
             return argv + ["--dangerously-skip-permissions"], env
         return argv, env
