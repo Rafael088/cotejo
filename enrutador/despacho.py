@@ -6,13 +6,29 @@ comprobar, tomar, lanzar, contar— y para que añadir una comprobación previa 
 archivo y no la mitad de `cmd_despachar`.
 """
 
+import os
+
 from tareas import worktrees
 from tareas.cli import ErrorCLI
+from . import clientes
 
 # Cuánto de lo que dijo el cliente cabe en el motivo de soltar: es texto para una carta del
 # board y para el siguiente encargo, no el volcado entero (ese queda en la bitácora de
 # despachos, en «salida» y «error»).
 MOTIVO_MAX = 400
+
+
+def aviso_de_gemini(cliente, carpeta):
+    """El aviso de que Gemini no arrancará en esa carpeta, en llano, o "".
+
+    Se pregunta **antes de lanzar** (y, cuando se puede, antes de tomar): un
+    `.gemini/settings.json` con hooks, comandos de herramientas o políticas deja el worktree
+    sin confianza, y Gemini sin interfaz no arranca (cotejo-lbwsq4). `carpeta` es el worktree
+    si ya existe; si no, la del repo del que saldrá.
+    """
+    if (cliente or "claude") != "gemini":
+        return ""
+    return clientes.aviso_de_gemini(carpeta)
 
 
 def antes_de_tomar(motor_elegido, encargo, plan_wt):
@@ -27,6 +43,16 @@ def antes_de_tomar(motor_elegido, encargo, plan_wt):
     problema = motor_elegido.comprobar(encargo)
     if problema:
         yield "motor", problema
+    # Gemini no arranca si su `.gemini/settings.json` (cotejo-lbwsq4) trae hooks, comandos de
+    # herramientas o políticas: el worktree va sin confianza y se niega, con un error en
+    # inglés que solo sale en su log. El worktree aún no existe, así que se mira el repo del
+    # que sale (su copia viene de ahí); después de crearlo se vuelve a mirar.
+    carpeta = encargo.directorio
+    if not (carpeta and os.path.isdir(str(carpeta))):
+        carpeta = (plan_wt or {}).get("repo") or carpeta
+    aviso = aviso_de_gemini(encargo.cliente, carpeta)
+    if aviso:
+        yield "gemini_sin_confianza", aviso
     # Sin commits no hay HEAD y `git worktree add` falla con «referencia inválida: HEAD» y un
     # consejo que no apunta a la causa (v1.2.5). Solo importa si se va a aislar.
     if plan_wt and worktrees.sin_commits(plan_wt["repo"]):
