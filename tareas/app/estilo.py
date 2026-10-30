@@ -152,7 +152,12 @@ list.columna, list.columna > row { background: transparent; }
                        outline: 2px solid var(--k-senal); outline-offset: 1px; }
 /* Mientras se arrastra, la carta se queda como el hueco que dejó. */
 .carta-codigo { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-senal); }
-/* Pendiente solo enseña el id: carta baja, con el ⋮ a su altura. El nombre trae su propio aire. */
+/* Pendiente enseña el nombre corto y el código detrás: el nombre en Inter a tamaño de
+   contenido, el código mono y tenue (el verde es para lo que espera comprobación). */
+.carta-compacta .carta-nombre { font-family: "Inter"; font-weight: 400;
+                                font-size: var(--k-contenido); }
+.carta-compacta .carta-codigo { color: var(--k-tenue); }
+/* Pendiente solo enseña el nombre y su código: carta baja, con el ⋮ a su altura. */
 .carta-compacta { padding: var(--k-espacio-xs) var(--k-espacio-xs) var(--k-espacio-xs) var(--k-espacio-md); }
 .carta-compacta menubutton > button { min-height: 26px; min-width: 26px; padding: 0; }
 .carta-nombre { font-family: "Sora"; font-weight: 600; font-size: var(--k-contenido); }
