@@ -26,7 +26,7 @@ export const RUTAS = [
     archivo: 'primerospasos.html',
     titulo: 'Primeros pasos con Cotejo · El primer día y cada día',
     descripcion:
-      'Instala Cotejo, dile a tu agente «empiezo un proyecto», responde cinco preguntas y revisa cada entrega en CotejoBoard. Y cuatro frases para cada día.',
+      'Instala Cotejo, crea tu primer proyecto en el Inicio de la app, revisa el plan y aprueba cada entrega en CotejoBoard. Y las frases para cada día.',
   },
   {
     ruta: '/tokens',

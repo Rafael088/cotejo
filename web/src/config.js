@@ -21,6 +21,14 @@ export const COMANDOS = {
 
 // Repo público de releases.
 export const RELEASES = 'https://github.com/Rafael088/cotejo/releases/latest'
+
+// Los paquetes que la web ofrece según el sistema. El AppImage y el instalador .exe se publican
+// como assets de cada release; mientras la 1.3 no tenga esos assets, el botón lleva a la página
+// de releases, que es donde estarán: aquí no se escribe el nombre de un archivo que no existe.
+export const DESCARGAS = {
+  linux: { sistema: 'Linux', paquete: 'AppImage', href: RELEASES },
+  windows: { sistema: 'Windows', paquete: 'Instalador .exe', href: RELEASES },
+}
 export const LICENCIA = 'https://github.com/Rafael088/cotejo/blob/main/LICENSE'
 export const DONAR = 'https://link.mercadopago.com.co/cotejo'
 

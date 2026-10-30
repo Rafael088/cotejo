@@ -3,8 +3,8 @@ import { enlace } from '../paginas.js'
 
 // Portada · «De cero a tu primera entrega»: tres pasos, poco texto (diseño aprobado).
 const PASOS = [
-  ['curl … | sh', 'Instala Cotejo.', 'Un comando, o pídeselo a tu agente.'],
-  ['«empiezo un proyecto»', 'Arranca el proyecto.', 'Tu agente te hace cinco preguntas y deja el plan escrito.'],
+  ['Descarga', 'Instala Cotejo.', 'El AppImage en Linux o el instalador en Windows, sin administrador.'],
+  ['«Nuevo proyecto»', 'Arranca el proyecto.', 'La app te hace cinco preguntas y lanza al agente por detrás.'],
   ['CotejoBoard', 'Revisa y aprueba.', 'Cada entrega llega con pruebas y un resumen claro.'],
 ]
 

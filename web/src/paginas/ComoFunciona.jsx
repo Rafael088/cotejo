@@ -81,14 +81,14 @@ export default function ComoFunciona() {
           <>
             <CfHistoria montado={montado} quieto={quieto} activa={publico === 'no'} />
             <p className="cf-nota">
-              Instalar pide pegar un comando en una terminal. Si prefieres no hacerlo, pídeselo a tu agente.
+              En Linux y Windows, Cotejo se instala con su paquete: no hace falta abrir una terminal.
             </p>
           </>,
         )}
         {panel('si', <CfCiclo />)}
       </section>
 
-      <Cierre id="empieza" titulo="Empieza con un comando." />
+      <Cierre id="empieza" titulo="Instálalo y crea tu primer proyecto." />
     </>
   )
 }
