@@ -68,6 +68,21 @@ def destino(texto):
     return texto.strip()
 
 
+NOTA_FUERA_DEL_SANDBOX = (" Las capturas pedidas las sacará CotejoBoard fuera del sandbox; "
+                          "no tienes que esperarlas ni producir PNG.")
+
+
+def de_la_orden(tarea_id, pngs=(), destinos=()):
+    """Lo que una entrega añade a su anotación por las capturas: las `--captura` ya hechas y
+    las peticiones de `--captura-desde` que el board completará fuera del sandbox."""
+    extra = {}
+    if pngs:
+        extra["capturas"] = guardar(tarea_id, pngs)
+    if destinos:
+        extra["capturas_solicitadas"] = solicitudes(destinos)
+    return extra
+
+
 def solicitudes(rutas):
     """Destinos sin repetir; cada uno dará dos PNG, así que caben la mitad que capturas sueltas."""
     rutas = list(dict.fromkeys(rutas or ()))
