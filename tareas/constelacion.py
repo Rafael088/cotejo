@@ -30,7 +30,7 @@ from .temas import color
 POR_FILA = 4              # núcleos por fila como mucho, como las tarjetas del Inicio
 ANCHO_CELDA_MIN = 200     # por debajo, menos núcleos por fila
 ANCHO_CELDA_PLENO = 240   # a partir de aquí, la constelación a escala 1
-ALTO_FILA = 170           # alto de cada fila de núcleos, con su nombre debajo (v1.3.1: era
+ALTO_FILA = 160           # alto de cada fila de núcleos, con su nombre debajo (v1.3.1: era
                           # 240, y una fila sola dejaba 300 px casi vacíos en el Inicio)
 CENTRO_Y = 0.44           # dónde cae el núcleo dentro de su fila (fracción del alto)
 ALTO_NOMBRE = 0.90        # dónde va el nombre (fracción del alto de la fila)
