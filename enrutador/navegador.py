@@ -227,8 +227,15 @@ def capturar_entrega(entrega, trabajo=None, sacar=None):
                                       f"{hecho.get('motivo') or 'no salió el PNG'}")
             if rutas:
                 try:
-                    anteriores = [c["ruta"] for c in entrega.get("capturas") or ()
-                                  if isinstance(c, dict) and c.get("ruta")]
+                    # Lo que ya venía (una `--captura` del agente) se copia antes: `guardar`
+                    # rehace la carpeta de capturas y borraría los originales a medio copiar.
+                    anteriores = []
+                    for numero_antes, anterior in enumerate(entrega.get("capturas") or ()):
+                        ruta = anterior.get("ruta") if isinstance(anterior, dict) else None
+                        if ruta and Path(ruta).is_file():
+                            copia = Path(temporal) / f"antes-{numero_antes}.png"
+                            shutil.copyfile(ruta, copia)
+                            anteriores.append(str(copia))
                     guardadas = capturas.guardar(entrega["id"], anteriores + rutas)
                 except (KeyError, OSError, ValueError) as error:
                     guardadas, avisos = [], avisos + [f"No pude guardar las capturas: {error}"]
