@@ -198,8 +198,9 @@ class Eleccion(unittest.TestCase):
         popen.assert_not_called()
 
     def test_la_nota_del_sandbox_dice_como_ver_una_pagina(self):
-        self.assertIn("enrutador.navegador", armado.NOTA_SANDBOX)
         self.assertIn("firefox --headless", armado.NOTA_SANDBOX)
+        # Lo que solo vale dentro del repo de Cotejo no va al encargo (cotejo-v40nc1).
+        self.assertNotIn("enrutador.navegador", armado.NOTA_SANDBOX)
 
     def test_el_sandbox_no_abre_sockets_de_unix_ni_escritura_nueva(self):
         caja = sandbox.ajustes_claude(["/w"])["sandbox"]

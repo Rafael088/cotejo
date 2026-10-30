@@ -100,10 +100,16 @@ class Entregando(PruebaDeCLI):
 class Encargo(unittest.TestCase):
     def test_con_navegador_el_encargo_pide_capturas(self):
         texto = encargo.cierre("cotejo-abc123", navegador_disponible=True)
-        self.assertIn("--captura", texto)
+        self.assertIn("--captura-desde", texto)
         self.assertIn("390×844", texto)
         self.assertIn("1280×800", texto)
         self.assertNotIn("{id}", texto)
+        self.assertIn("bloquees la tarea por las capturas", texto)
+
+    def test_sin_navegador_tampoco_bloquea_y_lo_dice(self):
+        texto = encargo.cierre("cotejo-abc123", navegador_disponible=False)
+        self.assertIn("no bloquees por eso", texto)
+        self.assertIn("Entrega\nigual", texto)
 
     def test_sin_navegador_no_pide_capturas_pide_avisar(self):
         texto = encargo.cierre("cotejo-abc123", navegador_disponible=False)
@@ -125,13 +131,14 @@ class NotaDelSandbox(unittest.TestCase):
     def test_con_firefox_da_la_linea_de_captura(self):
         nota = armado.nota_sandbox(disponible=True)
         self.assertIn("firefox --headless", nota)
-        self.assertIn("enrutador.navegador", nota)
+        self.assertNotIn("enrutador.navegador", nota)   # solo vale en el repo de Cotejo
 
     def test_sin_firefox_no_da_un_comando_que_va_a_fallar(self):
         nota = armado.nota_sandbox(disponible=False)
         self.assertNotIn("firefox --headless", nota)
         self.assertNotIn("enrutador.navegador", nota)
         self.assertIn("no hay un navegador", nota)
+        self.assertIn("no hace falta que lo intentes", nota)
         self.assertIn("instalar Firefox", nota)
         self.assertIn("sandbox", nota)    # lo demás de la nota sigue ahí
 
