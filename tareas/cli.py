@@ -334,9 +334,10 @@ def cmd_entregar(args):
     estructurada = evidencia.reunir(carpeta, args.prueba or ())
     estructurada.update(resumen=args.resumen) if args.resumen is not None else None  # solo se agrega
     try:
-        estructurada.update(capturas.de_la_orden(tarea.id, args.captura, args.captura_desde))
+        estructurada.update(capturas.de_la_orden(
+            tarea.id, args.captura, args.captura_desde, trabajo=carpeta or os.getcwd()))
     except (ValueError, OSError) as error:
-        raise ErrorCLI(f"No pude guardar las capturas: {error}", "No se escribió nada.")
+        raise ErrorCLI(f"No pude aceptar las capturas: {error}", "No se escribió nada.")
     actual = escribir(fuente.poner_estado, tarea, "por-validar")
     bitacora.anotar("entregar", proyecto, actual, de="en-curso", a="por-validar",
                     evidencia=args.evidencia, **estructurada)

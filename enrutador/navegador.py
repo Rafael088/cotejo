@@ -26,7 +26,6 @@ import tempfile
 import threading
 import types
 from pathlib import Path
-from urllib.parse import unquote, urlsplit
 
 FIREFOX = ("firefox",)
 CHROMIUM = ("chromium", "chromium-browser", "google-chrome", "google-chrome-stable")
@@ -83,6 +82,33 @@ def a_url(destino):
     return Path(texto).expanduser().resolve().as_uri()
 
 
+# El perfil de captura no puede salir a internet: la captura corre fuera del sandbox del agente
+# y un HTML del worktree podría pedir `https://ajeno.com/?d=<secreto>`. Todo va a un proxy
+# muerto salvo lo local; los nombres son los de Firefox (comprobados en `greprefs.js` y
+# `libxul.so`, no inventados). `allow_hijacking_localhost` en false deja que lo local no pase
+# por el proxy, y se apagan prefetch, DNS prefetch y conexiones especulativas.
+PREFERENCIAS = {
+    "network.proxy.type": 1,
+    "network.proxy.http": "127.0.0.1",
+    "network.proxy.http_port": 9,
+    "network.proxy.ssl": "127.0.0.1",
+    "network.proxy.ssl_port": 9,
+    "network.proxy.no_proxies_on": "localhost, 127.0.0.1, [::1]",
+    "network.proxy.allow_hijacking_localhost": False,
+    "network.prefetch-next": False,
+    "network.dns.disablePrefetch": True,
+    "network.dns.disablePrefetchFromHTTPS": True,
+    "network.http.speculative-parallel-limit": 0,
+}
+
+
+def prefs_del_perfil():
+    """El `user.js` que se deja en el perfil temporal antes de arrancar Firefox."""
+    return "".join(f"user_pref({json.dumps(clave)}, "
+                   f"{json.dumps(valor, ensure_ascii=False)});\n"
+                   for clave, valor in PREFERENCIAS.items())
+
+
 def argv_captura(tipo, ruta, url, salida, perfil, ancho=1280, alto=800):
     """El argv que saca la captura de `url` en `salida` con el perfil `perfil`."""
     tam = f"--window-size={int(ancho)},{int(alto)}"
@@ -118,6 +144,7 @@ def capturar(destino, salida, ancho=1280, alto=800, espera=ESPERA, entorno=None,
     # El temporal de siempre: dentro del sandbox es su TMPDIR, que ya se puede escribir.
     perfil = tempfile.mkdtemp(prefix="cotejo-navegador-")
     try:
+        (Path(perfil) / "user.js").write_text(prefs_del_perfil(), encoding="utf-8")
         proceso = subprocess.Popen(
             argv_captura(tipo, ruta, a_url(destino), salida, perfil, ancho, alto),
             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -159,24 +186,9 @@ def _carpeta_de_la_entrega(entrega, trabajo=None):
 
 
 def _destino(texto, trabajo):
-    """URL remota o archivo del trabajo. Un archivo fuera no se abre aunque el agente lo pida."""
-    texto = str(texto)
-    partes = urlsplit(texto)
-    if partes.scheme in ("http", "https"):
-        return texto
-    if partes.scheme and partes.scheme != "file":
-        raise ValueError(f"«{texto}» no es una URL http(s) ni un archivo")
-    ruta = Path(unquote(partes.path) if partes.scheme == "file" else texto).expanduser()
-    if not ruta.is_absolute():
-        ruta = trabajo / ruta
-    ruta = ruta.resolve()
-    try:
-        ruta.relative_to(trabajo)
-    except ValueError as error:
-        raise ValueError(f"«{texto}» está fuera de la carpeta de trabajo") from error
-    if not ruta.is_file():
-        raise ValueError(f"no encuentro el archivo «{texto}» en la carpeta de trabajo")
-    return str(ruta)
+    """URL local o archivo dentro del trabajo. Lo demás no se abre aunque el agente lo pida."""
+    from tareas import capturas
+    return capturas.destino_seguro(texto, trabajo)
 
 
 def _anotar_resultado(entrega, guardadas, avisos):

@@ -64,12 +64,30 @@ class Pendientes(PruebaDeCLI):
 
     def test_captura_desde_solo_deja_la_peticion_y_el_agente_no_saca_png(self):
         codigo, datos = self.entregar("--captura-desde", "pagina.html",
-                                      "--captura-desde", "https://example.com/x")
+                                      "--captura-desde", "http://localhost:8000/x")
         self.assertEqual(codigo, 0)
         self.assertEqual(self.entrega()["capturas_solicitadas"],
-                         ["pagina.html", "https://example.com/x"])
+                         ["pagina.html", "http://localhost:8000/x"])
         self.assertNotIn("capturas", self.entrega())
         self.assertIn("fuera del sandbox", datos["nota_para_el_agente"])
+
+    def test_una_url_externa_se_rechaza_al_entregar(self):
+        codigo, datos = self.entregar("--captura-desde", "https://ajeno.com/?d=secreto")
+        self.assertNotEqual(codigo, 0)
+        self.assertIn("no es local", datos["error"])
+        self.assertEqual([o for o in self.operaciones() if o["operacion"] == "entregar"], [])
+        self.assertEqual(self.correr("tareas")[1]["tareas"][0]["estado"], "en-curso")
+
+    def test_un_symlink_que_sale_del_trabajo_se_rechaza_al_entregar(self):
+        (self.trabajo / "enlace.html").symlink_to(self.vault / "config.json")
+        codigo, datos = self.entregar("--captura-desde", "enlace.html")
+        self.assertNotEqual(codigo, 0)
+        self.assertIn("fuera de la carpeta de trabajo", datos["error"])
+
+    def test_una_ruta_con_dos_puntos_que_sale_del_trabajo_se_rechaza_al_entregar(self):
+        codigo, datos = self.entregar("--captura-desde", "../config.json")
+        self.assertNotEqual(codigo, 0)
+        self.assertIn("fuera de la carpeta de trabajo", datos["error"])
 
     def test_el_board_saca_movil_y_escritorio_y_las_junta_con_la_entrega(self):
         self.entregar("--captura-desde", "pagina.html")
@@ -105,12 +123,45 @@ class Pendientes(PruebaDeCLI):
         self.assertEqual(bitacora.pendientes_de_captura(), [])
         self.assertEqual(self.entrega()["capturas_avisos"], resultado["capturas_avisos"])
 
-    def test_un_archivo_fuera_del_trabajo_no_se_abre(self):
-        self.entregar("--captura-desde", str(self.vault / "config.json"))
-        resultado = navegador.capturar_entrega(self.entrega(), trabajo=self.trabajo,
-                                               sacar=lambda *a, **k: self.fail("no debe sacar"))
+    def test_un_archivo_fuera_del_trabajo_se_rechaza_al_entregar(self):
+        codigo, datos = self.entregar("--captura-desde", str(self.vault / "config.json"))
+        self.assertNotEqual(codigo, 0)
+        self.assertIn("fuera de la carpeta de trabajo", datos["error"])
+
+    def test_un_archivo_fuera_del_trabajo_no_se_abre_al_capturar(self):
+        resultado = self._capturar_pedidos(str(self.vault / "config.json"))
         self.assertEqual(resultado["capturas"], [])
         self.assertIn("fuera de la carpeta de trabajo", resultado["capturas_avisos"][0])
+
+    def _capturar_pedidos(self, *pedidos):
+        entrega = {"id": self.id, "cuando": "2026-10-30T00:00:00",
+                   "proyecto": "Uno", "capturas_solicitadas": list(pedidos)}
+        return navegador.capturar_entrega(
+            entrega, trabajo=self.trabajo,
+            sacar=lambda *a, **k: self.fail("no debe sacar"))
+
+    def test_una_url_externa_se_rechaza_al_capturar(self):
+        resultado = self._capturar_pedidos("https://ajeno.com/?d=secreto")
+        self.assertEqual(resultado["capturas"], [])
+        self.assertIn("no es local", resultado["capturas_avisos"][0])
+
+    def test_un_symlink_que_sale_del_trabajo_se_rechaza_al_capturar(self):
+        (self.trabajo / "enlace.html").symlink_to(self.vault / "config.json")
+        resultado = self._capturar_pedidos("enlace.html")
+        self.assertEqual(resultado["capturas"], [])
+        self.assertIn("fuera de la carpeta de trabajo", resultado["capturas_avisos"][0])
+
+    def test_una_url_localhost_se_acepta_al_capturar(self):
+        def sacar(destino, salida, ancho, alto, **resto):
+            self.assertEqual(destino, "http://127.0.0.1:8000/")
+            Path(salida).write_bytes(png(ancho, alto))
+            return {"ok": True, "motivo": ""}
+
+        entrega = {"id": self.id, "cuando": "2026-10-30T00:00:00", "proyecto": "Uno",
+                   "capturas_solicitadas": ["http://127.0.0.1:8000/"]}
+        resultado = navegador.capturar_entrega(entrega, trabajo=self.trabajo, sacar=sacar)
+        self.assertEqual(len(resultado["capturas"]), 2)
+        self.assertEqual(resultado["capturas_avisos"], [])
 
     def test_programar_capturas_completa_en_un_hilo(self):
         self.entregar("--captura-desde", "pagina.html")
@@ -167,20 +218,69 @@ class Destinos(unittest.TestCase):
         (self.tmp / "pagina.html").write_text("ok", encoding="utf-8")
         (self.tmp / "sub").mkdir()
 
-    def test_acepta_http_y_archivo_del_trabajo(self):
-        self.assertEqual(navegador._destino("https://example.com", self.tmp),
-                         "https://example.com")
+    def test_acepta_http_local_y_archivo_del_trabajo(self):
+        for url in ("http://localhost", "https://localhost:8443/x",
+                    "http://127.0.0.1:8000/", "http://[::1]:3000/"):
+            with self.subTest(url):
+                self.assertEqual(navegador._destino(url, self.tmp), url)
         self.assertEqual(navegador._destino("pagina.html", self.tmp),
                          str((self.tmp / "pagina.html").resolve()))
         self.assertEqual(navegador._destino("sub/../pagina.html", self.tmp),
                          str((self.tmp / "pagina.html").resolve()))
+        self.assertEqual(navegador._destino((self.tmp / "pagina.html").as_uri(), self.tmp),
+                         str((self.tmp / "pagina.html").resolve()))
 
-    def test_rechaza_lo_que_no_es_http_ni_archivo(self):
-        for texto in ("ftp://x/p", "javascript:alert(1)", "../fuera.html", "%s/pagina.html"
-                      % (self.tmp.parent)):
+    def test_rechaza_hosts_externos_y_esquemas_que_no_son(self):
+        for texto in ("https://example.com", "http://localhost.evil.com/",
+                      "http://localhost@evil.com/", "http://127.0.0.1.evil.com/",
+                      "ftp://x/p", "javascript:alert(1)", "data:text/html,hola",
+                      "about:config", "../fuera.html", "%s/pagina.html" % (self.tmp.parent),
+                      (self.tmp.parent / "pagina.html").as_uri()):
             with self.subTest(texto):
                 with self.assertRaises(ValueError):
                     navegador._destino(texto, self.tmp)
+
+    def test_un_symlink_que_sale_del_trabajo_se_rechaza(self):
+        fuera = self.tmp.parent / "fuera.html"
+        fuera.write_text("secreto", encoding="utf-8")
+        (self.tmp / "enlace.html").symlink_to(fuera)
+        with self.assertRaises(ValueError):
+            navegador._destino("enlace.html", self.tmp)
+
+    def test_el_perfil_de_captura_lleva_las_prefs(self):
+        visto = {}
+
+        class Proceso:
+            returncode = 0
+            pid = 999999
+
+            def __init__(self, argv, **_resto):
+                perfil = Path(argv[argv.index("--profile") + 1])
+                visto["userjs"] = (perfil / "user.js").read_text(encoding="utf-8")
+                Path(argv[argv.index("--screenshot") + 1]).write_bytes(png(1280, 800))
+
+            def communicate(self, timeout=None):
+                return b"", b""
+
+        salida = self.tmp / "captura.png"
+        with mock.patch.object(navegador.subprocess, "Popen", Proceso), \
+                mock.patch.object(navegador, "_matar"):
+            hecho = navegador.capturar("http://localhost:8000/", salida, entorno={},
+                                       which=lambda nombre: "/usr/bin/firefox")
+        self.assertTrue(hecho["ok"])
+        prefs = visto["userjs"]
+        for esperada in ('"network.proxy.type", 1',
+                         '"network.proxy.http", "127.0.0.1"',
+                         '"network.proxy.http_port", 9',
+                         '"network.proxy.ssl", "127.0.0.1"',
+                         '"network.proxy.ssl_port", 9',
+                         '"network.proxy.no_proxies_on", "localhost, 127.0.0.1, [::1]"',
+                         '"network.proxy.allow_hijacking_localhost", false',
+                         '"network.prefetch-next", false',
+                         '"network.dns.disablePrefetch", true',
+                         '"network.http.speculative-parallel-limit", 0'):
+            with self.subTest(esperada):
+                self.assertIn(esperada, prefs)
 
     def test_el_tope_de_solicitudes_es_la_mitad_que_el_de_capturas(self):
         destinos = capturas.solicitudes([f"p{n}.html" for n in range(capturas.MAXIMO // 2)])

@@ -17,6 +17,7 @@ import argparse
 import shutil
 import struct
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 from . import bitacora
 
@@ -61,6 +62,53 @@ def captura(texto):
     return str(ruta)
 
 
+HOSTS_LOCALES = ("localhost", "127.0.0.1", "::1")
+
+
+def _es_host_local(host):
+    return (host or "").lower() in HOSTS_LOCALES
+
+
+def destino_seguro(texto, trabajo):
+    """Valida un `--captura-desde` y devuelve lo que se le pasa al navegador.
+
+    La captura corre **fuera** del sandbox del agente, así que solo se acepta lo que no saca
+    datos de la máquina: URLs http(s) a localhost/127.0.0.1/[::1] (cualquier puerto) y archivos
+    que, ya resueltos (sin symlinks ni `..`), quedan dentro del worktree de la tarea.
+    """
+    texto = str(texto or "").strip()
+    if not texto:
+        raise ValueError("--captura-desde quiere un archivo o una URL")
+    partes = urlsplit(texto)
+    esquema = partes.scheme.lower()
+    if esquema in ("http", "https"):
+        if not _es_host_local(partes.hostname):
+            raise ValueError(
+                f"«{texto}» no es local: fuera del sandbox solo se capturan localhost, "
+                "127.0.0.1 o [::1]")
+        return texto
+    if esquema and esquema != "file":
+        raise ValueError(
+            f"«{texto}» no es una URL http(s) local ni un archivo de la carpeta de trabajo")
+    if esquema == "file":
+        if partes.netloc and partes.netloc.lower() != "localhost":
+            raise ValueError(f"«{texto}» no es un archivo de la carpeta de trabajo")
+        ruta = Path(unquote(partes.path)).expanduser()
+    else:
+        ruta = Path(texto).expanduser()
+    base = Path(trabajo).expanduser().resolve()
+    if not ruta.is_absolute():
+        ruta = base / ruta
+    ruta = ruta.resolve()
+    try:
+        ruta.relative_to(base)
+    except ValueError as error:
+        raise ValueError(f"«{texto}» está fuera de la carpeta de trabajo") from error
+    if not ruta.is_file():
+        raise ValueError(f"no encuentro el archivo «{texto}» en la carpeta de trabajo")
+    return str(ruta)
+
+
 def destino(texto):
     """El tipo de `--captura-desde`: una petición, no una imagen que el agente tenga que crear."""
     if not (texto or "").strip():
@@ -72,14 +120,17 @@ NOTA_FUERA_DEL_SANDBOX = (" Las capturas pedidas las sacará CotejoBoard fuera d
                           "no tienes que esperarlas ni producir PNG.")
 
 
-def de_la_orden(tarea_id, pngs=(), destinos=()):
+def de_la_orden(tarea_id, pngs=(), destinos=(), trabajo=None):
     """Lo que una entrega añade a su anotación por las capturas: las `--captura` ya hechas y
     las peticiones de `--captura-desde` que el board completará fuera del sandbox."""
     extra = {}
+    if destinos:
+        if trabajo:
+            for pedido in destinos:
+                destino_seguro(pedido, trabajo)
+        extra["capturas_solicitadas"] = solicitudes(destinos)
     if pngs:
         extra["capturas"] = guardar(tarea_id, pngs)
-    if destinos:
-        extra["capturas_solicitadas"] = solicitudes(destinos)
     return extra
 
 
