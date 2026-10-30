@@ -265,12 +265,12 @@ window.sin-animaciones .vida-punto { transition: none; opacity: 1; }
                                                     box-shadow: none; min-height: 30px; }
 .maestro-chispa { color: var(--k-senal); }
 /* Un solo botón, dividido: la parte grande abre el maestro, la flecha elige el cliente.
-   Sin texto es un contorno: el verde lleno se reserva para cuando el botón manda algo, y
-   así el acento no compite con Para comprobar. Con texto, las dos mitades van rellenas y
+   Sin texto es un contorno tenue: el verde lleno se reserva para cuando el botón manda algo,
+   y así el acento no compite con Para comprobar. Con texto, las dos mitades van rellenas y
    separadas por una raya del color del texto sobre él. */
 .maestro-ejecutar > button, .maestro-ejecutar > menubutton > button {
     font-family: "Sora"; font-weight: 600; font-size: var(--k-dato);
-    color: var(--k-senal); background: transparent; border: 1px solid var(--k-senal);
+    color: var(--k-tenue); background: transparent; border: 1px solid var(--k-borde-chip);
     min-height: 30px; }
 .maestro-ejecutar.con-texto > button, .maestro-ejecutar.con-texto > menubutton > button {
     color: var(--k-sobre-senal); background: var(--k-senal); border-color: var(--k-senal); }
@@ -278,10 +278,10 @@ window.sin-animaciones .vida-punto { transition: none; opacity: 1; }
 .maestro-ejecutar > menubutton > button { border-radius: 0 8px 8px 0; padding: 0 var(--k-espacio-sm);
                                          border-left: none; }
 .maestro-ejecutar > button:hover, .maestro-ejecutar > menubutton > button:hover {
-    background: var(--k-senal-suave); }
+    color: var(--k-texto); background: var(--k-velo); }
 .maestro-ejecutar.con-texto > button:hover, .maestro-ejecutar.con-texto > menubutton > button:hover {
     filter: brightness(1.1); }
-.maestro-ejecutar > separator { background: var(--k-senal); opacity: 0.4; min-width: 1px; }
+.maestro-ejecutar > separator { background: var(--k-borde-chip); min-width: 1px; }
 .maestro-ejecutar.con-texto > separator { background: var(--k-sobre-senal); opacity: 0.25; }
 .maestro-ejecutar:disabled > button, .maestro-ejecutar:disabled > menubutton > button {
     color: var(--k-tenue); background: var(--k-velo); border-color: var(--k-borde); }
@@ -301,13 +301,11 @@ window.sin-animaciones .vida-punto { transition: none; opacity: 1; }
 .maestro-repartir { font-family: "Sora"; font-weight: 600; font-size: var(--k-dato);
                     color: var(--k-sobre-senal); background: var(--k-senal); border-radius: 8px; }
 .maestro-repartir:disabled { color: var(--k-tenue); background: var(--k-velo); }
-/* Derecha: Deshacer la última tarea finalizada. Está siempre a la vista para que se sepa que
-   se puede echar atrás, y se queda legible cuando no hay nada que deshacer. */
+/* Derecha: Deshacer la última tarea finalizada, solo mientras hay algo que deshacer. */
 .pie-derecha { padding: 14px 0 18px 0; }
 .pie-deshacer { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue);
                 border: 1px solid var(--k-borde-chip); border-radius: 8px;
                 padding: var(--k-espacio-sm) var(--k-espacio-md); }
-.pie-deshacer:disabled { opacity: 0.65; }
 .pie-deshacer:hover { border-color: var(--k-senal); color: var(--k-senal); }
 .carta-texto { font-size: var(--k-contenido); }
 .chip { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue);

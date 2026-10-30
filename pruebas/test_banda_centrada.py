@@ -133,7 +133,7 @@ class PieEnTresZonas(unittest.TestCase):
         self.assertEqual(falso.pie_izquierda.get_margin_start(), app.comun.MARGEN_TABLERO_LADOS)
         self.assertEqual(falso.pie_derecha.get_margin_end(), app.comun.MARGEN_TABLERO_LADOS)
         self.assertEqual(falso.pie_centro.get_first_child().get_size_request()[0], 520)
-        self.assertTrue(falso.boton_deshacer.get_visible())
+        self.assertIs(falso.boton_deshacer.get_parent(), falso.pie_derecha)
 
 
 @unittest.skipUnless(HAY_GTK, "sin GTK")
@@ -145,17 +145,17 @@ class DeshacerEnElPie(unittest.TestCase):
         parche.start()
         self.addCleanup(parche.stop)
 
-    def test_siempre_visible_y_apagado_sin_nada_que_deshacer(self):
-        self.assertTrue(self.t.boton_deshacer.get_visible())
-        self.assertFalse(self.t.boton_deshacer.get_sensitive())
+    def test_oculto_sin_nada_que_deshacer(self):
+        self.assertFalse(self.t.boton_deshacer.get_visible())
         self.assertEqual(self.t.boton_deshacer.get_tooltip_text(),
                          "Deshacer la última tarea finalizada (Ctrl Z)")
 
-    def test_con_algo_en_la_pila_se_enciende_y_deshace(self):
+    def test_con_algo_en_la_pila_aparece_y_deshace(self):
         deshecho = []
         self.t.finalizadas.pila.append(object())
         self.t.finalizadas.deshacer = lambda: deshecho.append(True)
         self.t.actualizar_deshacer()
+        self.assertTrue(self.t.boton_deshacer.get_visible())
         self.assertTrue(self.t.boton_deshacer.get_sensitive())
         self.t.al_deshacer()
         self.assertEqual(deshecho, [True])
@@ -163,7 +163,7 @@ class DeshacerEnElPie(unittest.TestCase):
     def test_cambiar_de_proyecto_no_toca_el_deshacer(self):
         self.t.al_elegir_chip(self.t.botones_chip["B"])
         self.assertEqual(self.t.seleccion, "B")
-        self.assertFalse(self.t.boton_deshacer.get_sensitive())
+        self.assertFalse(self.t.boton_deshacer.get_visible())
 
 
 if __name__ == "__main__":

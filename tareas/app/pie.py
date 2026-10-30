@@ -55,10 +55,14 @@ class Pie:
         return pie
 
     def actualizar_deshacer(self):
-        """El pie dice si se puede echar atrás: con la pila vacía, el botón se queda apagado
-        pero visible (nunca un fantasma casi invisible)."""
+        """El pie enseña Deshacer solo mientras hay algo que echar atrás.
+
+        Un control apagado y casi invisible que no hace nada es ruido; cuando la pila se
+        vacía (el aviso se fue, o ya se deshizo lo último), el hueco se queda limpio.
+        """
         pila = getattr(getattr(self, "finalizadas", None), "pila", ())
         self.boton_deshacer.set_sensitive(bool(pila))
+        self.boton_deshacer.set_visible(bool(pila))
 
     def al_deshacer(self, _boton=None):
         """La misma acción que el «Deshacer» del aviso y Ctrl+Z."""
