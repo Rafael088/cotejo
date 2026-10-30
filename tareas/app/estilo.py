@@ -135,10 +135,10 @@ button.flat:hover { color: var(--k-texto); background: var(--k-velo-fuerte); }
 list.columna, list.columna > row { background: transparent; }
 .columna-caja { background: var(--k-columna); border-radius: 12px; }
 /* El contador de cada columna, en pastilla tenue. El de la que te espera es solo el número en
-   verde y en negrita, sin pastilla: el mismo acento del título, sin un óvalo que lo grite. */
+   verde y en Medium, sin pastilla: el mismo acento del título, sin un óvalo que lo grite. */
 .cuenta-columna { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue);
                   background: var(--k-velo-fuerte); border-radius: 10px; padding: 1px var(--k-espacio-sm); }
-.cuenta-columna.en-cotejo { color: var(--k-senal); background: transparent; font-weight: 600; }
+.cuenta-columna.en-cotejo { color: var(--k-senal); background: transparent; font-weight: 500; }
 .columna-icono { color: var(--k-tenue); }
 .columna-icono.en-cotejo { color: var(--k-senal); }
 /* Finalizada es la única columna que no reclama nada: su título baja a Plata. */
@@ -212,6 +212,7 @@ window.sin-animaciones .vida-punto { transition: none; opacity: 1; }
 .banda-proyectos { background: var(--k-columna); border-top: 1px solid var(--k-borde-hondo);
                    border-bottom: 1px solid var(--k-borde-hondo); padding: var(--k-espacio-sm) 0; }
 .banda-chip { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue);
+              font-weight: 500;
               border: 1px solid var(--k-borde-chip); border-radius: 999px; background: transparent;
               padding: 0 var(--k-espacio-md); min-height: 36px; min-width: 0;
               transition: background-color var(--k-dur-hover) ease-out; }
@@ -243,10 +244,10 @@ window.sin-animaciones .vida-punto { transition: none; opacity: 1; }
    para arreglarlo (7,2:1 sobre el velo; el ámbar, 10,4:1). */
 .vacio.roto { background: var(--k-ambar-velo); border-radius: 10px; padding: var(--k-espacio-md); }
 .vacio.roto .vacio-icono, .vacio.roto .vacio-titulo { color: var(--k-ambar); }
-/* Lo que te espera en ese proyecto: el número en verde y en negrita, sin pastilla. Es el único
+/* Lo que te espera en ese proyecto: el número en verde y en Medium, sin pastilla. Es el único
    verde de la banda, y se lee igual en el chip abierto que en los demás. */
 .aviso-chip { color: var(--k-senal); font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta);
-              font-weight: 600; }
+              font-weight: 500; }
 /* El pie bajo el tablero: medidor + café a la izquierda, hueco para Maestro al centro,
    botón volver a la derecha. La raya de arriba es la callada del board, no la de la ventana. */
 .pie { border-top: 1px solid var(--k-borde-hondo); padding: 0; }
@@ -255,7 +256,7 @@ window.sin-animaciones .vida-punto { transition: none; opacity: 1; }
 .ahorro { border: 0; padding: 0; }
 .ahorro-cifra { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue); }
 /* La invitación al café, sin raya de separación: en plata y sin acento. */
-.pie-cafe { font-size: var(--k-dato); color: var(--k-tenue);
+.pie-cafe { font-size: var(--k-dato); color: var(--k-tenue); font-weight: 500;
             padding: 0; margin: 0; min-height: 0; min-width: 0; background: transparent; border: 0; text-decoration: none; }
 .pie-cafe:hover { color: var(--k-texto); background: transparent; }
 /* Centro: la barra del Maestro, una pastilla como el buscador. El verde va solo en el ícono y
