@@ -216,8 +216,9 @@ class Servidores:
                     return Resultado(True, "Tu app se abrió y ya terminó."
                                      + (f" Lo último que dijo:\n{cola}" if cola else ""),
                                      log=str(uno.log))
-                return Resultado(False, "Tu app no arrancó."
-                                 + (f" Lo último que dijo:\n{cola}" if cola else ""),
+                # Lo que dijo el proceso (el error de npm en crudo, p. ej.) no se enseña: la
+                # frase queda en llano y el detalle vive en el registro, tras «Ver lo que dijo».
+                return Resultado(False, "Tu app no arrancó. Pídele a un agente que lo arregle.",
                                  log=str(uno.log))
             time.sleep(PASO)
         if como.tipo == "programa" and not uno.url and como.origen != "deducido":
@@ -226,7 +227,7 @@ class Servidores:
         self.parar(nombre)
         donde = f" en {uno.url}" if uno.url else ""
         return Resultado(False, f"Tu app tardó más de {int(tope)} segundos en responder{donde} "
-                                "y la paré. Lo que dijo está en su registro.", log=str(uno.log))
+                                "y la paré.", log=str(uno.log))
 
     # --- parar ---------------------------------------------------------------------------------
 

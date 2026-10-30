@@ -14,7 +14,7 @@ que enseñar y lo dice («sin arquitectura todavía»); no se inventa uno a part
 
 from dataclasses import dataclass, field
 
-from . import almacen, conocimiento, modelo
+from . import almacen, como_se_abre, conocimiento, modelo
 from . import version as versiones
 
 SIN_ARQUITECTURA = "sin arquitectura todavía"
@@ -34,6 +34,7 @@ class Tarjeta:
     piezas_hechas: int = 0
     estados: list = field(default_factory=list)   # el estado de cada pieza, en orden
     carpeta: str = ""          # la carpeta principal del proyecto («Ver mi app»), o ""
+    sin_app: bool = False      # todavía no hay código: «Ver mi app» se apaga hasta que lo haya
 
     @property
     def con_arquitectura(self):
@@ -114,7 +115,7 @@ def columnas_de(proyecto):
     return columnas
 
 
-def tarjeta(proyecto, version="", objetivo="", piezas=(), carpeta=""):
+def tarjeta(proyecto, version="", objetivo="", piezas=(), carpeta="", sin_app=False):
     """La tarjeta de un proyecto a partir de lo leído. `piezas` son los dicts de
     `conocimiento.piezas_del_repo` (con `estado`)."""
     estados = [p.get("estado", "falta") for p in piezas]
@@ -128,6 +129,7 @@ def tarjeta(proyecto, version="", objetivo="", piezas=(), carpeta=""):
         piezas_hechas=sum(1 for e in estados if e == "hecho"),
         estados=estados,
         carpeta=str(carpeta or ""),
+        sin_app=sin_app,
     )
 
 
@@ -179,5 +181,11 @@ def tarjetas(proyectos, fuente, avisos=None):
                     avisos.append({"nota": str(carpeta), "motivo": f"Inicio: {error}"})
         if not (proyecto.tareas or proyecto.hechas or datos != ("", "", [])):
             continue
-        resultado.append(tarjeta(proyecto, *datos, carpeta=carpeta or ""))
+        sin_app = False
+        if carpeta:
+            try:
+                sin_app = como_se_abre.plan_de(carpeta).sin_app
+            except Exception:   # noqa: BLE001 — un error aquí no debe tumbar el Inicio
+                sin_app = False
+        resultado.append(tarjeta(proyecto, *datos, carpeta=carpeta or "", sin_app=sin_app))
     return ordenar(resultado)

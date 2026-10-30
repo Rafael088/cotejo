@@ -135,11 +135,34 @@ class Deducir(unittest.TestCase):
 
     def test_lo_anotado_gana_a_lo_deducido(self):
         (self.carpeta / "index.html").write_text("x")
+        (self.carpeta / "package.json").write_text(json.dumps({"scripts": {"dev": "v"}}))
         alm = almacen.Almacen(self.carpeta)
         alm.crear("arquitectura", "Arquitectura", ANOTADA)
         plan = c.plan_de(self.carpeta)
         self.assertTrue(plan.ok)
         self.assertEqual((plan.como.comando, plan.como.origen), ("npm run dev", "arquitectura"))
+
+    def test_lo_anotado_sin_codigo_dice_que_no_hay_app_todavia(self):
+        # Un proyecto recién creado anota `npm run dev` pero aún no tiene package.json:
+        # «Ver mi app» no debe correrlo (enseñaría el ENOENT de npm), sino esperar.
+        almacen.Almacen(self.carpeta).crear("arquitectura", "Arquitectura", ANOTADA)
+        plan = c.plan_de(self.carpeta)
+        self.assertFalse(plan.ok)
+        self.assertTrue(plan.sin_app)
+        self.assertEqual(plan.motivo, c.SIN_APP)
+        self.assertIn("primera pantalla", plan.motivo)
+
+    def test_falta_la_app(self):
+        self.assertTrue(c.falta_la_app(self.carpeta, c.ComoSeAbre(comando="npm run dev")))
+        self.assertTrue(c.falta_la_app(self.carpeta, c.ComoSeAbre(comando="yarn dev")))
+        (self.carpeta / "package.json").write_text("{}")
+        self.assertFalse(c.falta_la_app(self.carpeta, c.ComoSeAbre(comando="npm run dev")))
+        self.assertTrue(c.falta_la_app(self.carpeta, c.ComoSeAbre(url="index.html")))
+        (self.carpeta / "index.html").write_text("x")
+        self.assertFalse(c.falta_la_app(self.carpeta, c.ComoSeAbre(url="index.html")))
+        # Un comando que no es un gestor de Node no se bloquea por miedo: lo dice el arranque.
+        self.assertFalse(c.falta_la_app(self.carpeta, c.ComoSeAbre(comando="python3 app.py")))
+        self.assertFalse(c.falta_la_app(self.carpeta, c.ComoSeAbre(url="https://mi.app")))
 
     def test_lo_anotado_mal_se_dice_y_no_se_deduce(self):
         (self.carpeta / "index.html").write_text("x")
@@ -282,14 +305,17 @@ class CicloDeVida(unittest.TestCase):
         self.servidores.parar("tienda")
         self.assertFalse(s.responde(url))
 
-    def test_si_no_arranca_dice_lo_ultimo_que_dijo(self):
+    def test_si_no_arranca_el_error_crudo_va_al_registro_no_a_la_frase(self):
         r = self.servidores.abrir("tienda", self.plan(
             comando=f"{PY} -c \"import sys; print('falta node_modules'); sys.exit(3)\"",
             url=f"http://127.0.0.1:{s.puerto_libre()}/"))
         self.assertFalse(r.ok)
         self.assertIn("Tu app no arrancó", r.texto)
-        self.assertIn("falta node_modules", r.texto)
+        # El error en crudo no se enseña: la frase queda en llano y el detalle va al registro,
+        # que el board abre con «Ver lo que dijo».
+        self.assertNotIn("falta node_modules", r.texto)
         self.assertTrue(Path(r.log).is_file())
+        self.assertIn("falta node_modules", Path(r.log).read_text(encoding="utf-8"))
         self.assertFalse(self.servidores.vivo("tienda"))
 
     def test_si_tarda_demasiado_se_para_y_se_dice(self):
