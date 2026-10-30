@@ -19,10 +19,13 @@ La arquitectura de un proyecto (una entrada `arquitectura` del almacén, la mism
 
 La deja la preparación (`tareas/inicio.py`) y la mantiene al día cada agente que cambie cómo
 se abre (`enrutador/encargo.py`). Sin ella, `plan_de` deduce con prudencia —un `package.json`
-con script `dev` o `start`, o un `index.html` en la raíz— y si tampoco, lo dice en llano.
+con script `dev` o `start`, o un `index.html` en la raíz— y si tampoco, lo dice en llano. Si la
+sección está pero lo que manda abrir no existe todavía (un `npm run dev` sin `package.json` en un
+proyecto recién creado), `plan_de` da `sin_app` en vez de correrlo: «Ver mi app» espera a la
+primera pantalla y no enseña el error de npm en crudo.
 
-Todo aquí es puro salvo `plan_de` y `deducir`, que solo leen. Arrancar, esperar y parar el
-proceso es de `tareas/servidor_app.py`; el board (`tareas/app/ver_app.py`) solo pinta.
+Todo aquí es puro salvo `plan_de`, `deducir` y `falta_la_app`, que solo leen. Arrancar, esperar
+y parar el proceso es de `tareas/servidor_app.py`; el board (`tareas/app/ver_app.py`) solo pinta.
 """
 
 import json
@@ -50,6 +53,11 @@ FORMATO = "\n".join([
 ])
 SIN_ANOTAR = ("No sé cómo abrir tu app todavía: pídeselo a un agente con una tarea como "
               "«Anota en la arquitectura cómo se abre la app».")
+# Un proyecto recién creado aún no tiene código: «Ver mi app» no debe correr `npm run dev` (que
+# enseñaría el ENOENT de npm en crudo), sino decir esto y esperar a la primera pantalla.
+SIN_APP = ("Todavía no hay app que abrir: aparecerá cuando un agente haga la primera pantalla. "
+           "Pídeselo con una tarea como «Crea la primera pantalla de la app».")
+_PAQUETES_DE_NODE = ("npm", "npx", "yarn", "pnpm", "bun")
 
 _SECCION_RE = re.compile(r"^#{2,3}\s+(.+?)\s*#*\s*$")
 _LINEA_RE = re.compile(r"^\s*(?:[-*]\s+)?([^:]{1,30}?)\s*:\s*(.*?)\s*$")
@@ -86,11 +94,16 @@ class ComoSeAbre:
 
 @dataclass(frozen=True)
 class Plan:
-    """Lo que hará «Ver mi app»: `como` y la carpeta donde, o `motivo` en llano si no se puede."""
+    """Lo que hará «Ver mi app»: `como` y la carpeta donde, o `motivo` en llano si no se puede.
+
+    `sin_app` distingue «todavía no hay código» de las otras razones: el botón se apaga hasta que
+    exista lo que dice `## Cómo se abre`, y la frase no pide anotar nada, solo esperar.
+    """
 
     como: ComoSeAbre = None
     carpeta: str = ""
     motivo: str = ""
+    sin_app: bool = False
 
     @property
     def ok(self):
@@ -218,6 +231,25 @@ def deducir(carpeta):
     return None
 
 
+def falta_la_app(carpeta, como):
+    """True si lo que `como` dice abrir no existe todavía (un proyecto recién creado, sin código).
+
+    Solo mira lo evidente, para no apagar el botón por miedo: un comando de un gestor de paquetes
+    de Node sin `package.json` (el `npm run dev` que aún no tiene qué correr), o una `url:` que es
+    una página o archivo del proyecto que no está. Lo demás (un `python app.py` sin `app.py`, un
+    puerto ocupado…) lo dice el arranque, traducido, con su «Ver lo que dijo».
+    """
+    if not como.comando:
+        return bool(como.url) and not como.es_web and not (Path(carpeta) / como.url).is_file()
+    argv = como.argv()
+    if not argv:
+        return False
+    donde = (Path(carpeta) / como.carpeta) if como.carpeta else Path(carpeta)
+    if Path(argv[0]).name in _PAQUETES_DE_NODE:
+        return not (donde / "package.json").is_file()
+    return False
+
+
 def plan_de(carpeta):
     """El `Plan` de «Ver mi app» para la carpeta principal del proyecto (nunca un worktree)."""
     if not carpeta or not Path(carpeta).is_dir():
@@ -230,4 +262,6 @@ def plan_de(carpeta):
     como = como or deducir(carpeta)
     if como is None:
         return Plan(carpeta=str(carpeta), motivo=SIN_ANOTAR)
+    if falta_la_app(carpeta, como):
+        return Plan(carpeta=str(carpeta), motivo=SIN_APP, sin_app=True)
     return Plan(como=como, carpeta=str(carpeta))

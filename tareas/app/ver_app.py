@@ -137,9 +137,17 @@ class VerApp:
             self.aviso(f"No pude abrirlo: {error.message}", segundos=8)
 
     def pintar_botones_app(self):
-        """«Parar» se ve en el mapa solo si la app de ese proyecto está en marcha."""
+        """«Parar» solo si la app está en marcha; «Ver mi app» se apaga mientras no haya código."""
         pantalla = getattr(self, "pantalla_mapa", None)
         proyecto = getattr(self, "mapa_proyecto", None)
-        if pantalla is not None:
-            pantalla.boton_parar.set_visible(
-                bool(proyecto) and self.servidores.vivo(proyecto[0]))
+        if pantalla is None:
+            return
+        pantalla.boton_parar.set_visible(bool(proyecto) and self.servidores.vivo(proyecto[0]))
+        if not proyecto:
+            pantalla.boton_ver_app.set_sensitive(False)
+            pantalla.boton_ver_app.set_tooltip_text("")
+            return
+        nombre, carpeta = proyecto
+        plan = como_se_abre.plan_de(self._carpeta(nombre, carpeta or None))
+        pantalla.boton_ver_app.set_sensitive(not plan.sin_app)
+        pantalla.boton_ver_app.set_tooltip_text(plan.motivo if plan.sin_app else "")

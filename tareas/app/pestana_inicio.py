@@ -24,7 +24,7 @@ import datetime
 
 from gi.repository import Adw, Gtk, Pango
 
-from .. import equipo, resumen_inicio
+from .. import como_se_abre, equipo, resumen_inicio
 from .comun import ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XL, ESPACIADO_XS
 from .escala import px
 from .comun import animaciones_activas
@@ -234,6 +234,11 @@ class PestanaInicio:
             etiquetar(b, f"{texto} de {t.nombre}")
             b.connect("clicked", lambda _b, a=accion: a(t.nombre, t.carpeta or None))
             acciones.append(b)
+        # Sin código todavía, «Ver mi app» no se puede pulsar y dice por qué en el tooltip.
+        if t.sin_app:
+            ver_app = acciones.get_first_child()
+            ver_app.set_sensitive(False)
+            ver_app.set_tooltip_text(como_se_abre.SIN_APP)
         tarjeta.append(acciones)
         tarjeta.botones_app = acciones
         return tarjeta
