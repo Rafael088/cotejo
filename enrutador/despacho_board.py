@@ -288,6 +288,12 @@ def _lanzar(tarea_id, al_terminar, config, rechazada, rechazo_dado=None, forzar=
         except worktrees.ErrorWorktree as error:
             soltar(f"No se pudo crear su worktree: {error.mensaje}", "worktree")
     trabajo = Path(worktree["ruta"]) if worktree else directorio
+    # Gemini no arranca si su `.gemini/settings.json` trae hooks, comandos de herramientas o
+    # políticas (cotejo-lbwsq4). El worktree ya existe: se mira ahí, antes de lanzar, y se
+    # devuelve la tarea con el motivo en llano en vez de dejarla morir con un log en inglés.
+    aviso_gemini = despacho.aviso_de_gemini(elegida.nivel.cliente, trabajo)
+    if aviso_gemini:
+        soltar(aviso_gemini, "gemini_sin_confianza")
     encerrado = sandbox_de(config, cliente, cotejo, tarea, trabajo, worktree, directorio)
     encargo = armar(tarea, worktree, NOTA + (" " + armado.nota_jaula(encerrado)
                                              if encerrado["activo"] else ""))

@@ -346,6 +346,15 @@ def cmd_despachar(args):
                 rechazar(tarea, elegida, "worktree", error.mensaje,
                          error.salida + " La tarea se soltó: vuelve a estar pendiente.", ERROR)
         encargo = armar_encargo(tarea, worktree)
+    # El worktree ya existe (o es la carpeta del proyecto): si Gemini no va a arrancar por su
+    # `.gemini/settings.json`, se dice antes de lanzar, no después con un log en inglés
+    # (cotejo-dzhzca). En un ensayo no hay worktree y lo que hubiera en el repo ya se miró.
+    aviso_gemini = despacho.aviso_de_gemini(elegida.nivel.cliente, encargo.directorio)
+    if aviso_gemini:
+        if tomada:
+            cotejo.soltar(tarea["id"], aviso_gemini, asignada=asignada)
+        rechazar(tarea, elegida, "gemini_sin_confianza", aviso_gemini,
+                 "No se lanzó nada: la tarea sigue pendiente. " + aviso_gemini, ERROR)
     donde = ({"worktree": {k: worktree.get(k) for k in ("ruta", "rama", "repo")}}
              if worktree else {})
 

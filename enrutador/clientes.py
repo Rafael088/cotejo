@@ -561,20 +561,64 @@ def _gemini_servidores(ajustes):
     return nombres
 
 
-def _gemini_corre_codigo(ajustes):
-    """¿Traen estos ajustes del proyecto algo que Gemini corre solo y que ninguna bandera
-    apaga? Los hooks (`hooks.<evento>`, que se suman a los de la persona y corren sin
-    preguntar), los comandos de herramientas propias (`tools.discoveryCommand`, que corre al
-    arrancar, y `tools.callCommand`) y las políticas que el proyecto se cargaría
-    (`policyPaths`, `adminPolicyPaths`: las de administrador pesarían más que los prohibidos)."""
+def _gemini_lo_que_corre(ajustes):
+    """Lo que estos ajustes del proyecto le hacen correr a Gemini solo y ninguna bandera apaga,
+    en llano, para decirlo antes de lanzar. Lista vacía si no hay nada.
+
+    Son los hooks (`hooks.<evento>`, que se suman a los de la persona y corren sin preguntar),
+    los comandos de herramientas propias (`tools.discoveryCommand`, que corre al arrancar, y
+    `tools.callCommand`) y las políticas que el proyecto se cargaría (`policyPaths`,
+    `adminPolicyPaths`: las de administrador pesarían más que los prohibidos)."""
+    motivos = []
     hooks = ajustes.get("hooks")
     if isinstance(hooks, dict) and any(isinstance(v, list) and v for v in hooks.values()):
-        return True
+        motivos.append("hooks (órdenes que Gemini corre solo, sin preguntar)")
     herramientas = ajustes.get("tools")
-    if isinstance(herramientas, dict) and (herramientas.get("discoveryCommand") or
-                                           herramientas.get("callCommand")):
-        return True
-    return bool(ajustes.get("policyPaths") or ajustes.get("adminPolicyPaths"))
+    if isinstance(herramientas, dict):
+        if herramientas.get("discoveryCommand"):
+            motivos.append("tools.discoveryCommand (un comando que corre al arrancar)")
+        if herramientas.get("callCommand"):
+            motivos.append("tools.callCommand (un comando que corre al usar una herramienta)")
+    politicas = [clave for clave in ("policyPaths", "adminPolicyPaths") if ajustes.get(clave)]
+    if politicas:
+        motivos.append(" y ".join(politicas) + " (políticas que se cargan por encima de los "
+                        "permisos de Cotejo)")
+    return motivos
+
+
+def _gemini_corre_codigo(ajustes):
+    """¿Traen estos ajustes del proyecto algo que Gemini corre solo y que ninguna bandera
+    apaga? Ver `_gemini_lo_que_corre`."""
+    return bool(_gemini_lo_que_corre(ajustes))
+
+
+def aviso_de_gemini(trabajo):
+    """Por qué Gemini no va a arrancar en esa carpeta, en llano y con el archivo, o "".
+
+    Desde cotejo-lbwsq4, si el `.gemini/settings.json` del worktree trae hooks, comandos de
+    herramientas propias o políticas (o no se entiende), el worktree va sin confianza
+    (`GEMINI_CLI_TRUST_WORKSPACE=false`) y Gemini, sin interfaz, se niega a arrancar con
+    `FatalUntrustedWorkspaceError` —solo en su log, y en inglés—. Se dice **antes** de lanzar,
+    con el archivo y qué quitar, para no gastar un lanzamiento condenado. Sin ese archivo (o
+    sin nada de eso), "".
+    """
+    if not trabajo:
+        return ""
+    ruta = os.path.join(str(trabajo), AJUSTES_GEMINI_DEL_PROYECTO)
+    try:
+        ajustes = _gemini_ajustes(ruta)
+    except ValueError:
+        return (f"Gemini no va a arrancar: «{ruta}» no se entiende (JSON roto) y, sin leerlo, "
+                f"el worktree va sin confianza; sin interfaz se niega a correr (su log dice "
+                f"«FatalUntrustedWorkspaceError»). Arréglalo o bórralo, o elige otro modelo, y "
+                f"vuelve a lanzarla.")
+    motivos = _gemini_lo_que_corre(ajustes)
+    if not motivos:
+        return ""
+    return (f"Gemini no va a arrancar: «{ruta}» trae {'; '.join(motivos)}, y con eso el worktree "
+            f"va sin confianza; sin interfaz se niega a correr (su log dice "
+            f"«FatalUntrustedWorkspaceError»). Quita eso de ese archivo (o bórralo), o elige "
+            f"otro modelo, y vuelve a lanzarla; sus servidores MCP no hacen falta quitarlos.")
 
 
 def _gemini_de_la_persona(entorno):
