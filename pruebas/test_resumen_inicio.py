@@ -65,6 +65,17 @@ class Titular(unittest.TestCase):
     def test_todo_al_dia(self):
         self.assertEqual(ri.titular([ri.Tarjeta("A")]), "Tienes 1 proyecto, todo al día")
 
+    def test_con_trabajo_pendiente_no_dice_todo_al_dia(self):
+        # «Todo al día» con cuatro tareas sin terminar es justo lo que chocaba con
+        # «0 de 4 piezas» en la tarjeta (v1.3.1).
+        t = [ri.Tarjeta("A", sin_terminar=4)]
+        self.assertEqual(ri.titular(t), "Tienes 1 proyecto y 4 tareas por hacer")
+        self.assertEqual(ri.titular([ri.Tarjeta("A", sin_terminar=1)]),
+                         "Tienes 1 proyecto y 1 tarea por hacer")
+        # Lo que espera a la persona manda sobre lo que está por hacer.
+        self.assertEqual(ri.titular([ri.Tarjeta("A", por_comprobar=1, sin_terminar=4)]),
+                         "Tienes 1 proyecto y 1 entrega por comprobar")
+
 
 class TarjetaDeProyecto(unittest.TestCase):
     def test_avance_en_piezas_hechas(self):
@@ -84,6 +95,15 @@ class TarjetaDeProyecto(unittest.TestCase):
         self.assertIsNone(t.avance)
         self.assertEqual(t.texto_avance, "0.2.0 · sin arquitectura todavía")
         self.assertEqual(t.texto_estado, "al día")
+
+    def test_el_chip_no_dice_al_dia_con_tareas_sin_terminar(self):
+        t = ri.tarjeta(proyecto("Faro", [tarea("a", "pendiente"), tarea("b", "en-curso")]),
+                       piezas=[{"estado": "falta"}] * 4)
+        self.assertEqual(t.texto_avance, "0 de 4 piezas")
+        self.assertEqual(t.texto_estado, "2 por hacer")
+        # Solo cuando no queda nada se dice «al día».
+        self.assertEqual(ri.tarjeta(proyecto("Faro", [tarea("a", "hecha")])).texto_estado,
+                         "al día")
 
     def test_sin_version_solo_el_avance(self):
         t = ri.tarjeta(proyecto("Faro"), piezas=[{"estado": "hecho"}])

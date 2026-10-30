@@ -127,6 +127,11 @@ checkbutton check { border-radius: 6px; border: 2px solid var(--k-tenue); backgr
 checkbutton check:hover { border-color: var(--k-senal); }
 checkbutton check:checked { background: var(--k-senal); border-color: var(--k-senal); color: var(--k-sobre-senal); }
 
+/* dim-label es de Adwaita y trae opacity: 0.55: sobre el claro eso deja el texto chico en
+   4,1:1, y se lee peor de lo que el tema promete. No se atenúa con opacity sino con el token
+   tenue, que ya está medido a 4,5:1 o más en las tres bases (`temas comprobar`). */
+.dim-label { color: var(--k-tenue); opacity: 1; }
+
 button.flat { color: var(--k-tenue); border-radius: 8px; }
 button.flat:hover { color: var(--k-texto); background: var(--k-velo-fuerte); }
 
@@ -135,10 +140,10 @@ button.flat:hover { color: var(--k-texto); background: var(--k-velo-fuerte); }
 list.columna, list.columna > row { background: transparent; }
 .columna-caja { background: var(--k-columna); border-radius: 12px; }
 /* El contador de cada columna, en pastilla tenue. El de la que te espera es solo el número en
-   verde y en negrita, sin pastilla: el mismo acento del título, sin un óvalo que lo grite. */
+   verde y en Medium, sin pastilla: el mismo acento del título, sin un óvalo que lo grite. */
 .cuenta-columna { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue);
                   background: var(--k-velo-fuerte); border-radius: 10px; padding: 1px var(--k-espacio-sm); }
-.cuenta-columna.en-cotejo { color: var(--k-senal); background: transparent; font-weight: 600; }
+.cuenta-columna.en-cotejo { color: var(--k-senal); background: transparent; font-weight: 500; }
 .columna-icono { color: var(--k-tenue); }
 .columna-icono.en-cotejo { color: var(--k-senal); }
 /* Finalizada es la única columna que no reclama nada: su título baja a Plata. */
@@ -154,7 +159,12 @@ list.columna, list.columna > row { background: transparent; }
 /* El código de la carta es un dato, no una alerta: va en tenue para que el único verde
    quede en lo que de verdad espera a la persona (Para comprobar y el maestro con texto). */
 .carta-codigo { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue); }
-/* Pendiente solo enseña el id: carta baja, con el ⋮ a su altura. El nombre trae su propio aire. */
+/* Pendiente enseña el nombre corto y el código detrás: el nombre en Inter a tamaño de
+   contenido, el código mono y tenue. */
+.carta-compacta .carta-nombre { font-family: "Inter"; font-weight: 400;
+                                font-size: var(--k-contenido); }
+.carta-compacta .carta-codigo { color: var(--k-tenue); }
+/* Pendiente solo enseña el nombre y su código: carta baja, con el ⋮ a su altura. */
 .carta-compacta { padding: var(--k-espacio-xs) var(--k-espacio-xs) var(--k-espacio-xs) var(--k-espacio-md); }
 .carta-compacta menubutton > button { min-height: 26px; min-width: 26px; padding: 0; }
 .carta-nombre { font-family: "Sora"; font-weight: 600; font-size: var(--k-contenido); }
@@ -209,6 +219,7 @@ window.sin-animaciones .vida-punto { transition: none; opacity: 1; }
 .banda-proyectos { background: var(--k-columna); border-top: 1px solid var(--k-borde-hondo);
                    border-bottom: 1px solid var(--k-borde-hondo); padding: var(--k-espacio-sm) 0; }
 .banda-chip { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue);
+              font-weight: 500;
               border: 1px solid var(--k-borde-chip); border-radius: 999px; background: transparent;
               padding: 0 var(--k-espacio-md); min-height: 36px; min-width: 0;
               transition: background-color var(--k-dur-hover) ease-out; }
@@ -230,20 +241,21 @@ window.sin-animaciones .vida-punto { transition: none; opacity: 1; }
                      border-color: var(--k-tenue); }
 .grupo-titulo { font-family: "Sora"; font-weight: 600; font-size: var(--k-etiqueta); color: var(--k-tenue);
                 letter-spacing: 0.03em; }
-/* El vacío: ver vacio(). La pista a 0.75 queda en 5,0:1
-   sobre la columna y 5,1:1 sobre la ventana. */
+/* El vacío: ver vacio(). La pista va entera (opacity: 1): atenuarla la dejaba en 3,4:1 sobre
+   la columna del claro, por debajo de 4,5. Así queda en 5,9:1 sobre la columna y 6,4:1 sobre
+   la ventana, y `temas comprobar` mide ese par. */
 .vacio-icono { color: var(--k-tenue-hondo); }
 .vacio-titulo { font-size: var(--k-contenido); color: var(--k-texto); font-weight: 500; }
-.vacio-pista { font-size: var(--k-dato); color: var(--k-tenue); line-height: 1.4; }
+.vacio-pista { font-size: var(--k-dato); color: var(--k-tenue); line-height: 1.4; opacity: 1; }
 /* Lo roto no es un vacío cualquiera: ámbar, como la banda de avisos y la anotación detenida,
    sobre el mismo velo que esta. La pista va entera y no a 0.75 porque aquí es la instrucción
    para arreglarlo (7,2:1 sobre el velo; el ámbar, 10,4:1). */
 .vacio.roto { background: var(--k-ambar-velo); border-radius: 10px; padding: var(--k-espacio-md); }
 .vacio.roto .vacio-icono, .vacio.roto .vacio-titulo { color: var(--k-ambar); }
-/* Lo que te espera en ese proyecto: el número en verde y en negrita, sin pastilla. Es el único
+/* Lo que te espera en ese proyecto: el número en verde y en Medium, sin pastilla. Es el único
    verde de la banda, y se lee igual en el chip abierto que en los demás. */
 .aviso-chip { color: var(--k-senal); font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta);
-              font-weight: 600; }
+              font-weight: 500; }
 /* El pie bajo el tablero: medidor + café a la izquierda, hueco para Maestro al centro,
    botón volver a la derecha. La raya de arriba es la callada del board, no la de la ventana. */
 .pie { border-top: 1px solid var(--k-borde-hondo); padding: 0; }
@@ -252,7 +264,7 @@ window.sin-animaciones .vida-punto { transition: none; opacity: 1; }
 .ahorro { border: 0; padding: 0; }
 .ahorro-cifra { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue); }
 /* La invitación al café, sin raya de separación: en plata y sin acento. */
-.pie-cafe { font-size: var(--k-dato); color: var(--k-tenue);
+.pie-cafe { font-size: var(--k-dato); color: var(--k-tenue); font-weight: 500;
             padding: 0; margin: 0; min-height: 0; min-width: 0; background: transparent; border: 0; text-decoration: none; }
 .pie-cafe:hover { color: var(--k-texto); background: transparent; }
 /* Centro: la barra del Maestro, una pastilla como el buscador. El verde va solo en el ícono y
@@ -426,8 +438,13 @@ tooltip label { color: var(--k-texto); font-size: var(--k-dato); }
 .inicio-nuevo { border-style: dashed; background: transparent; }
 .inicio-nuevo:hover { background: var(--k-velo-sutil); }
 .inicio-mas { font-family: "Sora"; font-weight: 600; font-size: var(--k-portada); color: var(--k-tenue); }
-.inicio-avance trough { min-height: 4px; border-radius: 4px; background: var(--k-velo-fuerte); }
-.inicio-avance progress { min-height: 4px; border-radius: 4px; background: var(--k-tenue); }
+/* La descripción del proyecto en su tarjeta: tenue, pero sin la negrita del botón que la
+   envuelve (v1.3.1). */
+.inicio-descripcion { font-weight: normal; }
+/* La barra de avance se ve también al 0 %: el carril es una línea del borde, no un velo casi
+   invisible (v1.3.1). */
+.inicio-avance trough { min-height: 6px; border-radius: 3px; background: var(--k-borde-hondo); }
+.inicio-avance progress { min-height: 6px; border-radius: 3px; background: var(--k-tenue); }
 /* La entrevista de «Nuevo proyecto» (cotejo-kf94so). */
 .entrevista-marco { background: var(--k-columna); border: 1px solid var(--k-borde); border-radius: 8px; }
 .entrevista-texto { background: transparent; color: var(--k-texto); font-size: var(--k-contenido); }

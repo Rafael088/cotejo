@@ -217,7 +217,7 @@ class PestanaInicio:
         if t.objetivo:
             caja.append(Gtk.Label(label=t.objetivo, xalign=0, wrap=True, lines=2,
                                   ellipsize=Pango.EllipsizeMode.END,
-                                  css_classes=["carta-descripcion"]))
+                                  css_classes=["carta-descripcion", "inicio-descripcion"]))
         avance = Gtk.ProgressBar(fraction=t.avance or 0, css_classes=["inicio-avance"])
         avance.set_visible(t.con_arquitectura)
         caja.append(avance)

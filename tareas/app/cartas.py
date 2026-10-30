@@ -8,7 +8,7 @@ from .comun import (
     MAX_CARACTERES_CARTA, anotacion_visible, id_corto, texto_a_markup,
 )
 from .escala import px
-from .piezas import chip, con_mano, etiquetar, icono, revelar_al_acercarse
+from .piezas import chip, con_mano, etiquetar, icono
 
 
 class Cartas:
@@ -22,19 +22,26 @@ class Cartas:
         # tarea se haya movido de línea entre un repintado y el siguiente.
         fila.clave = tarea.id
 
-        # Qué enseña cada columna (7.3.3): Pendiente solo el id (el nombre corto sale al
-        # acercarse); Haciéndola, id y nombre; Para comprobar, todo, con su entrega.
+        # Qué enseña cada columna (7.3.3): Pendiente, el nombre corto y su código detrás;
+        # Haciéndola, id y nombre; Para comprobar, todo, con su entrega.
         columna = tarea.columna
         compacta = columna == "pendiente"
         completa = columna not in ("pendiente", "en-curso")
         version, nombre_corto, descripcion = tarea.partes
-        # La compacta sin separación: el revelador cerrado no debe dejar un hueco debajo del id.
+        # La compacta sin separación: una sola línea con el nombre y el código.
         carta = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
                         spacing=0 if compacta else px(ESPACIADO_SM))
         fila.set_child(carta)
         arriba = Gtk.Box(spacing=px(ESPACIADO_SM))
         if compacta:
             fila.add_css_class("carta-compacta")
+            # El nombre manda y el código va detrás, tenue: en Pendiente se lee la tarea, no
+            # su id. La elipsis recorta el nombre cuando no cabe.
+            arriba.append(Gtk.Label(label=texto_a_markup(nombre_corto), use_markup=True,
+                                    xalign=0, yalign=0.5, ellipsize=Pango.EllipsizeMode.END,
+                                    hexpand=True, max_width_chars=MAX_CARACTERES_CARTA,
+                                    tooltip_text=tarea.texto,
+                                    css_classes=["carta-texto", "carta-nombre"]))
         arriba.append(Gtk.Label(label=id_corto(tarea.id), xalign=0, valign=Gtk.Align.CENTER,
                                 ellipsize=Pango.EllipsizeMode.MIDDLE, max_width_chars=14,
                                 tooltip_text=tarea.id, css_classes=["carta-codigo"]))
@@ -49,11 +56,12 @@ class Cartas:
             # Aprobada en un proyecto del Inicio: su merge corre en segundo plano.
             arriba.append(chip("Integrando…", "recargar", "chip-integrando",
                                tooltip="Metiéndola en tu app"))
-        arriba.append(Gtk.Box(hexpand=True))
-        etiqueta = Gtk.Label(label=texto_a_markup(nombre_corto), use_markup=True, xalign=0,
-                             yalign=0, wrap=True, wrap_mode=Pango.WrapMode.WORD_CHAR,
-                             hexpand=True, max_width_chars=MAX_CARACTERES_CARTA,
-                             css_classes=["carta-texto", "carta-nombre"])
+        if not compacta:
+            arriba.append(Gtk.Box(hexpand=True))
+            etiqueta = Gtk.Label(label=texto_a_markup(nombre_corto), use_markup=True, xalign=0,
+                                 yalign=0, wrap=True, wrap_mode=Pango.WrapMode.WORD_CHAR,
+                                 hexpand=True, max_width_chars=MAX_CARACTERES_CARTA,
+                                 css_classes=["carta-texto", "carta-nombre"])
         fila.boton_menu = self.menu(proyecto, tarea)
         # Al cerrar el menú el foco vuelve a la carta: si no, se queda en el aire y hay que
         # empezar a tabular de nuevo desde el principio.
@@ -62,13 +70,7 @@ class Cartas:
         arriba.append(fila.boton_menu)
         carta.append(arriba)
 
-        if compacta:
-            # Lo único que Pendiente esconde: el nombre corto, hasta el puntero o el foco.
-            etiqueta.set_margin_bottom(px(ESPACIADO_SM))
-            etiqueta.set_margin_end(px(ESPACIADO_SM))
-            fila.revelador = revelar_al_acercarse(fila, etiqueta)
-            carta.append(fila.revelador)
-        else:
+        if not compacta:
             carta.append(etiqueta)
         if columna == "en-curso" and tarea.agente:
             # Haciéndola enseña el modelo asignado y nada más (sin dificultad ni anotación).

@@ -64,6 +64,20 @@ class ElCSS(unittest.TestCase):
         bloque = temas.css(temas.cargar("claro"))
         self.assertEqual(set(re.findall(r"--k-([a-z0-9-]+):", bloque)), set(temas.TOKENS))
 
+    def test_dim_label_no_hereda_la_opacidad_de_adwaita(self):
+        # Adwaita atenúa dim-label con opacity: 0.55; sobre el claro eso deja el texto chico
+        # en 4,1:1. Cotejo lo pinta con el token tenue y sin opacidad.
+        css = sin_comentarios(css_del_board())
+        regla = next(r for r in css.split("}") if r.strip().startswith(".dim-label"))
+        self.assertIn("var(--k-tenue)", regla)
+        self.assertIn("opacity: 1", regla)
+
+    def test_la_pista_de_un_vacio_no_va_atenuada(self):
+        # Al 75 % daba 3,4:1 sobre la columna del claro, por debajo de 4,5.
+        css = sin_comentarios(css_del_board())
+        regla = next(r for r in css.split("}") if r.strip().startswith(".vacio-pista"))
+        self.assertIn("opacity: 1", regla)
+
 
 class LosDeFabrica(unittest.TestCase):
 
@@ -144,6 +158,25 @@ class Comprobar(unittest.TestCase):
         _, medidas = temas.problemas_de(tema_valido(**{"senal-suave": "rgba(22, 201, 141, 0.95)"}))
         par = next(m for m in medidas if (m["delante"], m["detras"]) == ("senal", "senal-suave"))
         self.assertFalse(par["ok"])
+
+    def test_el_velo_se_mide_encima_de_su_base_y_no_solo_del_fondo(self):
+        # El chip de la banda va en tenue sobre columna + velo: la base importa, y componerlo
+        # solo sobre el fondo daría un contraste que el chip no tiene.
+        with mock.patch.object(temas, "CONTRASTES",
+                               (("tenue", ("columna", "velo"), 4.5, "chip"),)):
+            _, medidas = temas.problemas_de(temas._leer(temas.DATOS / "claro.json"))
+        self.assertEqual(medidas[0]["contraste"], 5.3)
+        self.assertEqual(temas.nombre_de(medidas[0]["detras"]), "velo sobre columna")
+
+    def test_mide_la_opacidad_del_texto_no_solo_su_color(self):
+        # dim-label de Adwaita: texto al 55 % sobre el fondo claro. El color a pelo da 17,6:1;
+        # con la opacidad, 4,1:1, y por eso no llega a 4,5.
+        with mock.patch.object(temas, "CONTRASTES",
+                               (("texto", "fondo", 4.5, "dato atenuado", 0.55),)):
+            _, medidas = temas.problemas_de(temas._leer(temas.DATOS / "claro.json"))
+        self.assertFalse(medidas[0]["ok"])
+        self.assertAlmostEqual(medidas[0]["contraste"], 4.09, places=2)
+        self.assertIn("4.09:1, pide 4.5:1", temas.fallos(medidas)[0])
 
     def test_cargar_un_tema_roto_lo_dice(self):
         with self.assertRaises(temas.TemaRoto):

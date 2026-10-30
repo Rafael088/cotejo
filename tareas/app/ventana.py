@@ -102,7 +102,11 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
             "Board", con_botones_de_ventana=True)
         pintar_logo(self.logo, app.colores)
         cabecera.pack_start(caja_titulo)
-        cabecera.pack_start(self.selector_de_pestanas())
+        # Las pestañas van en el hueco central de la cabecera, no pegadas al título: así
+        # siguen centradas aunque el subtítulo crezca con la letra (v1.3.1).
+        self.cabecera = cabecera
+        self.selector_pestanas = self.selector_de_pestanas()
+        cabecera.set_title_widget(self.selector_pestanas)
 
         # De derecha a izquierda: lo que se usa a diario queda suelto y lo demás se guarda.
         cabecera.pack_end(self.menu_cabecera())
@@ -427,6 +431,7 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
             texto = f"{faltan} sin terminar · {donde}"
             self.subtitulo.remove_css_class("en-cotejo")
         self.subtitulo.set_label(texto)
+        self.subtitulo.set_tooltip_text(texto)
 
     def mostrar_arranque(self):
         """La marca cargando antes que el board: la C se dibuja y el check entra a cerrarla.

@@ -214,7 +214,11 @@ def cabecera_de_marca(producto, con_botones_de_ventana):
     nombre.append(Gtk.Label(label=producto, valign=Gtk.Align.END,
                             css_classes=["marca-titulo", "marca-producto"]))
     textos.append(nombre)
-    subtitulo = Gtk.Label(xalign=0, css_classes=["marca-subtitulo"])
+    # El subtítulo es una frase que crece con la letra y con los proyectos: si no puede
+    # encoger, empuja las pestañas de la cabecera y acaban pisándose (v1.3.1). Con elipsis
+    # ocupa lo que haya y el texto entero queda en el tooltip.
+    subtitulo = Gtk.Label(xalign=0, css_classes=["marca-subtitulo"],
+                          ellipsize=Pango.EllipsizeMode.END)
     textos.append(subtitulo)
     caja_titulo.append(textos)
     cabecera.set_title_widget(Gtk.Box())

@@ -67,9 +67,15 @@ TOKENS = {
     "barra-activa": "La barra de desplazamiento con el ratón encima",
 }
 
-# Lo que tiene que leerse, medido como WCAG: (delante, detrás, mínimo, dónde). Un `detrás`
-# translúcido se compone antes sobre el fondo. 4,5 es texto normal; 3, un icono o un trazo que
-# no hace falta leer letra a letra.
+# Lo que tiene que leerse, medido como WCAG: (delante, detrás, mínimo, dónde, opacidad).
+# `detrás` es un token o una tupla de tokens compuestos de abajo arriba: `("columna", "velo")`
+# es el velo encima de la columna, encima del fondo. Así se miden también las opacidades de los
+# velos, que era lo que se colaba: un hover aclara o ensucia la base y el texto que va encima
+# deja de leerse aunque medido contra la superficie parezca que sí.
+# `opacidad` es la del texto, la de un CSS `opacity` (dim-label al 55 %, una pista al 75 %); se
+# compone el color con esa opacidad sobre lo de debajo antes de medir. Sin ella, un texto
+# atenuado daba por bueno un contraste que no tiene: es el 4,1:1 que enseñó la crítica.
+# 4,5 es texto normal; 3, un icono o un trazo que no hace falta leer letra a letra.
 CONTRASTES = (
     ("texto", "fondo", 4.5, "texto sobre la ventana"),
     ("texto", "superficie", 4.5, "texto de una carta"),
@@ -77,7 +83,11 @@ CONTRASTES = (
     ("texto", "columna", 4.5, "texto sobre una columna vacía"),
     ("tenue", "fondo", 4.5, "dato secundario sobre la ventana"),
     ("tenue", "superficie", 4.5, "dato secundario en una carta"),
+    ("tenue", "superficie-alta", 4.5, "dato secundario en una carta con el ratón encima"),
     ("tenue", "columna", 4.5, "pista de un vacío"),
+    ("tenue", ("superficie", "velo-sutil"), 4.5, "fila de una lista con el ratón encima"),
+    ("tenue", ("columna", "velo"), 4.5, "chip de la banda con el ratón encima"),
+    ("texto", ("fondo", "velo-fuerte"), 4.5, "botón plano con el ratón encima"),
     ("texto-chip", "superficie", 4.5, "chip de agente"),
     ("tenue-hondo", "columna", 3.0, "icono de un vacío"),
     ("senal", "fondo", 4.5, "título en foco sobre la ventana"),
@@ -157,6 +167,29 @@ def contraste(uno, otro):
     return (claro + 0.05) / (oscuro + 0.05)
 
 
+def _base_de(leidos, detras, fondo):
+    """Lo que se ve detrás: el token (o los tokens, de abajo arriba) compuesto sobre el fondo."""
+    if isinstance(detras, (tuple, list)):
+        base = fondo
+        for capa in detras:
+            base = componer(leidos[capa], base)
+        return base
+    return componer(leidos[detras], fondo)
+
+
+def _entrada(entrada):
+    """`(delante, detrás, mínimo, dónde, opacidad)`, con opacidad 1 si no la dice."""
+    delante, detras, minimo, donde = entrada[:4]
+    return delante, detras, minimo, donde, (entrada[4] if len(entrada) > 4 else 1.0)
+
+
+def nombre_de(detras):
+    """El detrás como se lee en un mensaje: `velo sobre columna`."""
+    if isinstance(detras, (tuple, list)):
+        return " sobre ".join(reversed(detras))
+    return detras
+
+
 def problemas_de(datos):
     """Qué tiene un tema, sin tocar nada: `(errores, medidas)`.
 
@@ -202,9 +235,13 @@ def problemas_de(datos):
         return errores, []
     fondo = leidos["fondo"]
     medidas = []
-    for delante, detras, minimo, donde in CONTRASTES:
-        base = componer(leidos[detras], fondo)
-        cifra = contraste(componer(leidos[delante], base), base)
+    for entrada in CONTRASTES:
+        delante, detras, minimo, donde, opacidad = _entrada(entrada)
+        base = _base_de(leidos, detras, fondo)
+        tinta = leidos[delante]
+        if opacidad < 1:
+            tinta = tinta[:3] + (tinta[3] * opacidad,)
+        cifra = contraste(componer(tinta, base), base)
         medidas.append({"delante": delante, "detras": detras, "donde": donde,
                         "contraste": round(cifra, 2), "minimo": minimo, "ok": cifra >= minimo})
     return errores, medidas
@@ -212,7 +249,7 @@ def problemas_de(datos):
 
 def fallos(medidas):
     """Las medidas que no llegan, dichas como se leen: qué sobre qué, cuánto y cuánto pide."""
-    return [f"{m['delante']} sobre {m['detras']} ({m['donde']}): {m['contraste']}:1, "
+    return [f"{m['delante']} sobre {nombre_de(m['detras'])} ({m['donde']}): {m['contraste']}:1, "
             f"pide {m['minimo']}:1" for m in medidas if not m["ok"]]
 
 
@@ -384,8 +421,9 @@ def cmd_temas_nuevo(args):
         raise ErrorCLI(f"Ya existe {destino}", "Edita ese, o elige otro id.") from error
     imprimir({"esquema": ESQUEMA, "cambio": True, "id": ident, "ruta": str(destino),
               "desde": args.desde, "tokens": TOKENS,
-              "contrastes": [{"delante": d, "detras": t, "minimo": m, "donde": w}
-                             for d, t, m, w in CONTRASTES],
+              "contrastes": [{"delante": d, "detras": t, "minimo": m, "donde": w,
+                              "opacidad": o}
+                             for d, t, m, w, o in (_entrada(e) for e in CONTRASTES)],
               "nota_para_el_agente": f"Edita «colores» (y «esquema» si pasa de oscuro a claro) "
                                      f"en {destino}; `tokens` dice para qué es cada uno. Escribe "
                                      f"también «descripcion»: una frase, es el subtítulo que se "
