@@ -156,9 +156,11 @@ list.columna, list.columna > row { background: transparent; }
 .carta:focus-visible { border-color: var(--k-senal); background: var(--k-superficie-alta);
                        outline: 2px solid var(--k-senal); outline-offset: 1px; }
 /* Mientras se arrastra, la carta se queda como el hueco que dejó. */
-.carta-codigo { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-senal); }
+/* El código de la carta es un dato, no una alerta: va en tenue para que el único verde
+   quede en lo que de verdad espera a la persona (Para comprobar y el maestro con texto). */
+.carta-codigo { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue); }
 /* Pendiente enseña el nombre corto y el código detrás: el nombre en Inter a tamaño de
-   contenido, el código mono y tenue (el verde es para lo que espera comprobación). */
+   contenido, el código mono y tenue. */
 .carta-compacta .carta-nombre { font-family: "Inter"; font-weight: 400;
                                 font-size: var(--k-contenido); }
 .carta-compacta .carta-codigo { color: var(--k-tenue); }
@@ -266,7 +268,7 @@ window.sin-animaciones .vida-punto { transition: none; opacity: 1; }
             padding: 0; margin: 0; min-height: 0; min-width: 0; background: transparent; border: 0; text-decoration: none; }
 .pie-cafe:hover { color: var(--k-texto); background: transparent; }
 /* Centro: la barra del Maestro, una pastilla como el buscador. El verde va solo en el ícono y
-   en el botón, que es lo único que dispara algo; el borde se enciende al escribir. */
+   en el botón mientras hay algo que mandar; el borde se enciende al escribir. */
 .pie-centro { padding: 14px 0 18px 0; }
 .maestro-barra { border: 1px solid var(--k-borde); border-radius: 10px; background: var(--k-superficie);
                  padding: 2px 2px 2px var(--k-espacio-md); }
@@ -274,18 +276,27 @@ window.sin-animaciones .vida-punto { transition: none; opacity: 1; }
 .maestro-barra entry, .maestro-barra entry:focus { background: transparent; outline: none;
                                                     box-shadow: none; min-height: 30px; }
 .maestro-chispa { color: var(--k-senal); }
-/* Un solo botón, dividido: la parte grande abre el maestro, la flecha elige el cliente. Las
-   dos mitades son el mismo verde, separadas por una raya del color del texto sobre él. */
+/* Un solo botón, dividido: la parte grande abre el maestro, la flecha elige el cliente.
+   Sin texto es un contorno tenue: el verde lleno se reserva para cuando el botón manda algo,
+   y así el acento no compite con Para comprobar. Con texto, las dos mitades van rellenas y
+   separadas por una raya del color del texto sobre él. */
 .maestro-ejecutar > button, .maestro-ejecutar > menubutton > button {
     font-family: "Sora"; font-weight: 600; font-size: var(--k-dato);
-    color: var(--k-sobre-senal); background: var(--k-senal); min-height: 30px; }
+    color: var(--k-tenue); background: transparent; border: 1px solid var(--k-borde-chip);
+    min-height: 30px; }
+.maestro-ejecutar.con-texto > button, .maestro-ejecutar.con-texto > menubutton > button {
+    color: var(--k-sobre-senal); background: var(--k-senal); border-color: var(--k-senal); }
 .maestro-ejecutar > button { border-radius: 8px 0 0 8px; padding: 0 var(--k-espacio-md); }
-.maestro-ejecutar > menubutton > button { border-radius: 0 8px 8px 0; padding: 0 var(--k-espacio-sm); }
+.maestro-ejecutar > menubutton > button { border-radius: 0 8px 8px 0; padding: 0 var(--k-espacio-sm);
+                                         border-left: none; }
 .maestro-ejecutar > button:hover, .maestro-ejecutar > menubutton > button:hover {
+    color: var(--k-texto); background: var(--k-velo); }
+.maestro-ejecutar.con-texto > button:hover, .maestro-ejecutar.con-texto > menubutton > button:hover {
     filter: brightness(1.1); }
-.maestro-ejecutar > separator { background: var(--k-sobre-senal); opacity: 0.25; min-width: 1px; }
+.maestro-ejecutar > separator { background: var(--k-borde-chip); min-width: 1px; }
+.maestro-ejecutar.con-texto > separator { background: var(--k-sobre-senal); opacity: 0.25; }
 .maestro-ejecutar:disabled > button, .maestro-ejecutar:disabled > menubutton > button {
-    color: var(--k-tenue); background: var(--k-velo); }
+    color: var(--k-tenue); background: var(--k-velo); border-color: var(--k-borde); }
 /* La conversación con el maestro (cotejo-9ybn1a): sube encima del pie. La persona a la
    derecha sobre el velo del acento; el maestro a la izquierda, en superficie; el verde solo
    en el botón que lanza algo (Repartir). */
@@ -302,13 +313,12 @@ window.sin-animaciones .vida-punto { transition: none; opacity: 1; }
 .maestro-repartir { font-family: "Sora"; font-weight: 600; font-size: var(--k-dato);
                     color: var(--k-sobre-senal); background: var(--k-senal); border-radius: 8px; }
 .maestro-repartir:disabled { color: var(--k-tenue); background: var(--k-velo); }
-/* Derecha: Volver, al proyecto anterior mientras no exista el home. */
+/* Derecha: Deshacer la última tarea finalizada, solo mientras hay algo que deshacer. */
 .pie-derecha { padding: 14px 0 18px 0; }
-.pie-volver { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue);
-              border: 1px solid var(--k-borde-chip); border-radius: 8px;
-              padding: var(--k-espacio-sm) var(--k-espacio-md); }
-.pie-volver:disabled { opacity: 0.5; }
-.pie-volver:hover { border-color: var(--k-senal); color: var(--k-senal); }
+.pie-deshacer { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue);
+                border: 1px solid var(--k-borde-chip); border-radius: 8px;
+                padding: var(--k-espacio-sm) var(--k-espacio-md); }
+.pie-deshacer:hover { border-color: var(--k-senal); color: var(--k-senal); }
 .carta-texto { font-size: var(--k-contenido); }
 .chip { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue);
         background: var(--k-velo); border-radius: 6px; padding: 1px var(--k-espacio-sm); }
@@ -408,8 +418,10 @@ scrollbar.hovering slider, scrollbar slider:hover { background: var(--k-barra-ac
 scrollbar slider:active { background: var(--k-tenue); }
 tooltip { background: var(--k-superficie); border: 1px solid var(--k-borde); border-radius: 8px; }
 tooltip label { color: var(--k-texto); font-size: var(--k-dato); }
-/* Finalizada siempre plegada: el riel es un botón plano a todo lo alto, solo con el ícono. */
+/* Finalizada siempre plegada: el riel es un botón plano a todo lo alto, con el check y su
+   conteo debajo. */
 .riel-finalizada { padding: var(--k-espacio-sm) 0; }
+.riel-cuenta { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue); }
 
 /* Las pestañas Inicio | Tablero de la cabecera (v1.3.0): la elegida, en superficie alta. */
 .pestanas > button.pestana { font-size: var(--k-secundario); min-height: 30px;

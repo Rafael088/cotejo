@@ -1,4 +1,4 @@
-"""El pie del board: volver, el medidor de ahorro y donar."""
+"""El pie del board: deshacer, el medidor de ahorro y donar."""
 
 import time
 
@@ -14,10 +14,10 @@ from .piezas import chip, etiquetar
 
 
 class Pie:
-    """El pie del board: volver, el medidor de ahorro y donar."""
+    """El pie del board: deshacer, el medidor de ahorro y donar."""
 
     def crear_pie(self):
-        """Tres zonas a todo el ancho: medidor y café, barra del Maestro, Volver.
+        """Tres zonas a todo el ancho: medidor y café, barra del Maestro, Deshacer.
 
         Un CenterBox y no un Box con hexpand: el centro queda en el centro de la VENTANA,
         no en el hueco que dejan los lados, que miden distinto.
@@ -43,27 +43,30 @@ class Pie:
                           css_classes=["pie-derecha"], margin_end=px(MARGEN_TABLERO_LADOS))
         contenido = Gtk.Box(spacing=px(ESPACIADO_SM))
         contenido.append(Gtk.Image.new_from_icon_name("edit-undo-symbolic"))
-        contenido.append(Gtk.Label(label="Volver"))
-        self.boton_volver = Gtk.Button(child=contenido, css_classes=["pie-volver"])
-        etiquetar(self.boton_volver, "Volver al proyecto anterior")
-        self.boton_volver.connect("clicked", self.al_volver)
-        derecha.append(self.boton_volver)
+        contenido.append(Gtk.Label(label="Deshacer"))
+        self.boton_deshacer = Gtk.Button(child=contenido, css_classes=["pie-deshacer"])
+        etiquetar(self.boton_deshacer, "Deshacer la última tarea finalizada")
+        self.boton_deshacer.set_tooltip_text("Deshacer la última tarea finalizada (Ctrl Z)")
+        self.boton_deshacer.connect("clicked", self.al_deshacer)
+        derecha.append(self.boton_deshacer)
         pie.set_end_widget(derecha)
         self.pie_izquierda, self.pie_centro, self.pie_derecha = izquierda, centro, derecha
-        self.actualizar_volver()
+        self.actualizar_deshacer()
         return pie
 
-    def actualizar_volver(self):
-        anterior = getattr(self, "proyecto_anterior", None)
-        self.boton_volver.set_sensitive(bool(anterior))
-        self.boton_volver.set_tooltip_text(
-            "Volver al proyecto anterior" if anterior else "Todavía no has cambiado de proyecto")
+    def actualizar_deshacer(self):
+        """El pie enseña Deshacer solo mientras hay algo que echar atrás.
 
-    def al_volver(self, _boton=None):
-        """Mientras no exista el home: al proyecto de antes, por el camino de un clic en su chip."""
-        chip = self.botones_chip.get(getattr(self, "proyecto_anterior", None))
-        if chip is not None:
-            self.al_elegir_chip(chip)
+        Un control apagado y casi invisible que no hace nada es ruido; cuando la pila se
+        vacía (el aviso se fue, o ya se deshizo lo último), el hueco se queda limpio.
+        """
+        pila = getattr(getattr(self, "finalizadas", None), "pila", ())
+        self.boton_deshacer.set_sensitive(bool(pila))
+        self.boton_deshacer.set_visible(bool(pila))
+
+    def al_deshacer(self, _boton=None):
+        """La misma acción que el «Deshacer» del aviso y Ctrl+Z."""
+        self.finalizadas.deshacer()
 
     def pie_ahorro(self):
         """Lo que costó enterarse por la CLI contra leer las notas, bajo el tablero.

@@ -225,9 +225,7 @@ class Banda:
     def al_elegir_chip(self, chip):
         if chip.clave == self.seleccion:
             return
-        self.proyecto_anterior = self.seleccion
         self.seleccion = chip.clave
-        self.actualizar_volver()
         comun.guardar_board(proyecto=self.seleccion)
         for clave, otro in self.botones_chip.items():
             if clave == chip.clave:

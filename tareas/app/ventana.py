@@ -86,7 +86,8 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
         self.alias_persona = tuple(config_enrutador.get("alias_persona") or ("persona",))
 
         self.toasts = Adw.ToastOverlay()
-        self.finalizadas = Finalizadas(self.toasts, self.desmarcar, self.app.refrescar)
+        self.finalizadas = Finalizadas(self.toasts, self.desmarcar, self.app.refrescar,
+                                       self.actualizar_deshacer)
         vista = Adw.ToolbarView()
         self.toasts.set_child(vista)
         # El board va dentro de una pila para que la animación de arranque pueda ir delante y

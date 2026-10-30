@@ -250,6 +250,10 @@ class Maestro:
         sin_agente = not clientes.instalados()
         con_texto = bool(self.entrada_maestro.get_text().strip())
         self.boton_maestro.set_label("Enviar" if con_texto else "Conversación")
+        if con_texto:
+            self.boton_maestro.add_css_class("con-texto")
+        else:
+            self.boton_maestro.remove_css_class("con-texto")
         if sin_fuente:
             ayuda = "Aún no hay de dónde leer las tareas: configura una fuente primero"
         elif not de_uno:

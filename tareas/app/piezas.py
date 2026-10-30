@@ -352,16 +352,21 @@ class Finalizadas:
     aviso que está puesto ahora mismo en vez de fiarse de que la señal llegue en orden.
     """
 
-    def __init__(self, toasts, deshacer_una, al_terminar):
+    def __init__(self, toasts, deshacer_una, al_terminar, al_cambiar=None):
         self.toasts = toasts
         self.deshacer_una = deshacer_una  # (tarea) -> None; escribe en la fuente
         self.al_terminar = al_terminar    # repintar, después de deshacer
+        self.al_cambiar = al_cambiar      # el pie sabe si hay algo que deshacer
         self.pila = []
         self.toast = None
 
     def anotar(self, tarea):
         self.pila.append(tarea)
         self.mostrar()
+
+    def _cambio(self):
+        if self.al_cambiar is not None:
+            self.al_cambiar()
 
     def mostrar(self):
         anterior, self.toast = self.toast, None
@@ -374,11 +379,13 @@ class Finalizadas:
         self.toast.connect("button-clicked", lambda *_: self.deshacer())
         self.toast.connect("dismissed", self.olvidar)
         self.toasts.add_toast(self.toast)
+        self._cambio()
 
     def olvidar(self, toast):
         if toast is self.toast:
             self.pila.clear()
             self.toast = None
+            self._cambio()
 
     def deshacer(self):
         if not self.pila:
@@ -388,6 +395,7 @@ class Finalizadas:
             self.mostrar()
         else:
             self.toast = None
+            self._cambio()
         self.al_terminar()
 
 
