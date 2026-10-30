@@ -124,6 +124,38 @@ class VerMiApp(base.PestanaInicio):
         extra["al_pulsar"]()
         self.lanzador.assert_called_once_with("file:///x/barberia.log", None)
 
+    def test_sin_codigo_el_boton_queda_desactivado_y_dice_por_que(self):
+        from tareas import almacen
+        almacen.Almacen(self.carpeta).crear("arquitectura", "Cómo se abre",
+                                            "## Cómo se abre\n\n- comando: npm run dev\n"
+                                            "- url: http://localhost:5173\n")
+        b = self.board
+        b.abrir_proyecto("barberia")
+        base.girar()
+        p = b.pantalla_mapa
+        self.assertFalse(p.boton_ver_app.get_sensitive())
+        self.assertIn("primera pantalla", p.boton_ver_app.get_tooltip_text() or "")
+        # Aunque se pulse a la fuerza, no arranca nada.
+        falsos = self.poner(servidor_app.Resultado(True, "no"))
+        p.boton_ver_app.emit("clicked")
+        base.girar()
+        self.assertEqual(falsos.abiertos, [])
+        self.assertNotIn("Tu app no arrancó", [t for t, _ in self.avisos])
+
+    def test_la_tarjeta_del_inicio_tambien_desactiva_ver_mi_app(self):
+        from tareas import almacen
+        almacen.Almacen(self.carpeta).crear("arquitectura", "Cómo se abre",
+                                            "## Cómo se abre\n\n- comando: npm run dev\n")
+        b = self.board
+        b.inicio_al_dia = False
+        b.ver_pestana("inicio")
+        base.girar()
+        tarjeta = b.inicio_tarjetas.get_first_child().get_child()
+        ver_app = tarjeta.botones_app.get_first_child()
+        self.assertEqual(ver_app.get_label(), "Ver mi app")
+        self.assertFalse(ver_app.get_sensitive())
+        self.assertIn("primera pantalla", ver_app.get_tooltip_text() or "")
+
     def test_abrir_la_carpeta_abre_la_principal(self):
         b = self.board
         b.abrir_proyecto("barberia")
