@@ -6,7 +6,7 @@ antes de tocar nada.
 ## Antes de empezar
 
 ```sh
-python3 -m unittest discover pruebas   # 2218, deben estar todas en verde
+python3 -m unittest discover pruebas   # 2244, deben estar todas en verde
 tareas-obsidian evaluar | head -3      # 85,7 % y 0 abaratados
 git log --oneline | head -3
 git status --short                     # si no está limpio, averigua por qué antes de seguir

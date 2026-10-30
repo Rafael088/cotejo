@@ -22,7 +22,7 @@ la que el propio `cotejo` se niega a escribirla (`configuracion.sin_vedar`).
 import os
 from pathlib import Path
 
-from tareas import configuracion, worktrees
+from tareas import configuracion, rutas, worktrees
 from . import clientes, guardas, mismo_cotejo, navegador, preparar, sandbox as caja
 
 NOTA_TERMINAL = ("Tienes terminal libre en tu carpeta de trabajo: corre las pruebas y los "
@@ -166,9 +166,18 @@ def entorno(cliente, carpetas, ramas, encerrado):
     """El entorno del agente: las variables de su terminal libre y las del sandbox, con las
     guardas primeras en el PATH (las escribe), el lanzador de `cotejo` delante y la marca con
     la que `cotejo` no le escribe la config."""
-    con_guardas = guardas.entorno(
-        {**cliente.terminal_libre(carpetas, ramas)[1], **encerrado["entorno"],
-         configuracion.VEDADA: "1"}, ramas)
+    base = {**cliente.terminal_libre(carpetas, ramas)[1], **encerrado["entorno"],
+            configuracion.VEDADA: "1"}
+    if cliente.nombre == "codex":
+        # Su perfil niega `:slash_tmp` (cotejo-wwrzyf), así que el temporal va a la carpeta de
+        # estado, que ya está entre las suyas: builds y Firefox siguen teniendo su TMPDIR.
+        temporal = rutas.estado() / "agente" / "tmp"
+        try:
+            temporal.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass
+        base["TMPDIR"] = str(temporal)
+    con_guardas = guardas.entorno(base, ramas)
     return mismo_cotejo.entorno(con_guardas, base=con_guardas)
 
 

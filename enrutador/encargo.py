@@ -37,7 +37,7 @@ archivos que tocaste, el comando de las pruebas con su salida, el hash del commi
 
     cotejo entregar {id} --evidencia "..."
 
-{capturas}Si te atascasSi te atascas, no la dejes a medias: devuélvela con el motivo, que es lo que evita que el
+{capturas}Si te atascas, no la dejes a medias: devuélvela con el motivo, que es lo que evita que el
 siguiente se estrelle contra lo mismo:
 
     cotejo bloquear {id} --motivo "qué lo impide y qué haría falta"

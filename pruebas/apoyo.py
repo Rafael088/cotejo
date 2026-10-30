@@ -24,6 +24,15 @@ if str(RAIZ) not in sys.path:
 # prueban esa pregunta lo quitan y ponen CLIs de mentira en su PATH.
 os.environ.setdefault("COTEJO_NO_PREGUNTAR_CLI", "1")
 
+# Las temporales de las pruebas no buscan repo por encima de la temporal del sistema
+# (cotejo-wwrzyf): si `/tmp` es un repo —por un `.git` que dejó otro programa—, `git` y
+# `conexion._raiz_git` no deben tomar las carpetas de la prueba por hijas suyas. Es la misma
+# frontera que pone git con `GIT_CEILING_DIRECTORIES`, y la heredan los subprocesos.
+_techos = [tempfile.gettempdir()]
+if os.environ.get("GIT_CEILING_DIRECTORIES"):
+    _techos.append(os.environ["GIT_CEILING_DIRECTORIES"])
+os.environ["GIT_CEILING_DIRECTORIES"] = os.pathsep.join(dict.fromkeys(_techos))
+
 
 def nota(*lineas):
     """Une líneas dejando el salto final, que es como se ven los archivos de verdad."""

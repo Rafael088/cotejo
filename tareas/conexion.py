@@ -94,9 +94,17 @@ def _raiz_git(inicio):
     `.git` puede ser carpeta (un repo normal) o archivo (un worktree, que es justo donde
     trabaja un agente despachado). Las dos cuentan: lo que importa aquí es «hay un repo»,
     no las reglas de `fuentes/repo.py` para no repetir un proyecto al escanear una raíz.
+
+    Se respeta `GIT_CEILING_DIRECTORIES` como el propio git: lo que cuelgue de esas carpetas
+    no busca repo más arriba. Es lo que deja que las temporales de las pruebas no hereden un
+    `/tmp` que sea repo (cotejo-wwrzyf).
     """
     actual = Path(inicio).resolve()
+    techos = {Path(t).expanduser().resolve()
+              for t in os.environ.get("GIT_CEILING_DIRECTORIES", "").split(os.pathsep) if t}
     for candidato in (actual, *actual.parents):
+        if candidato in techos:
+            break
         if (candidato / ".git").exists():
             return candidato
     return None

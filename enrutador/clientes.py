@@ -385,10 +385,14 @@ def _codex_perfil(caja, trabajo):
     archivo de la tarea, la de estado de Cotejo— más la carpeta propia del worktree dentro del
     `.git`, y cada `denyWrite` con `read`, que gana por ser más concreta o por venir después: los
     `hooks` y la `config` del `.git`, los demás worktrees y los archivos de la config de Cotejo.
-    Hereda de `:workspace` (la carpeta donde arranca, y el resto se lee) y la red queda solo para
+    Hereda de `:workspace` (la carpeta donde arranca, y el resto se lee), pero niega `:slash_tmp`
+    —el `/tmp` de la persona, donde no debe escribir ni dejar un `.git`— y la red queda solo para
     lo local, por el proxy de Codex. Todo por `-c`: el `~/.codex/config.toml` no se toca."""
     caja = ((caja or {}).get("sandbox") or {}).get("filesystem") or {}
-    reglas = {}
+    # `:slash_tmp` es el `/tmp` de la persona, y heredarlo de `:workspace` es lo que dejaba
+    # `/tmp/.git` cuando Codex escribía ahí (cotejo-wwrzyf). El temporal del agente va a la
+    # carpeta de estado (`armado.entorno` pone su TMPDIR), así que no se pierde nada.
+    reglas = {":slash_tmp": "deny"}
     for ruta in caja.get("allowWrite") or ():
         reglas[os.path.abspath(str(ruta))] = "write"
     propio = _gitdir_de(trabajo)

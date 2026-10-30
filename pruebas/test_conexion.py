@@ -202,7 +202,8 @@ class Doctor(PruebaDeConexion):
                    "COTEJO_CARPETA_PROYECTOS": self.CARPETA, "COTEJO_CONFIG": str(self.config),
                    "HOME": str(self.vault / "hogar"), "XDG_CONFIG_HOME": str(self.vault / "xdg-c"),
                    "XDG_STATE_HOME": str(self.vault / "xdg-e"), "DBUS_SESSION_BUS_ADDRESS": "",
-                   "PYTHONPATH": str(RAIZ)}
+                   "PYTHONPATH": str(RAIZ),
+                   "GIT_CEILING_DIRECTORIES": os.environ["GIT_CEILING_DIRECTORIES"]}
         hecho = subprocess.run([sys.executable, "-m", "tareas", "doctor"], cwd=self.fuera_de_un_repo(),
                                env=entorno,
                                capture_output=True, text=True)
