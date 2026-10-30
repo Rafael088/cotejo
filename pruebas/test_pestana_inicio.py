@@ -606,7 +606,9 @@ class UnRepoQueFalta(PestanaInicio):
         self.assertIsNone(b.fuente.problema)
         self.assertEqual(b.pestana_actual(), pestana_inicio.INICIO)
         todo = textos(b.pestanas.get_child_by_name(pestana_inicio.INICIO))
-        self.assertIn("Tienes 1 proyecto, todo al día", todo)
+        # Con una tarea sin terminar no se dice «todo al día» (v1.3.1).
+        self.assertIn("Tienes 1 proyecto y 1 tarea por hacer", todo)
+        self.assertNotIn("todo al día", todo)
         self.assertNotIn("Todavía no tienes proyectos", todo)
         self.assertTrue(b.inicio_aviso.get_visible())
         self.assertIn("1 repo de tu lista ya no existe", " ".join(todo))

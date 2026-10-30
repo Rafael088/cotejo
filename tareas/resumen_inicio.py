@@ -19,6 +19,7 @@ from . import version as versiones
 
 SIN_ARQUITECTURA = "sin arquitectura todavía"
 AL_DIA = "al día"
+POR_HACER = "por hacer"
 
 
 @dataclass
@@ -57,8 +58,17 @@ class Tarjeta:
 
     @property
     def texto_estado(self):
-        """El chip de la tarjeta: «2 por comprobar» o «al día»."""
-        return f"{self.por_comprobar} por comprobar" if self.por_comprobar else AL_DIA
+        """El chip de la tarjeta: «2 por comprobar», «4 por hacer» o «al día».
+
+        «Al día» es solo cuando no queda nada: ni entregas que comprobar ni tareas sin
+        terminar. Antes lo decía un proyecto con cuatro tareas pendientes, al lado de
+        «0 de 4 piezas» (v1.3.1).
+        """
+        if self.por_comprobar:
+            return f"{self.por_comprobar} por comprobar"
+        if self.sin_terminar:
+            return f"{self.sin_terminar} {POR_HACER}"
+        return AL_DIA
 
 
 def saludo(hora):
@@ -77,16 +87,21 @@ def _contar(n, singular, plural):
 def titular(tarjetas):
     """La frase grande del Inicio: cuántos proyectos y cuántas entregas esperan.
 
-    «Tienes 3 proyectos y 2 entregas por comprobar», «Tienes 1 proyecto, todo al día» o, sin
-    ninguno, «Todavía no tienes proyectos».
+    «Tienes 3 proyectos y 2 entregas por comprobar», «Tienes 1 proyecto y 4 tareas por hacer»,
+    «Tienes 1 proyecto, todo al día» o, sin ninguno, «Todavía no tienes proyectos». «Todo al
+    día» queda para cuando no hay ni entregas ni trabajo pendiente (v1.3.1): decirlo con
+    tareas por hacer era lo que chocaba con «0 de 4 piezas».
     """
     if not tarjetas:
         return "Todavía no tienes proyectos"
     proyectos = _contar(len(tarjetas), "proyecto", "proyectos")
     esperan = sum(t.por_comprobar for t in tarjetas)
-    if not esperan:
-        return f"Tienes {proyectos}, todo al día"
-    return f"Tienes {proyectos} y {_contar(esperan, 'entrega', 'entregas')} por comprobar"
+    if esperan:
+        return f"Tienes {proyectos} y {_contar(esperan, 'entrega', 'entregas')} por comprobar"
+    quedan = sum(t.sin_terminar for t in tarjetas)
+    if quedan:
+        return f"Tienes {proyectos} y {_contar(quedan, 'tarea', 'tareas')} {POR_HACER}"
+    return f"Tienes {proyectos}, todo al día"
 
 
 def repos_que_faltan(avisos):
@@ -124,7 +139,7 @@ def tarjeta(proyecto, version="", objetivo="", piezas=(), carpeta="", sin_app=Fa
         version=version or "",
         objetivo=(objetivo or "").strip().splitlines()[0] if (objetivo or "").strip() else "",
         por_comprobar=sum(1 for t in proyecto.tareas if t.estado == "por-validar"),
-        sin_terminar=len(proyecto.tareas),
+        sin_terminar=sum(1 for t in proyecto.tareas if t.estado != "hecha"),
         piezas=len(estados),
         piezas_hechas=sum(1 for e in estados if e == "hecho"),
         estados=estados,

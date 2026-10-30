@@ -420,8 +420,13 @@ tooltip label { color: var(--k-texto); font-size: var(--k-dato); }
 .inicio-nuevo { border-style: dashed; background: transparent; }
 .inicio-nuevo:hover { background: var(--k-velo-sutil); }
 .inicio-mas { font-family: "Sora"; font-weight: 600; font-size: var(--k-portada); color: var(--k-tenue); }
-.inicio-avance trough { min-height: 4px; border-radius: 4px; background: var(--k-velo-fuerte); }
-.inicio-avance progress { min-height: 4px; border-radius: 4px; background: var(--k-tenue); }
+/* La descripción del proyecto en su tarjeta: tenue, pero sin la negrita del botón que la
+   envuelve (v1.3.1). */
+.inicio-descripcion { font-weight: normal; }
+/* La barra de avance se ve también al 0 %: el carril es una línea del borde, no un velo casi
+   invisible (v1.3.1). */
+.inicio-avance trough { min-height: 6px; border-radius: 3px; background: var(--k-borde-hondo); }
+.inicio-avance progress { min-height: 6px; border-radius: 3px; background: var(--k-tenue); }
 /* La entrevista de «Nuevo proyecto» (cotejo-kf94so). */
 .entrevista-marco { background: var(--k-columna); border: 1px solid var(--k-borde); border-radius: 8px; }
 .entrevista-texto { background: transparent; color: var(--k-texto); font-size: var(--k-contenido); }
