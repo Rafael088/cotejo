@@ -490,6 +490,66 @@ strong {
   color: var(--tenue);
 }
 
+.instalar-rapido__descarga {
+  min-height: 52px;
+  padding: 0 18px;
+}
+
+.instalar-rapido__paquete {
+  padding-left: 10px;
+  border-left: 1px solid var(--texto-chip);
+  color: var(--fondo);
+  opacity: 0.62;
+  font: 400 12.5px/1 var(--mono);
+}
+
+.instalar-rapido__otro {
+  margin: 12px 0 0;
+  max-width: 58ch;
+  font-size: 14px;
+  color: var(--tenue);
+}
+
+.instalar-rapido__programa {
+  margin-top: 16px;
+  border-top: 1px solid var(--borde-hondo);
+}
+
+.instalar-rapido__resumen {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 13px 0;
+  color: var(--tenue);
+  font: 500 14px/1.4 var(--inter);
+  cursor: pointer;
+  list-style: none;
+}
+.instalar-rapido__resumen::-webkit-details-marker {
+  display: none;
+}
+.instalar-rapido__resumen::before {
+  content: '+';
+  color: var(--tenue-hondo);
+  font: 500 14px/1 var(--mono);
+}
+.instalar-rapido__programa[open] .instalar-rapido__resumen::before {
+  content: '−';
+}
+.instalar-rapido__resumen:hover {
+  color: var(--texto);
+}
+.instalar-rapido__resumen-nota {
+  color: var(--tenue-hondo);
+  font-size: 13px;
+}
+
+.instalar-rapido__comandos {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 2px;
+}
+
 .pestanas {
   display: inline-flex;
   padding: 3px;
@@ -627,6 +687,11 @@ strong {
   .instalar-rapido__cabeza {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .instalar-rapido__descarga {
+    width: 100%;
+    justify-content: center;
   }
 
   .comando--grande {

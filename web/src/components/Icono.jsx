@@ -8,6 +8,7 @@ const TRAZOS = {
   ),
   check: <path d="M5 12.5l4.5 4.5L19 7" />,
   flecha: <path d="M5 12h14m-6-6l6 6-6 6" />,
+  descarga: <path d="M12 4v11m-4.5-4.5L12 15l4.5-4.5M5 19h14" />,
   repetir: <path d="M4 12a8 8 0 0 1 13.7-5.7L20 8.5M20 4v4.5h-4.5M20 12a8 8 0 0 1-13.7 5.7L4 15.5M4 20v-4.5h4.5" />,
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   cerrar: <path d="M6 6l12 12M18 6L6 18" />,

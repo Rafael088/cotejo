@@ -1,8 +1,9 @@
 import Frase from '../components/Frase.jsx'
 import InstalarRapido from '../components/InstalarRapido.jsx'
 
-// /primerospasos: el primer día (cuatro filas) y cada día (cuatro frases para el agente).
-// Las preguntas de la entrevista son las de skills/cotejo/referencias/inicio.md.
+// /primerospasos: el primer día (instalar y crear el proyecto desde el Inicio de la app) y cada
+// día (lo que se repite en CotejoBoard y las frases para el agente). Las preguntas de la
+// entrevista son las de skills/cotejo/referencias/inicio.md.
 function Fila({ cuando, titulo, children }) {
   return (
     <div className="dia__fila">
@@ -31,7 +32,7 @@ export default function PrimerosPasos() {
           <h1 id="t-pp" className="cf-titular">
             Primeros pasos.
           </h1>
-          <p className="cf-bajada">Lo que haces el primer día, y lo que repites cada día.</p>
+          <p className="cf-bajada">Lo que haces al instalarlo, y lo que repites cada día.</p>
         </div>
       </section>
 
@@ -43,16 +44,23 @@ export default function PrimerosPasos() {
           <Fila cuando="1 · 2 minutos" titulo="Instala.">
             <InstalarRapido />
             <p>
-              Repetirlo actualiza. Si algo falla, <code>cotejo doctor</code> dice qué hacer.
+              Linux: el AppImage. Windows: el instalador <code>.exe</code>. Ninguno pide
+              administrador ni abrir una terminal.
             </p>
           </Fila>
-          <Fila cuando="2 · en tu agente" titulo="Arranca el proyecto.">
-            <p>Abre tu agente en la carpeta del proyecto y dile:</p>
-            <Frase texto="empiezo un proyecto" />
+          <Fila cuando="2 · al abrir" titulo="Revisa tu equipo.">
+            <p>
+              Cotejo mira qué agentes tienes instalados. Si no hay ninguno, te lleva a instalarlo y
+              a iniciar sesión; si ya tienes, sigues al Inicio.
+            </p>
           </Fila>
-          <Fila cuando="3 · un mensaje" titulo="Responde cinco preguntas.">
+          <Fila cuando="3 · «Nuevo proyecto»" titulo="Cuéntale el proyecto.">
+            <p>
+              Una entrevista de cinco preguntas, sin IA. Al terminar, Cotejo arma el encargo, lanza
+              al agente por detrás y te enseña el progreso mientras prepara la carpeta.
+            </p>
             <div className="mensaje">
-              <span className="mensaje__quien">tu agente</span>
+              <span className="mensaje__quien">la entrevista</span>
               <ol>
                 {PREGUNTAS.map(([q, def]) => (
                   <li key={q}>
@@ -62,12 +70,17 @@ export default function PrimerosPasos() {
                 ))}
               </ol>
             </div>
-            <p>Confirmas o corriges. Queda escrito el objetivo, el siguiente paso y entre 3 y 8 tareas.</p>
           </Fila>
-          <Fila cuando="4 · en CotejoBoard" titulo="Acepta lo que importa.">
+          <Fila cuando="4 · «Revisar el plan»" titulo="Acepta o cambia.">
             <p>
-              Las decisiones grandes, como la tecnología, llegan como propuestas. Ninguna vale hasta que la
-              aceptas.
+              Verás el objetivo, las decisiones y las tareas de la 0.1.0. Aceptar es tuyo. «Cambiar»
+              devuelve esa decisión al agente con tu motivo para que proponga otra.
+            </p>
+          </Fila>
+          <Fila cuando="5 · «Empezar la 0.1.0»" titulo="Mira el mapa.">
+            <p>
+              Cotejo reparte las tareas entre los modelos y abre el mapa del proyecto: qué ve la
+              gente, qué hace, qué guarda y con qué se conecta.
             </p>
           </Fila>
         </div>
@@ -76,21 +89,26 @@ export default function PrimerosPasos() {
       <section className="seccion" aria-labelledby="t-cada">
         <div className="seccion__cabeza">
           <h2 id="t-cada" className="titulo-2">Cada día.</h2>
-          <p className="parrafo">Cuatro frases para tu agente. Copia la que toque.</p>
+          <p className="parrafo">Lo que haces en Cotejo y las frases que le puedes decir a tu agente.</p>
         </div>
         <div className="dia">
           <Fila cuando="al empezar" titulo="Ponte al día.">
+            <p>
+              Abre Cotejo: el Inicio te dice cómo va cada proyecto y cuántas entregas esperan tu
+              comprobación.
+            </p>
             <Frase texto="qué tengo pendiente en mi-app" />
-            <p>Ves cada tarea con el modelo que le toca.</p>
           </Fila>
           <Fila cuando="para avanzar" titulo="Reparte.">
-            <Frase texto="hazme dos tareas de mi-app" />
-            <p>Cotejo mira cuántas caben en tu máquina antes de lanzarlas.</p>
+            <p>
+              Pasa una tarea de Pendiente a Haciendo en el tablero. Cotejo lanza al agente con el
+              modelo que tenga asignado, y lo que hace se ve en su ficha.
+            </p>
           </Fila>
           <Fila cuando="al revisar" titulo="Comprueba.">
             <p>
-              Abre CotejoBoard. En «Para comprobar» está cada entrega con su resumen. La apruebas o la
-              devuelves con un motivo.
+              En «Para comprobar» está cada entrega con su resumen. La apruebas o la devuelves con
+              un motivo. Si el proyecto salió del Inicio, aprobar la integra sola en tu app.
             </p>
           </Fila>
           <Fila cuando="al cerrar versión" titulo="Saca la versión.">

@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build && vite build --ssr src/entrada-servidor.jsx --outDir .prerender --emptyOutDir && node scripts/prerender.mjs",
     "preview": "vite preview",
-    "comprobar": "node scripts/comprobar-prerender.mjs && node scripts/comprobar-meta.mjs && node scripts/comprobar-public.mjs && node scripts/comprobar-csp.mjs",
+    "comprobar": "node scripts/comprobar-prerender.mjs && node scripts/comprobar-meta.mjs && node scripts/comprobar-public.mjs && node scripts/comprobar-csp.mjs && node scripts/comprobar-sistema.mjs",
     "comprobar:consola": "node scripts/comprobar-consola.mjs",
     "comprobar:movil": "node scripts/comprobar-movil.mjs"
   },

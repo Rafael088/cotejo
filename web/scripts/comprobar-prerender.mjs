@@ -25,7 +25,7 @@ const EXIGIDAS = {
   },
   '/comofunciona': {
     h1: 'Cómo funciona.',
-    secciones: [['empieza', 'Empieza con un comando.']],
+    secciones: [['empieza', 'Instálalo y crea tu primer proyecto.']],
   },
   '/primerospasos': {
     h1: 'Primeros pasos.',
