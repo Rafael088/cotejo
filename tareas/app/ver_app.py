@@ -62,11 +62,25 @@ class VerApp:
         self.abrir_carpeta(self.seleccion)
 
     def poner_botones_flotantes(self):
-        """Los botones solo con un proyecto elegido, no con «Todos los proyectos» ni sin fuente."""
+        """Los botones solo con un proyecto elegido, no con «Todos los proyectos» ni sin fuente.
+
+        Y «Ver mi app» se apaga con el mismo plan que en el Inicio y en el mapa: si el proyecto
+        todavía no tiene código (`sin_app`), no se puede pulsar y el tooltip dice por qué.
+        """
         caja = getattr(self, "flotantes_app", None)
         if caja is None:
             return
-        caja.set_visible(self.seleccion != TODOS and not self.fuente.problema)
+        hay_proyecto = self.seleccion != TODOS and not self.fuente.problema
+        caja.set_visible(hay_proyecto)
+        sin_app = False
+        if hay_proyecto:
+            try:
+                sin_app = como_se_abre.plan_de(self._carpeta(self.seleccion)).sin_app
+            except Exception:   # noqa: BLE001 — un error aquí no debe romper el pintado del tablero
+                sin_app = False
+        self.boton_flotante_ver_app.set_sensitive(not sin_app)
+        self.boton_flotante_ver_app.set_tooltip_text(
+            como_se_abre.SIN_APP if sin_app else "")
 
     def _parar_apps_al_cerrar(self, *_):
         self.servidores.parar_todos()

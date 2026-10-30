@@ -224,6 +224,26 @@ class VerMiApp(base.PestanaInicio):
         self.assertEqual(plan.carpeta, str(self.carpeta))
         self.assertEqual(plan.como.tipo, "pagina")
 
+    def test_el_flotante_ver_mi_app_se_apaga_sin_codigo_y_dice_por_que(self):
+        from tareas import almacen
+        almacen.Almacen(self.carpeta).crear("arquitectura", "Cómo se abre",
+                                            "## Cómo se abre\n\n- comando: npm run dev\n")
+        b = self._en_el_tablero_con_barberia()
+        b.pintar()
+        base.girar()
+        self.assertTrue(b.flotantes_app.get_visible())
+        self.assertFalse(b.boton_flotante_ver_app.get_sensitive())
+        self.assertEqual(b.boton_flotante_ver_app.get_tooltip_text(), como_se_abre.SIN_APP)
+        # «Abrir la carpeta» no depende de que haya código.
+        self.assertTrue(b.boton_flotante_carpeta.get_sensitive())
+
+        (self.carpeta / "package.json").write_text('{"scripts": {"dev": "vite"}}',
+                                                   encoding="utf-8")
+        b.pintar()
+        base.girar()
+        self.assertTrue(b.boton_flotante_ver_app.get_sensitive())
+        self.assertEqual(b.boton_flotante_ver_app.get_tooltip_text() or "", "")
+
     def test_abrir_la_carpeta_flotante_abre_la_principal_del_proyecto(self):
         b = self._en_el_tablero_con_barberia()
         b.boton_flotante_carpeta.emit("clicked")
