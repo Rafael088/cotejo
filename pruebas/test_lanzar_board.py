@@ -434,10 +434,56 @@ class LanzarDesdeElBoard(base.PestanaInicio):
         self.assertIn("#agente/sonnet", self.linea("^cotejo-con"))
         ficha = self.board.dialogo_detalle(fila.proyecto, fila.tarea)
         dicho = " ".join(base.textos(ficha.get_child()))
-        self.assertIn("PAUSADA", dicho)
-        self.assertIn("el agente terminó sin entregar", dicho)
-        self.assertIn("«Voy a mirar el repo.»", dicho)          # el motivo, con sus mensajes
+        # Su ficha dice qué pasó en llano y qué puede hacer, sin jerga: la «PAUSADA» y la
+        # «DEVUELTA» de antes quedan fuera, y lo que dijo el agente no sale hasta pedirlo.
+        self.assertNotIn("PAUSADA", dicho)
+        self.assertIn("NO ENTREGÓ", dicho)
+        self.assertIn("El agente terminó sin entregar", dicho)
+        self.assertIn("Reintentar", dicho)
+        self.assertIn("Cambiar de agente", dicho)
+        self.assertIn("Ver lo que hizo", dicho)
+        self.assertNotIn("«Voy a mirar el repo.»", dicho)          # plegado hasta pedirlo
+        self.assertNotIn("worktree", dicho)
         self.assertTrue(Path(lanzados.leer("cotejo-con")["worktree"]["ruta"]).is_dir())
+
+    def test_el_que_termino_sin_entregar_pliega_lo_que_dijo_y_reintenta(self):
+        self.board.ver_pestana("tablero")
+        with mock.patch.object(type(self.board), "aviso", lambda _b, t: None):
+            self.arrastrar("parseo")
+            self.assertTrue(self.esperar(
+                lambda: self.fin_de("cotejo-con") == lanzados.FIN_SIN_ENTREGAR))
+        fila = self.fila("parseo", "pendiente")
+        ficha = self.board.dialogo_detalle(fila.proyecto, fila.tarea)
+        # Lo que dijo el agente está plegado: no existe en la ficha hasta que se pide.
+        self.assertNotIn("«Voy a mirar el repo.»", base.textos(ficha.get_child()))
+        ver = self.buscar_boton(ficha.get_child(), "Ver lo que hizo")
+        self.assertIsNotNone(ver)
+        ver.emit("clicked")
+        self.assertIn("«Voy a mirar el repo.»", " ".join(base.textos(ficha.get_child())))
+        # Reintentar la pasa a Haciendo y lanza otro agente en el mismo worktree.
+        self.argv_falso.unlink()
+        with mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):
+            reintentar = self.buscar_boton(ficha.get_child(), "Reintentar")
+            self.assertIsNotNone(reintentar)
+            reintentar.emit("clicked")
+        self.assertTrue(self.esperar(lambda: self.argv_falso.exists()))
+        self.assertIn("#en-curso", self.linea("^cotejo-con"))
+        self.assertEqual(lanzados.leer("cotejo-con")["lanzamientos"], 2)
+
+    def test_el_que_termino_sin_entregar_cambiar_de_agente_abre_la_pregunta(self):
+        self.board.ver_pestana("tablero")
+        with mock.patch.object(type(self.board), "aviso", lambda _b, t: None):
+            self.arrastrar("parseo")
+            self.assertTrue(self.esperar(
+                lambda: self.fin_de("cotejo-con") == lanzados.FIN_SIN_ENTREGAR))
+        fila = self.fila("parseo", "pendiente")
+        ficha = self.board.dialogo_detalle(fila.proyecto, fila.tarea)
+        cambiar = self.buscar_boton(ficha.get_child(), "Cambiar de agente")
+        self.assertIsNotNone(cambiar)
+        cambiar.emit("clicked")
+        self.assertIsNotNone(self.board.pregunta_modelo)
+        self.assertIn("¿Con qué agente la reintento?", self.board.pregunta_modelo.get_heading())
+        self.board.pregunta_modelo.force_close()
 
     def test_el_que_murio_con_el_board_cerrado_se_recoge_al_refrescar(self):
         self.board.ver_pestana("tablero")

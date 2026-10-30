@@ -252,6 +252,14 @@ def en_espera():
     return {i: r.get("motivo") or "" for i, r in todos().items() if r.get("fase") == EN_ESPERA}
 
 
+def termino_sin_entregar(registro):
+    """¿El agente terminó o murió sin entregar y volvió a Pendiente (`fin.como`)?
+
+    Es lo que distingue su ficha de una pausada a mano: una «pausada» la paró una persona, esta
+    se cerró sola. `registro` es lo que devuelve `leer(id)`."""
+    return bool(registro) and (registro.get("fin") or {}).get("como") == FIN_SIN_ENTREGAR
+
+
 # --- la salida en vivo --------------------------------------------------------------------------
 
 def _resumen_entrada(entrada):

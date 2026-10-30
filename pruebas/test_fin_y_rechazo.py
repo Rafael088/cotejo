@@ -127,16 +127,20 @@ class FinYRechazo(ConClienteFalso):
     def test_el_que_termina_sin_entregar_vuelve_a_pendiente_y_no_se_relanza(self):
         primero, terminado = self.lanzar_con()
         self.assertTrue(esperar(lambda: terminado, 20))
-        # Pendiente, con su modelo, y el motivo en llano con lo último que dijo.
+        # Pendiente, con su modelo, y el motivo en llano, sin lo que dijo el agente (eso se
+        # enseña plegado en su ficha, y aquí se puede leer aparte del log).
         self.assertEqual(self.columna(), "pendiente")
         self.assertIn("#agente/sonnet", self.linea())
         soltada = self.ultima("soltar")
         self.assertIn("El agente terminó sin entregar", soltada["motivo"])
-        self.assertIn("«Voy a mirar el repo.»", soltada["motivo"])
-        self.assertIn("Listo.", soltada["motivo"])
+        self.assertNotIn("«Voy a mirar el repo.»", soltada["motivo"])
+        self.assertNotIn("worktree", soltada["motivo"])
         self.assertEqual(f.Cotejo().tarea(ID)["motivo"], soltada["motivo"])
-        # Pausada, con su worktree y su rama para retomarla.
+        # Lo que dijo el agente sigue en su log, para plegarlo en la ficha.
         registro = lanzados.leer(ID)
+        self.assertIn("Voy a mirar el repo.", " ".join(retomar.ultimas_lineas(registro, 3)))
+        self.assertTrue(lanzados.termino_sin_entregar(registro))
+        # Pausada, con su worktree y su rama para retomarla.
         self.assertEqual(registro["fase"], lanzados.DETENIDO)
         self.assertEqual(registro["motivo"], despacho_board.SIN_ENTREGAR)
         self.assertEqual(registro["fin"]["como"], lanzados.FIN_SIN_ENTREGAR)
@@ -183,7 +187,7 @@ class FinYRechazo(ConClienteFalso):
         motivo = self.ultima("soltar")["motivo"]
         self.assertIn("El agente terminó sin entregar", motivo)
         self.assertIn("se cerró sin que nadie lo viera", motivo)
-        self.assertIn("«→ Bash: git status»", motivo)
+        self.assertNotIn("«→ Bash: git status»", motivo)
         registro = lanzados.leer(ID)
         self.assertEqual((registro["fase"], registro["fin"]["como"]),
                          (lanzados.DETENIDO, lanzados.FIN_SIN_ENTREGAR))

@@ -133,9 +133,14 @@ class Detalle:
         cuerpo.append(datos)
 
         # Lo último que se dijo de ella, entero y seleccionable: en la carta va recortado a
-        # tres líneas, y aquí es donde se lee y se copia.
+        # tres líneas, y aquí es donde se lee y se copia. La que terminó sin entregar tiene su
+        # propia sección (`seccion_sin_entregar`, cotejo-granqk) en vez de esta «DEVUELTA», que
+        # repetía lo que dijo el agente en crudo y con jerga.
+        no_entrego = self.seccion_sin_entregar(proyecto, tarea, dialogo)
         visible = anotacion_visible(tarea, self.app.bitacora.get(tarea.id))
-        if visible is not None:
+        if no_entrego is not None:
+            cuerpo.append(no_entrego)
+        elif visible is not None:
             clase, titulo_anotacion, texto = visible
             caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
                            css_classes=["anotacion", clase])
@@ -175,7 +180,8 @@ class Detalle:
                 dialogo.close()
                 self.al_lanzar_igual(proyecto, tarea)
             cuerpo.append(self.seccion_en_espera(espera, quitar, lanzar_igual))
-        dialogo.pausada = None if espera else self.seccion_pausada(tarea)
+        dialogo.pausada = (None if espera or no_entrego is not None
+                           else self.seccion_pausada(tarea))
         if dialogo.pausada is not None:
             cuerpo.append(dialogo.pausada)
 

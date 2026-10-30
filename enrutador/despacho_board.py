@@ -39,10 +39,10 @@ Volver a pasarla a Haciendo vuelve por `lanzar`, que reutiliza el worktree (`wor
 **El fin y el rechazo** (cotejo-o253bs). Cuando el agente termina, su proceso se cierra solo y
 `vigilar` le hace el fin (`fin`, una vez por lanzamiento): si entregó, la tarea ya está en Para
 comprobar y su registro y su log se quedan; si terminó o murió **sin entregar**, vuelve a
-Pendiente con su modelo y el motivo en llano —«el agente terminó sin entregar», con lo último
-que dijo— y queda `detenido` con el worktree para retomarla. Los que se cerraron con el board
-cerrado los recoge `recoger` al refrescar. Nada de eso relanza: lanzar es siempre de una
-persona. Devolver de Para comprobar a Haciendo con motivo (`rechazar`) lanza uno nuevo en el
+Pendiente con su modelo y el motivo en llano —qué pasó, sin lo que dijo ni jerga de worktree,
+que la ficha enseña plegado— y queda `detenido` con el worktree para retomarla. Los que se
+cerraron con el board cerrado los recoge `recoger` al refrescar. Nada de eso relanza: lanzar
+es siempre de una persona. Devolver de Para comprobar a Haciendo con motivo (`rechazar`) lanza uno nuevo en el
 mismo worktree con el encargo, la nota de retomar y lo que pidieron cambiar.
 """
 
@@ -442,17 +442,22 @@ SIN_ENTREGAR = "el agente terminó sin entregar"
 
 
 def motivo_sin_entregar(registro):
-    """Por qué volvió a Pendiente, para quien no programa, con lo último que dijo."""
+    """Por qué volvió a Pendiente, en llano: qué pasó, para quien no programa.
+
+    Solo el hecho y su causa. Lo que dijo el agente va aparte (`retomar.ultimas_lineas`), y la
+    ficha lo pliega debajo (cotejo-granqk): aquí no entra ni la jerga del agente ni la de
+    worktree, que era lo que convertía la devolución en un jeroglífico.
+    """
     codigo = registro.get("codigo")
-    por = (" (su proceso se cerró sin que nadie lo viera terminar)" if registro.get("murio")
-           else " (se le acabó el tiempo)" if codigo == 124
-           else f" (salió con un error, código {codigo})" if codigo not in (0, None) else "")
-    texto = "El agente terminó sin entregar" + por + "."
-    ultimas = retomar.ultimas_lineas(registro, 3)
-    if ultimas:
-        texto += " Lo último que dijo: " + " / ".join(f"«{l}»" for l in ultimas) + "."
-    return texto + (" Su worktree se queda: pásala a Haciendo y otro agente la retoma donde "
-                    "quedó.")
+    if registro.get("murio"):
+        por = "su proceso se cerró sin que nadie lo viera terminar"
+    elif codigo == 124:
+        por = "se le acabó el tiempo"
+    elif codigo not in (0, None):
+        por = f"salió con un error (código {codigo})"
+    else:
+        por = ""
+    return "El agente terminó sin entregar" + (f": {por}." if por else ".")
 
 
 def fin(tarea_id, pid):
