@@ -340,6 +340,22 @@ class AprobarOfreceIntegrar(ConGit):
         self.assertFalse(otra["ofrecer"])
         self.assertIn("ya está integrada", otra["motivo"])
 
+    def test_integrar_sin_nombre_ni_correo_en_git_usa_los_de_cotejo(self):
+        # Quien no programa no tiene identidad de git: el merge no puede morir por eso.
+        self.r.trabajar()
+        plan = revision.plan_integracion(self.r.tarea_id, self.r.entregar())
+        sin_identidad = {clave: "" for clave in ("GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL",
+                                                  "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL")}
+        with mock.patch.dict(os.environ, {"EMAIL": ""}):
+            for clave in (*sin_identidad, "EMAIL"):
+                os.environ.pop(clave, None)
+            resultado = revision.integrar(plan)
+        self.assertTrue(resultado["integrada"], resultado)
+        self.assertEqual(git(self.r.repo, "log", "-1", "--format=%cn <%ce>"),
+                         "Cotejo <cotejo@localhost>")
+        self.assertEqual(subprocess.run(["git", "-C", str(self.r.repo), "config", "--local",
+                                         "user.email"], capture_output=True).returncode, 1)
+
     def test_se_ofrece_aunque_el_worktree_ya_se_haya_retirado(self):
         # El board aprueba (y retira el worktree) antes de que la persona conteste; el plan se
         # calculó antes, y con él basta para integrar.
