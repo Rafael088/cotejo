@@ -167,6 +167,17 @@ class FinYRechazo(ConClienteFalso):
         self.assertEqual(self.columna(), "pendiente")
         self.assertIn("código 3", self.ultima("soltar")["motivo"])
 
+    def test_el_que_no_pudo_guardar_lo_dice_en_llano(self):
+        _, terminado = self.lanzar_con(FALSO_CODIGO=1,
+                                       FALSO_RESPUESTA="Permission denied (EACCES)")
+        self.assertTrue(esperar(lambda: terminado, 20))
+        self.assertEqual(self.columna(), "pendiente")
+        motivo = self.ultima("soltar")["motivo"]
+        self.assertIn("El agente terminó sin entregar", motivo)
+        self.assertIn("no tenía permiso para guardar su trabajo", motivo)
+        self.assertNotIn("código 1", motivo)
+        self.assertNotIn("Permission denied", motivo)
+
     def test_el_que_muere_con_el_board_cerrado_se_recoge_una_vez(self):
         procesos = []
         with mock.patch.object(despacho_board, "vigilar",
@@ -345,6 +356,47 @@ class FinYRechazo(ConClienteFalso):
         prompt = self.argv()["argv"][-1]
         self.assertIn(retomar.TITULO_RECHAZO, prompt)
         self.assertIn("Falta el caso vacío.", prompt)
+
+
+class CausaEnLlano(unittest.TestCase):
+    """`despacho_board.causa_en_llano`: la causa frecuente, en llano, o nada si no se reconoce."""
+
+    def test_sin_causa_reconocible_devuelve_vacio(self):
+        self.assertEqual(despacho_board.causa_en_llano(
+            ["Voy a mirar el repo.", "→ Bash: git status", "— Terminó: Listo."]), "")
+
+    def test_sin_permiso_para_guardar(self):
+        for linea in ("Permission denied", "EACCES", "Read-only file system",
+                      "Operation not permitted", "index.lock", "sandbox"):
+            with self.subTest(linea=linea):
+                self.assertEqual(despacho_board.causa_en_llano([linea]),
+                                 "no tenía permiso para guardar su trabajo")
+
+    def test_sin_cupo_del_modelo(self):
+        for linea in ("usage limit", "rate limit", "quota", "429", "too many requests"):
+            with self.subTest(linea=linea):
+                self.assertEqual(despacho_board.causa_en_llano([linea]),
+                                 "se quedó sin cupo del modelo para seguir")
+
+    def test_sin_red(self):
+        for linea in ("Could not resolve host", "ENOTFOUND", "Network is unreachable"):
+            with self.subTest(linea=linea):
+                self.assertEqual(despacho_board.causa_en_llano([linea]),
+                                 "se quedó sin internet")
+
+    def test_cotejo_le_nego_entregar(self):
+        for linea in ("No puedes entregar una tarea que está en «pendiente»",
+                      "Solo se bloquea una tarea que estés haciendo",
+                      "the following arguments are required: --evidencia"):
+            with self.subTest(linea=linea):
+                self.assertEqual(despacho_board.causa_en_llano([linea]),
+                                 "no pudo entregar el trabajo")
+
+    def test_el_orden_de_las_causas_manda(self):
+        # Aunque el cupo salga antes en el texto, el permiso se mira primero.
+        self.assertEqual(despacho_board.causa_en_llano(
+            ["rate limit", "permission denied"]),
+            "no tenía permiso para guardar su trabajo")
 
 
 class RechazoVigente(unittest.TestCase):
