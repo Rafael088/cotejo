@@ -3,6 +3,7 @@ import { motion } from 'motion/react'
 import Comando from './Comando.jsx'
 import Icono from './Icono.jsx'
 import { COMANDOS, DESCARGAS, RELEASES } from '../config.js'
+import { sistemaDe } from '../sistema.js'
 
 const SISTEMAS = [
   ['linux', 'Linux'],
@@ -12,21 +13,6 @@ const SISTEMAS = [
 const NOTAS = {
   linux: 'Cualquier distribución. En Arch y Omarchy, también con pacman.',
   windows: 'Windows 10 y 11, en PowerShell.',
-}
-
-// El sistema del navegador, sin adivinar: macOS, Android y iOS no tienen paquete de Cotejo.
-// Se puede llamar con cualquier objeto que tenga userAgentData, platform y userAgent (las
-// pruebas y el prerender usan uno de mentira).
-export function sistemaDe(nav) {
-  const pistas = [
-    nav?.userAgentData?.platform,
-    nav?.platform,
-    nav?.userAgent,
-  ].filter(Boolean).join(' ')
-  if (/win/i.test(pistas)) return 'windows'
-  if (/android|iphone|ipad|ipod|mac/i.test(pistas)) return 'otro'
-  if (/linux|x11/i.test(pistas)) return 'linux'
-  return 'otro'
 }
 
 // La descarga de Cotejo: un botón con el paquete del sistema (AppImage en Linux, instalador
