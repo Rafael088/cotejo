@@ -99,6 +99,8 @@ PREFERENCIAS = {
     "network.dns.disablePrefetch": True,
     "network.dns.disablePrefetchFromHTTPS": True,
     "network.http.speculative-parallel-limit": 0,
+    # WebRTC abre conexiones propias que no pasan por el proxy.
+    "media.peerconnection.enabled": False,
 }
 
 
