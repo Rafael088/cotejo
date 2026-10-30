@@ -104,8 +104,10 @@ class BandaSinVueltas(unittest.TestCase):
 
 def _tablero_falso(seleccion="A"):
     """Un Board sin ventana: solo lo que usan el pie y al_elegir_chip."""
-    falso = types.SimpleNamespace(seleccion=seleccion, botones_chip={})
-    for nombre in ("crear_pie", "actualizar_volver", "al_volver", "al_elegir_chip"):
+    falso = types.SimpleNamespace(
+        seleccion=seleccion, botones_chip={},
+        finalizadas=types.SimpleNamespace(pila=[], deshacer=lambda: None))
+    for nombre in ("crear_pie", "actualizar_deshacer", "al_deshacer", "al_elegir_chip"):
         setattr(falso, nombre, types.MethodType(getattr(app.Board, nombre), falso))
     falso.pie_ahorro = lambda: Gtk.Label(label="ahorro")
     falso.pie_donar = lambda: Gtk.Label(label="cafe")
@@ -131,39 +133,37 @@ class PieEnTresZonas(unittest.TestCase):
         self.assertEqual(falso.pie_izquierda.get_margin_start(), app.comun.MARGEN_TABLERO_LADOS)
         self.assertEqual(falso.pie_derecha.get_margin_end(), app.comun.MARGEN_TABLERO_LADOS)
         self.assertEqual(falso.pie_centro.get_first_child().get_size_request()[0], 520)
-        self.assertTrue(falso.boton_volver.get_visible())
+        self.assertTrue(falso.boton_deshacer.get_visible())
 
 
 @unittest.skipUnless(HAY_GTK, "sin GTK")
-class Volver(unittest.TestCase):
+class DeshacerEnElPie(unittest.TestCase):
     def setUp(self):
         self.t = _tablero_falso("A")
         self.t.crear_pie()
-        # Se restaura al terminar: antes se dejaba guardar_board sin hacer nada para el resto
-        # de la suite.
         parche = mock.patch.object(app.comun, "guardar_board", lambda **k: None)
         parche.start()
         self.addCleanup(parche.stop)
 
-    def test_apagado_sin_anterior(self):
-        self.assertFalse(self.t.boton_volver.get_sensitive())
-        self.assertEqual(self.t.boton_volver.get_tooltip_text(),
-                         "Todavía no has cambiado de proyecto")
-        self.t.al_volver()
-        self.assertEqual(self.t.seleccion, "A")
+    def test_siempre_visible_y_apagado_sin_nada_que_deshacer(self):
+        self.assertTrue(self.t.boton_deshacer.get_visible())
+        self.assertFalse(self.t.boton_deshacer.get_sensitive())
+        self.assertEqual(self.t.boton_deshacer.get_tooltip_text(),
+                         "Deshacer la última tarea finalizada (Ctrl Z)")
 
-    def test_vuelve_al_anterior(self):
-        self.t.al_elegir_chip(self.t.botones_chip["B"])
-        self.assertTrue(self.t.boton_volver.get_sensitive())
-        self.t.al_volver()
-        self.assertEqual(self.t.seleccion, "A")
+    def test_con_algo_en_la_pila_se_enciende_y_deshace(self):
+        deshecho = []
+        self.t.finalizadas.pila.append(object())
+        self.t.finalizadas.deshacer = lambda: deshecho.append(True)
+        self.t.actualizar_deshacer()
+        self.assertTrue(self.t.boton_deshacer.get_sensitive())
+        self.t.al_deshacer()
+        self.assertEqual(deshecho, [True])
 
-    def test_tras_volver_el_anterior_es_el_que_dejaste(self):
+    def test_cambiar_de_proyecto_no_toca_el_deshacer(self):
         self.t.al_elegir_chip(self.t.botones_chip["B"])
-        self.t.al_volver()
-        self.assertEqual(self.t.proyecto_anterior, "B")
-        self.t.al_volver()
         self.assertEqual(self.t.seleccion, "B")
+        self.assertFalse(self.t.boton_deshacer.get_sensitive())
 
 
 if __name__ == "__main__":

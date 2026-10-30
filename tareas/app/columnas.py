@@ -80,14 +80,23 @@ class Columnas:
             marca_riel = icono(ICONOS_COLUMNA[clave], 22, "terminada")
             marca_riel.set_halign(Gtk.Align.CENTER)
             marca_riel.set_valign(Gtk.Align.CENTER)
-            boton_riel = Gtk.Button(child=marca_riel, css_classes=["flat", "riel-finalizada"],
+            # El conteo va debajo del check: el riel ya no es solo un ícono, también dice
+            # cuántas finalizadas hay con el filtro de fechas actual.
+            cuenta_riel = Gtk.Label(label=cuenta.get_label(), css_classes=["riel-cuenta"],
+                                    halign=Gtk.Align.CENTER)
+            contenido_riel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
+                                     valign=Gtk.Align.CENTER, halign=Gtk.Align.CENTER)
+            contenido_riel.append(marca_riel)
+            contenido_riel.append(cuenta_riel)
+            boton_riel = Gtk.Button(child=contenido_riel, css_classes=["flat", "riel-finalizada"],
                                     vexpand=True, valign=Gtk.Align.FILL, halign=Gtk.Align.FILL)
             boton_riel.connect("clicked", lambda _b: self.presentar_finalizada())
             con_mano(boton_riel)
             cuenta.connect("notify::label", lambda *_a: self.poner_nombre_riel())
             caja.append(boton_riel)
             self.finalizada = types.SimpleNamespace(
-                caja=caja, encabezado=encabezado, scroll=scroll, riel=boton_riel)
+                caja=caja, encabezado=encabezado, scroll=scroll, riel=boton_riel,
+                cuenta_riel=cuenta_riel)
             self.poner_nombre_riel()
             encabezado.set_visible(False)
             scroll.set_visible(False)
@@ -127,6 +136,7 @@ class Columnas:
         """Nombre accesible y tooltip del riel: «Finalizada · N», con N lo del filtro actual."""
         _lista, cuenta, _scroll = self.columnas[modelo.HECHA]
         texto = f"{dict(modelo.COLUMNAS)[modelo.HECHA]} · {cuenta.get_label()}"
+        self.finalizada.cuenta_riel.set_label(cuenta.get_label())
         self.finalizada.riel.set_tooltip_text(texto)
         etiquetar(self.finalizada.riel, texto)
 

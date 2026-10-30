@@ -98,8 +98,13 @@ class BarraMaestro(unittest.TestCase):
         falso = board_falso()
         falso.poner_maestro()
         self.assertEqual(falso.boton_maestro.get_label(), "Conversación")
+        # Sin texto, contorno; con texto, relleno (la clase la pinta el CSS).
+        self.assertFalse(falso.boton_maestro.has_css_class("con-texto"))
         falso.entrada_maestro.set_text("qué falta")
         self.assertEqual(falso.boton_maestro.get_label(), "Enviar")
+        self.assertTrue(falso.boton_maestro.has_css_class("con-texto"))
+        falso.entrada_maestro.set_text("   ")
+        self.assertFalse(falso.boton_maestro.has_css_class("con-texto"))
 
     def test_sin_texto_el_boton_ensena_y_oculta_la_conversacion(self):
         falso = board_falso()

@@ -76,17 +76,18 @@ class RielDeFinalizada(unittest.TestCase):
         self.assertEqual(caja.get_size_request()[0], 52)
         self.assertEqual(app.comun.ANCHO_RIEL, 52)
 
-    def test_el_riel_solo_tiene_el_icono(self):
+    def test_el_riel_tiene_el_icono_y_su_conteo_debajo(self):
         falso, _caja = finalizada()
         partes = list(hijos(falso.finalizada.riel))
-        self.assertFalse([h for h in partes if isinstance(h, Gtk.Label)])
         self.assertTrue([h for h in partes if isinstance(h, Gtk.Image)])
+        self.assertEqual(falso.finalizada.cuenta_riel.get_text(), "0")
 
     def test_la_lista_oculta_sigue_contando(self):
         falso, _caja = finalizada()
         _lista, cuenta, _scroll = falso.columnas[modelo.HECHA]
         cuenta.set_label("13")
         self.assertEqual(falso.finalizada.riel.get_tooltip_text(), "Finalizada · 13")
+        self.assertEqual(falso.finalizada.cuenta_riel.get_text(), "13")
 
     def test_ya_no_hay_boton_de_plegar(self):
         falso, _caja = finalizada()
