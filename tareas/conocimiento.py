@@ -708,7 +708,7 @@ def cmd_resolver(args):
 
 def anadir(sub):
     buscar = nucleo(sub.add_parser(
-        "buscar", help="Una línea por entrada (id, tipo, título, resumen); barato"))
+        "buscar", help="Una línea barata por entrada (id, tipo, título, resumen)"))
     buscar.add_argument("--repo", metavar="CARPETA",
                         help="El repo donde buscar. Por defecto, su raíz git desde aquí")
     buscar.add_argument("--tipo", choices=sorted(almacen.TIPOS))
@@ -722,15 +722,14 @@ def anadir(sub):
     buscar.set_defaults(funcion=cmd_buscar)
 
     leer = nucleo(sub.add_parser(
-        "leer", help="La entrada completa, con cuerpo y version; de un recurso, la ruta"))
+        "leer", help="La entrada completa, con cuerpo y version"))
     leer.add_argument("id", help="Id de la entrada, o «proyecto»")
     leer.add_argument("--repo", metavar="CARPETA",
                       help="El repo donde leer. Por defecto, su raíz git desde aquí")
     leer.set_defaults(funcion=cmd_leer)
 
     contexto = nucleo(sub.add_parser(
-        "contexto", help="Objetivo, tareas por estado, decisiones vigentes, problemas "
-                         "abiertos, temas y arquitectura; <1k tokens"))
+        "contexto", help="Objetivo, tareas, decisiones, problemas y arquitectura; <1k tokens"))
     contexto.add_argument("--repo", metavar="CARPETA",
                           help="El repo del que enterarse. Por defecto, su raíz git desde aquí")
     contexto.add_argument("--tope", type=int, default=TOPE_VIGENTES,
@@ -773,7 +772,7 @@ def anadir(sub):
         accion.set_defaults(funcion=cmd_anotar, tipo=tipo)
 
     bitacora = nucleo(sub.add_parser(
-        "bitacora", help="Añade al final de la bitácora de hoy; nunca reescribe"))
+        "bitacora", help="Añade a la bitácora de hoy; nunca reescribe"))
     bitacora.add_argument("texto")
     bitacora.add_argument("--repo", metavar="CARPETA",
                           help="El repo donde escribir. Por defecto, su raíz git desde aquí")

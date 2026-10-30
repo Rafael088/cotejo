@@ -265,7 +265,21 @@ class App(Adw.Application):
         if self.board is not None:
             self.bitacora = bitacora.ultimas()
         if self.board is not None:
+            self.programar_capturas()
             self.board.pintar()
+
+    @staticmethod
+    def programar_capturas():
+        """Saca fuera del sandbox las capturas que pidieron las entregas (cotejo-v40nc1).
+
+        El agente solo deja la petición con `--captura-desde`; aquí se completan en un hilo
+        para no frenar el refresco. Un fallo del navegador no tumba el board: queda anotado.
+        """
+        from enrutador import navegador
+        try:
+            navegador.programar_capturas()
+        except Exception:  # noqa: BLE001 — refrescar no puede romperse por esto
+            pass
 
     @staticmethod
     def recoger_lanzados():

@@ -81,6 +81,38 @@ def anotar_verbo(operacion, carpeta, **extra):
     return True
 
 
+def _anotaciones():
+    """Las anotaciones válidas de la cola, ya como diccionarios."""
+    salida = []
+    for linea in _cola():
+        try:
+            anotacion = json.loads(linea)
+        except ValueError:
+            # Una línea a medio escribir o partida por el tope de lectura no invalida el resto.
+            continue
+        if isinstance(anotacion, dict):
+            salida.append(anotacion)
+    return salida
+
+
+def _con_resultado_capturas(entrega, anotaciones):
+    """La entrega con lo que el board obtuvo al capturarla fuera del sandbox, si ya terminó.
+
+    La petición y el resultado son dos líneas append-only. Se unen al leer para que la ficha y
+    `comprobar` sigan viendo una sola entrega, con sus imágenes o con el motivo del fallo.
+    """
+    if not entrega or entrega.get("operacion") != "entregar":
+        return entrega
+    for anotacion in anotaciones:
+        if (anotacion.get("operacion") == "capturar"
+                and id_actual(anotacion.get("id", "")) == id_actual(entrega.get("id", ""))
+                and anotacion.get("entrega_cuando") == entrega.get("cuando")):
+            entrega = {**entrega, "capturas": anotacion.get("capturas") or []}
+            if anotacion.get("capturas_avisos"):
+                entrega["capturas_avisos"] = anotacion["capturas_avisos"]
+    return entrega
+
+
 def ultimas():
     """Por id de tarea, la última anotación que trae texto libre.
 
@@ -98,14 +130,9 @@ def ultimas():
     """
     datos = _PorId()
     antes_de_soltar = {}
-    for linea in _cola():
-        try:
-            anotacion = json.loads(linea)
-        except ValueError:
-            # Una línea a medio escribir o partida por el tope de lectura no invalida el
-            # resto del archivo: se salta y se sigue.
-            continue
-        if not isinstance(anotacion, dict) or not anotacion.get("id"):
+    anotaciones = _anotaciones()
+    for anotacion in anotaciones:
+        if not anotacion.get("id"):
             continue
         clave = id_actual(anotacion["id"])
         previa = datos.get(clave)
@@ -124,6 +151,8 @@ def ultimas():
                 datos[clave] = anterior
             else:
                 del datos[clave]
+    for clave, anotacion in list(datos.items()):
+        datos[clave] = _con_resultado_capturas(anotacion, anotaciones)
     return datos
 
 
@@ -137,16 +166,28 @@ def ultima_entrega(tarea_id):
     """
     buscada = id_actual(tarea_id)
     encontrada = None
-    for linea in _cola():
-        try:
-            anotacion = json.loads(linea)
-        except ValueError:
-            continue
-        if not isinstance(anotacion, dict) or anotacion.get("operacion") != "entregar":
+    anotaciones = _anotaciones()
+    for anotacion in anotaciones:
+        if anotacion.get("operacion") != "entregar":
             continue
         if id_actual(anotacion.get("id", "")) == buscada:
             encontrada = anotacion
-    return encontrada
+    return _con_resultado_capturas(encontrada, anotaciones)
+
+
+def pendientes_de_captura():
+    """Entregas con `--captura-desde` cuyo resultado el board todavía no anotó.
+
+    También una entrega hecha por CLI, sin un agente lanzado por el board, aparece aquí: así el
+    próximo refresco del board la completa fuera del sandbox. Un fallo ya anotado no se reintenta
+    en cada refresco.
+    """
+    anotaciones = _anotaciones()
+    hechas = {(id_actual(a.get("id", "")), a.get("entrega_cuando"))
+              for a in anotaciones if a.get("operacion") == "capturar"}
+    return [a for a in anotaciones
+            if a.get("operacion") == "entregar" and a.get("capturas_solicitadas")
+            and (id_actual(a.get("id", "")), a.get("cuando")) not in hechas]
 
 
 def ids_con(*operaciones):

@@ -334,10 +334,10 @@ def cmd_entregar(args):
     estructurada = evidencia.reunir(carpeta, args.prueba or ())
     estructurada.update(resumen=args.resumen) if args.resumen is not None else None  # solo se agrega
     try:
-        if args.captura:
-            estructurada["capturas"] = capturas.guardar(tarea.id, args.captura)
+        estructurada.update(capturas.de_la_orden(
+            tarea.id, args.captura, args.captura_desde, trabajo=carpeta or os.getcwd()))
     except (ValueError, OSError) as error:
-        raise ErrorCLI(f"No pude guardar las capturas: {error}", "No se escribió nada.")
+        raise ErrorCLI(f"No pude aceptar las capturas: {error}", "No se escribió nada.")
     actual = escribir(fuente.poner_estado, tarea, "por-validar")
     bitacora.anotar("entregar", proyecto, actual, de="en-curso", a="por-validar",
                     evidencia=args.evidencia, **estructurada)
@@ -345,6 +345,8 @@ def cmd_entregar(args):
              "evidencia": args.evidencia, **estructurada,
              "nota_para_el_agente": "Queda esperando que una persona la compruebe en CotejoBoard. "
                                     "Marcar [x] no es tuyo."}
+    if args.captura_desde:
+        datos["nota_para_el_agente"] += capturas.NOTA_FUERA_DEL_SANDBOX
     # Una prueba en rojo no frena la entrega —puede venir roja de antes, y eso lo juzga quien
     # revisa—, pero tampoco pasa callada: queda en la bitácora con su código y se avisa aquí.
     rojas = [p["comando"] for p in estructurada.get("pruebas", ()) if p["codigo"] != 0]
@@ -641,7 +643,7 @@ def analizador():
     sub.add_parser("estado", help="Resumen con los conteos (lo que lee el widget de la barra)")
 
     listar = nucleo(sub.add_parser(
-        "tareas", help="Las tareas, filtrables; el camino barato"))
+        "tareas", help="Las tareas, filtrables; barato"))
     listar.add_argument("--proyecto", help="Nombre o parte")
     listar.add_argument("--estado", choices=[c for c, _ in modelo.COLUMNAS], help="Columna")
     listar.add_argument("--agente", type=str, help='Quién la tiene ("" = sin dueño)')
@@ -667,7 +669,7 @@ def analizador():
     crear.set_defaults(funcion=cmd_crear)
 
     tomar = nucleo(sub.add_parser(
-        "tomar", help="Pendiente → haciéndola, a nombre de quien la toma"))
+        "tomar", help="Pendiente → haciéndola, a tu nombre"))
     tomar.add_argument("id")
     tomar.add_argument("--agente", type=agente, required=True)
     tomar.set_defaults(funcion=cmd_tomar)
@@ -680,14 +682,17 @@ def analizador():
     entregar.add_argument("--resumen", type=evidencia.resumen_para_humanos, metavar="TEXTO",
                           help="Qué cambió y cómo probarlo")
     entregar.add_argument("--prueba", action="append", type=evidencia.prueba, metavar="COMANDO",
-                          help="Comando de prueba, sin shell; repetible")
+                          help="Comando de prueba; repetible")
     entregar.add_argument("--captura", action="append", type=capturas.captura, help="PNG; repetible")
+    entregar.add_argument("--captura-desde", action="append", type=capturas.destino,
+                          metavar="ARCHIVO|URL",
+                          help="URL o archivo; PNG fuera del sandbox")
     entregar.add_argument("--repo", metavar="CARPETA",
                           help="Dónde corren las pruebas")
     entregar.set_defaults(funcion=cmd_entregar)
 
     bloquear = nucleo(sub.add_parser(
-        "bloquear", help="Haciéndola → pendiente, sin dueño y con el motivo"))
+        "bloquear", help="Haciéndola → pendiente, con motivo"))
     bloquear.add_argument("id")
     bloquear.add_argument("--motivo", required=True,
                           help="Qué te lo impide y qué haría falta")

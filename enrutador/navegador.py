@@ -1,36 +1,18 @@
-"""Un navegador sin interfaz que arranca dentro del sandbox del agente, para que vea lo que hace
-(v1.3.0, cotejo-xrmr3h; lo usa para sus capturas cotejo-0e17vu).
+"""Capturas PNG de una entrega, hechas por CotejoBoard **fuera** del sandbox del agente.
 
-**Por qué Chromium se caía** (prueba del dueño, 2026-10-24: dos `SIGABRT` con core): el sandbox
-de Claude Code (`sandbox.py`) mete el Bash en bubblewrap y, encima, un filtro seccomp que niega
-`socket(AF_UNIX, ...)` (es lo que impide hablar con el D-Bus y el systemd del escritorio, y desde
-ahí pedirles que corran algo fuera). Chromium, antes de abrir nada, crea el «ProcessSingleton»:
-un socket de Unix en su carpeta de perfil. Con el `socket()` negado no lo trata como error, sino
-como fallo de programa (`process_singleton_posix.cc: Check failed: socket() failed: Operation not
-permitted`) y aborta. No hay ninguna opción de Chromium que se lo salte; `--no-sandbox` no cambia
-nada. Sin `--no-sandbox` se cae antes por lo mismo que cualquier sandbox anidado: el filtro tampoco
-deja crear espacios de nombres de usuario y el `chrome-sandbox` setuid no sirve ahí.
+El agente entrega con `--captura-desde <archivo|url>` y no arranca ningún navegador: esa petición
+queda en la bitácora y `capturar_pendientes()` la completa aquí fuera, con una imagen móvil y otra
+de escritorio por destino. Así la entrega ya no depende de que un navegador aguante el sandbox.
 
-Abrirle a Chromium los sockets de Unix (`allowAllUnixSockets`) sería abrir justo esa puerta, así
-que **no se abre nada**: el navegador del agente es **Firefox**, que no necesita sockets de Unix
-para arrancar sin interfaz (su IPC va por `socketpair`, que el filtro deja) y aguanta sin
-espacios de nombres (lo avisa por stderr y sigue con su seccomp). Todo lo que escribe va al perfil
-que se le da, en el temporal del sandbox (`TMPDIR`, que el propio Claude ya deja escribir), y a la
-captura, que va a la carpeta de trabajo. Fuera del sandbox también vale Chromium (o Chrome).
+La prueba anterior emulaba esa jaula con bubblewrap y daba verde, pero en el sandbox real de
+Claude Code Firefox 155 terminaba sin PNG (clone EPERM, WebRender y dconf de solo lectura;
+reproducido el 2026-10-27, cotejo-v40nc1). No se abren sockets, espacios de nombres ni escritura
+para rodearlo: se quita el navegador de dentro. Chromium sigue sin ser una alternativa ahí, porque
+su ProcessSingleton necesita el socket de Unix que el seccomp de Claude niega.
 
-**La red**: el sandbox deja al agente sin red propia (solo el proxy hacia los servidores
-permitidos), pero su `localhost` es suyo y funciona: un `python3 -m http.server` arrancado **en
-el mismo comando** que el navegador se alcanza. Uno arrancado en otro comando del Bash no (cada
-comando va en su sandbox y se muere con él), ni un servidor de fuera del sandbox. Por eso no hace
-falta abrir `localhost` en `lanzar.sandbox.dominios`. Sin servidor, `file://` basta.
-
-Cómo lo usa un agente (`COMO_CAPTURAR`, lo lleva la nota del sandbox en `armado.py`):
-
-    python3 -m enrutador.navegador <archivo.html|url> captura.png [--ancho 1280 --alto 800]
-
-o, desde cualquier repo, la línea de Firefox de `COMO_CAPTURAR`. `capturar()` es lo mismo para el
-código: elige el navegador, le da un perfil de usar y tirar, lo mata si se cuelga y comprueba que
-sale un PNG de verdad.
+`capturar()` es la pieza de más abajo: elige Firefox (o Chromium fuera del sandbox), le da un
+perfil de usar y tirar, lo mata si se cuelga y comprueba que sale un PNG de verdad. La línea
+`COMO_CAPTURAR` queda para diagnóstico directo, no en el encargo de los agentes.
 """
 
 import argparse
@@ -41,6 +23,8 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
+import types
 from pathlib import Path
 
 FIREFOX = ("firefox",)
@@ -98,6 +82,35 @@ def a_url(destino):
     return Path(texto).expanduser().resolve().as_uri()
 
 
+# El perfil de captura no puede salir a internet: la captura corre fuera del sandbox del agente
+# y un HTML del worktree podría pedir `https://ajeno.com/?d=<secreto>`. Todo va a un proxy
+# muerto salvo lo local; los nombres son los de Firefox (comprobados en `greprefs.js` y
+# `libxul.so`, no inventados). `allow_hijacking_localhost` en false deja que lo local no pase
+# por el proxy, y se apagan prefetch, DNS prefetch y conexiones especulativas.
+PREFERENCIAS = {
+    "network.proxy.type": 1,
+    "network.proxy.http": "127.0.0.1",
+    "network.proxy.http_port": 9,
+    "network.proxy.ssl": "127.0.0.1",
+    "network.proxy.ssl_port": 9,
+    "network.proxy.no_proxies_on": "localhost, 127.0.0.1, [::1]",
+    "network.proxy.allow_hijacking_localhost": False,
+    "network.prefetch-next": False,
+    "network.dns.disablePrefetch": True,
+    "network.dns.disablePrefetchFromHTTPS": True,
+    "network.http.speculative-parallel-limit": 0,
+    # WebRTC abre conexiones propias que no pasan por el proxy.
+    "media.peerconnection.enabled": False,
+}
+
+
+def prefs_del_perfil():
+    """El `user.js` que se deja en el perfil temporal antes de arrancar Firefox."""
+    return "".join(f"user_pref({json.dumps(clave)}, "
+                   f"{json.dumps(valor, ensure_ascii=False)});\n"
+                   for clave, valor in PREFERENCIAS.items())
+
+
 def argv_captura(tipo, ruta, url, salida, perfil, ancho=1280, alto=800):
     """El argv que saca la captura de `url` en `salida` con el perfil `perfil`."""
     tam = f"--window-size={int(ancho)},{int(alto)}"
@@ -133,6 +146,7 @@ def capturar(destino, salida, ancho=1280, alto=800, espera=ESPERA, entorno=None,
     # El temporal de siempre: dentro del sandbox es su TMPDIR, que ya se puede escribir.
     perfil = tempfile.mkdtemp(prefix="cotejo-navegador-")
     try:
+        (Path(perfil) / "user.js").write_text(prefs_del_perfil(), encoding="utf-8")
         proceso = subprocess.Popen(
             argv_captura(tipo, ruta, a_url(destino), salida, perfil, ancho, alto),
             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -153,6 +167,129 @@ def capturar(destino, salida, ancho=1280, alto=800, espera=ESPERA, entorno=None,
     finally:
         shutil.rmtree(perfil, ignore_errors=True)
     return resultado
+
+
+# --- peticiones de la entrega: el navegador corre aquí fuera, nunca en el Bash del agente --------
+
+TAMANOS = ((390, 844), (1280, 800))
+_CAPTURAS_EN_CURSO = set()
+_CAPTURAS_CANDADO = threading.Lock()
+_CAPTURAS_HILO = None
+
+
+def _carpeta_de_la_entrega(entrega, trabajo=None):
+    """Dónde se resuelven los archivos relativos: el worktree de la entrega, no el repo principal."""
+    if trabajo:
+        return Path(trabajo).expanduser().resolve()
+    from tareas import lanzados
+    registro = lanzados.leer(entrega.get("id", "")) or {}
+    donde = registro.get("trabajo") or (entrega.get("git") or {}).get("repo")
+    return Path(donde or os.getcwd()).expanduser().resolve()
+
+
+def _destino(texto, trabajo):
+    """URL local o archivo dentro del trabajo. Lo demás no se abre aunque el agente lo pida."""
+    from tareas import capturas
+    return capturas.destino_seguro(texto, trabajo)
+
+
+def _anotar_resultado(entrega, guardadas, avisos):
+    """Otra línea append-only; `bitacora.ultima_entrega` la junta con la entrega al leer."""
+    from tareas import bitacora
+    tarea = types.SimpleNamespace(
+        id=entrega.get("id", ""), texto=entrega.get("texto", ""),
+        donde=entrega.get("nota", ""), agente=entrega.get("agente", ""))
+    proyecto = types.SimpleNamespace(nombre=entrega.get("proyecto", ""))
+    bitacora.anotar("capturar", proyecto, tarea, entrega_cuando=entrega.get("cuando"),
+                    capturas=guardadas, capturas_avisos=avisos)
+
+
+def capturar_entrega(entrega, trabajo=None, sacar=None):
+    """Saca fuera del sandbox las capturas que pidió una entrega y anota imágenes o motivos.
+
+    Nunca cambia la tarea ni levanta un error por el navegador: la entrega ya está hecha y una
+    captura fallida debe quedar explicada, no convertida en un bloqueo. None si otro hilo ya la
+    está capturando.
+    """
+    clave = (entrega.get("id", ""), entrega.get("cuando"))
+    with _CAPTURAS_CANDADO:
+        if clave in _CAPTURAS_EN_CURSO:
+            return None
+        _CAPTURAS_EN_CURSO.add(clave)
+    try:
+        from tareas import capturas
+        sacar = sacar or capturar
+        base = _carpeta_de_la_entrega(entrega, trabajo)
+        rutas, avisos = [], []
+        with tempfile.TemporaryDirectory(prefix="cotejo-capturas-") as temporal:
+            for numero, pedido in enumerate(entrega.get("capturas_solicitadas") or (), 1):
+                try:
+                    destino = _destino(pedido, base)
+                except ValueError as error:
+                    avisos.append(str(error))
+                    continue
+                for ancho, alto in TAMANOS:
+                    salida = Path(temporal) / f"{numero}-{ancho}.png"
+                    try:
+                        hecho = sacar(destino, salida, ancho=ancho, alto=alto, entorno={})
+                    except Exception as error:  # noqa: BLE001 — una captura no deshace una entrega
+                        hecho = {"ok": False, "motivo": str(error)}
+                    if hecho.get("ok") and es_png(salida):
+                        rutas.append(str(salida))
+                    else:
+                        avisos.append(f"{pedido} ({ancho}×{alto}): "
+                                      f"{hecho.get('motivo') or 'no salió el PNG'}")
+            if rutas:
+                try:
+                    # Lo que ya venía (una `--captura` del agente) se copia antes: `guardar`
+                    # rehace la carpeta de capturas y borraría los originales a medio copiar.
+                    anteriores = []
+                    for numero_antes, anterior in enumerate(entrega.get("capturas") or ()):
+                        ruta = anterior.get("ruta") if isinstance(anterior, dict) else None
+                        if ruta and Path(ruta).is_file():
+                            copia = Path(temporal) / f"antes-{numero_antes}.png"
+                            shutil.copyfile(ruta, copia)
+                            anteriores.append(str(copia))
+                    guardadas = capturas.guardar(entrega["id"], anteriores + rutas)
+                except (KeyError, OSError, ValueError) as error:
+                    guardadas, avisos = [], avisos + [f"No pude guardar las capturas: {error}"]
+            else:
+                guardadas = []
+        _anotar_resultado(entrega, guardadas, avisos)
+        return {"capturas": guardadas, "capturas_avisos": avisos}
+    finally:
+        with _CAPTURAS_CANDADO:
+            _CAPTURAS_EN_CURSO.discard(clave)
+
+
+def capturar_pendientes():
+    """Completa todas las peticiones aún sin resultado; devuelve sus resultados."""
+    from tareas import bitacora
+    return [resultado for entrega in bitacora.pendientes_de_captura()
+            if (resultado := capturar_entrega(entrega)) is not None]
+
+
+def programar_capturas():
+    """Lo mismo sin bloquear el refresco del board; un solo trabajador a la vez."""
+    global _CAPTURAS_HILO
+    from tareas import bitacora
+    with _CAPTURAS_CANDADO:
+        if _CAPTURAS_HILO and _CAPTURAS_HILO.is_alive():
+            return _CAPTURAS_HILO
+        if not bitacora.pendientes_de_captura():
+            return None
+        _CAPTURAS_HILO = threading.Thread(target=capturar_pendientes,
+                                          name="capturas-de-entregas", daemon=True)
+        _CAPTURAS_HILO.start()
+        return _CAPTURAS_HILO
+
+
+def esperar_capturas(timeout=120):
+    """Espera al trabajador de `programar_capturas` (pruebas y cierre ordenado)."""
+    hilo = _CAPTURAS_HILO
+    if hilo:
+        hilo.join(timeout)
+    return not (hilo and hilo.is_alive())
 
 
 def _matar(proceso):

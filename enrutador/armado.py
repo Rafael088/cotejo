@@ -30,9 +30,10 @@ NOTA_TERMINAL = ("Tienes terminal libre en tu carpeta de trabajo: corre las prue
                  "push --force, empujar a main o a la rama por defecto y borrar fuera de tu "
                  "carpeta (borra con rutas relativas, sin «..»).")
 # Cómo ve el agente una página que hizo, dentro del sandbox (cotejo-xrmr3h, `navegador.py`).
+# Las capturas de la entrega no se sacan aquí: las pide con `--captura-desde` y las hace el
+# board fuera del sandbox (cotejo-v40nc1).
 NOTA_NAVEGADOR = ("Para ver una página (y sacarle captura) usa Firefox sin interfaz: "
-                  f"`{navegador.COMO_CAPTURAR}`; en el repo de Cotejo, también "
-                  "`python3 -m enrutador.navegador <archivo|url> captura.png`. Chromium no "
+                  f"`{navegador.COMO_CAPTURAR}`. Chromium no "
                   "arranca en el sandbox. Si sirves la página con un servidor local, arráncalo "
                   "en el mismo comando que el navegador: cada comando va en su sandbox.")
 # Se añade a la nota cuando el Bash del agente va dentro del sandbox de Claude (cotejo-amui0f).
@@ -60,8 +61,8 @@ NOTA_SANDBOX_CODEX = (SANDBOX_CODEX + NOTA_NAVEGADOR + " Para probar tu servidor
                       "sáltate el proxy: `curl --noproxy '*' http://127.0.0.1:<puerto>`.")
 # Sin Firefox no se da un comando que va a fallar (cotejo-0e17vu): se dice y se pide avisar.
 SIN_NAVEGADOR = ("En esta máquina no hay un navegador sin interfaz para ver tu trabajo: no "
-                 "podrás sacarle capturas. Dilo en la entrega y propón a la persona instalar "
-                 "Firefox.")
+                 "podrás sacarle capturas, y no hace falta que lo intentes ni que bloquees por "
+                 "eso. Dilo en la entrega y propón a la persona instalar Firefox.")
 NOTA_SIN_NAVEGADOR = SANDBOX_BASE + SIN_NAVEGADOR
 
 

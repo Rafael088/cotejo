@@ -46,18 +46,21 @@ No la marques como hecha. No hay verbo para eso y es a propósito: `[x]` lo pone
 CotejoBoard después de comprobar."""
 
 
-CON_NAVEGADOR = """Si tu trabajo se ve (una web, una app, una pantalla), saca capturas con un navegador sin
-interfaz (el comando, si hace falta, va en la nota de arriba) —una en móvil (~390×844) y otra en
-escritorio (~1280×800)— y pásalas al entregar, una `--captura` por PNG: Cotejo las guarda y
-quien comprueba las ve grandes sin abrir nada.
+CON_NAVEGADOR = """Si tu trabajo se ve (una web, una app, una pantalla), no arranques ningún navegador ni
+bloquees la tarea por las capturas: deja la petición y CotejoBoard las saca por ti, fuera del
+sandbox, una en móvil (~390×844) y otra en escritorio (~1280×800) por destino. Una
+`--captura-desde` por archivo o URL, relativos a tu carpeta de trabajo:
 
-    cotejo entregar {id} --evidencia "..." --captura movil.png --captura escritorio.png
+    cotejo entregar {id} --evidencia "..." --captura-desde pagina.html
+
+Si no sabes qué capturar, entrega igual y dilo en la evidencia: una captura que falta no
+bloquea la entrega.
 
 """
 
 SIN_NAVEGADOR = """Si tu trabajo se ve (una web, una app, una pantalla), en esta máquina no hay navegador
-sin interfaz para sacarle capturas: no las pidas ni las inventes. Dilo en la entrega y propón a
-la persona instalar Firefox.
+sin interfaz para sacarle capturas: no las pidas ni las inventes, y no bloquees por eso. Entrega
+igual y dilo en la evidencia, proponiendo a la persona instalar Firefox.
 
 """
 

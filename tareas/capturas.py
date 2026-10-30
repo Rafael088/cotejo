@@ -3,8 +3,8 @@
 `cotejo entregar --captura <png>` (repetible) COPIA cada PNG a la carpeta de capturas de Cotejo,
 junto a la bitácora, y anota en la entrega dónde quedó, qué tamaño tiene y de qué tipo es. Se
 copia, no se referencia: el worktree del agente se borra al aprobar y la captura tiene que seguir
-ahí mientras alguien la mira. La carpeta de estado es de las que el sandbox del agente ya deja
-escribir (ahí escribe `cotejo` la bitácora), así que funciona igual dentro y fuera de él.
+ahí mientras alguien la mira. Con `--captura-desde <archivo|url>` el agente solo deja la petición:
+CotejoBoard saca fuera del sandbox una captura móvil y otra de escritorio por cada destino.
 
 El tipo (`movil` o `escritorio`) se deduce del ancho del PNG, que es lo único que Cotejo sabe
 con certeza: ancho de hasta 600 px es móvil. La cabecera se lee a mano (no hace falta GTK ni
@@ -17,6 +17,7 @@ import argparse
 import shutil
 import struct
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 from . import bitacora
 
@@ -53,12 +54,93 @@ def captura(texto):
         peso = ruta.stat().st_size
     except (ValueError, OSError) as error:
         raise argparse.ArgumentTypeError(
-            f"{error}. --captura quiere un PNG: sácalo con el navegador sin interfaz "
-            "(`python3 -m enrutador.navegador <archivo|url> captura.png`).") from error
+            f"{error}. --captura quiere un PNG ya hecho; con --captura-desde <archivo|URL> "
+            "CotejoBoard lo saca por ti fuera del sandbox.") from error
     if peso > BYTES_MAX:
         raise argparse.ArgumentTypeError(
             f"«{texto}» pesa {peso // 1024} KiB y el tope es {BYTES_MAX // 1024} KiB por captura.")
     return str(ruta)
+
+
+HOSTS_LOCALES = ("localhost", "127.0.0.1", "::1")
+
+
+def _es_host_local(host):
+    return (host or "").lower() in HOSTS_LOCALES
+
+
+def destino_seguro(texto, trabajo):
+    """Valida un `--captura-desde` y devuelve lo que se le pasa al navegador.
+
+    La captura corre **fuera** del sandbox del agente, así que solo se acepta lo que no saca
+    datos de la máquina: URLs http(s) a localhost/127.0.0.1/[::1] (cualquier puerto) y archivos
+    que, ya resueltos (sin symlinks ni `..`), quedan dentro del worktree de la tarea.
+    """
+    texto = str(texto or "").strip()
+    if not texto:
+        raise ValueError("--captura-desde quiere un archivo o una URL")
+    partes = urlsplit(texto)
+    esquema = partes.scheme.lower()
+    if esquema in ("http", "https"):
+        if not _es_host_local(partes.hostname):
+            raise ValueError(
+                f"«{texto}» no es local: fuera del sandbox solo se capturan localhost, "
+                "127.0.0.1 o [::1]")
+        return texto
+    if esquema and esquema != "file":
+        raise ValueError(
+            f"«{texto}» no es una URL http(s) local ni un archivo de la carpeta de trabajo")
+    if esquema == "file":
+        if partes.netloc and partes.netloc.lower() != "localhost":
+            raise ValueError(f"«{texto}» no es un archivo de la carpeta de trabajo")
+        ruta = Path(unquote(partes.path)).expanduser()
+    else:
+        ruta = Path(texto).expanduser()
+    base = Path(trabajo).expanduser().resolve()
+    if not ruta.is_absolute():
+        ruta = base / ruta
+    ruta = ruta.resolve()
+    try:
+        ruta.relative_to(base)
+    except ValueError as error:
+        raise ValueError(f"«{texto}» está fuera de la carpeta de trabajo") from error
+    if not ruta.is_file():
+        raise ValueError(f"no encuentro el archivo «{texto}» en la carpeta de trabajo")
+    return str(ruta)
+
+
+def destino(texto):
+    """El tipo de `--captura-desde`: una petición, no una imagen que el agente tenga que crear."""
+    if not (texto or "").strip():
+        raise argparse.ArgumentTypeError("--captura-desde quiere un archivo o una URL")
+    return texto.strip()
+
+
+NOTA_FUERA_DEL_SANDBOX = (" Las capturas pedidas las sacará CotejoBoard fuera del sandbox; "
+                          "no tienes que esperarlas ni producir PNG.")
+
+
+def de_la_orden(tarea_id, pngs=(), destinos=(), trabajo=None):
+    """Lo que una entrega añade a su anotación por las capturas: las `--captura` ya hechas y
+    las peticiones de `--captura-desde` que el board completará fuera del sandbox."""
+    extra = {}
+    if destinos:
+        if trabajo:
+            for pedido in destinos:
+                destino_seguro(pedido, trabajo)
+        extra["capturas_solicitadas"] = solicitudes(destinos)
+    if pngs:
+        extra["capturas"] = guardar(tarea_id, pngs)
+    return extra
+
+
+def solicitudes(rutas):
+    """Destinos sin repetir; cada uno dará dos PNG, así que caben la mitad que capturas sueltas."""
+    rutas = list(dict.fromkeys(rutas or ()))
+    if len(rutas) > MAXIMO // 2:
+        raise ValueError(f"{len(rutas)} destinos son demasiados: el tope es {MAXIMO // 2} "
+                         "por entrega (dos capturas por destino)")
+    return rutas
 
 
 def carpeta(tarea_id):
