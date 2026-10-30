@@ -336,6 +336,8 @@ def cmd_entregar(args):
     try:
         if args.captura:
             estructurada["capturas"] = capturas.guardar(tarea.id, args.captura)
+        if args.captura_desde:
+            estructurada["capturas_solicitadas"] = capturas.solicitudes(args.captura_desde)
     except (ValueError, OSError) as error:
         raise ErrorCLI(f"No pude guardar las capturas: {error}", "No se escribió nada.")
     actual = escribir(fuente.poner_estado, tarea, "por-validar")
@@ -345,6 +347,9 @@ def cmd_entregar(args):
              "evidencia": args.evidencia, **estructurada,
              "nota_para_el_agente": "Queda esperando que una persona la compruebe en CotejoBoard. "
                                     "Marcar [x] no es tuyo."}
+    if args.captura_desde:
+        datos["nota_para_el_agente"] += (" Las capturas pedidas las sacará CotejoBoard fuera "
+                                         "del sandbox; no tienes que esperarlas ni producir PNG.")
     # Una prueba en rojo no frena la entrega —puede venir roja de antes, y eso lo juzga quien
     # revisa—, pero tampoco pasa callada: queda en la bitácora con su código y se avisa aquí.
     rojas = [p["comando"] for p in estructurada.get("pruebas", ()) if p["codigo"] != 0]
@@ -682,6 +687,9 @@ def analizador():
     entregar.add_argument("--prueba", action="append", type=evidencia.prueba, metavar="COMANDO",
                           help="Comando de prueba, sin shell; repetible")
     entregar.add_argument("--captura", action="append", type=capturas.captura, help="PNG; repetible")
+    entregar.add_argument("--captura-desde", action="append", type=capturas.destino,
+                          metavar="ARCHIVO|URL",
+                          help="El board saca móvil y escritorio fuera del sandbox; repetible")
     entregar.add_argument("--repo", metavar="CARPETA",
                           help="Dónde corren las pruebas")
     entregar.set_defaults(funcion=cmd_entregar)
