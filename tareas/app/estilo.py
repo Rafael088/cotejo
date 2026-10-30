@@ -127,6 +127,11 @@ checkbutton check { border-radius: 6px; border: 2px solid var(--k-tenue); backgr
 checkbutton check:hover { border-color: var(--k-senal); }
 checkbutton check:checked { background: var(--k-senal); border-color: var(--k-senal); color: var(--k-sobre-senal); }
 
+/* dim-label es de Adwaita y trae opacity: 0.55: sobre el claro eso deja el texto chico en
+   4,1:1, y se lee peor de lo que el tema promete. No se atenúa con opacity sino con el token
+   tenue, que ya está medido a 4,5:1 o más en las tres bases (`temas comprobar`). */
+.dim-label { color: var(--k-tenue); opacity: 1; }
+
 button.flat { color: var(--k-tenue); border-radius: 8px; }
 button.flat:hover { color: var(--k-texto); background: var(--k-velo-fuerte); }
 
@@ -234,11 +239,12 @@ window.sin-animaciones .vida-punto { transition: none; opacity: 1; }
                      border-color: var(--k-tenue); }
 .grupo-titulo { font-family: "Sora"; font-weight: 600; font-size: var(--k-etiqueta); color: var(--k-tenue);
                 letter-spacing: 0.03em; }
-/* El vacío: ver vacio(). La pista a 0.75 queda en 5,0:1
-   sobre la columna y 5,1:1 sobre la ventana. */
+/* El vacío: ver vacio(). La pista va entera (opacity: 1): atenuarla la dejaba en 3,4:1 sobre
+   la columna del claro, por debajo de 4,5. Así queda en 5,9:1 sobre la columna y 6,4:1 sobre
+   la ventana, y `temas comprobar` mide ese par. */
 .vacio-icono { color: var(--k-tenue-hondo); }
 .vacio-titulo { font-size: var(--k-contenido); color: var(--k-texto); font-weight: 500; }
-.vacio-pista { font-size: var(--k-dato); color: var(--k-tenue); line-height: 1.4; }
+.vacio-pista { font-size: var(--k-dato); color: var(--k-tenue); line-height: 1.4; opacity: 1; }
 /* Lo roto no es un vacío cualquiera: ámbar, como la banda de avisos y la anotación detenida,
    sobre el mismo velo que esta. La pista va entera y no a 0.75 porque aquí es la instrucción
    para arreglarlo (7,2:1 sobre el velo; el ámbar, 10,4:1). */
