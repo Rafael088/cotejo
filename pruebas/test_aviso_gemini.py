@@ -9,14 +9,26 @@ la tarea; y que sin nada de eso, o con otro cliente, no digan nada.
 """
 
 import json
+import os
+import stat
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from apoyo import proyecto  # pone la raíz del repo en sys.path
 from test_despacho_board import HAY_GIT, ConClienteFalso
 
 from enrutador import clientes, despacho, despacho_board, motor
+
+
+def pon_gemini_falso(carpeta):
+    """Un `gemini` ejecutable en `carpeta`, para que `comprobar` no se queje de que no está
+    antes de llegar al aviso que mira esta prueba (que es lo que pasa en el CI, sin él)."""
+    carpeta.mkdir(parents=True, exist_ok=True)
+    ruta = carpeta / "gemini"
+    ruta.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    ruta.chmod(ruta.stat().st_mode | stat.S_IEXEC)
 
 
 def escribe_ajustes(carpeta, ajustes):
@@ -121,6 +133,12 @@ class ElBoardYDespachar(ConClienteFalso):
 
     def setUp(self):
         super().setUp()
+        bin_ = self.fuera / "bin"
+        pon_gemini_falso(bin_)
+        parche = mock.patch.dict(os.environ, {"PATH": os.pathsep.join(
+            [str(bin_), os.environ.get("PATH", "")])})
+        parche.start()
+        self.addCleanup(parche.stop)
         self.escribir_nota("Uno.md", proyecto(
             "- [ ] Con Gemini #agente/gemini-flash ^cotejo-gem",
             "- [ ] Con Claude #agente/sonnet ^cotejo-claude"))
