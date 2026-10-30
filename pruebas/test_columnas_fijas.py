@@ -96,8 +96,12 @@ class ColumnasFijas(unittest.TestCase):
                          and h.get_label() and "palabra" in h.get_label()]
             self.assertTrue(etiquetas, clave)
             for etiqueta in etiquetas:
-                self.assertTrue(etiqueta.get_wrap(), clave)
-                self.assertEqual(etiqueta.get_ellipsize().value_nick, "none", clave)
+                if clave == "pendiente":
+                    # La compacta no envuelve: recorta el nombre con elipsis.
+                    self.assertEqual(etiqueta.get_ellipsize().value_nick, "end", clave)
+                else:
+                    self.assertTrue(etiqueta.get_wrap(), clave)
+                    self.assertEqual(etiqueta.get_ellipsize().value_nick, "none", clave)
                 natural = etiqueta.measure(Gtk.Orientation.HORIZONTAL, -1)[1]
                 self.assertLessEqual(natural, app.comun.ANCHO_COLUMNAS[clave], clave)
             natural = cajas[clave].measure(Gtk.Orientation.HORIZONTAL, -1)[1]
