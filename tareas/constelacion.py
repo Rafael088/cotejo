@@ -30,12 +30,13 @@ from .temas import color
 POR_FILA = 4              # núcleos por fila como mucho, como las tarjetas del Inicio
 ANCHO_CELDA_MIN = 200     # por debajo, menos núcleos por fila
 ANCHO_CELDA_PLENO = 240   # a partir de aquí, la constelación a escala 1
-ALTO_FILA = 240           # alto de cada fila de núcleos, con su nombre debajo
+ALTO_FILA = 170           # alto de cada fila de núcleos, con su nombre debajo (v1.3.1: era
+                          # 240, y una fila sola dejaba 300 px casi vacíos en el Inicio)
 CENTRO_Y = 0.44           # dónde cae el núcleo dentro de su fila (fracción del alto)
 ALTO_NOMBRE = 0.90        # dónde va el nombre (fracción del alto de la fila)
 RADIO_NUCLEO = 13
-RADIO_BASE = 52           # el anillo más cercano de piezas
-SALTO_ANILLO = 16         # cuánto se aleja cada anillo
+RADIO_BASE = 44           # el anillo más cercano de piezas
+SALTO_ANILLO = 13         # cuánto se aleja cada anillo
 ANILLOS = 3
 APLASTADO = 0.8           # las órbitas son elipses, más anchas que altas
 DERIVA = 0.06             # radianes que se mece cada punto
