@@ -306,6 +306,7 @@ class Columnas:
         columnas se quedaban con lo último que se pintó, como si siguiera valiendo.
         """
         self.subtitulo.set_label("")
+        self.subtitulo.set_tooltip_text(None)
         self.subtitulo.remove_css_class("en-cotejo")
         for i, (clave, _) in enumerate(modelo.COLUMNAS):
             lista, cuenta, _scroll = self.columnas[clave]
