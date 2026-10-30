@@ -127,16 +127,20 @@ class FinYRechazo(ConClienteFalso):
     def test_el_que_termina_sin_entregar_vuelve_a_pendiente_y_no_se_relanza(self):
         primero, terminado = self.lanzar_con()
         self.assertTrue(esperar(lambda: terminado, 20))
-        # Pendiente, con su modelo, y el motivo en llano con lo último que dijo.
+        # Pendiente, con su modelo, y el motivo en llano, sin lo que dijo el agente (eso se
+        # enseña plegado en su ficha, y aquí se puede leer aparte del log).
         self.assertEqual(self.columna(), "pendiente")
         self.assertIn("#agente/sonnet", self.linea())
         soltada = self.ultima("soltar")
         self.assertIn("El agente terminó sin entregar", soltada["motivo"])
-        self.assertIn("«Voy a mirar el repo.»", soltada["motivo"])
-        self.assertIn("Listo.", soltada["motivo"])
+        self.assertNotIn("«Voy a mirar el repo.»", soltada["motivo"])
+        self.assertNotIn("worktree", soltada["motivo"])
         self.assertEqual(f.Cotejo().tarea(ID)["motivo"], soltada["motivo"])
-        # Pausada, con su worktree y su rama para retomarla.
+        # Lo que dijo el agente sigue en su log, para plegarlo en la ficha.
         registro = lanzados.leer(ID)
+        self.assertIn("Voy a mirar el repo.", " ".join(retomar.ultimas_lineas(registro, 3)))
+        self.assertTrue(lanzados.termino_sin_entregar(registro))
+        # Pausada, con su worktree y su rama para retomarla.
         self.assertEqual(registro["fase"], lanzados.DETENIDO)
         self.assertEqual(registro["motivo"], despacho_board.SIN_ENTREGAR)
         self.assertEqual(registro["fin"]["como"], lanzados.FIN_SIN_ENTREGAR)
@@ -163,6 +167,17 @@ class FinYRechazo(ConClienteFalso):
         self.assertEqual(self.columna(), "pendiente")
         self.assertIn("código 3", self.ultima("soltar")["motivo"])
 
+    def test_el_que_no_pudo_guardar_lo_dice_en_llano(self):
+        _, terminado = self.lanzar_con(FALSO_CODIGO=1,
+                                       FALSO_RESPUESTA="Permission denied (EACCES)")
+        self.assertTrue(esperar(lambda: terminado, 20))
+        self.assertEqual(self.columna(), "pendiente")
+        motivo = self.ultima("soltar")["motivo"]
+        self.assertIn("El agente terminó sin entregar", motivo)
+        self.assertIn("no tenía permiso para guardar su trabajo", motivo)
+        self.assertNotIn("código 1", motivo)
+        self.assertNotIn("Permission denied", motivo)
+
     def test_el_que_muere_con_el_board_cerrado_se_recoge_una_vez(self):
         procesos = []
         with mock.patch.object(despacho_board, "vigilar",
@@ -183,7 +198,7 @@ class FinYRechazo(ConClienteFalso):
         motivo = self.ultima("soltar")["motivo"]
         self.assertIn("El agente terminó sin entregar", motivo)
         self.assertIn("se cerró sin que nadie lo viera", motivo)
-        self.assertIn("«→ Bash: git status»", motivo)
+        self.assertNotIn("«→ Bash: git status»", motivo)
         registro = lanzados.leer(ID)
         self.assertEqual((registro["fase"], registro["fin"]["como"]),
                          (lanzados.DETENIDO, lanzados.FIN_SIN_ENTREGAR))
@@ -341,6 +356,47 @@ class FinYRechazo(ConClienteFalso):
         prompt = self.argv()["argv"][-1]
         self.assertIn(retomar.TITULO_RECHAZO, prompt)
         self.assertIn("Falta el caso vacío.", prompt)
+
+
+class CausaEnLlano(unittest.TestCase):
+    """`despacho_board.causa_en_llano`: la causa frecuente, en llano, o nada si no se reconoce."""
+
+    def test_sin_causa_reconocible_devuelve_vacio(self):
+        self.assertEqual(despacho_board.causa_en_llano(
+            ["Voy a mirar el repo.", "→ Bash: git status", "— Terminó: Listo."]), "")
+
+    def test_sin_permiso_para_guardar(self):
+        for linea in ("Permission denied", "EACCES", "Read-only file system",
+                      "Operation not permitted", "index.lock", "sandbox"):
+            with self.subTest(linea=linea):
+                self.assertEqual(despacho_board.causa_en_llano([linea]),
+                                 "no tenía permiso para guardar su trabajo")
+
+    def test_sin_cupo_del_modelo(self):
+        for linea in ("usage limit", "rate limit", "quota", "429", "too many requests"):
+            with self.subTest(linea=linea):
+                self.assertEqual(despacho_board.causa_en_llano([linea]),
+                                 "se quedó sin cupo del modelo para seguir")
+
+    def test_sin_red(self):
+        for linea in ("Could not resolve host", "ENOTFOUND", "Network is unreachable"):
+            with self.subTest(linea=linea):
+                self.assertEqual(despacho_board.causa_en_llano([linea]),
+                                 "se quedó sin internet")
+
+    def test_cotejo_le_nego_entregar(self):
+        for linea in ("No puedes entregar una tarea que está en «pendiente»",
+                      "Solo se bloquea una tarea que estés haciendo",
+                      "the following arguments are required: --evidencia"):
+            with self.subTest(linea=linea):
+                self.assertEqual(despacho_board.causa_en_llano([linea]),
+                                 "no pudo entregar el trabajo")
+
+    def test_el_orden_de_las_causas_manda(self):
+        # Aunque el cupo salga antes en el texto, el permiso se mira primero.
+        self.assertEqual(despacho_board.causa_en_llano(
+            ["rate limit", "permission denied"]),
+            "no tenía permiso para guardar su trabajo")
 
 
 class RechazoVigente(unittest.TestCase):

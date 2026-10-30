@@ -252,11 +252,14 @@ class Lanzar:
 
     def seccion_pausada(self, tarea):
         """En la ficha de una tarea pausada (en Pendiente, con un agente anterior): qué queda y
-        qué pasa al moverla. None si no lo está."""
+        qué pasa al moverla. None si no lo está, y tampoco para la que terminó sin entregar:
+        esa tiene su propia sección (`seccion_sin_entregar`, cotejo-granqk)."""
         if tarea.columna != modelo.PENDIENTE:
             return None
         registro = lanzados.leer(tarea.id)
-        if not retomar.es_retomable(registro) or registro.get("fase") == lanzados.EN_ESPERA:
+        if (lanzados.termino_sin_entregar(registro)
+                or not retomar.es_retomable(registro)
+                or registro.get("fase") == lanzados.EN_ESPERA):
             return None
         quien = registro.get("modelo") or "su agente"
         rama = (registro.get("worktree") or {}).get("rama")
@@ -275,6 +278,95 @@ class Lanzar:
                               focusable=False, wrap_mode=Pango.WrapMode.WORD_CHAR,
                               css_classes=["anotacion-texto"]))
         caja.set_margin_top(ESPACIADO_SM)
+        return caja
+
+    def cambiar_de_agente(self, proyecto, tarea):
+        """«Cambiar de agente» en una que terminó sin entregar: elige otro modelo y lánzalo.
+
+        Es el mismo diálogo de `preguntar_modelo` (elegir → asignar → lanzar), solo cambia la
+        pregunta: aquí ya hay un agente, y lo que se decide es con cuál reintentar.
+        """
+        propuesta = tarea.agente or ""
+        return self.preguntar_modelo(
+            proyecto, tarea, propuesta, "lo proponemos para retomarla",
+            heading="¿Con qué agente la reintento?",
+            body=(f"{tarea.texto}\n\nElige otro agente y se lanzará para retomar la tarea "
+                  f"donde quedó."))
+
+    def seccion_sin_entregar(self, proyecto, tarea, dialogo):
+        """En la ficha de una tarea que terminó sin entregar (en Pendiente): el motivo en llano,
+        qué puede hacer la persona (reintentar, cambiar de agente, ver lo que hizo) y, plegado,
+        lo que dijo el agente. None si no es su caso.
+
+        Sustituye a la «DEVUELTA» de `anotacion_visible` y a la «PAUSADA»: ambas decían lo
+        mismo, en crudo y con jerga (worktree, ramas, `.cotejo/tareas.md`), y sin decir qué
+        toca hacer. Aquí el motivo sale de `despacho_board.motivo_sin_entregar` —en llano— y lo
+        que dijo el agente no se construye hasta que la persona pulsa «Ver lo que hizo».
+        """
+        if tarea.columna != modelo.PENDIENTE:
+            return None
+        registro = lanzados.leer(tarea.id)
+        if not lanzados.termino_sin_entregar(registro):
+            return None
+        from enrutador import despacho_board as db
+        motivo = db.motivo_sin_entregar(registro)
+        dicho = retomar.ultimas_lineas(registro, 3)
+
+        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
+                       css_classes=["anotacion", "detenida"])
+        cabeza = Gtk.Box(spacing=px(ESPACIADO_XS))
+        cabeza.append(icono("devuelta", 12))
+        cabeza.append(Gtk.Label(label="NO ENTREGÓ", xalign=0, css_classes=["anotacion-titulo"]))
+        caja.append(cabeza)
+        caja.append(Gtk.Label(label=motivo, xalign=0, wrap=True, selectable=True,
+                              focusable=False, wrap_mode=Pango.WrapMode.WORD_CHAR,
+                              css_classes=["anotacion-texto"]))
+
+        # Qué puede hacer la persona, con botones y no con jerga.
+        acciones = Gtk.Box(spacing=px(ESPACIADO_XS))
+
+        def reintentar(*_):
+            dialogo.close()
+            self.mover(proyecto, tarea, EN_CURSO)
+        boton = Gtk.Button(label="Reintentar", css_classes=["suggested-action", "pill"],
+                           tooltip_text="La pasa a Haciendo y lanza un agente que retoma donde "
+                           "quedó")
+        boton.connect("clicked", reintentar)
+        acciones.append(boton)
+
+        def cambiar(*_):
+            dialogo.close()
+            self.cambiar_de_agente(proyecto, tarea)
+        boton = Gtk.Button(label="Cambiar de agente", css_classes=["flat"],
+                           tooltip_text="Elige otro modelo y lánzalo en el mismo trabajo")
+        boton.connect("clicked", cambiar)
+        acciones.append(boton)
+        caja.append(acciones)
+
+        # Lo que dijo el agente, plegado: no se arma hasta que se pide, para que la ficha no lo
+        # enseñe (ni lo lean las pruebas) como explicación.
+        plegado = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS))
+
+        def ver_lo_que_hizo(*_):
+            if plegado.get_first_child() is None:
+                texto = ("Lo último que dijo:\n" + "\n".join(f"«{l}»" for l in dicho)
+                         if dicho else "No dejó nada que se pueda leer.")
+                etiqueta = Gtk.Label(label=texto, xalign=0, wrap=True, selectable=True,
+                                     focusable=False, wrap_mode=Pango.WrapMode.WORD_CHAR,
+                                     css_classes=["anotacion-texto", "anotacion-plegada"])
+                plegado.append(etiqueta)
+                ver.set_label("Ocultar lo que hizo")
+            else:
+                hijo = plegado.get_first_child()
+                plegado.remove(hijo)
+                ver.set_label("Ver lo que hizo")
+        ver = Gtk.Button(label="Ver lo que hizo", halign=Gtk.Align.START, css_classes=["flat"],
+                         tooltip_text="Muestra lo último que escribió el agente antes de "
+                         "cerrarse")
+        ver.connect("clicked", ver_lo_que_hizo)
+        caja.append(ver)
+        caja.append(plegado)
+        caja.set_margin_top(px(ESPACIADO_SM))
         return caja
 
     # --- el rechazo: Para comprobar → Haciendo con motivo (cotejo-o253bs) ---------------------
@@ -323,13 +415,15 @@ class Lanzar:
             modelos.remove(propuesta)
         return ([propuesta] if propuesta else []) + modelos
 
-    def preguntar_modelo(self, proyecto, tarea, propuesta, razon):
-        """¿Qué agente la hace? Con la propuesta del enrutador y su porqué."""
+    def preguntar_modelo(self, proyecto, tarea, propuesta, razon, heading=None, body=None):
+        """¿Qué agente la hace? Con la propuesta del enrutador y su porqué. `heading` y `body`
+        cambian la pregunta sin cambiar el camino (elegir → asignar → lanzar), que es el mismo
+        que usa «Cambiar de agente» en una que terminó sin entregar."""
         modelos = self.modelos_para_preguntar(propuesta, proyecto)
         dialogo = Adw.AlertDialog(
-            heading="¿Qué agente la hace?",
-            body=(f"Nadie le ha asignado modelo. Propongo {propuesta} porque {razon}.\n\n"
-                  f"{tarea.texto}"))
+            heading=heading or "¿Qué agente la hace?",
+            body=body or (f"Nadie le ha asignado modelo. Propongo {propuesta} porque {razon}.\n\n"
+                          f"{tarea.texto}"))
         # Con el agente al lado («codex · Codex»): con varios agentes, el nombre solo no basta.
         de_quien = ({n: c for c, nombres in self.grupos_de(proyecto) for n in nombres}
                     if hasattr(self, "grupos_de") else {})
