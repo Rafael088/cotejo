@@ -11,7 +11,8 @@ carpeta primera en el PATH (`<estado>/agente/guardas`, al lado del lanzador de `
   la rama de destino en `main`…).
 - **`sudo`, `su`, `doas`, `pkexec`**: se niegan y dicen por qué (fuera de Windows).
 - **`gemini.toml`**: la política que Gemini CLI recibe con `--policy`
-  (`clientes.politica_gemini_toml`).
+  (`clientes.politica_gemini_toml`), detrás de las de la persona, que también se le pasan
+  porque `--policy` las sustituye (`clientes._gemini_policy_argv`).
 
 No sustituyen a lo que niega cada cliente: quien llame a `/usr/bin/sudo` por su ruta se las
 salta. Se reescriben en cada lanzamiento, como el lanzador de `cotejo`, y no tocan nada de la

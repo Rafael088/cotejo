@@ -125,17 +125,52 @@ class TerminalLibre(unittest.TestCase):
         self.assertEqual(externo["/w/tarea/*"], "allow")
         self.assertEqual(externo["*"], "ask")                  # fuera de sus carpetas, no
 
-    def test_gemini_auto_edit_con_la_politica(self):
-        argv, entorno = clientes.de("gemini").terminal_libre(CARPETAS, "trunk",
-                                                             politica_gemini="/e/g.toml")
-        self.assertEqual(argv, ["--approval-mode", "auto_edit", "--policy", "/e/g.toml"])
-        self.assertEqual(entorno, {"GEMINI_CLI_TRUST_WORKSPACE": "true"})
+    def casa(self, ajustes=None):
+        """Una casa de la persona para Gemini (`GEMINI_CLI_HOME`), sin tocar la de verdad."""
+        carpeta = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, carpeta, True)
+        (carpeta / ".gemini").mkdir()
+        if ajustes is not None:
+            (carpeta / ".gemini" / "settings.json").write_text(json.dumps(ajustes))
+        return {"GEMINI_CLI_HOME": str(carpeta),
+                "GEMINI_CLI_SYSTEM_SETTINGS_PATH": str(carpeta / "sistema.json")}
+
+    def test_gemini_auto_edit_con_su_politica_detras_de_la_de_la_persona(self):
+        entorno = self.casa()
+        argv, variables = clientes.de("gemini").terminal_libre(
+            CARPETAS, "trunk", politica_gemini="/e/g.toml", entorno=entorno)
+        # `--policy` sustituye `~/.gemini/policies`, así que se le pasa también (cotejo-n4jnho).
+        self.assertEqual(argv, ["--approval-mode", "auto_edit",
+                                "--policy", str(Path(entorno["GEMINI_CLI_HOME"]) /
+                                                ".gemini" / "policies"),
+                                "--policy", "/e/g.toml"])
+        self.assertEqual(variables, {"GEMINI_CLI_TRUST_WORKSPACE": "true"})
         self.assertNotIn("yolo", argv)
+
+    def test_gemini_sin_politica_de_cotejo_no_pasa_policy(self):
+        argv, _ = clientes.de("gemini").terminal_libre(CARPETAS, "trunk", entorno=self.casa())
+        self.assertEqual(argv, ["--approval-mode", "auto_edit"])
+
+    def test_gemini_usa_los_policypaths_de_la_persona(self):
+        entorno = self.casa({"policyPaths": ["/p/mias", "/p/otras"]})
+        argv, _ = clientes.de("gemini").terminal_libre(CARPETAS, "trunk", "/e/g.toml",
+                                                       entorno=entorno)
+        self.assertEqual(argv, ["--approval-mode", "auto_edit",
+                                *[a for ruta in ("/p/mias", "/p/otras") for a in
+                                  ("--policy", ruta)],
+                                "--policy", "/e/g.toml"])
+
+    def test_gemini_policypaths_vacio_vuelve_a_su_carpeta(self):
+        entorno = self.casa({"policyPaths": []})
+        argv, _ = clientes.de("gemini").terminal_libre(CARPETAS, "trunk", "/e/g.toml",
+                                                       entorno=entorno)
+        self.assertIn(str(Path(entorno["GEMINI_CLI_HOME"]) / ".gemini" / "policies"), argv)
 
     def test_la_politica_de_gemini_es_toml_y_niega_con_mas_prioridad(self):
         reglas = tomllib.loads(clientes.politica_gemini_toml("trunk"))["rule"]
+        # Permitir el shell en la prioridad más baja de su tier: lo que la persona niegue gana.
         self.assertEqual(reglas[0], {"toolName": "run_shell_command", "decision": "allow",
-                                     "priority": 100, "allowRedirection": True})
+                                     "priority": 0, "allowRedirection": True})
         negadas = reglas[1:]
         self.assertEqual(len(negadas), len(clientes.prohibidos("trunk")))
         for regla in negadas:

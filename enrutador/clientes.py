@@ -171,7 +171,14 @@ class Cliente:
           (`_opencode_sin_plugins_del_proyecto`, cotejo-lbwsq4).
         - **Gemini CLI**: `auto_edit` y una política (`--policy`, `politica_gemini`, el archivo
           que escribe `guardas.preparar` con `politica_gemini_toml`) que deja todo el shell y
-          niega los prohibidos. Y lo que el `.gemini/settings.json` del worktree le haría
+          niega los prohibidos. `--policy` **no suma**: cuando se pasa, Gemini CLI deja de leer
+          `~/.gemini/policies` (o lo que diga `policyPaths` en los ajustes de la persona) y lee
+          solo lo que se le pasa (`getPolicyDirectories` de su `policy/config.ts`, v0.61). Por
+          eso se le pasan también las suyas, delante (`_gemini_politicas_de_la_persona`): sus
+          reglas siguen, en la misma tier (User) y los mismos números, y como el orden de carga
+          desempata, lo que ella escribió gana. La de Cotejo va detrás, con su regla de permitir
+          el shell en la prioridad más baja de esa tier y los prohibidos en la 900, para no
+          pisar nada suyo. Y lo que el `.gemini/settings.json` del worktree le haría
           arrancar, fuera (`_gemini_sin_lo_del_proyecto`, cotejo-lbwsq4): sus servidores MCP,
           por `--allowed-mcp-server-names` con los de la persona; y si trae hooks o comandos que
           corren solos, el worktree va sin confianza y Gemini no arranca. Con la confianza
@@ -216,7 +223,7 @@ class Cliente:
         if self.nombre == "gemini":
             argv, env = _gemini_sin_lo_del_proyecto(
                 trabajo, ["--approval-mode", "auto_edit"] +
-                (["--policy", str(politica_gemini)] if politica_gemini else []), env, entorno)
+                _gemini_policy_argv(politica_gemini, entorno), env, entorno)
             return argv, gemini_env.sin_env_del_proyecto(trabajo, env, entorno)
         if self.nombre == "antigravity":
             return argv + ["--dangerously-skip-permissions"], env
@@ -621,11 +628,10 @@ def aviso_de_gemini(trabajo):
             f"otro modelo, y vuelve a lanzarla; sus servidores MCP no hacen falta quitarlos.")
 
 
-def _gemini_de_la_persona(entorno):
-    """`(servidores, permitidos, excluidos)` de la config de Gemini de la persona: los nombres
-    de sus servidores MCP (sus ajustes, los del sistema y los de sus extensiones) y sus listas
-    `mcp.allowed` (`None` si no tiene) y `mcp.excluded`. Solo se leen nombres. Un archivo que no
-    se entiende no suma nada: con él roto, Gemini tampoco arrancaría."""
+def _gemini_ajustes_de_la_persona(entorno):
+    """Las rutas de los ajustes de Gemini de la persona que Cotejo lee: los del sistema por
+    defecto, los suyos y los del sistema (`GEMINI_CLI_HOME` y las dos variables de sus rutas,
+    que son las que usa Gemini). Las que no existen o no se entienden, fuera."""
     casa = entorno.get("GEMINI_CLI_HOME") or os.path.expanduser("~")
     sistema = entorno.get("GEMINI_CLI_SYSTEM_SETTINGS_PATH") or {
         "darwin": "/Library/Application Support/GeminiCli/settings.json",
@@ -633,12 +639,49 @@ def _gemini_de_la_persona(entorno):
             sys.platform, "/etc/gemini-cli/settings.json")
     defectos = (entorno.get("GEMINI_CLI_SYSTEM_DEFAULTS_PATH") or
                 os.path.join(os.path.dirname(sistema), "system-defaults.json"))
-    servidores, permitidos, excluidos = [], None, set()
     for ruta in (defectos, os.path.join(casa, ".gemini", "settings.json"), sistema):
         try:
-            ajustes = _gemini_ajustes(ruta)
+            yield _gemini_ajustes(ruta)
         except ValueError:
             continue
+
+
+def _gemini_politicas_de_la_persona(entorno=None):
+    """Las rutas de políticas que Gemini CLI cargaría si Cotejo no le pasara `--policy`: los
+    `policyPaths` de los ajustes de la persona (los del sistema por defecto, los suyos y los
+    del sistema, en ese orden, como los lee Gemini) y, si no pone ninguno, su carpeta
+    `~/.gemini/policies`, que es la de la tier User (https://geminicli.com/docs/reference/policy-engine/, «Policy
+    locations» y «`policyPaths`»). Hacen falta porque `--policy` las sustituye, no las suma."""
+    entorno = os.environ if entorno is None else entorno
+    rutas = []
+    for ajustes in _gemini_ajustes_de_la_persona(entorno):
+        propias = ajustes.get("policyPaths")
+        if isinstance(propias, list):
+            rutas += [str(p) for p in propias if isinstance(p, str) and p]
+    if rutas:
+        return list(dict.fromkeys(rutas))
+    casa = entorno.get("GEMINI_CLI_HOME") or os.path.expanduser("~")
+    return [os.path.join(casa, ".gemini", "policies")]
+
+
+def _gemini_policy_argv(politica, entorno=None):
+    """Los `--policy` de Gemini CLI: primero las políticas de la persona y detrás la de Cotejo,
+    que nunca la sustituye. Sin política de Cotejo no se pasa ninguna bandera: Gemini lee las
+    suyas como siempre. La bandera admite varias, una por ruta."""
+    if not politica:
+        return []
+    rutas = [*_gemini_politicas_de_la_persona(entorno), str(politica)]
+    return [bandera for ruta in rutas for bandera in ("--policy", ruta)]
+
+
+def _gemini_de_la_persona(entorno):
+    """`(servidores, permitidos, excluidos)` de la config de Gemini de la persona: los nombres
+    de sus servidores MCP (sus ajustes, los del sistema y los de sus extensiones) y sus listas
+    `mcp.allowed` (`None` si no tiene) y `mcp.excluded`. Solo se leen nombres. Un archivo que no
+    se entiende no suma nada: con él roto, Gemini tampoco arrancaría."""
+    casa = entorno.get("GEMINI_CLI_HOME") or os.path.expanduser("~")
+    servidores, permitidos, excluidos = [], None, set()
+    for ajustes in _gemini_ajustes_de_la_persona(entorno):
         servidores += _gemini_servidores(ajustes)
         mcp = ajustes.get("mcp") if isinstance(ajustes.get("mcp"), dict) else {}
         if isinstance(mcp.get("allowed"), list) and mcp["allowed"]:
@@ -715,11 +758,18 @@ AVISO = ("Es uno de los prohibidos de fábrica del agente que lanza CotejoBoard:
 
 def politica_gemini_toml(ramas=None):
     """La política de Gemini CLI para el agente del board: todo el shell permitido (también con
-    redirecciones) y los prohibidos negados con más prioridad."""
+    redirecciones) y los prohibidos negados con más prioridad.
+
+    Se suma a la de la persona (`_gemini_policy_argv`), no la sustituye, y las dos caen en la
+    tier User. Por eso la regla que permite el shell va en la prioridad más baja (0): cualquier
+    regla de la persona, que se carga antes y desempata a su favor, le gana, así que Cotejo no
+    le abre nada que ella haya cerrado. Sigue valiendo para lo de fábrica, que es otra tier
+    (Default, base 1): permitir el shell es lo que deja al agente correr pruebas y builds sin
+    que nadie conteste, porque sin interfaz un `ask_user` se niega solo."""
     def cadena(texto):
         return json.dumps(texto, ensure_ascii=False)   # una cadena TOML básica vale como JSON
     reglas = ['[[rule]]', 'toolName = "run_shell_command"', 'decision = "allow"',
-              'priority = 100', 'allowRedirection = true', '']
+              'priority = 0', 'allowRedirection = true', '']
     for patron in prohibidos(ramas):
         reglas += ['[[rule]]', 'toolName = "run_shell_command"',
                    f'commandRegex = {cadena(_regex_gemini(patron))}', 'decision = "deny"',

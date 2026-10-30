@@ -266,7 +266,9 @@ worktrees, la config de Cotejo); su red es solo `localhost`/`127.0.0.1` por el p
 (`curl --noproxy '*'`; Chromium no). `lanzar.sandbox: false` no se lo quita. En Windows, como
 antes. `COTEJO_PRUEBA_CLIENTES=1 python3 -m unittest discover pruebas -p test_codex_perfil.py`
 lo corre en `codex sandbox` de verdad, sin modelo; OpenCode: `permission.bash` todo `allow` y los prohibidos `deny`
-al final; Gemini: `auto_edit` y `--policy` con `politica_gemini_toml`) y, debajo, las guardas del
+al final; Gemini: `auto_edit` y `--policy` con las de la persona delante y `politica_gemini_toml`
+detrás, porque `--policy` sustituye las suyas y hay que devolvérselas —lo suyo gana, y la de
+Cotejo permite el shell en la prioridad 0 y niega los prohibidos en la 900—) y, debajo, las guardas del
 PATH (`guardas.py`: un `git` que lee los argumentos y no deja `push` a la fuerza ni a `main`/la
 rama por defecto —`worktrees.rama_por_defecto`—, y `sudo`/`su`/`doas`/`pkexec` que se niegan).
 Los prohibidos son sudo/su, `git push --force`, empujar a `main` o a la rama por defecto y borrar

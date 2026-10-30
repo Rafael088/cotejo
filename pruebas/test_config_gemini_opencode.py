@@ -68,13 +68,20 @@ class Gemini(Base):
         return clientes.de("gemini").terminal_libre([str(self.wt)], "main",
                                                     politica_gemini="/e/g.toml")
 
+    def preludio(self):
+        """`auto_edit` y los `--policy`: primero el de la persona y detrás el de Cotejo
+        (cotejo-n4jnho: `--policy` sustituye el suyo, así que se le devuelve delante)."""
+        return ["--approval-mode", "auto_edit",
+                "--policy", str(self.casa / ".gemini" / "policies"),
+                "--policy", "/e/g.toml"]
+
     def permitidos(self, argv):
         self.assertEqual(argv.count(BANDERA), 1)
         return argv[argv.index(BANDERA) + 1].split(",")
 
     def test_sin_config_del_proyecto_no_cambia_nada(self):
         argv, entorno = self.lanzar()
-        self.assertEqual(argv, ["--approval-mode", "auto_edit", "--policy", "/e/g.toml"])
+        self.assertEqual(argv, self.preludio())
         self.assertEqual(entorno, {"GEMINI_CLI_TRUST_WORKSPACE": "true"})
         self.proyecto({"ui": {"theme": "x"}})         # ajustes sin nada que arranque
         self.assertEqual(self.lanzar(), (argv, entorno))
@@ -90,7 +97,7 @@ class Gemini(Base):
         argv, entorno = self.lanzar()
         self.assertEqual(sorted(self.permitidos(argv)), ["admin", "de-extension", "mio", "otro"])
         self.assertEqual(entorno["GEMINI_CLI_TRUST_WORKSPACE"], "true")
-        self.assertEqual(argv[:4], ["--approval-mode", "auto_edit", "--policy", "/e/g.toml"])
+        self.assertEqual(argv[:len(self.preludio())], self.preludio())
 
     def test_uno_que_el_proyecto_redefine_ya_no_es_el_suyo(self):
         self.persona({"mcpServers": {"mio": {"command": "mio"}, "github": {"command": "g"}}})
