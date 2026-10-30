@@ -18,6 +18,7 @@ from test_mapa import proyecto_de_prueba
 if base.HAY_GTK:
     from tareas import como_se_abre, servidor_app
     from tareas.app import ver_app
+    from tareas.app.comun import TODOS
 
 
 class ServidoresFalsos:
@@ -153,6 +154,49 @@ class VerMiApp(base.PestanaInicio):
         falsos = self.poner(servidor_app.Resultado(True, "x"))
         self.board.emit("close-request")
         self.assertEqual(falsos.todos, 1)
+
+    def _en_el_tablero_con_barberia(self):
+        b = self.board
+        b.ver_pestana("tablero")
+        base.girar()
+        self.assertEqual(b.seleccion, "barberia")
+        return b
+
+    def test_los_botones_flotantes_salen_en_el_tablero_con_un_proyecto(self):
+        b = self._en_el_tablero_con_barberia()
+        self.assertTrue(b.flotantes_app.get_visible())
+        botones = {}
+        hijo = b.flotantes_app.get_first_child()
+        while hijo is not None:
+            botones[hijo.get_label()] = hijo
+            hijo = hijo.get_next_sibling()
+        self.assertEqual(list(botones), ["Ver mi app", "Abrir la carpeta"])
+
+    def test_los_botones_flotantes_no_estan_con_todos_los_proyectos(self):
+        b = self._en_el_tablero_con_barberia()
+        self.assertTrue(b.flotantes_app.get_visible())
+        b.al_elegir_chip(b.botones_chip[TODOS])
+        base.girar()
+        self.assertFalse(b.flotantes_app.get_visible())
+
+    def test_ver_mi_app_flotante_abre_la_app_del_proyecto_elegido(self):
+        b = self._en_el_tablero_con_barberia()
+        (self.carpeta / "index.html").write_text("<h1>hola</h1>", encoding="utf-8")
+        falsos = self.poner(servidor_app.Resultado(
+            True, "Abrí tu app en el navegador.", abrir="http://127.0.0.1:9/index.html",
+            corriendo=True))
+        b.boton_flotante_ver_app.emit("clicked")
+        self.esperar_aviso()
+        nombre, plan = falsos.abiertos[0]
+        self.assertEqual(nombre, "barberia")
+        self.assertEqual(plan.carpeta, str(self.carpeta))
+        self.assertEqual(plan.como.tipo, "pagina")
+
+    def test_abrir_la_carpeta_flotante_abre_la_principal_del_proyecto(self):
+        b = self._en_el_tablero_con_barberia()
+        b.boton_flotante_carpeta.emit("clicked")
+        uri = self.lanzador.call_args.args[0]
+        self.assertEqual(Path(uri.removeprefix("file://")), self.carpeta)
 
 
 if __name__ == "__main__":

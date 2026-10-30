@@ -13,9 +13,12 @@ fuera de cualquier sandbox: es la persona quien mira. Cerrar el board para las a
 
 import threading
 
-from gi.repository import Gio, GLib
+from gi.repository import Gio, GLib, Gtk
 
 from .. import como_se_abre, servidor_app
+from .comun import ESPACIADO_SM, MARGEN_TABLERO_LADOS, MARGEN_TABLERO_VERTICAL, TODOS
+from .escala import px
+from .piezas import con_mano
 
 
 def correr_aparte(funcion):
@@ -30,6 +33,40 @@ class VerApp:
         self.servidores = servidor_app.Servidores()
         self.abriendo_app = set()
         self.connect("close-request", self._parar_apps_al_cerrar)
+        self.crear_botones_flotantes()
+
+    def crear_botones_flotantes(self):
+        """«Ver mi app» y «Abrir la carpeta» flotando en el tablero (v1.3.0, cotejo-rcohjm).
+
+        Viven en un overlay del tablero (`encima_tablero`), fuera de las columnas: salen con un
+        proyecto elegido (nunca con «Todos los proyectos») y abren lo mismo que sus iguales
+        del Inicio y del mapa, siempre sobre la carpeta principal del proyecto.
+        """
+        caja = Gtk.Box(spacing=px(ESPACIADO_SM), halign=Gtk.Align.END, valign=Gtk.Align.START,
+                       margin_top=px(MARGEN_TABLERO_VERTICAL),
+                       margin_end=px(MARGEN_TABLERO_LADOS))
+        self.boton_flotante_ver_app = con_mano(Gtk.Button(label="Ver mi app"))
+        self.boton_flotante_carpeta = con_mano(Gtk.Button(label="Abrir la carpeta"))
+        for boton, accion in ((self.boton_flotante_ver_app, self.al_ver_app_flotante),
+                              (self.boton_flotante_carpeta, self.al_abrir_carpeta_flotante)):
+            boton.connect("clicked", lambda _b, a=accion: a())
+            caja.append(boton)
+        self.flotantes_app = caja
+        self.encima_tablero.add_overlay(caja)
+        self.poner_botones_flotantes()
+
+    def al_ver_app_flotante(self):
+        self.ver_mi_app(self.seleccion)
+
+    def al_abrir_carpeta_flotante(self):
+        self.abrir_carpeta(self.seleccion)
+
+    def poner_botones_flotantes(self):
+        """Los botones solo con un proyecto elegido, no con «Todos los proyectos» ni sin fuente."""
+        caja = getattr(self, "flotantes_app", None)
+        if caja is None:
+            return
+        caja.set_visible(self.seleccion != TODOS and not self.fuente.problema)
 
     def _parar_apps_al_cerrar(self, *_):
         self.servidores.parar_todos()

@@ -143,7 +143,10 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
         self.scroll_tablero = Gtk.ScrolledWindow(child=self.tablero, hexpand=True, vexpand=True,
                                                  vscrollbar_policy=Gtk.PolicyType.NEVER,
                                                  hscrollbar_policy=Gtk.PolicyType.AUTOMATIC)
-        cuerpo.append(self.scroll_tablero)
+        # «Ver mi app» y «Abrir la carpeta» flotan sobre el tablero (cotejo-rcohjm): un overlay
+        # propio, aparte del dot, para no tocar el contrato de `encima` (cuerpo + dot).
+        self.encima_tablero = Gtk.Overlay(child=self.scroll_tablero)
+        cuerpo.append(self.encima_tablero)
         # Las columnas ceden ancho (hasta su piso) cuando la ventana es estrecha.
         self.scroll_tablero.get_hadjustment().connect(
             "notify::page-size", lambda *_a: self.ajustar_columnas())
