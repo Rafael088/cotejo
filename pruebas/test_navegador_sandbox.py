@@ -10,6 +10,7 @@ para que un verde no salga de una jaula floja. Se salta sin bwrap, sin firefox o
 y aarch64.
 """
 
+import json
 import os
 import shutil
 import struct
@@ -211,3 +212,97 @@ class Eleccion(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(os.environ.get("COTEJO_PRUEBA_CLAUDE") == "1"
+                     and shutil.which("claude") and FIREFOX,
+                     "prueba con Claude y Firefox de verdad: COTEJO_PRUEBA_CLAUDE=1")
+class LaEntregaNoDependeDelSandbox(unittest.TestCase):
+    """Dentro del sandbox **real** de Claude, el agente solo pide las capturas; el board las
+    saca fuera (cotejo-v40nc1). La prueba emulada de arriba no reproduce el fallo de Firefox
+    155 (clone EPERM, WebRender y dconf de solo lectura): esta corre un `claude -p` de verdad
+    con las mismas reglas del armado y se salta si no se pide con `COTEJO_PRUEBA_CLAUDE=1`."""
+
+    def setUp(self):
+        if not sandbox.disponible()[0]:
+            self.skipTest("esta máquina no tiene el sandbox de Claude (bwrap/socat)")
+        base = Path(tempfile.mkdtemp(prefix="cotejo-v40nc1-"))
+        self.addCleanup(shutil.rmtree, base, True)
+        self.base = base
+        self.vault = base / "vault"
+        self.notas = self.vault / "01-Proyectos"
+        self.estado = base / "estado"
+        self.config_dir = base / "config"
+        for carpeta in (self.notas, self.estado, self.config_dir):
+            carpeta.mkdir(parents=True)
+        (self.notas / "Uno.md").write_text(
+            "---\ntipo: proyecto\n---\n\n## Tareas\n\n"
+            "- [ ] Haciéndola #en-curso #agente/haiku\n", encoding="utf-8")
+        (self.vault / "pagina.html").write_text(
+            "<html><body style='background:#2a7'><h1>Cotejo</h1></body></html>",
+            encoding="utf-8")
+        self.config = self.config_dir / "config.json"
+        self.config.write_text(json.dumps({
+            "fuente": "obsidian",
+            "fuentes": {"obsidian": {"vault": str(self.vault),
+                                     "carpeta_proyectos": "01-Proyectos"}}},
+            ensure_ascii=False), encoding="utf-8")
+        self.entorno = {
+            **os.environ,
+            "PYTHONPATH": str(RAIZ),
+            "COTEJO_CONFIG": str(self.config),
+            "COTEJO_VAULT": str(self.vault),
+            "COTEJO_CARPETA_PROYECTOS": "01-Proyectos",
+            "COTEJO_ESTADO": str(self.estado),
+        }
+        codigo, texto = self.correr_cli("tareas", "--proyecto", "Uno")
+        self.assertEqual(codigo, 0, texto)
+        self.id = json.loads(texto)["tareas"][0]["id"]
+
+    def correr_cli(self, *argumentos):
+        hecho = subprocess.run([sys.executable, "-m", "tareas", *argumentos],
+                               cwd=self.vault, env=self.entorno, stdin=subprocess.DEVNULL,
+                               capture_output=True, text=True, timeout=120)
+        return hecho.returncode, hecho.stdout.strip() or hecho.stderr.strip()
+
+    def lanzar(self):
+        from enrutador import clientes, config as cfg
+        cliente = clientes.de("claude")
+        carpetas = [str(self.vault), str(self.estado), str(self.config_dir)]
+        ramas = armado.ramas_protegidas(str(self.vault))
+        ajustes = sandbox.ajustes_claude(carpetas, [], [])
+        prompt = (f"Corre una sola vez, exactamente, esta orden con Bash y dime su código de "
+                  f"salida y si el JSON dice \"cambio\": true. No arranques ningún navegador, "
+                  f"no edites archivos y no hagas nada más:\n\n"
+                  f"python3 -m tareas entregar {self.id} --evidencia \"capturas pedidas desde "
+                  f"el sandbox\" --captura-desde pagina.html --repo {self.vault}")
+        argv = armado.comando(cfg.cargar(self.config_dir / "enrutador.json"), cliente,
+                              "haiku", None, prompt, carpetas, ramas, sandbox=ajustes)
+        return subprocess.run(argv, cwd=self.vault, stdin=subprocess.DEVNULL, timeout=300,
+                              env={**armado.entorno(cliente, carpetas, ramas,
+                                                    {"activo": True, "entorno": {}}),
+                                   **self.entorno, "PWD": str(self.vault)},
+                              capture_output=True, text=True)
+
+    def test_el_agente_entrega_sin_png_y_el_board_las_saca_fuera(self):
+        from tareas import bitacora
+        archivo = self.estado / "bitacora.jsonl"
+        with mock.patch.object(bitacora, "ARCHIVO", archivo), \
+                mock.patch.object(navegador, "_carpeta_de_la_entrega",
+                                  return_value=self.vault):
+            hecho = self.lanzar()
+            self.assertEqual(hecho.returncode, 0, hecho.stderr[-3000:])
+            entrega = [a for a in bitacora._anotaciones()
+                       if a.get("operacion") == "entregar"][-1]
+            # El agente no produjo ningún PNG: dejó la petición y entregó igual.
+            self.assertEqual(entrega["capturas_solicitadas"], ["pagina.html"])
+            self.assertNotIn("capturas", entrega)
+            self.assertEqual(len(bitacora.pendientes_de_captura()), 1)
+            # Fuera del sandbox sí se sacan, y quedan unidas a la misma entrega.
+            resultados = navegador.capturar_pendientes()
+            self.assertEqual(len(resultados), 1)
+            self.assertEqual(resultados[0]["capturas_avisos"], [])
+            self.assertEqual([c["tipo"] for c in resultados[0]["capturas"]],
+                             ["movil", "escritorio"])
+            self.assertEqual(bitacora.pendientes_de_captura(), [])
+            self.assertEqual(len(bitacora.ultima_entrega(entrega["id"])["capturas"]), 2)
