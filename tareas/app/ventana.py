@@ -148,10 +148,7 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
         self.scroll_tablero = Gtk.ScrolledWindow(child=self.tablero, hexpand=True, vexpand=True,
                                                  vscrollbar_policy=Gtk.PolicyType.NEVER,
                                                  hscrollbar_policy=Gtk.PolicyType.AUTOMATIC)
-        # «Ver mi app» y «Abrir la carpeta» flotan sobre el tablero (cotejo-rcohjm): un overlay
-        # propio, aparte del dot, para no tocar el contrato de `encima` (cuerpo + dot).
-        self.encima_tablero = Gtk.Overlay(child=self.scroll_tablero)
-        cuerpo.append(self.encima_tablero)
+        cuerpo.append(self.scroll_tablero)
         # Las columnas ceden ancho (hasta su piso) cuando la ventana es estrecha.
         self.scroll_tablero.get_hadjustment().connect(
             "notify::page-size", lambda *_a: self.ajustar_columnas())
@@ -265,17 +262,41 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
                        margin_start=px(ESPACIADO_SM), margin_end=px(ESPACIADO_SM))
         popover = Gtk.Popover(child=caja, position=Gtk.PositionType.BOTTOM, halign=Gtk.Align.END)
         boton.set_popover(popover)
+
+        def opcion(texto, nombre_icono, atajo, funcion):
+            fila = Gtk.Box(spacing=px(ESPACIADO_MD))
+            fila.append(icono(nombre_icono, 15))
+            fila.append(Gtk.Label(label=texto, xalign=0, hexpand=True))
+            fila.append(Gtk.Label(label=atajo, css_classes=["menu-atajo"]))
+            una = Gtk.Button(css_classes=["flat", "menu-item"], child=fila)
+            una.cotejo_texto = texto
+            etiquetar(una, texto)
+            una.connect("clicked", lambda _b, f=funcion, p=popover: (p.popdown(), f()))
+            return una
+
+        # Acciones del proyecto elegido. Antes flotaban sobre las columnas y las cartas; aquí
+        # siguen a un clic, sin ocupar ni tapar el tablero. La mezcla VerApp pone su estado.
+        self.acciones_menu_app = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        datos_app = (
+            ("Ver mi app", "tablero", self.al_ver_app_menu),
+            ("Abrir la carpeta", "abrir", self.al_abrir_carpeta_menu),
+            ("Detener mi app", "cerrar", self.al_detener_app_menu),
+        )
+        self.botones_menu_app = []
+        for texto, nombre_icono, funcion in datos_app:
+            una = opcion(texto, nombre_icono, "", funcion)
+            self.botones_menu_app.append(una)
+            self.acciones_menu_app.append(una)
+        (self.boton_menu_ver_app, self.boton_menu_carpeta,
+         self.boton_menu_detener_app) = self.botones_menu_app
+        self.acciones_menu_app.append(Gtk.Separator(margin_top=px(ESPACIADO_SM),
+                                                    margin_bottom=px(ESPACIADO_SM)))
+        self.acciones_menu_app.set_visible(False)
+        caja.append(self.acciones_menu_app)
         for texto, nombre_icono, atajo, funcion in (
                 ("Atajos de teclado", "teclado", "Ctrl ?", self.ver_atajos),
                 ("Añadir modelo…", "agente", "", self.abrir_anadir_modelo)):
-            fila = Gtk.Box(spacing=px(ESPACIADO_MD))
-            fila.append(icono(nombre_icono, 15))
-            rotulo = Gtk.Label(label=texto, xalign=0, hexpand=True)
-            fila.append(rotulo)
-            fila.append(Gtk.Label(label=atajo, css_classes=["menu-atajo"]))
-            opcion = Gtk.Button(css_classes=["flat", "menu-item"], child=fila)
-            opcion.connect("clicked", lambda _b, f=funcion, p=popover: (p.popdown(), f()))
-            caja.append(opcion)
+            caja.append(opcion(texto, nombre_icono, atajo, funcion))
         caja.append(self.fila_tamano(popover))
         return boton
 
