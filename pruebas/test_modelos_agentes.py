@@ -265,6 +265,31 @@ class Catalogo(unittest.TestCase):
         self.assertEqual(dict(niveles.grupos((), ["gemini"]))["gemini"],
                          ["gemini-pro", "gemini-flash", "gemini-flash-lite"])
 
+    def test_modelos_de_por_cliente_y_el_de_por_defecto(self):
+        """La interfaz del maestro y de Preparar ofrecen modelos concretos, no solo agentes."""
+        propios = [{"clave": "astra", "modelo_id": "gpt-6-astra", "cliente": "codex",
+                    "nivel": "n3"},
+                   {"clave": "kimi", "modelo_id": "opencode-go/kimi", "cliente": "opencode",
+                    "nivel": "n2"}]
+        self.assertEqual([n.modelo for n in niveles.modelos_de("claude")],
+                         ["opus", "sonnet", "haiku"])
+        self.assertEqual([n.modelo for n in niveles.modelos_de("codex", propios)],
+                         ["codex-rapido", "codex", "codex-fuerte", "astra"])
+        self.assertEqual(niveles.modelos_de("otro"), ())
+        # Cada agente arranca con su equivalente a n2.
+        self.assertEqual(niveles.modelo_por_defecto("claude"), "sonnet")
+        self.assertEqual(niveles.modelo_por_defecto("codex"), "codex")
+        self.assertEqual(niveles.modelo_por_defecto("gemini"), "gemini-flash")
+        self.assertEqual(niveles.modelo_por_defecto("opencode"), "opencode")
+        self.assertEqual(niveles.modelo_por_defecto("antigravity"), "antigravity")
+        self.assertEqual(niveles.modelo_por_defecto("otro"), "")
+        # Agrupado por cliente y solo los que se piden (los instalados).
+        grupos = niveles.por_cliente(propios, ["claude", "codex", "opencode"])
+        self.assertEqual([c for c, _ in grupos], ["claude", "codex", "opencode"])
+        self.assertEqual([n.modelo for n in grupos[2][1]], ["opencode", "kimi"])
+        self.assertEqual(niveles.por_cliente(propios, ["gemini"]),
+                         [("gemini", [n for n in niveles.modelos_de("gemini")])])
+
     def test_sin_ningun_agente_listo_salen_todos(self):
         self.assertEqual([c for c, _ in niveles.grupos((), [])],
                          ["claude", "opencode", "codex", "gemini", "antigravity"])
