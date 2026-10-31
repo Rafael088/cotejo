@@ -129,11 +129,13 @@ class LanzarDesdeElBoard(base.PestanaInicio):
         self.assertIsNotNone(dialogo)
         self.assertEqual(self.fila("web ligera", "pendiente").tarea.id, ident)
         self.assertIsNone(lanzados.leer(ident))
-        dialogo.desplegable.set_selected(dialogo.modelos.index("haiku"))
+        # El primero de la lista: en el CI no hay Claude instalado y haiku no sale.
+        elegido = dialogo.modelos[0]
+        dialogo.desplegable.set_selected(0)
         dialogo.force_close()
         with mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):
             self.board.al_responder_modelo(dialogo, "lanzar", fila.proyecto, fila.tarea)
-        self.assertEqual(self.fila("web ligera", "en-curso").tarea.agente, "haiku")
+        self.assertEqual(self.fila("web ligera", "en-curso").tarea.agente, elegido)
         self.assertIsInstance(lanzados.leer(ident)["pid"], int)
 
     def test_arrastrar_una_tarea_con_modelo_la_lanza_y_el_registro_guarda_pid_y_log(self):
