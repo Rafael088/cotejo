@@ -18,7 +18,7 @@ from gi.repository import Adw, GLib, Gtk
 
 from enrutador import clientes, config as enrutador_config, modelos_vivos, niveles
 
-from .. import bitacora, modelo, origen
+from .. import origen
 from .comun import ESPACIADO_SM, ESPACIADO_XS
 from .escala import px
 from .piezas import con_mano
@@ -178,16 +178,15 @@ class Modelos:
         return guardado
 
     def al_anadir_y_asignar(self, proyecto, tarea, cliente, popover):
-        """«Añadir modelo…» desde «Asignar a»: al registrarlo, se le asigna a la tarea."""
+        """«Añadir modelo…» desde «Asignar a»: al registrarlo, se le asigna a la tarea.
+
+        Asignar pasa por `al_asignar`, como el resto: una sola forma de escribir el agente y
+        una sola bitácora (cotejo-uy34ma).
+        """
         if popover is not None:
             popover.popdown()
 
         def asignar(clave):
-            try:
-                actual = self.fuente.poner_agente(tarea, clave)
-                bitacora.anotar("asignar", proyecto, actual, de=tarea.agente, a=clave)
-            except (modelo.TareaCambiada, OSError) as error:
-                self.aviso(f"No pude asignarla: cambió en {error}")
-            self.app.refrescar()
+            self.al_asignar(proyecto, tarea, clave, popover)
         return self.abrir_anadir_modelo(cliente or self.agente_del_proyecto(proyecto) or None,
                                         asignar)
