@@ -346,10 +346,11 @@ class SinFuente(PestanaInicio):
                 # Aquí los CLIs son de mentira: sí se les pregunta.
                 "COTEJO_NO_PREGUNTAR_CLI": ""}
 
-    def revisar(self, agentes, git=True, sin_sesion=()):
+    def revisar(self, agentes, git=True, sin_sesion=(), empuja="helper"):
         with mock.patch("enrutador.clientes.instalados", return_value=list(agentes)), \
                 mock.patch("enrutador.modelos_vivos.sesion", lambda n, **_: n not in sin_sesion), \
-                mock.patch("tareas.equipo.hay_git", return_value=git):
+                mock.patch("tareas.equipo.hay_git", return_value=git), \
+                mock.patch("tareas.equipo.puede_empujar", return_value=empuja):
             return self.board.revisar_equipo()
 
     def con_instalador(self, texto):
@@ -426,6 +427,35 @@ class SinFuente(PestanaInicio):
         correr.assert_not_called()
         popen.assert_not_called()
 
+    def test_git_sin_credenciales_ofrece_conectar_y_no_dice_listo(self):
+        # cotejo-vz6v3c: git instalado pero sin con qué empujar pediría contraseña al guardar.
+        b = self.board
+        self.revisar(["claude"], git=True, empuja=None)
+        self.assertEqual(self.filas()["git (para guardar versiones)"], "Falta conectar")
+        self.assertNotIn("Todo listo", b.equipo_titular.get_label())
+        self.assertIn("git", b.equipo_sesion)
+        from tareas import instalar_agentes
+        with mock.patch.object(instalar_agentes, "terminal", return_value=["mi-terminal"]), \
+                mock.patch("shutil.which", return_value="/usr/bin/gh"), \
+                mock.patch("tareas.equipo.gh_con_sesion", return_value=False), \
+                mock.patch("enrutador.motores.terminal.abrir") as abrir, \
+                mock.patch("tareas.equipo.hay_git", return_value=True), \
+                mock.patch("tareas.equipo.puede_empujar", return_value=None):
+            b.equipo_sesion["git"].emit("clicked")
+        abrir.assert_called_once_with(["mi-terminal", "/usr/bin/gh", "auth", "login"])
+        self.assertIn("gh auth login", self.progreso("git"))
+
+        with mock.patch.object(b, "abrir_pagina") as pagina, \
+                mock.patch.object(instalar_agentes, "conectar_git",
+                                  return_value=instalar_agentes.Apertura("sin_gh", "")):
+            b.conectar_git()
+        pagina.assert_called_once_with("https://cli.github.com/")
+        self.assertIn("GitHub CLI", self.progreso("git"))
+
+        self.revisar(["claude"], git=True, empuja="helper")
+        self.assertEqual(self.filas()["git (para guardar versiones)"], "Listo")
+        self.assertNotIn("git", b.equipo_sesion)
+
     def test_abrir_pagina_usa_el_lanzador_del_sistema(self):
         with mock.patch("tareas.app.equipo.Gio.AppInfo.launch_default_for_uri") as lanzar:
             self.board.abrir_pagina("https://ejemplo.org/x")
@@ -437,7 +467,8 @@ class SinFuente(PestanaInicio):
         self.assertEqual(self.filas()["Claude Code"], "No instalado")
         with mock.patch("enrutador.clientes.instalados", return_value=["claude"]), \
                 mock.patch("enrutador.modelos_vivos.sesion", return_value=True), \
-                mock.patch("tareas.equipo.hay_git", return_value=True):
+                mock.patch("tareas.equipo.hay_git", return_value=True), \
+                mock.patch("tareas.equipo.puede_empujar", return_value="ssh"):
             b.equipo_revisar.emit("clicked")
         self.assertEqual(self.filas()["Claude Code"], "Listo")
         self.assertEqual(b.equipo_titular.get_label(), "Todo listo para empezar con Claude Code")
