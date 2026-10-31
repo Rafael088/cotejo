@@ -63,7 +63,7 @@ def _recorte(texto):
     return texto[:CARACTERES_POR_TURNO] + " […]"
 
 
-def instruccion(proyecto, asignadas, directorio=None, pedido="", historia=()):
+def instruccion(proyecto, asignadas, directorio=None, pedido="", historia=(), ramas=()):
     """Lo que lee el maestro en un turno. `asignadas` son filas `{id, modelo, texto}` de las
     pendientes que una persona asignó a un modelo; `historia`, los turnos anteriores
     (`{"quien": "persona"|"maestro", "texto"}`); `pedido`, lo que la persona acaba de escribir.
@@ -100,6 +100,29 @@ def instruccion(proyecto, asignadas, directorio=None, pedido="", historia=()):
         "tareas, no entregues ni bloquees las de otros. No hay verbo para marcar una tarea "
         "como hecha y es a propósito: [x] lo pone una persona en el board.",
     ]
+    if ramas:
+        partes += [
+            "",
+            "Trabajo que Git guarda en ramas de tareas pero que aún no está en la rama "
+            "abierta de la app:",
+        ]
+        for rama in ramas:
+            tarea = rama.get("texto") or "tarea que ya no aparece en el tablero"
+            partes.append(
+                f"- {rama['rama']} · {rama['commits']} commit(s) · {tarea} · "
+                f"{rama['motivo']} · último: {rama.get('ultimo') or '(sin asunto)'}")
+        partes += [
+            "Si la persona dice que la app está vacía, no abre o que falta trabajo, "
+            "contrasta primero esta lista con la carpeta. Explica que el trabajo sí existe "
+            "y por qué no entró. No crees una tarea para rehacer algo que esté en estas ramas.",
+        ]
+    elif directorio:
+        partes += [
+            "",
+            "Git no muestra ahora ramas de tareas con commits pendientes de integrar en la "
+            "rama abierta. Si la persona pregunta por trabajo ausente, puedes decir que también "
+            "se comprobó esto antes de proponer rehacerlo.",
+        ]
     if directorio:
         partes.append(f"El código del proyecto vive en {directorio}.")
     else:

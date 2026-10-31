@@ -14,6 +14,7 @@ from . import comun
 from .comun import ESPACIADO_MD, ESPACIADO_SM, TODOS
 from .conversacion import PanelMaestro
 from .escala import px
+from .modelos import texto_de_modelo
 from .piezas import con_mano, etiquetar, icono
 
 
@@ -27,46 +28,89 @@ class Maestro:
     """La barra del maestro y su conversación."""
 
     def menu_maestro(self, boton):
-        """El desplegable del botón: con qué agente habla el maestro.
+        """El desplegable del botón: con qué agente y modelo habla el maestro.
 
-        Elegir uno solo lo deja como el de siempre (el botón principal recuerda el último
-        elegido); enviar es del botón o de Enter, nunca de elegir: un desplegable no debería
-        lanzar un agente sin que se pulse «Enviar».
+        Los modelos salen del catálogo (`cotejo modelos`), agrupados por cliente y solo los de
+        los clientes instalados (cotejo-v5ywpr). Elegir uno solo lo deja como el de siempre (el
+        botón principal recuerda el último elegido); enviar es del botón o de Enter, nunca de
+        elegir: un desplegable no debería lanzar un agente sin que se pulse «Enviar».
         """
-        from enrutador import clientes, modelos_vivos
+        from enrutador import clientes, modelos_vivos, niveles
         caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
                        margin_top=px(ESPACIADO_SM), margin_bottom=px(ESPACIADO_SM),
                        margin_start=px(ESPACIADO_SM), margin_end=px(ESPACIADO_SM))
         popover = boton.get_popover()
         caja.append(Gtk.Label(label="EL MAESTRO HABLA CON", xalign=0,
                               css_classes=["menu-titulo"]))
-        disponibles = modelos_vivos.utilizables()
-        actual = self.cliente_del_maestro(disponibles)
-        for nombre in disponibles:
-            fila = Gtk.Box(spacing=px(ESPACIADO_MD))
-            fila.append(icono("agente", 15))
-            fila.append(Gtk.Label(label=clientes.CLIENTES[nombre].titulo or nombre, xalign=0,
-                                  hexpand=True))
-            if nombre == actual:
-                fila.append(Gtk.Label(label="Enter", css_classes=["menu-atajo"]))
-            opcion = Gtk.Button(css_classes=["flat", "menu-item"]
-                                + (["sugerida"] if nombre == actual else []), child=fila)
-            opcion.connect("clicked",
-                           lambda _b, n=nombre: self.elegir_cliente_maestro(n, popover))
-            caja.append(opcion)
-        if not disponibles:
+        instalados = modelos_vivos.utilizables()
+        actual = (self.cliente_del_maestro(instalados), self.modelo_del_maestro(instalados))
+        grupos = niveles.por_cliente(self.definiciones_maestro(), instalados)
+        for cliente, modelos in grupos:
+            caja.append(Gtk.Label(label=clientes.CLIENTES[cliente].titulo or cliente, xalign=0,
+                                  css_classes=["menu-titulo", "menu-grupo"]))
+            for nivel in modelos:
+                fila = Gtk.Box(spacing=px(ESPACIADO_MD))
+                fila.append(icono("agente", 15))
+                fila.append(Gtk.Label(label=texto_de_modelo(nivel), xalign=0, hexpand=True))
+                if (cliente, nivel.modelo) == actual:
+                    fila.append(Gtk.Label(label="Enter", css_classes=["menu-atajo"]))
+                opcion = Gtk.Button(css_classes=["flat", "menu-item"]
+                                    + (["sugerida"] if (cliente, nivel.modelo) == actual else []),
+                                    child=fila)
+                opcion.connect("clicked", lambda _b, c=cliente, m=nivel.modelo:
+                               self.elegir_modelo_maestro(c, m, popover))
+                caja.append(opcion)
+        if not instalados:
             caja.append(Gtk.Label(label=modelos_vivos.aviso_sin_listos(), xalign=0, wrap=True,
                                   max_width_chars=36, css_classes=["menu-titulo"]))
-        popover.set_child(caja)
+        # Con los modelos registrados la lista crece; sin scroll el popover se sale de la
+        # ventana y GTK no lo abre (el mismo fallo de «Asignar a», `cartas.py`).
+        popover.set_child(Gtk.ScrolledWindow(
+            child=caja, hscrollbar_policy=Gtk.PolicyType.NEVER, propagate_natural_height=True,
+            max_content_height=px(420)))
 
-    def elegir_cliente_maestro(self, cliente, popover):
-        """Elegir solo elige: recuerda el agente para el botón y cierra el menú, sin enviar."""
-        comun.guardar_board(cliente_maestro=cliente)
+    def definiciones_maestro(self):
+        """El catálogo registrado (`cotejo modelos agregar`) que conoce el board."""
+        definiciones = getattr(self, "definiciones", None)
+        if definiciones is not None:
+            return definiciones
+        from enrutador import config as enrutador_config
+        try:
+            return enrutador_config.cargar().get("modelos") or []
+        except enrutador_config.ConfigInvalida:
+            return []
+
+    def modelo_del_maestro(self, instalados):
+        """El modelo exacto elegido para el maestro, si su cliente sigue instalado."""
+        from enrutador import niveles
+        clave = comun.cargar_board().get("modelo_maestro")
+        if not clave:
+            return None
+        concreto = niveles.modelo_concreto(clave, self.definiciones_maestro())
+        if concreto is None or concreto.cliente not in instalados:
+            return None
+        return concreto.modelo
+
+    def elegir_modelo_maestro(self, cliente, clave, popover):
+        """Elegir solo elige: recuerda agente y modelo para el botón y cierra el menú."""
+        comun.guardar_board(cliente_maestro=cliente, modelo_maestro=clave)
         popover.popdown()
         self.poner_maestro()            # la ayuda del botón dice con cuál va a hablar
 
+    def elegir_cliente_maestro(self, cliente, popover):
+        """Elegir un agente sin modelo concreto: su equivalente a n2, como antes."""
+        from enrutador import niveles
+        self.elegir_modelo_maestro(
+            cliente, niveles.modelo_por_defecto(cliente, self.definiciones_maestro()), popover)
+
     def cliente_del_maestro(self, disponibles):
-        """El último agente elegido si sigue listo; si no, el primer agente listo."""
+        """El agente del modelo elegido, si sigue listo; si no, el último recordado o el primero listo."""
+        from enrutador import niveles
+        modelo = self.modelo_del_maestro(disponibles)
+        if modelo:
+            concreto = niveles.modelo_concreto(modelo, self.definiciones_maestro())
+            if concreto is not None and concreto.cliente in disponibles:
+                return concreto.cliente
         recordado = comun.cargar_board().get("cliente_maestro")
         if recordado in disponibles:
             return recordado
@@ -123,9 +167,10 @@ class Maestro:
             else:
                 self.ver_conversacion()
             return
-        self.hablar_al_maestro(self.cliente_del_maestro(disponibles), texto)
+        self.hablar_al_maestro(self.cliente_del_maestro(disponibles), texto,
+                               self.modelo_del_maestro(disponibles))
 
-    def hablar_al_maestro(self, cliente, texto):
+    def hablar_al_maestro(self, cliente, texto, modelo=None):
         """Un mensaje al maestro del proyecto elegido. Lo escrito solo se borra si salió: si
         se niega (ya está contestando, el agente no está), se queda para no volver a teclearlo.
         """
@@ -136,14 +181,14 @@ class Maestro:
         destino = [self.seleccion]
         try:
             hecho = verbos.hablar_maestro(
-                self.seleccion, texto, cliente,
+                self.seleccion, texto, cliente, modelo=modelo,
                 al_terminar=lambda turno: GLib.idle_add(self.maestro_contesto, destino[0],
                                                         turno))
         except ErrorCLI as error:
             self.aviso(f"{error.mensaje}. {error.salida}")
             return
         destino[0] = hecho["proyecto"]
-        comun.guardar_board(cliente_maestro=cliente)
+        comun.guardar_board(cliente_maestro=cliente, modelo_maestro=modelo)
         self.entrada_maestro.set_text("")
         self.titulo_maestro = hecho.get("titulo") or cliente
         self.ver_conversacion()
@@ -262,9 +307,14 @@ class Maestro:
         elif sin_agente:
             ayuda = modelos_vivos.aviso_sin_listos()   # por qué el botón no hace nada
         else:
+            from enrutador import niveles
             titulo = clientes.de(self.cliente_del_maestro(disponibles)).titulo
-            ayuda = (f"Enviárselo al maestro, que habla con {titulo}" if con_texto else
-                     "Ver la conversación con el maestro de este proyecto")
+            modelo = self.modelo_del_maestro(disponibles)
+            nivel = niveles.modelo_concreto(modelo, self.definiciones_maestro()) if modelo \
+                else None
+            con = f"{titulo} · {modelo}" if nivel is not None and nivel.modelo_id else titulo
+            ayuda = (f"Enviárselo al maestro, que habla con {con}" if con_texto else
+                     f"Ver la conversación con el maestro de este proyecto ({con})")
         self.boton_maestro.set_tooltip_text(ayuda)
         panel = getattr(self, "panel_maestro", None)
         if panel is not None and panel.get_reveal_child():

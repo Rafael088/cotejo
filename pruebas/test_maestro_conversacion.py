@@ -44,7 +44,10 @@ class Conversacion(PruebaDeEnrutador):
                                          self.estado / "preparaciones"),
                        mock.patch.object(terminal, "abrir", _nunca_una_terminal),
                        mock.patch("enrutador.clientes.shutil.which",
-                                  return_value="/usr/bin/x")):
+                                  return_value="/usr/bin/x"),
+                       # El maestro solo habla con un agente listo (cotejo-sclhtq): aquí el
+                       # falso tiene sesión, haya o no en la máquina (en el CI no hay).
+                       mock.patch("enrutador.modelos_vivos.sesion", return_value=True)):
             parche.start()
             self.addCleanup(parche.stop)
         self.escribir_config({
@@ -148,13 +151,18 @@ class Conversacion(PruebaDeEnrutador):
         self.assertNotIn("[Persona] qué falta", self.argv()["argv"][-1])
 
     def test_simular_no_lanza_nada(self):
-        codigo, datos = self.correr("maestro", "--proyecto", "uno", "--pedido", "hola",
-                                    "--simular")
+        with mock.patch("enrutador.apertura.ramas_pendientes.detectar", return_value=[{
+                "rama": "cotejo/cotejo-guardado", "commits": 2, "ultimo": "Hacer la app",
+                "texto": "Hacer la app", "motivo": "espera aprobación"}]):
+            codigo, datos = self.correr("maestro", "--proyecto", "uno", "--pedido", "hola",
+                                        "--simular")
         self.assertEqual(codigo, verbos.OK)
         self.assertFalse(datos["lanzado"])
         self.assertFalse(self.argv_falso.exists())
         self.assertEqual(datos["proyecto"], "Uno")
         self.assertEqual({t["id"] for t in datos["asignadas"]}, {"cotejo-asig"})
+        self.assertEqual(datos["ramas_pendientes"][0]["rama"], "cotejo/cotejo-guardado")
+        self.assertIn("cotejo/cotejo-guardado", datos["prompt"])
 
     def test_un_turno_que_murio_sin_volver_no_se_queda_pensando(self):
         datos = {"proyecto": "Uno", "turnos": [{"quien": "persona", "texto": "hola"}],

@@ -22,6 +22,7 @@ import unittest
 import urllib.error
 import urllib.request
 from pathlib import Path
+from unittest import mock
 
 import apoyo  # noqa: F401  (pone la raíz del repo en sys.path)
 
@@ -314,6 +315,18 @@ class CicloDeVida(unittest.TestCase):
         self.assertTrue(r.ok, r.texto)
         self.servidores.parar("tienda")
         self.assertFalse(s.responde(url))
+
+    def test_en_windows_parar_usa_taskkill_para_el_arbol(self):
+        proceso = mock.Mock(pid=4321)
+        proceso.poll.return_value = None
+        proceso.wait.return_value = 0
+        corriendo = s._Corriendo(proceso, ("programa",), "", self.carpeta / "app.log")
+        self.servidores.corriendo["tienda"] = corriendo
+        with mock.patch.object(s.sys, "platform", "win32"), \
+                mock.patch.object(s.subprocess, "run") as correr:
+            self.assertTrue(self.servidores.parar("tienda"))
+        self.assertEqual(correr.call_args.args[0],
+                         ["taskkill", "/PID", "4321", "/T", "/F"])
 
     def test_si_no_arranca_el_error_crudo_va_al_registro_no_a_la_frase(self):
         r = self.servidores.abrir("tienda", self.plan(

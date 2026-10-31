@@ -22,6 +22,11 @@ instalado**, **falta iniciar sesión**, **falta elegir modelo** o **listo** (cot
   llavero se le pregunta a su CLI) y, si algo cambió, se repinta: así se entera sola de que la
   persona terminó en el navegador. Al pintar nunca se lanza ningún CLI.
 
+- git instalado pero sin con qué empujar (`equipo.puede_empujar`, cotejo-vz6v3c) dice «Falta
+  conectar» y **Conectar** abre GitHub CLI en una terminal (`instalar_agentes.conectar_git`:
+  `gh auth login`, o `gh auth setup-git` si gh ya tiene sesión); sin gh, su página oficial.
+  El sondeo nota solo cuando queda. Cotejo nunca guarda la contraseña.
+
 Se llega aquí el primer arranque y, después, con «Agentes» en el Inicio o con «¿Falta un
 agente?» en el diálogo «Añadir modelo» (`ver_equipo`).
 
@@ -119,6 +124,13 @@ class PestanaEquipo:
             cancelar.connect("clicked", lambda _b, t=trabajo: t.cancelar())
             self.equipo_cancelar[pieza.clave] = cancelar
             linea.append(cancelar)
+        elif pieza.clave == equipo.GIT and pieza.pide_sesion:
+            boton = con_mano(Gtk.Button(label="Conectar", valign=Gtk.Align.CENTER,
+                                        css_classes=["suggested-action"]))
+            etiquetar(boton, "Conectar git con tu cuenta de GitHub (abre una terminal)")
+            boton.connect("clicked", lambda *_: self.conectar_git())
+            self.equipo_sesion[pieza.clave] = boton
+            linea.append(boton)
         elif pieza.pide_sesion and pieza.clave in instalar_agentes.SESIONES:
             boton = con_mano(Gtk.Button(label="Iniciar sesión", valign=Gtk.Align.CENTER,
                                         css_classes=["suggested-action"]))
@@ -205,6 +217,27 @@ class PestanaEquipo:
         self.revisar_equipo(self.equipo_visto)
         return apertura
 
+    def conectar_git(self):
+        """GitHub CLI en una terminal para que git empuje sin pedir contraseña; sin gh, su
+        página. El sondeo nota solo cuando queda."""
+        apertura = instalar_agentes.conectar_git()
+        if apertura.como == "sin_gh":
+            self.abrir_pagina(equipo.PAGINAS["gh"])
+            self.equipo_notas[equipo.GIT] = (
+                "Para conectar git hace falta GitHub CLI: te abrí su página. Instálalo y vuelve "
+                "a tocar «Conectar».")
+        elif apertura.como == "terminal":
+            self.equipo_notas[equipo.GIT] = (
+                f"Abrí una terminal con «{apertura.comando}»: sigue los pasos ahí y en tu "
+                f"navegador (elige HTTPS y di que sí a autenticar git). Cotejo lo nota solo "
+                f"cuando termines.")
+        else:
+            self.equipo_notas[equipo.GIT] = (
+                f"No encontré una terminal que abrir. Abre una tú y escribe: {apertura.comando}"
+                f" (Cotejo lo nota solo cuando termines).")
+        self.revisar_equipo(self.equipo_visto)
+        return apertura
+
     def _linea_en_hilo(self, trabajo, _linea):
         GLib.idle_add(lambda: self._pintar_progreso(trabajo.clave) and False)
 
@@ -260,7 +293,7 @@ class PestanaEquipo:
         if visto is None or self.equipo_filas.get_root() is None:
             return
         if self.equipo_visto is None or _foto(visto) != _foto(self.equipo_visto):
-            for p in visto.agentes:
+            for p in visto.piezas:
                 if p.listo and p.clave in self.equipo_notas:
                     self.equipo_notas[p.clave] = f"{p.titulo} está listo."
             self.revisar_equipo(visto)

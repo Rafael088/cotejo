@@ -81,6 +81,15 @@ class PestanaEntrevista:
         fila_agente.append(self.ent_agente)
         fila_agente.append(self.ent_agente_pista)
         cuerpo.append(fila_agente)
+        # El modelo exacto del catálogo (`cotejo modelos`) para ese agente: sin elegir, el
+        # que el agente tendría por defecto (cotejo-v5ywpr).
+        self.ent_modelos = []            # `Nivel` del catálogo, en el orden del desplegable
+        self.ent_modelo = Gtk.DropDown(model=Gtk.StringList())
+        fila_modelo = Gtk.Box(spacing=px(ESPACIADO_SM))
+        fila_modelo.append(Gtk.Label(label="Con qué modelo", css_classes=["carta-descripcion"]))
+        fila_modelo.append(self.ent_modelo)
+        fila_modelo.append(Gtk.Label(label="del catálogo de Cotejo", css_classes=["dato"]))
+        cuerpo.append(fila_modelo)
 
         # Lo que se enviará, a la vista.
         self.ent_prompt = Gtk.TextView(editable=False, cursor_visible=False, monospace=True,
@@ -111,7 +120,8 @@ class PestanaEntrevista:
         self.ent_que_es.connect("changed", self._seguir_nombre)
         self.ent_carpeta.connect("changed", self._carpeta_a_mano)
         self.ent_que_hace.get_buffer().connect("changed", self._al_cambiar_entrevista)
-        self.ent_agente.connect("notify::selected", self._al_cambiar_entrevista)
+        self.ent_agente.connect("notify::selected", self._al_cambiar_agente)
+        self.ent_modelo.connect("notify::selected", self._al_cambiar_entrevista)
 
         ancho = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, halign=Gtk.Align.CENTER)
         ancho.set_size_request(px(640), -1)
@@ -153,6 +163,44 @@ class PestanaEntrevista:
         if not self.ent_agentes:
             return None
         return self.ent_agentes[min(self.ent_agente.get_selected(), len(self.ent_agentes) - 1)]
+
+    def definiciones_entrevista(self):
+        """El catálogo registrado (`cotejo modelos agregar`) que conoce el board."""
+        definiciones = getattr(self, "definiciones", None)
+        if definiciones is not None:
+            return definiciones
+        from enrutador import config as enrutador_config
+        try:
+            return enrutador_config.cargar().get("modelos") or []
+        except enrutador_config.ConfigInvalida:
+            return []
+
+    def llenar_modelos(self):
+        """Los modelos del agente elegido, con el suyo por defecto seleccionado."""
+        from enrutador import niveles
+        from .modelos import texto_de_modelo
+        cliente = self.agente_elegido()
+        definiciones = self.definiciones_entrevista()
+        self.ent_modelos = list(niveles.modelos_de(cliente, definiciones)) if cliente else []
+        self.ent_modelo.set_model(
+            Gtk.StringList.new([texto_de_modelo(n) for n in self.ent_modelos]))
+        self.ent_modelo.set_sensitive(bool(self.ent_modelos))
+        if not self.ent_modelos:
+            return
+        defecto = niveles.modelo_por_defecto(cliente, definiciones)
+        claves = [n.modelo for n in self.ent_modelos]
+        self.ent_modelo.set_selected(claves.index(defecto) if defecto in claves else 0)
+
+    def modelo_elegido(self):
+        """La clave del modelo elegido (`astra`, `sol`, `opus`…), o None sin agentes."""
+        if not self.ent_modelos:
+            return None
+        indice = min(self.ent_modelo.get_selected(), len(self.ent_modelos) - 1)
+        return self.ent_modelos[indice].modelo
+
+    def _al_cambiar_agente(self, *_):
+        self.llenar_modelos()
+        self._al_cambiar_entrevista()
 
     def respuestas_entrevista(self):
         """Lo que hay en el formulario ahora, como `inicio.Respuestas` (sin validar)."""
@@ -198,6 +246,7 @@ class PestanaEntrevista:
             "detectado" if nombres else
             "No encontré ningún agente de terminal. Instala uno (Claude Code, Codex, OpenCode "
             "o Gemini CLI) y vuelve a abrir esto.")
+        self.llenar_modelos()
 
     # --- las acciones ---------------------------------------------------------------------------
 
@@ -221,6 +270,7 @@ class PestanaEntrevista:
             return None
         try:
             estado = preparar.lanzar(r, cliente=self.agente_elegido(),
+                                     modelo=self.modelo_elegido(),
                                      al_terminar=lambda e: GLib.idle_add(
                                          self.preparacion_terminada, e))
         except preparar.NoSePuede as error:

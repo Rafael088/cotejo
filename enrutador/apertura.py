@@ -10,8 +10,9 @@ CotejoBoard (que la sigue en vivo). Nunca se abre una terminal (cotejo-9ybn1a).
 import shutil
 from pathlib import Path
 
+from tareas import ramas_pendientes
 from tareas.cli import ESQUEMA, ErrorCLI
-from . import clientes, config as cfg, conversacion, decision, maestro, modelos_vivos
+from . import clientes, config as cfg, conversacion, decision, maestro, modelos_vivos, niveles
 
 # Mismo valor que `verbos.LO_DIJO_UNA_PERSONA`: una persona lo dijo (override o asignación).
 LO_DIJO_UNA_PERSONA = ("override", "asignacion")
@@ -66,19 +67,30 @@ def _nombre(cotejo, proyecto):
 
 def armar(config, cotejo, humano, nivel, propios, proyecto, cliente, modelo, pedido):
     """Todo lo de un turno, sin lanzar nada."""
-    elegido = _cliente(cliente)
+    concreto = niveles.modelo_concreto(modelo, config.get("modelos"))
+    elegido = _cliente(concreto.cliente if concreto is not None else cliente)
     nombre = _nombre(cotejo, proyecto)
     if modelo is None:
         modelo = ((config.get("maestro") or {}).get("modelos") or {}).get(elegido.nombre, "")
+        concreto = niveles.modelo_concreto(modelo, config.get("modelos"))
+        if concreto is not None:
+            elegido = _cliente(concreto.cliente)
+            modelo = concreto.modelo
+    elif concreto is not None:
+        modelo = concreto.modelo
     pendientes = [t for t in cotejo.tareas(nombre, "pendiente") if t.get("proyecto") == nombre]
     filas = asignadas(config, humano, nivel, propios, pendientes)
     directorio = cfg.directorio_de(config, nombre) or cotejo.carpeta_de(nombre)
     directorio = str(directorio) if directorio else None
+    todas = list(pendientes)
+    for estado in ("en-curso", "por-validar", "hecha"):
+        todas.extend(t for t in cotejo.tareas(nombre, estado) if t.get("proyecto") == nombre)
+    ramas = ramas_pendientes.detectar(directorio, todas)
     escritura = conversacion.carpetas_de_escritura(
         carpeta_de_tareas(cotejo, directorio, pendientes))
     pedido = " ".join((pedido or "").split())
     prompt = maestro.instruccion(nombre, filas, directorio, pedido,
-                                 conversacion.leer(nombre)["turnos"])
+                                 conversacion.leer(nombre)["turnos"], ramas)
     try:
         argv, env, trabajo = conversacion.comando(config, elegido, modelo, prompt, directorio,
                                                   escritura)
@@ -86,7 +98,8 @@ def armar(config, cotejo, humano, nivel, propios, proyecto, cliente, modelo, ped
         raise ErrorCLI(str(error), "Elige otro agente para el maestro.") from error
     return {"esquema": ESQUEMA, "proyecto": nombre, "cliente": elegido.nombre,
             "titulo": elegido.titulo or elegido.nombre, "modelo": modelo,
-            "directorio": directorio, "asignadas": filas, "pedido": pedido, "prompt": prompt,
+            "directorio": directorio, "asignadas": filas, "ramas_pendientes": ramas,
+            "pedido": pedido, "prompt": prompt,
             "argv": argv, "env": env, "trabajo": str(trabajo) if trabajo else None,
             "escritura": escritura}
 
@@ -108,7 +121,7 @@ def hablar(preparado, proyecto, pedido, cliente=None, modelo=None, simular=False
         cliente = disponibles[0]
     hecho = armar(*preparado, proyecto, cliente, modelo, pedido)
     salida = {k: hecho[k] for k in ("esquema", "proyecto", "cliente", "titulo", "modelo",
-                                    "directorio", "asignadas", "pedido")}
+                                    "directorio", "asignadas", "ramas_pendientes", "pedido")}
     salida["comando"] = hecho["argv"]
     if simular:
         return dict(salida, prompt=hecho["prompt"], escritura=hecho["escritura"],
