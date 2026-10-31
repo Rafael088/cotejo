@@ -339,6 +339,11 @@ class SinFuente(PestanaInicio):
             real = shutil.which(nombre)
             if real:
                 (sistema / nombre).symlink_to(real)
+        # Si git puede empujar depende de /etc/gitconfig de la máquina (en el CI no hay helper):
+        # aquí siempre puede, salvo en las pruebas que digan otra cosa.
+        parche = mock.patch("tareas.equipo.puede_empujar", return_value="helper")
+        parche.start()
+        self.addCleanup(parche.stop)
         return {"HOME": str(self.casa), "XDG_DATA_HOME": str(self.casa / ".local" / "share"),
                 "PATH": f"{self.bin}{os.pathsep}{sistema}", "ANTHROPIC_API_KEY": "",
                 "CLAUDE_CODE_OAUTH_TOKEN": "", "OPENAI_API_KEY": "", "CODEX_HOME": "",
