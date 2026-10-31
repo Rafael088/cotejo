@@ -187,16 +187,19 @@ class IntegraSola(ConRepo):
                                                                     "repo": plan["repo"]}})
         self.assertTrue(revision.integrar_sola(nuevo)["integrada"])
 
-    def test_si_la_rama_pisaria_un_cambio_de_cotejo_git_se_niega_sin_tocar_nada(self):
+    def test_cotejo_incompatible_se_guarda_y_ofrece_resolver_el_conflicto(self):
         (self.r.worktree / ".cotejo").mkdir(exist_ok=True)
         self.r.trabajar(".cotejo/tareas.md", "# Tareas\n- [ ] del agente\n", "toca cotejo")
         _plan, resultado = self.aprobar()
         self.assertFalse(resultado["integrada"])
-        self.assertEqual(resultado["causa"], "pisaria")
+        self.assertEqual(resultado["causa"], "conflicto")
         self.assertEqual(resultado["archivos"], [".cotejo/tareas.md"])
         self.assertEqual((self.r.repo / ".cotejo" / "tareas.md").read_text(encoding="utf-8"),
                          "# Tareas\n- [x] hecha\n")
-        self.assertTrue(revision.aviso_inicio(resultado)["reintentar"])
+        self.assertEqual(git(self.r.repo, "show", "HEAD:.cotejo/tareas.md"),
+                         "# Tareas\n- [x] hecha")
+        self.assertTrue(revision.aviso_inicio(resultado)["agente"])
+        self.assertFalse(revision.aviso_inicio(resultado)["reintentar"])
 
     def test_ya_integrada_solo_borra_la_rama(self):
         _plan, resultado = self.aprobar()

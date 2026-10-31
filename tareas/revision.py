@@ -304,8 +304,8 @@ def _repo_principal(carpeta):
 def _sucios(repo):
     """Los archivos con cambios sin commitear del repo (sin los no seguidos), o None si git no
     contesta. `.cotejo/` no cuenta, en ningún proyecto: ahí escriben el board y los verbos
-    (mover una tarea reescribe `tareas.md`) y casi siempre está cambiado; si la rama también lo
-    toca, el propio merge se niega antes de empezar y no se pisa nada."""
+    (mover una tarea reescribe `tareas.md`) y casi siempre está cambiado. `integrar` guarda
+    esas fichas en un commit antes del merge para que tampoco bloqueen si la rama las toca."""
     codigo, salida, _ = _git(repo, "status", "--porcelain", "--untracked-files=no",
                              "--", ".", ":(exclude).cotejo")
     if codigo != 0:
@@ -385,12 +385,41 @@ def plan_integracion(tarea_id, entrega):
     return plan
 
 
+def _guardar_cotejo(repo, identidad):
+    """Guarda las fichas del maestro y del board antes del merge. Devuelve el error o None.
+
+    Incluye las nuevas, modificadas y borradas; respeta los archivos ignorados. El pathspec y
+    `--only` limitan el commit a `.cotejo/`, aunque hubiera algo más preparado en el índice.
+    Si el merge posterior choca, este commit se conserva: no se pierde el contexto local.
+    """
+    codigo, cambios, error = _git(repo, "status", "--porcelain", "--untracked-files=all",
+                                 "--", ".cotejo/")
+    if codigo != 0:
+        return error or "No pude leer los cambios de .cotejo/"
+    if not cambios:
+        return None
+    codigo, _, error = _git(repo, "add", "-A", "--", ".cotejo/")
+    if codigo != 0:
+        return error or "No pude preparar las fichas de .cotejo/"
+    # Puede quedar vacío si el índice tenía una versión distinta pero el archivo volvió a
+    # HEAD. En ese caso no hay nada que guardar ni que impediría el merge.
+    codigo, _, error = _git(repo, "diff", "--cached", "--quiet", "--", ".cotejo/")
+    if codigo == 0:
+        return None
+    if codigo != 1:
+        return error or "No pude comprobar las fichas preparadas de .cotejo/"
+    codigo, _, error = _git(repo, *identidad, "commit", "--only", "-m",
+                            "Cotejo: guardar fichas antes de integrar", "--", ".cotejo/")
+    return (error or "No pude guardar las fichas de .cotejo/") if codigo != 0 else None
+
+
 def integrar(plan):
     """Integra la rama del plan en su destino con un merge (`--no-ff`). `{integrada, ...}`.
 
     En los proyectos de quien programa solo se llama cuando la persona dijo que sí; en los del
-    Inicio, al aprobar (`integrar_sola`). Si hay conflicto, el merge se aborta y el repo queda
-    como estaba: integrar a medias es peor que no integrar. La rama no se borra aquí. `causa`
+    Inicio, al aprobar (`integrar_sola`). Guarda primero `.cotejo/`; si hay conflicto, aborta
+    el merge y conserva ese commit de fichas. La app queda como estaba y la rama no se borra.
+    `causa`
     dice por qué no se integró (`otra-rama`, `sucio` con `sucios`, `conflicto` con `archivos`,
     `pisaria` con `archivos`: git se negó antes de empezar, o `git`).
     """
@@ -410,12 +439,20 @@ def integrar(plan):
     if sucios is None or sucios:
         return {"integrada": False, "causa": "sucio", "sucios": sucios or [],
                 "motivo": f"{repo} tiene cambios sin commitear; no integré nada"}
+    for marca in ("MERGE_HEAD", "REBASE_HEAD", "CHERRY_PICK_HEAD"):
+        if _git(repo, "rev-parse", "--verify", "--quiet", marca)[0] == 0:
+            return {"integrada": False, "causa": "a-medias",
+                    "motivo": f"{repo} está en mitad de otra operación de git; no integré nada"}
     # Sin nombre o correo en git (quien no programa nunca los pone) el merge muere con
     # «Committer identity unknown»: se usa la de Cotejo solo para este commit, con `-c`, sin
     # tocar la config de nadie (como el commit inicial de `init`).
     identidad = []
     if _git(repo, "config", "user.name")[0] != 0 or _git(repo, "config", "user.email")[0] != 0:
         identidad = ["-c", "user.name=Cotejo", "-c", "user.email=cotejo@localhost"]
+    error = _guardar_cotejo(repo, identidad)
+    if error:
+        return {"integrada": False, "causa": "git",
+                "motivo": f"No pude guardar .cotejo/ antes de integrar ({error}); no integré nada"}
     # En inglés: el «would be overwritten» de git se lee para saber si se negó antes de empezar.
     codigo, _, error = _git(repo, *identidad, "merge", "--no-ff", "--no-edit", rama, tiempo=300,
                             entorno={"LC_ALL": "C"})
