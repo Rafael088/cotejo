@@ -37,7 +37,7 @@ def banda_falsa(proyectos=("A", "B")):
     falso = types.SimpleNamespace(seleccion=proyectos[0] if proyectos else app.comun.TODOS)
     falso.vigilar_teclas = lambda *a: None
     falso.poner_maestro = lambda: None
-    falso.poner_botones_flotantes = lambda: None
+    falso.poner_acciones_app = lambda: None
     falso.clave_chip_enfocado = lambda: None
     falso.proyectos_con_tareas = lambda: [types.SimpleNamespace(nombre=n, tareas=[])
                                           for n in proyectos]
@@ -113,7 +113,7 @@ def _tablero_falso(seleccion="A"):
     falso.pie_donar = lambda: Gtk.Label(label="cafe")
     falso.barra_maestro = lambda: Gtk.Box()
     falso.centrar_chip_activo = falso.poner_maestro = lambda *a, **k: None
-    falso.poner_botones_flotantes = lambda *a, **k: None
+    falso.poner_acciones_app = lambda *a, **k: None
     falso.pintar_columnas = lambda *a, **k: None
     for clave in ("A", "B", "C"):
         falso.botones_chip[clave] = types.SimpleNamespace(
