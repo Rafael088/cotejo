@@ -163,12 +163,16 @@ llano, y lo para con «Parar», al cerrar la ventana o por `atexit`; el log va a
 
 **Los modelos de todos los agentes** (v1.3.0, cotejo-qixs4j). `enrutador/modelos_vivos.py` dice
 qué agentes están **listos** (instalados y con sesión: solo mira sus credenciales en disco o su
-variable de entorno, nunca lanza el CLI) y qué modelos ofrece cada uno: `opencode models` y
-`codex debug models` se preguntan (caché en `<estado>/modelos/`, tope de segundos, y si fallan lo
-guardado o el respaldo); Claude y Gemini no listan y su lista son sus alias. Nada de eso gasta
-tokens. `niveles.DE_FABRICA` trae los de fábrica de los otros agentes (`gemini-pro|flash|flash-lite`
-por alias; `codex` y `opencode` = «el modelo que tenga por defecto», sin `-m`), que un registrado
-con la misma clave tapa; `niveles.grupos` arma «Asignar a» por agente y `niveles.del_cliente`
+variable de entorno, nunca lanza el CLI) y qué modelos ofrece cada uno: `opencode models`,
+`codex debug models` y su `~/.codex/models_cache.json` (que se lee antes, sin lanzar nada) se
+preguntan (caché en `<estado>/modelos/`, tope de segundos, y si fallan lo guardado o el respaldo);
+Claude y Gemini no listan y su lista son sus alias. Nada de eso gasta tokens.
+`niveles.DE_FABRICA` trae los de fábrica de los otros agentes (`gemini-pro|flash|flash-lite` por
+alias; `opencode` = «el modelo que tenga por defecto», sin `-m`; los cuatro modelos reales de
+Codex, `gpt-5.6-luna|terra|sol` y `gpt-6-astra`, con su nombre exacto), que un registrado con la
+misma clave tapa; los nombres viejos de Codex (`codex`, `codex-rapido`, `codex-fuerte`) siguen
+resolviendo por alias a luna/sol/astra (`niveles.ALIAS_DE_ANTES`); `niveles.grupos` arma
+«Asignar a» por agente y `niveles.del_cliente`
 traduce un tamaño al agente del proyecto sin abaratar. El agente del proyecto es `agente:` en
 `.cotejo/proyecto.md` (`origen.agente_de`), que pone `init` con `COTEJO_AGENTE` (lo añade
 `preparar.lanzar`); con él, lo que el enrutador decide por tamaño se propone con ese agente
