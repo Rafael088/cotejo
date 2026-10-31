@@ -147,6 +147,26 @@ class Preparar(unittest.TestCase):
         self.assertEqual(preparar.estado(salida["id"])["estado"], preparacion.LISTO)
         self.assertGreaterEqual(len(self.avisos), 2)  # al lanzar y al terminar
 
+    def test_un_modelo_del_catalogo_prepara_con_su_cliente_y_sus_argumentos(self):
+        # La interfaz manda un modelo concreto (`astra`) y el cliente sale de él, no del que
+        # estuviera elegido en el desplegable.
+        self.config["modelos"] = [
+            {"clave": "astra", "modelo_id": "gpt-6-astra", "cliente": "codex", "nivel": "n3",
+             "argumentos": ["-c", "model_reasoning_effort=high"]}]
+        self.config["motores"]["headless"]["clientes"] = {
+            "codex": {"comando": [sys.executable, str(self.script)]}}
+        self.modo("ok")
+        salida = preparar.lanzar(self.respuestas(), cliente="claude", modelo="astra",
+                                 config=self.config)
+        registro = preparacion.leer(salida["id"])
+        self.assertEqual(registro["cliente"], "codex")
+        self.assertEqual(registro["modelo"], "astra")
+        comando = registro["comando"]
+        self.assertIn("gpt-6-astra", comando)
+        self.assertIn(("-c", "model_reasoning_effort=high"),
+                      list(zip(comando, comando[1:])))
+        self.hilos[-1].join(20)
+
     def test_el_agente_corre_con_la_fuente_repo_por_entorno(self):
         _salida, hilo = self.lanzar("ok")
         hilo.join(20)
@@ -399,6 +419,21 @@ class Comando(unittest.TestCase):
     def test_sin_modelo_no_hay_bandera_vacia(self):
         self.assertEqual(clientes.de("opencode").argv_sin_interfaz("", "P"),
                          ["opencode", "run", "P"])
+
+    def test_modelos_del_catalogo_llevan_id_y_argumentos(self):
+        config = cfg._fundir(json.loads(json.dumps(cfg.DEFECTOS)), {
+            "modelos": [
+                {"clave": "astra", "modelo_id": "gpt-6-astra", "cliente": "codex",
+                 "nivel": "n3", "argumentos": ["-c", "model_reasoning_effort=high"]},
+                {"clave": "sol", "modelo_id": "gpt-5.6-sol", "cliente": "codex",
+                 "nivel": "n2", "argumentos": ["-c", "model_reasoning_effort=medium"]},
+            ]})
+        self.assertEqual(preparar.comando(config, clientes.de("codex"), "astra", "P")[:6],
+                         ["codex", "exec", "-m", "gpt-6-astra", "-c",
+                          "model_reasoning_effort=high"])
+        self.assertEqual(preparar.comando(config, clientes.de("codex"), "sol", "P")[:6],
+                         ["codex", "exec", "-m", "gpt-5.6-sol", "-c",
+                          "model_reasoning_effort=medium"])
 
 
 if __name__ == "__main__":
