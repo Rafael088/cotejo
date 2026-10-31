@@ -113,7 +113,7 @@ DEFECTO = POR_CLAVE["n2"]
 def personalizados(definiciones=()):
     """Construye niveles de modelos registrados en la config, sin modificar los integrados."""
     if all(isinstance(definicion, Nivel) for definicion in definiciones or ()):
-        return tuple(definiciones)
+        return tuple(definiciones or ())
     salida = []
     for definicion in definiciones or ():
         clave = str(definicion.get("clave", "")).strip().lower()
