@@ -182,7 +182,7 @@ class Banda:
             # Por defecto, un proyecto: ver 60 tareas de golpe es justo lo que Cotejo evita.
             self.seleccion = nombres[0] if nombres else TODOS
         self.poner_maestro()
-        self.poner_botones_flotantes()
+        self.poner_acciones_app()
 
         con_foco = self.clave_chip_enfocado()
         vaciar(self.chips)
@@ -234,7 +234,7 @@ class Banda:
                 otro.remove_css_class("activo")
         self.centrar_chip_activo()
         self.poner_maestro()
-        self.poner_botones_flotantes()
+        self.poner_acciones_app()
         self.pintar_columnas(entrando=True)
 
     def filas_banda(self, proyectos):
