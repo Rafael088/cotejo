@@ -22,6 +22,7 @@ import apoyo  # noqa: F401  (pone la raíz del repo en sys.path)
 import test_pestana_inicio as base
 from test_despacho_board import FALSO, FOTO_CON_HUECO, git
 from test_despacho_board import esperar as esperar_hilo
+from test_tarea_del_maestro import TEXTO as TEXTO_DEL_MAESTRO
 
 if base.HAY_GTK:
     from gi.repository import Gtk
@@ -108,6 +109,31 @@ class LanzarDesdeElBoard(base.PestanaInicio):
         return condicion()
 
     # --- las pruebas ------------------------------------------------------------------------
+
+    def test_primer_arrastre_tras_crear_desde_el_maestro_pregunta_y_lanza(self):
+        self.board.ver_pestana("tablero")
+        self.board.al_elegir_chip(self.board.botones_chip["Faro"])
+        with mock.patch.dict(os.environ, {"FALSO_CREAR": TEXTO_DEL_MAESTRO,
+                                          "FALSO_PROYECTO": "Faro",
+                                          "FALSO_RESPUESTA": "Apunté la web del menú."}), \
+                mock.patch("enrutador.clientes.shutil.which", return_value="/usr/bin/x"):
+            self.board.hablar_al_maestro("claude", "apunta la web del menú")
+            self.assertTrue(self.esperar(
+                lambda: self.board.panel_maestro.boton_parar is None, 15000))
+        # Sin refrescar desde la prueba: la respuesta del maestro recargó las cartas.
+        fila = self.fila("web ligera", "pendiente")
+        self.assertEqual(fila.tarea.agente, "")
+        ident = fila.tarea.id
+        self.arrastrar("web ligera")
+        dialogo = self.board.pregunta_modelo
+        self.assertIsNotNone(dialogo)
+        self.assertEqual(self.fila("web ligera", "pendiente").tarea.id, ident)
+        self.assertIsNone(lanzados.leer(ident))
+        dialogo.desplegable.set_selected(dialogo.modelos.index("haiku"))
+        with mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):
+            dialogo.response("lanzar")
+        self.assertEqual(self.fila("web ligera", "en-curso").tarea.agente, "haiku")
+        self.assertIsInstance(lanzados.leer(ident)["pid"], int)
 
     def test_arrastrar_una_tarea_con_modelo_la_lanza_y_el_registro_guarda_pid_y_log(self):
         self.board.ver_pestana("tablero")
