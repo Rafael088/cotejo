@@ -62,8 +62,12 @@ HUMANO = (
           r"console\.(anthropic|cloud)|google cloud console|search console)\b",
           "hay que autenticarse como tú en un sitio de terceros"),
     Regla("fisico", "n0",
+          # «Una web para el celular» es código. Lo humano es operar el teléfono,
+          # no nombrar la pantalla donde se usará (bug 7 de la revisión del 30-oct).
           r"\b(imprenta|imprimir|impres\w+|grabado|tarjetas? de muestra|pegatinas?|"
-          r"celular|acr[íi]lico|portaprecios|chip nfc|con el n[úu]mero real|"
+          r"(probar|comprobar|escanear|instalar|configurar)\b.{0,60}\b(en|con|desde) "
+          r"(el |un |mi |tu |su )?celular|acceso directo\b.{0,60}\bcelular|"
+          r"acr[íi]lico|portaprecios|chip nfc|con el n[úu]mero real|"
           r"escane\w+ impres\w+)\b",
           "pasa fuera de la pantalla: papel, plástico o un teléfono en la mano"),
     Regla("criterio_propio", "n0",
