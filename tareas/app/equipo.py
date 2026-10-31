@@ -2,7 +2,7 @@
 
 Se ve la primera vez (la fuente de repos sin ningún repo, `equipo.es_primer_arranque`) en vez del
 tablero, y dice qué agentes de terminal y qué git hay en esta máquina. Cada agente está **no
-instalado**, **falta iniciar sesión** o **listo** (cotejo-2j6un7):
+instalado**, **falta iniciar sesión**, **falta elegir modelo** o **listo** (cotejo-2j6un7):
 
 - No instalado y con instalador oficial que Cotejo sabe correr (Claude Code, Codex, OpenCode):
   **Instalar** lo corre (`instalar_agentes.instalar`) en un hilo, con sus líneas en vivo debajo
@@ -11,6 +11,8 @@ instalado**, **falta iniciar sesión** o **listo** (cotejo-2j6un7):
 - Falta iniciar sesión: **Iniciar sesión** abre el inicio de sesión oficial del agente
   (`instalar_agentes.iniciar_sesion`): en una terminal si lo pide, en segundo plano con su salida
   aquí si no (Codex), o el comando para copiar si no hay terminal.
+- Falta elegir modelo: dice que se abra el agente, se configure un proveedor y un modelo y se
+  vuelva a revisar. El maestro usa esta misma comprobación y no lo ofrece antes.
 - Antigravity CLI (lo que reemplaza a Gemini CLI en cuentas personales) se instala igual y
   recibe tareas, pero Cotejo no puede ver su sesión (vive en el llavero): instalado dice
   «Instalado» y «Abrir» lo abre en una terminal para entrar con la cuenta. Gemini CLI queda

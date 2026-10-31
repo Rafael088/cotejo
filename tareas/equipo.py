@@ -4,8 +4,9 @@ Es lo que enseña la pantalla del primer arranque (`tareas/app/equipo.py`): para
 (los de `enrutador.clientes`) y para git, si está en el PATH y, si no, la página oficial a la
 que llevar a la persona. Las direcciones están aquí, en un solo sitio.
 
-Cada agente está en uno de tres estados (cotejo-2j6un7): **no instalado**, **falta iniciar
-sesión** o **listo** (instalado y con sesión, `enrutador.modelos_vivos.sesion`). Los que tienen
+Cada agente está en uno de cuatro estados (cotejo-2j6un7): **no instalado**, **falta iniciar
+sesión**, **falta elegir modelo** o **listo** (lo decide `enrutador.modelos_vivos.estado`, igual
+que para el maestro). Los que tienen
 instalador oficial que Cotejo sabe correr (`instalar_agentes.INSTALADORES`) se instalan desde
 la pantalla; los demás (Gemini CLI, git) siguen enlazando a su página. A quien no tiene ninguno
 se le recomienda uno (`instalar_agentes.RECOMENDADO`).
