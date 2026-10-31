@@ -100,7 +100,7 @@ def hablar(preparado, proyecto, pedido, cliente=None, modelo=None, simular=False
     if olvidar and not simular:
         conversacion.olvidar(_nombre(preparado[1], proyecto))
     if not simular and cliente is None:
-        disponibles = modelos_vivos.utilizables(preguntar_cli=True, refrescar=True)
+        disponibles = modelos_vivos.utilizables(preguntar_cli=True)
         if not disponibles:
             aviso = modelos_vivos.aviso_sin_listos(preguntar_cli=True)
             mensaje, _, paso = aviso.partition(". ")
@@ -116,7 +116,7 @@ def hablar(preparado, proyecto, pedido, cliente=None, modelo=None, simular=False
     if shutil.which(hecho["argv"][0]) is None:
         raise ErrorCLI(f"«{hecho['cliente']}» no está instalado en esta máquina",
                        f"Los que sí: {', '.join(clientes.instalados()) or 'ninguno'}.")
-    actual = modelos_vivos.estado(hecho["cliente"], preguntar_cli=True, refrescar=True)
+    actual = modelos_vivos.estado(hecho["cliente"], preguntar_cli=True)
     if not actual.listo:
         mensaje, _, paso = actual.problema.partition(". ")
         raise ErrorCLI(mensaje.rstrip("."), paso.rstrip("."))

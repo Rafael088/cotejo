@@ -62,6 +62,7 @@ class Pieza:
     sesion_visible: bool = True   # Cotejo sabe si tiene sesión (Antigravity CLI no)
     modelos: tuple = ()           # lo que el maestro puede lanzar con este agente
     requiere_modelo: bool = False # git no usa modelos
+    modelos_conocidos: bool = True  # False si no se pudo preguntar al CLI
 
     @property
     def sesion_desconocida(self):
@@ -70,21 +71,21 @@ class Pieza:
 
     @property
     def listo(self):
-        return (self.instalado and (self.con_sesion or not self.sesion_visible)
-                and (not self.requiere_modelo or bool(self.modelos)))
+        con_sesion = self.con_sesion or not self.sesion_visible
+        tiene_modelos = bool(self.modelos) or not self.modelos_conocidos
+        return self.instalado and con_sesion and (not self.requiere_modelo or tiene_modelos)
 
     @property
     def estado(self):
         if not self.instalado:
             return NO_INSTALADO
-        if (self.requiere_modelo and not self.modelos
-                and (self.con_sesion or not self.sesion_visible)):
-            return SIN_MODELO
         if self.sesion_desconocida:
             return INSTALADO
         if not self.con_sesion:
             return SIN_SESION
-        return SIN_MODELO if self.requiere_modelo and not self.modelos else LISTO
+        if self.requiere_modelo and self.modelos_conocidos and not self.modelos:
+            return SIN_MODELO
+        return LISTO
 
     @property
     def pide_sesion(self):
@@ -92,8 +93,9 @@ class Pieza:
 
     @property
     def pide_modelo(self):
-        return (self.instalado and (self.con_sesion or not self.sesion_visible)
-                and self.requiere_modelo and not self.modelos)
+        return (self.instalado and not self.sesion_desconocida
+                and (self.con_sesion or not self.sesion_visible)
+                and self.requiere_modelo and self.modelos_conocidos and not self.modelos)
 
     @property
     def nota(self):
@@ -192,7 +194,7 @@ def revisar(preguntar_cli=False):
               instalable=inst.puede_instalar(actual.cliente),
               recomendado=ninguno and actual.cliente == inst.RECOMENDADO,
               sesion_visible=actual.sesion_visible, modelos=actual.modelos,
-              requiere_modelo=True)
+              requiere_modelo=True, modelos_conocidos=actual.modelos_conocidos)
         for actual in estados)
     return Equipo(agentes, Pieza(GIT, TITULO_GIT, hay_git(), PAGINAS[GIT]))
 

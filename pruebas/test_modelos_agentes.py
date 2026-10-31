@@ -188,10 +188,20 @@ class Listar(ConMaquinaFalsa):
     def test_sin_modelo_dice_el_paso_para_configurarlo(self):
         self.cli("opencode", NADA)
         self.con_sesion("opencode")
-        actual = modelos_vivos.estado("opencode")
+        actual = modelos_vivos.estado("opencode", preguntar_cli=True)
         self.assertFalse(actual.listo)
         self.assertIn("no encontré ningún modelo", actual.problema)
         self.assertIn("configura un proveedor y un modelo", actual.paso)
+
+    def test_un_cli_que_no_contesta_no_quita_el_agente(self):
+        # Un fallo pasajero al listar modelos no es «no tiene ninguno»: sigue ofreciéndose y,
+        # al lanzar, se vuelve a comprobar (cotejo-sclhtq).
+        self.cli("codex", ROTO)
+        self.con_sesion("codex")
+        actual = modelos_vivos.estado("codex", preguntar_cli=True)
+        self.assertTrue(actual.listo)
+        self.assertFalse(actual.modelos_conocidos)
+        self.assertIn("codex", modelos_vivos.utilizables(preguntar_cli=True))
 
     def test_opencode_y_codex_se_preguntan_al_cli(self):
         self.cli("opencode", OPENCODE)
@@ -230,8 +240,10 @@ class Listar(ConMaquinaFalsa):
         self.assertEqual(modelos_vivos.listar("opencode", tope=1), [])  # sin instalar tampoco
 
     def test_leer_codex_aguanta_basura(self):
-        self.assertEqual(modelos_vivos.leer_codex("no es json"), [])
-        self.assertEqual(modelos_vivos.leer_codex('{"models": 3}'), [])
+        # Lo que no se entiende es «no pude preguntar» (`None`), no «no hay modelos» (`[]`).
+        self.assertIsNone(modelos_vivos.leer_codex("no es json"))
+        self.assertIsNone(modelos_vivos.leer_codex('{"models": 3}'))
+        self.assertEqual(modelos_vivos.leer_codex('{"models": []}'), [])
         self.assertEqual(modelos_vivos.leer_opencode("Error: algo\nproveedor/m\n\n"),
                          ["proveedor/m"])
 

@@ -204,8 +204,8 @@ class Maestro(PruebaDeEnrutador):
         with mock.patch("enrutador.clientes.instalados",
                         return_value=["opencode", "gemini"]), \
                 mock.patch("enrutador.modelos_vivos.sesion", return_value=True), \
-                mock.patch("enrutador.modelos_vivos.listar",
-                           side_effect=lambda n, **_k: [] if n == "opencode" else ["auto"]):
+                mock.patch("enrutador.modelos_vivos.preguntar",
+                           side_effect=lambda n, *_a, **_k: [] if n == "opencode" else None):
             codigo, datos = self.correr("maestro", "--clientes")
         self.assertEqual(codigo, verbos.OK)
         self.assertEqual(datos["instalados"], ["opencode", "gemini"])

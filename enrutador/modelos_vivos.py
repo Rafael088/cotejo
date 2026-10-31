@@ -264,14 +264,17 @@ def leer_opencode(salida):
 
 
 def leer_codex(salida):
-    """`codex debug models`: los de `visibility: list`, por su `priority`."""
+    """`codex debug models`: los de `visibility: list`, por su `priority`.
+
+    `None` si la salida no se entiende: no es lo mismo «no tiene ningún modelo» que «no pude
+    preguntar», y solo lo primero debe dejar al agente fuera del maestro."""
     try:
         datos = json.loads(salida)
     except ValueError:
-        return []
+        return None
     lista = datos.get("models") if isinstance(datos, dict) else datos
     if not isinstance(lista, list):
-        return []
+        return None
     visibles = [m for m in lista if isinstance(m, dict) and m.get("slug")
                 and m.get("visibility", "list") == "list"]
     visibles.sort(key=lambda m: m.get("priority") if isinstance(m.get("priority"), int) else 999)
@@ -310,7 +313,7 @@ def preguntar(nombre, tope=TOPE):
         return None
     if hecho.returncode != 0:
         return None
-    return LECTORES[nombre](hecho.stdout) or None
+    return LECTORES[nombre](hecho.stdout)
 
 
 def en_cache(nombre):
@@ -321,18 +324,33 @@ def en_cache(nombre):
     return list(RESPALDO.get(nombre, ()))
 
 
+def _modelos(nombre, preguntar_cli=False, refrescar=False, tope=TOPE):
+    """`(modelos, conocido)`: lo que ofrece este agente y si Cotejo lo sabe de verdad.
+
+    «No lo sé» (el CLI falló, tardó o contestó algo que no se entiende) no es «no tiene
+    ninguno»: solo lo segundo impide ofrecerlo, porque un fallo pasajero no debe dejar sin
+    maestro a quien sí puede trabajar (`estado`)."""
+    guardado = _leer_guardado(nombre)
+    fresco = bool(guardado and guardado["modelos"]
+                  and time.time() - float(guardado.get("en") or 0) < CADUCA)
+    if fresco and not refrescar:
+        return list(guardado["modelos"]), True
+    if not preguntar_cli:
+        return en_cache(nombre), fresco
+    if nombre not in PREGUNTA:
+        return list(RESPALDO.get(nombre, ())), True
+    vivos = preguntar(nombre, tope)
+    if vivos is not None:
+        if vivos:
+            _guardar(nombre, vivos)
+        return list(vivos), True
+    return en_cache(nombre), fresco
+
+
 def listar(nombre, refrescar=False, tope=TOPE):
     """Los modelos de este agente: lo guardado si es reciente, si no se le pregunta al CLI (y
     se guarda), y si no contesta, `en_cache`. `refrescar` salta lo guardado."""
-    guardado = _leer_guardado(nombre)
-    if (not refrescar and guardado and guardado["modelos"]
-            and time.time() - float(guardado.get("en") or 0) < CADUCA):
-        return list(guardado["modelos"])
-    vivos = preguntar(nombre, tope)
-    if vivos:
-        _guardar(nombre, vivos)
-        return vivos
-    return en_cache(nombre)
+    return _modelos(nombre, preguntar_cli=True, refrescar=refrescar, tope=tope)[0]
 
 
 @dataclass(frozen=True)
@@ -345,10 +363,15 @@ class EstadoAgente:
     sesion: bool
     sesion_visible: bool
     modelos: tuple
+    modelos_conocidos: bool = False
 
     @property
     def listo(self):
-        return self.instalado and (self.sesion or not self.sesion_visible) and bool(self.modelos)
+        """Instalado, con sesión (o sin forma de verla) y con modelos cuando se sabe que no
+        tiene ninguno. Un «no pude preguntar» no lo deja fuera."""
+        con_sesion = self.sesion or not self.sesion_visible
+        tiene_modelos = bool(self.modelos) or not self.modelos_conocidos
+        return self.instalado and con_sesion and tiene_modelos
 
     @property
     def paso(self):
@@ -383,10 +406,10 @@ def estado(nombre, preguntar_cli=False, refrescar=False):
     visible = sesion_visible(nombre)
     con_sesion = instalado and sesion(nombre, preguntar_cli=preguntar_cli)
     puede_mirar_modelos = instalado and (con_sesion or not visible)
-    modelos = ((listar(nombre, refrescar=refrescar) if preguntar_cli else en_cache(nombre))
-               if puede_mirar_modelos else [])
+    modelos, conocidos = (_modelos(nombre, preguntar_cli=preguntar_cli, refrescar=refrescar)
+                          if puede_mirar_modelos else ([], False))
     return EstadoAgente(nombre, cliente.titulo or nombre, instalado, con_sesion, visible,
-                        tuple(modelos))
+                        tuple(modelos), bool(conocidos))
 
 
 def estados(preguntar_cli=False, refrescar=False):
@@ -419,6 +442,7 @@ def resumen(refrescar=False, preguntar_cli=True):
                        "sesion_visible": actual.sesion_visible, "listo": actual.listo,
                        "problema": actual.problema,
                        "lista_el_cli": actual.cliente in PREGUNTA,
+                       "modelos_conocidos": actual.modelos_conocidos,
                        "modelos": list(actual.modelos)})
     return salida
 

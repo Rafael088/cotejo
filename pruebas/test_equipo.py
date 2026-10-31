@@ -15,12 +15,14 @@ def revisar(agentes, git=True, sin_sesion=(), sin_modelo=()):
     """Sin mirar la máquina: `agentes` instalados, todos con sesión salvo `sin_sesion`."""
     with mock.patch("enrutador.clientes.instalados", return_value=list(agentes)), \
             mock.patch("enrutador.modelos_vivos.sesion", lambda n, **_: n not in sin_sesion), \
+            mock.patch("enrutador.modelos_vivos.preguntar",
+                       lambda n, *_a, **_k: [] if n in sin_modelo else None), \
             mock.patch("enrutador.modelos_vivos.en_cache",
                        lambda n: [] if n in sin_modelo else ["modelo"]), \
             mock.patch("tareas.instalar_agentes.sumar_al_path", return_value=[]), \
             mock.patch("tareas.instalar_agentes.instalado", return_value=False), \
             mock.patch("tareas.equipo.hay_git", return_value=git):
-        return equipo.revisar()
+        return equipo.revisar(preguntar_cli=True)
 
 
 class Equipo(unittest.TestCase):
