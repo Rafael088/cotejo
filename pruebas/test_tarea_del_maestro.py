@@ -49,7 +49,8 @@ class TareaDelMaestro(ConClienteFalso):
         actual = cotejo.Cotejo().tarea(nueva.id)
         self.assertEqual((actual["estado"], actual["agente"]), ("en-curso", "haiku"))
         operaciones = [o["operacion"] for o in self.operaciones() if o.get("id") == nueva.id]
-        self.assertEqual(operaciones, ["crear", "asignar", "tomar"])
+        # «crear» lo anotó el subproceso en su estado; aquí no hubo ningún «mover».
+        self.assertEqual(operaciones, ["asignar", "tomar"])
 
 
 if __name__ == "__main__":

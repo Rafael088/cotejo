@@ -130,8 +130,9 @@ class LanzarDesdeElBoard(base.PestanaInicio):
         self.assertEqual(self.fila("web ligera", "pendiente").tarea.id, ident)
         self.assertIsNone(lanzados.leer(ident))
         dialogo.desplegable.set_selected(dialogo.modelos.index("haiku"))
+        dialogo.force_close()
         with mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):
-            dialogo.response("lanzar")
+            self.board.al_responder_modelo(dialogo, "lanzar", fila.proyecto, fila.tarea)
         self.assertEqual(self.fila("web ligera", "en-curso").tarea.agente, "haiku")
         self.assertIsInstance(lanzados.leer(ident)["pid"], int)
 
