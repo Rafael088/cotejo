@@ -145,7 +145,7 @@ def comando(config, cliente, modelo, prompt, directorio, escritura):
     tiene que poder escribir (`carpetas_de_escritura`). Lo que pone la persona en
     `enrutador.maestro.argumentos_extra.<cliente>` solo añade; los permisos de aquí van siempre.
     """
-    from . import preparar
+    from . import niveles, preparar
     propios = preparar._propios(config, cliente)
     extra = list(propios.get("argumentos_extra") or ())
     extra += list(((config.get("maestro") or {}).get("argumentos_extra") or {})
@@ -172,7 +172,13 @@ def comando(config, cliente, modelo, prompt, directorio, escritura):
             {"GEMINI_CLI_TRUST_WORKSPACE": "true"})
     elif cliente.nombre == "antigravity":
         extra += cliente.permisos(escritura)[0] + ["--dangerously-skip-permissions"]
-    argv = cliente.argv_sin_interfaz(cliente.modelo_de(modelo or "", ""), prompt,
+    concreto = niveles.modelo_concreto(modelo, config.get("modelos"))
+    if concreto is not None and concreto.cliente == cliente.nombre:
+        modelo_cliente = cliente.modelo_de(concreto.modelo, concreto.modelo_id)
+        extra += list(concreto.argumentos)
+    else:
+        modelo_cliente = cliente.modelo_de(modelo or "", "")
+    argv = cliente.argv_sin_interfaz(modelo_cliente, prompt,
                                      comando=propios.get("comando"), extra=extra)
     if cliente.nombre == "antigravity":
         hay, motivo = sandbox.disponible_bwrap()

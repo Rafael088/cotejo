@@ -400,6 +400,21 @@ class Comando(unittest.TestCase):
         self.assertEqual(clientes.de("opencode").argv_sin_interfaz("", "P"),
                          ["opencode", "run", "P"])
 
+    def test_modelos_del_catalogo_llevan_id_y_argumentos(self):
+        config = cfg._fundir(json.loads(json.dumps(cfg.DEFECTOS)), {
+            "modelos": [
+                {"clave": "astra", "modelo_id": "gpt-6-astra", "cliente": "codex",
+                 "nivel": "n3", "argumentos": ["-c", "model_reasoning_effort=high"]},
+                {"clave": "sol", "modelo_id": "gpt-5.6-sol", "cliente": "codex",
+                 "nivel": "n2", "argumentos": ["-c", "model_reasoning_effort=medium"]},
+            ]})
+        self.assertEqual(preparar.comando(config, clientes.de("codex"), "astra", "P")[:6],
+                         ["codex", "exec", "-m", "gpt-6-astra", "-c",
+                          "model_reasoning_effort=high"])
+        self.assertEqual(preparar.comando(config, clientes.de("codex"), "sol", "P")[:6],
+                         ["codex", "exec", "-m", "gpt-5.6-sol", "-c",
+                          "model_reasoning_effort=medium"])
+
 
 if __name__ == "__main__":
     unittest.main()

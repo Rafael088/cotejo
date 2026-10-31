@@ -223,6 +223,20 @@ def por_nombre(nombre, extras=(), alias_persona=None):
         por_modelo.get(nombre)
 
 
+def modelo_concreto(nombre, definiciones=()):
+    """Resuelve una clave del catálogo a su destino ejecutable.
+
+    A diferencia de :func:`por_nombre`, los niveles abstractos ``n1``/``n2``/``n3`` no son
+    elecciones de modelo para una interfaz: sus alias históricos sí (haiku/sonnet/opus). Un
+    nombre desconocido devuelve ``None`` para conservar la compatibilidad con configuraciones
+    antiguas que guardaban directamente lo que entiende el cliente.
+    """
+    nivel = por_nombre(nombre, definiciones)
+    if nivel in NIVELES and (nombre or "").strip().lower() in POR_CLAVE:
+        return None
+    return nivel if nivel is not None and nivel.despachable else None
+
+
 def _instalado(cliente):
     from . import clientes
     return clientes.esta_instalado(cliente)

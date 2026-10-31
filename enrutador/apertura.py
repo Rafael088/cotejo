@@ -11,7 +11,7 @@ import shutil
 from pathlib import Path
 
 from tareas.cli import ESQUEMA, ErrorCLI
-from . import clientes, config as cfg, conversacion, decision, maestro
+from . import clientes, config as cfg, conversacion, decision, maestro, niveles
 
 # Mismo valor que `verbos.LO_DIJO_UNA_PERSONA`: una persona lo dijo (override o asignación).
 LO_DIJO_UNA_PERSONA = ("override", "asignacion")
@@ -66,10 +66,17 @@ def _nombre(cotejo, proyecto):
 
 def armar(config, cotejo, humano, nivel, propios, proyecto, cliente, modelo, pedido):
     """Todo lo de un turno, sin lanzar nada."""
-    elegido = _cliente(cliente)
+    concreto = niveles.modelo_concreto(modelo, config.get("modelos"))
+    elegido = _cliente(concreto.cliente if concreto is not None else cliente)
     nombre = _nombre(cotejo, proyecto)
     if modelo is None:
         modelo = ((config.get("maestro") or {}).get("modelos") or {}).get(elegido.nombre, "")
+        concreto = niveles.modelo_concreto(modelo, config.get("modelos"))
+        if concreto is not None:
+            elegido = _cliente(concreto.cliente)
+            modelo = concreto.clave
+    elif concreto is not None:
+        modelo = concreto.clave
     pendientes = [t for t in cotejo.tareas(nombre, "pendiente") if t.get("proyecto") == nombre]
     filas = asignadas(config, humano, nivel, propios, pendientes)
     directorio = cfg.directorio_de(config, nombre) or cotejo.carpeta_de(nombre)
