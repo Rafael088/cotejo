@@ -359,7 +359,12 @@ aparte: la respuesta de Codex es su stdout). La conversación de cada proyecto v
 `<estado>/maestro/<proyecto>.json` y viaja entera, recortada (`TURNOS_DE_MEMORIA`), en cada turno:
 no todos los clientes documentan cómo retomar su sesión sin interfaz. Un hilo espera el turno, lo
 anota con lo que propuso repartir y el board repinta y refresca (lo apuntado sale en el tablero);
-un turno con el proceso muerto se cierra al leer. Permisos por cliente en `conversacion.comando`:
+un turno con el proceso muerto se cierra al leer. Antes de armar la instrucción,
+`tareas/ramas_pendientes.py` compara las ramas `cotejo/*` de las tareas del proyecto con `HEAD` y
+le da al maestro las que aún tienen commits fuera, con su columna y el motivo correspondiente.
+Así una app vacía no se confunde con trabajo inexistente ni se manda rehacer lo que espera
+entrega, aprobación o integración. Las ramas históricas sin tarea en ese tablero no se mezclan.
+Permisos por cliente en `conversacion.comando`:
 Claude `--allowedTools Bash(cotejo:*)`, `Edit`/`Write` vedados y `--setting-sources user`; Codex
 `workspace-write` con la carpeta de las tareas como directorio de trabajo y la de estado (el código
 queda en solo lectura); OpenCode `edit: deny` y `bash` todo `deny` salvo `cotejo`, sin MCP ni
