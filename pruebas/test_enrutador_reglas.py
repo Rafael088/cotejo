@@ -53,6 +53,24 @@ class Evaluacion(unittest.TestCase):
 
 
 class FalsosVetos(unittest.TestCase):
+    def test_una_web_para_el_celular_es_codigo(self):
+        for texto in (
+                "Crear la web ligera que muestre el menú en el celular, leyendo los datos "
+                "del archivo JSON (HTML, CSS y JS; sin backend)",
+                "Adaptar el formulario para que se vea bien en el celular",
+                "Corregir el menú de navegación de la web para celular"):
+            with self.subTest(texto=texto):
+                self.assertTrue(decision.decidir(texto).despachable)
+
+    def test_operar_el_celular_sigue_siendo_de_una_persona(self):
+        for texto in (
+                "Dejar los dos formularios como acceso directo en la pantalla de inicio del celular",
+                "Probar el menú en mi celular",
+                "Escanear el QR con el celular",
+                "Instalar la aplicación en el celular"):
+            with self.subTest(texto=texto):
+                self.assertFalse(decision.decidir(texto).despachable)
+
     """Palabras que vetaban a una persona en tareas que son código (cotejo-n9mou2, sacadas del
     planning de Agent Debate). Y las mismas palabras en su sentido de siempre, que siguen
     vetando."""
