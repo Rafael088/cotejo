@@ -174,6 +174,25 @@ class SesionEnElLlavero(ConMaquinaFalsa):
 
 
 class Listar(ConMaquinaFalsa):
+    def test_la_misma_comprobacion_exige_sesion_y_modelo_para_el_maestro(self):
+        self.cli("gemini")
+        sin_sesion = modelos_vivos.estado("gemini")
+        self.assertFalse(sin_sesion.listo)
+        self.assertIn("inicia sesión", sin_sesion.paso)
+        self.con_sesion("gemini")
+        listo = modelos_vivos.estado("gemini")
+        self.assertTrue(listo.listo)
+        self.assertIn("auto", listo.modelos)
+        self.assertIn("gemini", modelos_vivos.utilizables())
+
+    def test_sin_modelo_dice_el_paso_para_configurarlo(self):
+        self.cli("opencode", NADA)
+        self.con_sesion("opencode")
+        actual = modelos_vivos.estado("opencode")
+        self.assertFalse(actual.listo)
+        self.assertIn("no encontré ningún modelo", actual.problema)
+        self.assertIn("configura un proveedor y un modelo", actual.paso)
+
     def test_opencode_y_codex_se_preguntan_al_cli(self):
         self.cli("opencode", OPENCODE)
         self.cli("codex", CODEX)

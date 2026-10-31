@@ -116,7 +116,8 @@ class Conversacion(PruebaDeEnrutador):
     def test_un_cliente_que_contesta_en_texto_plano_tambien_vale(self):
         with mock.patch.dict(os.environ, {"FALSO_PLANO": "1", "FALSO_RESPUESTA": "Hola, soy el"
                                           " maestro.", "FALSO_CREAR": "Algo nuevo",
-                                          "FALSO_PROYECTO": "Uno"}):
+                                          "FALSO_PROYECTO": "Uno"}), \
+                mock.patch("enrutador.modelos_vivos.listar", return_value=["gpt-prueba"]):
             self.escribir_config({
                 "proyectos": {"Uno": str(self.repo)},
                 "motores": {"headless": {"clientes": {"codex": {

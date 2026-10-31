@@ -37,6 +37,7 @@ import shutil
 import signal
 import subprocess
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 from tareas import rutas
@@ -334,21 +335,91 @@ def listar(nombre, refrescar=False, tope=TOPE):
     return en_cache(nombre)
 
 
+@dataclass(frozen=True)
+class EstadoAgente:
+    """Una sola respuesta para Inicio/Ajustes y para el maestro."""
+
+    cliente: str
+    titulo: str
+    instalado: bool
+    sesion: bool
+    sesion_visible: bool
+    modelos: tuple
+
+    @property
+    def listo(self):
+        return self.instalado and (self.sesion or not self.sesion_visible) and bool(self.modelos)
+
+    @property
+    def paso(self):
+        """Qué tiene que hacer la persona para que el agente llegue a estar listo."""
+        if not self.instalado:
+            return f"Instala {self.titulo} desde Ajustes y pulsa «Revisar otra vez»"
+        if self.sesion_visible and not self.sesion:
+            return (f"Abre {self.titulo}, inicia sesión con tu cuenta y pulsa "
+                    "«Revisar otra vez»")
+        if not self.modelos:
+            return (f"Abre {self.titulo}, configura un proveedor y un modelo, y pulsa "
+                    "«Revisar otra vez»")
+        return ""
+
+    @property
+    def problema(self):
+        if self.listo:
+            return ""
+        if not self.instalado:
+            falta = "no está instalado"
+        elif self.sesion_visible and not self.sesion:
+            falta = "está instalado, pero falta iniciar sesión"
+        else:
+            falta = "tiene sesión, pero no encontré ningún modelo disponible"
+        return f"{self.titulo} {falta}. {self.paso}."
+
+
+def estado(nombre, preguntar_cli=False, refrescar=False):
+    """Estado utilizable de un agente; nunca ofrece al maestro algo que no puede lanzar."""
+    cliente = clientes.de(nombre)
+    instalado = nombre in clientes.instalados()
+    visible = sesion_visible(nombre)
+    con_sesion = instalado and sesion(nombre, preguntar_cli=preguntar_cli)
+    puede_mirar_modelos = instalado and (con_sesion or not visible)
+    modelos = ((listar(nombre, refrescar=refrescar) if preguntar_cli else en_cache(nombre))
+               if puede_mirar_modelos else [])
+    return EstadoAgente(nombre, cliente.titulo or nombre, instalado, con_sesion, visible,
+                        tuple(modelos))
+
+
+def estados(preguntar_cli=False, refrescar=False):
+    """Estado de todos los agentes conocidos, en el orden estable de la interfaz."""
+    return [estado(nombre, preguntar_cli=preguntar_cli, refrescar=refrescar)
+            for nombre in clientes.CLIENTES]
+
+
+def utilizables(preguntar_cli=False, refrescar=False):
+    """Los que Inicio/Ajustes y el maestro consideran listos, con la misma comprobación."""
+    return [actual.cliente for actual in estados(preguntar_cli, refrescar) if actual.listo]
+
+
+def aviso_sin_listos(preguntar_cli=False):
+    """Por qué no hay maestro, priorizando lo que ya está instalado sobre instalar otro."""
+    vistos = estados(preguntar_cli=preguntar_cli)
+    pendiente = next((e for e in vistos if e.instalado and not e.listo), None)
+    if pendiente:
+        return pendiente.problema
+    return clientes.SIN_AGENTE_TEXTO
+
+
 def resumen(refrescar=False, preguntar_cli=True):
     """Para la CLI (`cotejo modelos vivos`): por cada agente conocido, si está instalado, si
     tiene sesión y sus modelos (en vivo o, con `preguntar_cli=False`, lo guardado)."""
-    puestos = set(clientes.instalados())
     salida = []
-    for nombre, cliente in clientes.CLIENTES.items():
-        instalado = nombre in puestos
-        con_sesion = instalado and sesion(nombre, preguntar_cli=preguntar_cli)
-        visible = sesion_visible(nombre)
-        modelos = ((listar(nombre, refrescar) if preguntar_cli else en_cache(nombre))
-                   if con_sesion or (instalado and not visible) else [])
-        salida.append({"cliente": nombre, "titulo": cliente.titulo or nombre,
-                       "instalado": instalado, "sesion": con_sesion,
-                       "sesion_visible": visible,
-                       "lista_el_cli": nombre in PREGUNTA, "modelos": modelos})
+    for actual in estados(preguntar_cli=preguntar_cli, refrescar=refrescar):
+        salida.append({"cliente": actual.cliente, "titulo": actual.titulo,
+                       "instalado": actual.instalado, "sesion": actual.sesion,
+                       "sesion_visible": actual.sesion_visible, "listo": actual.listo,
+                       "problema": actual.problema,
+                       "lista_el_cli": actual.cliente in PREGUNTA,
+                       "modelos": list(actual.modelos)})
     return salida
 
 

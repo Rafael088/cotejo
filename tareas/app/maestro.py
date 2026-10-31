@@ -33,16 +33,16 @@ class Maestro:
         elegido); enviar es del botón o de Enter, nunca de elegir: un desplegable no debería
         lanzar un agente sin que se pulse «Enviar».
         """
-        from enrutador import clientes
+        from enrutador import clientes, modelos_vivos
         caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
                        margin_top=px(ESPACIADO_SM), margin_bottom=px(ESPACIADO_SM),
                        margin_start=px(ESPACIADO_SM), margin_end=px(ESPACIADO_SM))
         popover = boton.get_popover()
         caja.append(Gtk.Label(label="EL MAESTRO HABLA CON", xalign=0,
                               css_classes=["menu-titulo"]))
-        instalados = clientes.instalados()
-        actual = self.cliente_del_maestro(instalados)
-        for nombre in instalados:
+        disponibles = modelos_vivos.utilizables()
+        actual = self.cliente_del_maestro(disponibles)
+        for nombre in disponibles:
             fila = Gtk.Box(spacing=px(ESPACIADO_MD))
             fila.append(icono("agente", 15))
             fila.append(Gtk.Label(label=clientes.CLIENTES[nombre].titulo or nombre, xalign=0,
@@ -54,8 +54,8 @@ class Maestro:
             opcion.connect("clicked",
                            lambda _b, n=nombre: self.elegir_cliente_maestro(n, popover))
             caja.append(opcion)
-        if not instalados:
-            caja.append(Gtk.Label(label=clientes.SIN_AGENTE_TEXTO, xalign=0, wrap=True,
+        if not disponibles:
+            caja.append(Gtk.Label(label=modelos_vivos.aviso_sin_listos(), xalign=0, wrap=True,
                                   max_width_chars=36, css_classes=["menu-titulo"]))
         popover.set_child(caja)
 
@@ -65,12 +65,12 @@ class Maestro:
         popover.popdown()
         self.poner_maestro()            # la ayuda del botón dice con cuál va a hablar
 
-    def cliente_del_maestro(self, instalados):
-        """El último agente elegido para el maestro, si sigue instalado; si no, el primero."""
+    def cliente_del_maestro(self, disponibles):
+        """El último agente elegido si sigue listo; si no, el primer agente listo."""
         recordado = comun.cargar_board().get("cliente_maestro")
-        if recordado in instalados:
+        if recordado in disponibles:
             return recordado
-        return instalados[0] if instalados else None
+        return disponibles[0] if disponibles else None
 
     def barra_maestro(self):
         """El maestro en el pie: lo que se le dice y un solo botón para enviarlo.
@@ -111,10 +111,10 @@ class Maestro:
     # --- hablar ---------------------------------------------------------------------------------
 
     def al_ejecutar_maestro(self, *_args):
-        from enrutador import clientes
-        instalados = clientes.instalados()
-        if not instalados:
-            self.aviso(clientes.SIN_AGENTE_TEXTO, segundos=SEGUNDOS_SIN_AGENTE)
+        from enrutador import modelos_vivos
+        disponibles = modelos_vivos.utilizables()
+        if not disponibles:
+            self.aviso(modelos_vivos.aviso_sin_listos(), segundos=SEGUNDOS_SIN_AGENTE)
             return
         texto = " ".join(self.entrada_maestro.get_text().split())
         if not texto:
@@ -123,7 +123,7 @@ class Maestro:
             else:
                 self.ver_conversacion()
             return
-        self.hablar_al_maestro(self.cliente_del_maestro(instalados), texto)
+        self.hablar_al_maestro(self.cliente_del_maestro(disponibles), texto)
 
     def hablar_al_maestro(self, cliente, texto):
         """Un mensaje al maestro del proyecto elegido. Lo escrito solo se borra si salió: si
@@ -246,8 +246,9 @@ class Maestro:
         de_uno = self.seleccion != TODOS and not sin_fuente
         for control in (self.boton_maestro, self.entrada_maestro):
             control.set_sensitive(de_uno)
-        from enrutador import clientes
-        sin_agente = not clientes.instalados()
+        from enrutador import clientes, modelos_vivos
+        disponibles = modelos_vivos.utilizables()
+        sin_agente = not disponibles
         con_texto = bool(self.entrada_maestro.get_text().strip())
         self.boton_maestro.set_label("Enviar" if con_texto else "Conversación")
         if con_texto:
@@ -259,9 +260,9 @@ class Maestro:
         elif not de_uno:
             ayuda = "Elige un proyecto para hablar con su maestro"
         elif sin_agente:
-            ayuda = clientes.SIN_AGENTE_TEXTO   # por qué el botón no hace nada
+            ayuda = modelos_vivos.aviso_sin_listos()   # por qué el botón no hace nada
         else:
-            titulo = clientes.de(self.cliente_del_maestro(clientes.instalados())).titulo
+            titulo = clientes.de(self.cliente_del_maestro(disponibles)).titulo
             ayuda = (f"Enviárselo al maestro, que habla con {titulo}" if con_texto else
                      "Ver la conversación con el maestro de este proyecto")
         self.boton_maestro.set_tooltip_text(ayuda)

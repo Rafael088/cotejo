@@ -11,10 +11,12 @@ from tareas import equipo
 from tareas.fuentes.repo import Repo
 
 
-def revisar(agentes, git=True, sin_sesion=()):
+def revisar(agentes, git=True, sin_sesion=(), sin_modelo=()):
     """Sin mirar la máquina: `agentes` instalados, todos con sesión salvo `sin_sesion`."""
     with mock.patch("enrutador.clientes.instalados", return_value=list(agentes)), \
             mock.patch("enrutador.modelos_vivos.sesion", lambda n, **_: n not in sin_sesion), \
+            mock.patch("enrutador.modelos_vivos.en_cache",
+                       lambda n: [] if n in sin_modelo else ["modelo"]), \
             mock.patch("tareas.instalar_agentes.sumar_al_path", return_value=[]), \
             mock.patch("tareas.instalar_agentes.instalado", return_value=False), \
             mock.patch("tareas.equipo.hay_git", return_value=git):
@@ -66,6 +68,13 @@ class Equipo(unittest.TestCase):
         self.assertTrue(e.hay_instalado)
         self.assertEqual(e.titular, "Te falta iniciar sesión en OpenCode")
         self.assertIn("navegador", e.mensaje)
+
+    def test_con_sesion_pero_sin_modelo_dice_como_arreglarlo(self):
+        e = revisar(["opencode"], sin_modelo={"opencode"})
+        opencode = next(p for p in e.agentes if p.clave == "opencode")
+        self.assertEqual(opencode.estado, "Falta elegir modelo")
+        self.assertFalse(opencode.listo)
+        self.assertIn("configura un proveedor y un modelo", opencode.nota)
 
     def test_gemini_solo_enlaza_y_manda_a_antigravity(self):
         e = revisar([])
