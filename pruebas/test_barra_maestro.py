@@ -251,7 +251,10 @@ class ConversacionEnElBoard(base.PestanaInicio):
                        mock.patch("enrutador.clientes.shutil.which",
                                   side_effect=lambda n, **_k: None
                                   if n in ("codex", "opencode", "gemini", "agy")
-                                  else "/usr/bin/" + os.path.basename(n))):
+                                  else "/usr/bin/" + os.path.basename(n)),
+                       # El maestro solo habla con un agente listo: el falso tiene sesión,
+                       # haya o no en la máquina (en el CI no hay).
+                       mock.patch("enrutador.modelos_vivos.sesion", return_value=True)):
             parche.start()
             self.addCleanup(parche.stop)
         return {"COTEJO_MOTOR": "agente", "FALSO_PROYECTO": "Faro"}

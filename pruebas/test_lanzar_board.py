@@ -116,7 +116,8 @@ class LanzarDesdeElBoard(base.PestanaInicio):
         with mock.patch.dict(os.environ, {"FALSO_CREAR": TEXTO_DEL_MAESTRO,
                                           "FALSO_PROYECTO": "Faro",
                                           "FALSO_RESPUESTA": "Apunté la web del menú."}), \
-                mock.patch("enrutador.clientes.shutil.which", return_value="/usr/bin/x"):
+                mock.patch("enrutador.clientes.shutil.which", return_value="/usr/bin/x"), \
+                mock.patch("enrutador.modelos_vivos.sesion", return_value=True):   # el maestro solo habla con un agente listo
             self.board.hablar_al_maestro("claude", "apunta la web del menú")
             self.assertTrue(self.esperar(
                 lambda: self.board.panel_maestro.boton_parar is None, 15000))
