@@ -64,6 +64,9 @@ def detectar(carpeta, tareas):
         if len(partes) != 3:
             continue
         rama, punta, asunto = partes
+        tarea = por_rama.get(rama)
+        if tarea is None:
+            continue
         if punta == cabeza:
             continue
         integrado, _ = _git(carpeta, "merge-base", "--is-ancestor", punta, cabeza)
@@ -75,9 +78,6 @@ def detectar(carpeta, tareas):
         except ValueError:
             commits = 0
         if not commits:
-            continue
-        tarea = por_rama.get(rama)
-        if tarea is None:
             continue
         estado = tarea.get("estado") or "desconocida"
         pendientes.append({
