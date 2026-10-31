@@ -49,6 +49,12 @@ cada agente cuyo ejecutable esté ahí, para que el board (y lo que lance) lo en
   abre el navegador; guarda la sesión en el llavero del sistema y no documenta cómo preguntarla,
   así que Cotejo no sabe si quedó (`modelos_vivos.SESION_INVISIBLE`).
 
+**Conectar git** (cotejo-vz6v3c, `conectar_git`) es lo mismo para que guardar un cambio no pida
+usuario y contraseña: GitHub CLI en una terminal, `gh auth login` (https://cli.github.com/manual/gh_auth_login:
+entra con la cuenta en el navegador y, al elegir HTTPS, deja a gh como `credential.helper` de
+git) o, si gh ya tiene sesión, `gh auth setup-git` (solo configura el helper). Sin gh, se manda
+a su página. Cotejo no guarda contraseñas ni tokens en ningún sitio: los guarda gh.
+
 La terminal es la del maestro (`enrutador.maestro.terminal` de la config, por defecto
 `xdg-terminal-exec`, la que el escritorio tenga por preferida) o, si no está,
 `x-terminal-emulator -e`. Sin ninguna, se devuelve el comando para copiarlo. Si quedó lista lo
@@ -428,7 +434,7 @@ def terminal():
 @dataclass(frozen=True)
 class Apertura:
     """Qué pasó al pedir «Iniciar sesión»."""
-    como: str                  # "terminal" | "fondo" | "copiar"
+    como: str                  # "terminal" | "fondo" | "copiar" | "sin_gh" (conectar git)
     comando: str               # el comando, para enseñarlo o copiarlo
     trabajo: object = None     # con "fondo", el `Trabajo`
 
@@ -455,3 +461,28 @@ def iniciar_sesion(clave, al_linea=None, al_terminar=None, tope=TOPE_SESION, abr
         return Apertura("copiar", texto)
     return Apertura("terminal", texto)
 
+
+def conectar_git(abrir=None, gh_con_sesion=None):
+    """Abre GitHub CLI en una terminal para que git empuje sin pedir contraseña.
+
+    Devuelve una `Apertura`: "terminal", "copiar" (sin terminal: el comando para escribirlo) o
+    "sin_gh" (GitHub CLI no está: hay que instalarlo desde su página)."""
+    gh = shutil.which("gh")
+    if gh is None:
+        return Apertura("sin_gh", "")
+    if gh_con_sesion is None:
+        from . import equipo
+        gh_con_sesion = equipo.gh_con_sesion()
+    argumentos = ("auth", "setup-git") if gh_con_sesion else ("auth", "login")
+    texto = unir(["gh", *argumentos])
+    con = terminal()
+    if con is None:
+        return Apertura("copiar", texto)
+    if abrir is None:
+        from enrutador.motores import terminal as motor
+        abrir = motor.abrir
+    try:
+        abrir(con + [gh, *argumentos])
+    except Exception:  # noqa: BLE001  (sin terminal que se deje abrir: se copia)
+        return Apertura("copiar", texto)
+    return Apertura("terminal", texto)

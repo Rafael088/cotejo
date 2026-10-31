@@ -61,6 +61,14 @@ def config_base():
     return _entorno("XDG_CONFIG_HOME", Path.home() / ".config")
 
 
+def config_xdg(casa=None, entorno=None):
+    """`$XDG_CONFIG_HOME` o `~/.config` en cualquier sistema: donde leen su config git y GitHub
+    CLI (también en macOS, donde `config_base` es otra)."""
+    entorno = os.environ if entorno is None else entorno
+    valor = entorno.get("XDG_CONFIG_HOME")
+    return Path(valor) if valor else Path(casa or Path.home()) / ".config"
+
+
 def estado():
     """La carpeta de lo que Cotejo escribe mientras trabaja."""
     desde_entorno = os.environ.get("COTEJO_ESTADO")
