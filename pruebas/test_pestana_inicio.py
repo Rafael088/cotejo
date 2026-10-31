@@ -256,6 +256,39 @@ class ConProyectos(PestanaInicio):
             lanzar.call_args.kwargs["al_terminar"]({"id": "x"})
         idle.assert_called_once_with(fin, {"id": "x"})
 
+    def test_el_formulario_elige_el_modelo_exacto_del_catalogo(self):
+        b = self.abrir_entrevista(agentes=("claude", "codex"))
+        modelos = lambda d: [d.get_model().get_string(i)                # noqa: E731
+                             for i in range(d.get_model().get_n_items())]
+        # Sin tocar nada, el equivalente a n2 de cada agente.
+        self.assertEqual(b.modelo_elegido(), "sonnet")
+        self.assertEqual(modelos(b.ent_modelo), ["opus", "sonnet", "haiku"])
+        b.ent_agente.set_selected(1)   # Codex
+        self.assertEqual(b.modelo_elegido(), "codex")
+        self.assertEqual(modelos(b.ent_modelo),
+                         ["codex-rapido", "codex · el del agente", "codex-fuerte"])
+        b.ent_modelo.set_selected(
+            [m.modelo for m in b.ent_modelos].index("codex-fuerte"))
+        self.assertEqual(b.modelo_elegido(), "codex-fuerte")
+        b.ent_carpeta.set_text("/tmp/mi-proyecto")
+        estado = {"id": "mi-proyecto-abc123", "proyecto": "mi-proyecto"}
+        with mock.patch("enrutador.preparar.lanzar", return_value=estado) as lanzar, \
+                mock.patch.object(b, "mostrar_preparando"):
+            b.preparar_proyecto()
+        self.assertEqual(lanzar.call_args.kwargs["cliente"], "codex")
+        self.assertEqual(lanzar.call_args.kwargs["modelo"], "codex-fuerte")
+
+    def test_el_formulario_ensena_los_modelos_registrados_de_su_agente(self):
+        b = self.abrir_entrevista(agentes=("codex",))
+        b.definiciones = [{"clave": "astra", "modelo_id": "gpt-6-astra", "cliente": "codex",
+                           "nivel": "n3"}]
+        b.llenar_modelos()
+        modelos = [b.ent_modelo.get_model().get_string(i)
+                   for i in range(b.ent_modelo.get_model().get_n_items())]
+        self.assertIn("astra", modelos)
+        b.ent_modelo.set_selected([m.modelo for m in b.ent_modelos].index("astra"))
+        self.assertEqual(b.modelo_elegido(), "astra")
+
     def test_si_no_se_puede_lanzar_se_avisa_y_se_queda(self):
         from enrutador import preparar
         b = self.abrir_entrevista()

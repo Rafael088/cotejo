@@ -74,9 +74,9 @@ def armar(config, cotejo, humano, nivel, propios, proyecto, cliente, modelo, ped
         concreto = niveles.modelo_concreto(modelo, config.get("modelos"))
         if concreto is not None:
             elegido = _cliente(concreto.cliente)
-            modelo = concreto.clave
+            modelo = concreto.modelo
     elif concreto is not None:
-        modelo = concreto.clave
+        modelo = concreto.modelo
     pendientes = [t for t in cotejo.tareas(nombre, "pendiente") if t.get("proyecto") == nombre]
     filas = asignadas(config, humano, nivel, propios, pendientes)
     directorio = cfg.directorio_de(config, nombre) or cotejo.carpeta_de(nombre)

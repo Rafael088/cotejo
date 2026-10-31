@@ -243,9 +243,11 @@ class Maestro(PruebaDeEnrutador):
                                            "--simular")
                     self.assertEqual(datos["cliente"], "codex")
                     self.assertEqual(datos["modelo"], clave)
-                    self.assertEqual(datos["comando"][:6],
-                                     ["codex", "exec", "-m", ident, "-c",
-                                      f"model_reasoning_effort={esfuerzo}"])
+                    self.assertEqual(datos["comando"][:4], ["codex", "exec", "-m", ident])
+                    # Sus argumentos van en el argv, antes del prompt (con o sin sandbox por
+                    # delante: lo que importa es que el cliente los reciba).
+                    pares = list(zip(datos["comando"], datos["comando"][1:]))
+                    self.assertIn(("-c", f"model_reasoning_effort={esfuerzo}"), pares)
 
     def test_sin_tareas_asignadas_tambien_se_puede_hablar(self):
         # Ya no solo reparte: también apunta tareas y contesta. Sin asignadas, se lo dice.

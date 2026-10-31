@@ -147,6 +147,26 @@ class Preparar(unittest.TestCase):
         self.assertEqual(preparar.estado(salida["id"])["estado"], preparacion.LISTO)
         self.assertGreaterEqual(len(self.avisos), 2)  # al lanzar y al terminar
 
+    def test_un_modelo_del_catalogo_prepara_con_su_cliente_y_sus_argumentos(self):
+        # La interfaz manda un modelo concreto (`astra`) y el cliente sale de él, no del que
+        # estuviera elegido en el desplegable.
+        self.config["modelos"] = [
+            {"clave": "astra", "modelo_id": "gpt-6-astra", "cliente": "codex", "nivel": "n3",
+             "argumentos": ["-c", "model_reasoning_effort=high"]}]
+        self.config["motores"]["headless"]["clientes"] = {
+            "codex": {"comando": [sys.executable, str(self.script)]}}
+        self.modo("ok")
+        salida = preparar.lanzar(self.respuestas(), cliente="claude", modelo="astra",
+                                 config=self.config)
+        registro = preparacion.leer(salida["id"])
+        self.assertEqual(registro["cliente"], "codex")
+        self.assertEqual(registro["modelo"], "astra")
+        comando = registro["comando"]
+        self.assertIn("gpt-6-astra", comando)
+        self.assertIn(("-c", "model_reasoning_effort=high"),
+                      list(zip(comando, comando[1:])))
+        self.hilos[-1].join(20)
+
     def test_el_agente_corre_con_la_fuente_repo_por_entorno(self):
         _salida, hilo = self.lanzar("ok")
         hilo.join(20)

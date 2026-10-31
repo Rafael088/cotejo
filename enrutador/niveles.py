@@ -183,6 +183,56 @@ def grupos(definiciones=(), listos=None, primero=""):
     return salida
 
 
+def modelos_de(cliente, definiciones=()):
+    """Los modelos concretos de `cliente`, en el orden en que se ofrecen.
+
+    Trae los de fábrica de ese agente y los registrados que son suyos (un registrado con la
+    misma clave tapa al de fábrica). Claude enseña sus alias de siempre (`opus`, `sonnet`,
+    `haiku`) y después los que se le registren. Lo que se devuelve son `Nivel`: quien pinta
+    saca de ahí la clave con la que se lanza (`modelo`) y el id exacto para nombrarlo.
+    """
+    propios = personalizados(definiciones)
+    base = ([POR_MODELO[alias] for alias in ORDEN_CLAUDE] if cliente == "claude" else
+            [n for n in _de_fabrica(propios) if n.cliente == cliente and n.modelo])
+    elegidos = {}
+    for nivel in base:
+        elegidos.setdefault(nivel.modelo, nivel)
+    for nivel in propios:
+        if nivel.cliente == cliente and nivel.modelo:
+            elegidos[nivel.modelo] = nivel
+    return tuple(elegidos.values())
+
+
+def por_cliente(definiciones=(), clientes=()):
+    """El catálogo agrupado por agente: `[(cliente, [Nivel, …])]` de los que se piden.
+
+    `clientes` son los instalados, que es lo que tiene sentido ofrecer en una interfaz: no se
+    propone un modelo de un agente que no está en la máquina. Un cliente sin modelos no sale.
+    """
+    salida = []
+    for cliente in clientes:
+        modelos = modelos_de(cliente, definiciones)
+        if modelos:
+            salida.append((cliente, list(modelos)))
+    return salida
+
+
+def modelo_por_defecto(cliente, definiciones=()):
+    """La clave que ese agente usaría sin elegir un modelo concreto: su equivalente a n2.
+
+    Es lo que dejan puesto las interfaces para que no haya que decidir nada: Claude, `sonnet`;
+    Codex, su modelo por defecto; Gemini, `gemini-flash`. "" si ese agente no tiene modelos.
+    """
+    disponibles = modelos_de(cliente, definiciones)
+    if not disponibles:
+        return ""
+    preferido = del_cliente(DEFECTO, cliente, definiciones)
+    for nivel in disponibles:
+        if nivel.clave == preferido.clave or nivel.modelo == preferido.modelo:
+            return nivel.modelo
+    return disponibles[0].modelo
+
+
 def del_cliente(nivel, cliente, definiciones=()):
     """El modelo de `cliente` para el tamaño de `nivel` (el agente del proyecto, cotejo-qixs4j).
 

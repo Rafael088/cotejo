@@ -175,9 +175,9 @@ def lanzar(respuestas, cliente=None, modelo=None, al_terminar=None, config=None)
         concreto = niveles.modelo_concreto(modelo, config.get("modelos"))
         if concreto is not None:
             elegido = _cliente(concreto.cliente)
-            modelo = concreto.clave
+            modelo = concreto.modelo
     elif concreto is not None:
-        modelo = concreto.clave
+        modelo = concreto.modelo
     prompt = inicio.armar(r)
     argv = comando(config, elegido, modelo, prompt, carpeta=r.carpeta)
     if shutil.which(argv[0]) is None:
