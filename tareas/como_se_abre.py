@@ -159,6 +159,10 @@ def analizar(cuerpo):
                            "`comando:`, `url:`, `qué esperar:` y `carpeta:`")
             continue
         campos[clave] = m.group(2).strip().strip("`").strip()
+    # Los agentes escriben a veces la raíz en palabras («la raíz del proyecto», «.»): eso no es
+    # una subcarpeta, y tomarlo al pie de la letra deja «Ver mi app» buscando una que no existe.
+    if "raiz" in _normal(campos.get("carpeta", "")) or not campos.get("carpeta", "").strip("./"):
+        campos.pop("carpeta", None)
     como = ComoSeAbre(**campos)
     errores += errores_de(como)
     return (None if errores else como), errores

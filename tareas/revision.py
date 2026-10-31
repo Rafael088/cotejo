@@ -410,8 +410,14 @@ def integrar(plan):
     if sucios is None or sucios:
         return {"integrada": False, "causa": "sucio", "sucios": sucios or [],
                 "motivo": f"{repo} tiene cambios sin commitear; no integré nada"}
+    # Sin nombre o correo en git (quien no programa nunca los pone) el merge muere con
+    # «Committer identity unknown»: se usa la de Cotejo solo para este commit, con `-c`, sin
+    # tocar la config de nadie (como el commit inicial de `init`).
+    identidad = []
+    if _git(repo, "config", "user.name")[0] != 0 or _git(repo, "config", "user.email")[0] != 0:
+        identidad = ["-c", "user.name=Cotejo", "-c", "user.email=cotejo@localhost"]
     # En inglés: el «would be overwritten» de git se lee para saber si se negó antes de empezar.
-    codigo, _, error = _git(repo, "merge", "--no-ff", "--no-edit", rama, tiempo=300,
+    codigo, _, error = _git(repo, *identidad, "merge", "--no-ff", "--no-edit", rama, tiempo=300,
                             entorno={"LC_ALL": "C"})
     if codigo != 0:
         _, chocan, _ = _git(repo, "diff", "--name-only", "--diff-filter=U")

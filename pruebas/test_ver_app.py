@@ -63,6 +63,16 @@ class Seccion(unittest.TestCase):
         self.assertEqual(errores, [])
         self.assertEqual(como.url, "index.html")
 
+    def test_la_raiz_en_palabras_no_es_una_subcarpeta(self):
+        for valor in ("la raíz del proyecto", "Raíz", ".", "./", "`.`"):
+            with self.subTest(valor=valor):
+                como, errores = c.analizar(f"## Cómo se abre\n\n- url: index.html\n"
+                                           f"- carpeta: {valor}\n")
+                self.assertEqual(errores, [])
+                self.assertEqual(como.carpeta, "")
+        como, _ = c.analizar("## Cómo se abre\n\n- comando: npm run dev\n- carpeta: web\n")
+        self.assertEqual(como.carpeta, "web")
+
     def test_lo_peligroso_o_raro_es_error(self):
         for linea, pista in (("- comando: sudo npm start", "sudo"),
                              ("- comando: cd web && npm run dev", "sin shell"),
