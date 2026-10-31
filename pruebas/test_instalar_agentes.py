@@ -51,7 +51,8 @@ class Base(unittest.TestCase):
         entorno.start()
         self.addCleanup(entorno.stop)
         for var in ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "OPENAI_API_KEY",
-                    "CODEX_HOME", "GEMINI_API_KEY", "GOOGLE_API_KEY"):
+                    "CODEX_HOME", "GEMINI_API_KEY", "GOOGLE_API_KEY", "GH_TOKEN", "GITHUB_TOKEN",
+                    "GH_CONFIG_DIR", "XDG_CONFIG_HOME"):
             os.environ.pop(var, None)
 
     def con_instalador(self, texto):
@@ -267,7 +268,43 @@ class EstadosDelEquipo(Base):
         (self.casa / ".codex" / "auth.json").write_text("{}", encoding="utf-8")
         e = equipo.revisar()
         self.assertEqual(next(a for a in e.agentes if a.clave == "codex").estado, equipo.LISTO)
-        self.assertEqual(e.titular, "Todo listo para empezar con Codex")
+        self.assertEqual(e.titular, "Casi listo: falta git")   # aquí no hay git en el PATH
+
+
+class ConectarGit(Base):
+    """«Conectar» en git abre GitHub CLI en una terminal (cotejo-vz6v3c) y no guarda nada."""
+
+    def test_sin_gh_manda_a_su_pagina(self):
+        abrir = mock.Mock()
+        self.assertEqual(inst.conectar_git(abrir=abrir).como, "sin_gh")
+        abrir.assert_not_called()
+
+    def test_gh_sin_sesion_es_auth_login_en_una_terminal(self):
+        gh = ejecutable(self.bin / "gh", "#!/bin/sh\n")
+        abrir = mock.Mock()
+        with mock.patch.object(inst, "terminal", return_value=["mi-terminal", "-e"]):
+            a = inst.conectar_git(abrir=abrir)
+        self.assertEqual((a.como, a.comando), ("terminal", "gh auth login"))
+        abrir.assert_called_once_with(["mi-terminal", "-e", str(gh), "auth", "login"])
+
+    def test_gh_con_sesion_solo_configura_git(self):
+        gh = ejecutable(self.bin / "gh", "#!/bin/sh\n")
+        hosts = self.casa / ".config" / "gh" / "hosts.yml"
+        hosts.parent.mkdir(parents=True)
+        hosts.write_text("github.com:\n    user: alguien\n", encoding="utf-8")
+        abrir = mock.Mock()
+        with mock.patch.object(inst, "terminal", return_value=["mi-terminal"]):
+            a = inst.conectar_git(abrir=abrir)
+        self.assertEqual(a.comando, "gh auth setup-git")
+        abrir.assert_called_once_with(["mi-terminal", str(gh), "auth", "setup-git"])
+
+    def test_sin_terminal_se_copia_y_no_se_escribe_ninguna_config(self):
+        ejecutable(self.bin / "gh", "#!/bin/sh\n")
+        with mock.patch.object(inst, "terminal", return_value=None):
+            a = inst.conectar_git(abrir=mock.Mock())
+        self.assertEqual((a.como, a.comando), ("copiar", "gh auth login"))
+        self.assertFalse((self.raiz / "config.json").exists())
+        self.assertFalse((self.casa / ".gitconfig").exists())
 
 
 def _hasta(condicion, tope=5.0):

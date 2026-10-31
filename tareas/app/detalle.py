@@ -2,7 +2,7 @@
 
 from gi.repository import Adw, Gtk, Pango
 
-from .. import modelo, seguir_ficha
+from .. import bitacora, modelo, revision, seguir_ficha
 from .comun import (
     ESPACIADO_LG, ESPACIADO_SM, ESPACIADO_XL, ESPACIADO_XS, ICONOS_COLUMNA, ICONOS_DIFICULTAD,
     NOMBRES_DIFICULTAD, anotacion_visible, id_corto,
@@ -69,6 +69,7 @@ class Detalle:
         """
         version, nombre_corto, descripcion = tarea.partes
         nombres = dict(modelo.COLUMNAS)
+        finalizada = tarea.columna == modelo.HECHA
         dialogo = Adw.Dialog(title=f"{id_corto(tarea.id)} · {nombres[tarea.columna]}",
                              content_width=px(560))
         vista = Adw.ToolbarView(css_classes=["detalle"])
@@ -117,8 +118,8 @@ class Detalle:
         # Quién la tiene, cuánto cuesta y dónde vive: tres datos en una franja, cada uno con
         # su rótulo encima, en vez de una tabla de clave y valor que había que leer entera.
         datos = Gtk.Box(spacing=px(ESPACIADO_XL), css_classes=["detalle-datos"], homogeneous=False)
-        datos.append(self.dato_de_detalle("Modelo", self.selector_de_agente(proyecto, tarea,
-                                                                            dialogo)))
+        datos.append(self.dato_de_detalle("Hecha por" if finalizada else "Modelo",
+                                          self.selector_de_agente(proyecto, tarea, dialogo)))
         dificultad = Gtk.Box(spacing=px(ESPACIADO_XS))
         if tarea.dificultad:
             dificultad.append(icono(ICONOS_DIFICULTAD.get(tarea.dificultad, ""), 14))
@@ -137,7 +138,8 @@ class Detalle:
         # propia sección (`seccion_sin_entregar`, cotejo-granqk) en vez de esta «DEVUELTA», que
         # repetía lo que dijo el agente en crudo y con jerga.
         no_entrego = self.seccion_sin_entregar(proyecto, tarea, dialogo)
-        visible = anotacion_visible(tarea, self.app.bitacora.get(tarea.id))
+        visible = (None if finalizada else
+                   anotacion_visible(tarea, self.app.bitacora.get(tarea.id)))
         if no_entrego is not None:
             cuerpo.append(no_entrego)
         elif visible is not None:
@@ -154,11 +156,17 @@ class Detalle:
                                   css_classes=["anotacion-texto"]))
             cuerpo.append(caja)
         # Lo que se ve del trabajo entregado (`entregar --captura`): grande y sin abrir nada.
-        entregada = self.app.bitacora.get(tarea.id)
-        vistas = seccion_capturas(entregada if (entregada or {}).get("operacion") == "entregar"
-                                  else None, dialogo)
+        entregada = (bitacora.ultima_entrega(tarea.id)
+                     if finalizada else self.app.bitacora.get(tarea.id))
+        entregada = (entregada if (entregada or {}).get("operacion") == "entregar"
+                     else None)
+        vistas = seccion_capturas(entregada, dialogo)
         if vistas is not None:
             cuerpo.append(vistas)
+
+        if finalizada and entregada is not None:
+            entrega = revision.resumen(entregada) or {}
+            cuerpo.append(self.entrega_finalizada(entregada, entrega))
 
         # Lanzada desde el board (v1.3.0, `lanzar.py`): en Haciendo, lo que hace su agente en
         # vivo; en Pendiente, por qué quedó en espera o que está pausada (cotejo-z7ma7r).
@@ -188,6 +196,10 @@ class Detalle:
         vista.set_content(Gtk.ScrolledWindow(child=cuerpo, propagate_natural_height=True,
                                              max_content_height=px(520),
                                              hscrollbar_policy=Gtk.PolicyType.NEVER))
+
+        if finalizada:
+            dialogo.set_child(vista)
+            return dialogo
 
         # Mover, abajo y fijo: atrás a la izquierda, adelante a la derecha y en verde, como
         # el orden de las columnas. Nunca a Finalizada desde aquí: eso es comprobar.
@@ -222,6 +234,29 @@ class Detalle:
         dialogo.set_child(vista)
         return dialogo
 
+    def entrega_finalizada(self, entregada, datos):
+        """La entrega de una tarea aprobada, sin acciones que puedan modificarla."""
+        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_SM),
+                       css_classes=["anotacion", "entregada"])
+        caja.append(Gtk.Label(label="ENTREGA", xalign=0, css_classes=["detalle-clave"]))
+        evidencia = (entregada.get("evidencia") or "").strip()
+        if evidencia:
+            caja.append(Gtk.Label(label=evidencia, xalign=0, wrap=True, selectable=True,
+                                  focusable=False, css_classes=["anotacion-texto"]))
+        git = " · ".join(parte for parte in (
+            datos.get("rama") or "",
+            f"commit {(datos.get('head') or '')[:12]}" if datos.get("head") else "",
+        ) if parte)
+        if git:
+            caja.append(Gtk.Label(label=git, xalign=0, selectable=True, focusable=False,
+                                  css_classes=["revision-dato"]))
+        commits = datos.get("commits") or []
+        for commit in commits:
+            caja.append(Gtk.Label(label=f"{commit['corto']}  {commit['asunto']}", xalign=0,
+                                  wrap=True, selectable=True, focusable=False,
+                                  css_classes=["salida-prueba"]))
+        return caja
+
     @staticmethod
     def dato_de_detalle(rotulo, valor, expandir=False):
         """Uno de los datos de la franja de la ficha: rótulo pequeño encima, valor debajo."""
@@ -241,7 +276,7 @@ class Detalle:
         rehace con la tarea al día, para poder seguir leyendo lo que se estaba leyendo
         (cotejo-uy34ma). Antes se cerraba, y en Pendiente parecía que la ventana se caía sola.
         """
-        if tarea.hecha:
+        if tarea.columna == modelo.HECHA:
             return _fila_de_agente(tarea, self.alias_persona)
         boton = Gtk.MenuButton(child=_fila_de_agente(tarea, self.alias_persona),
                                always_show_arrow=True, css_classes=["flat", "detalle-agente"])

@@ -256,6 +256,39 @@ class ConProyectos(PestanaInicio):
             lanzar.call_args.kwargs["al_terminar"]({"id": "x"})
         idle.assert_called_once_with(fin, {"id": "x"})
 
+    def test_el_formulario_elige_el_modelo_exacto_del_catalogo(self):
+        b = self.abrir_entrevista(agentes=("claude", "codex"))
+        modelos = lambda d: [d.get_model().get_string(i)                # noqa: E731
+                             for i in range(d.get_model().get_n_items())]
+        # Sin tocar nada, el equivalente a n2 de cada agente.
+        self.assertEqual(b.modelo_elegido(), "sonnet")
+        self.assertEqual(modelos(b.ent_modelo), ["opus", "sonnet", "haiku"])
+        b.ent_agente.set_selected(1)   # Codex
+        self.assertEqual(b.modelo_elegido(), "codex")
+        self.assertEqual(modelos(b.ent_modelo),
+                         ["codex-rapido", "codex · el del agente", "codex-fuerte"])
+        b.ent_modelo.set_selected(
+            [m.modelo for m in b.ent_modelos].index("codex-fuerte"))
+        self.assertEqual(b.modelo_elegido(), "codex-fuerte")
+        b.ent_carpeta.set_text("/tmp/mi-proyecto")
+        estado = {"id": "mi-proyecto-abc123", "proyecto": "mi-proyecto"}
+        with mock.patch("enrutador.preparar.lanzar", return_value=estado) as lanzar, \
+                mock.patch.object(b, "mostrar_preparando"):
+            b.preparar_proyecto()
+        self.assertEqual(lanzar.call_args.kwargs["cliente"], "codex")
+        self.assertEqual(lanzar.call_args.kwargs["modelo"], "codex-fuerte")
+
+    def test_el_formulario_ensena_los_modelos_registrados_de_su_agente(self):
+        b = self.abrir_entrevista(agentes=("codex",))
+        b.definiciones = [{"clave": "astra", "modelo_id": "gpt-6-astra", "cliente": "codex",
+                           "nivel": "n3"}]
+        b.llenar_modelos()
+        modelos = [b.ent_modelo.get_model().get_string(i)
+                   for i in range(b.ent_modelo.get_model().get_n_items())]
+        self.assertIn("astra", modelos)
+        b.ent_modelo.set_selected([m.modelo for m in b.ent_modelos].index("astra"))
+        self.assertEqual(b.modelo_elegido(), "astra")
+
     def test_si_no_se_puede_lanzar_se_avisa_y_se_queda(self):
         from enrutador import preparar
         b = self.abrir_entrevista()
@@ -339,6 +372,11 @@ class SinFuente(PestanaInicio):
             real = shutil.which(nombre)
             if real:
                 (sistema / nombre).symlink_to(real)
+        # Si git puede empujar depende de /etc/gitconfig de la máquina (en el CI no hay helper):
+        # aquí siempre puede, salvo en las pruebas que digan otra cosa.
+        parche = mock.patch("tareas.equipo.puede_empujar", return_value="helper")
+        parche.start()
+        self.addCleanup(parche.stop)
         return {"HOME": str(self.casa), "XDG_DATA_HOME": str(self.casa / ".local" / "share"),
                 "PATH": f"{self.bin}{os.pathsep}{sistema}", "ANTHROPIC_API_KEY": "",
                 "CLAUDE_CODE_OAUTH_TOKEN": "", "OPENAI_API_KEY": "", "CODEX_HOME": "",
@@ -346,10 +384,11 @@ class SinFuente(PestanaInicio):
                 # Aquí los CLIs son de mentira: sí se les pregunta.
                 "COTEJO_NO_PREGUNTAR_CLI": ""}
 
-    def revisar(self, agentes, git=True, sin_sesion=()):
+    def revisar(self, agentes, git=True, sin_sesion=(), empuja="helper"):
         with mock.patch("enrutador.clientes.instalados", return_value=list(agentes)), \
                 mock.patch("enrutador.modelos_vivos.sesion", lambda n, **_: n not in sin_sesion), \
-                mock.patch("tareas.equipo.hay_git", return_value=git):
+                mock.patch("tareas.equipo.hay_git", return_value=git), \
+                mock.patch("tareas.equipo.puede_empujar", return_value=empuja):
             return self.board.revisar_equipo()
 
     def con_instalador(self, texto):
@@ -426,6 +465,35 @@ class SinFuente(PestanaInicio):
         correr.assert_not_called()
         popen.assert_not_called()
 
+    def test_git_sin_credenciales_ofrece_conectar_y_no_dice_listo(self):
+        # cotejo-vz6v3c: git instalado pero sin con qué empujar pediría contraseña al guardar.
+        b = self.board
+        self.revisar(["claude"], git=True, empuja=None)
+        self.assertEqual(self.filas()["git (para guardar versiones)"], "Falta conectar")
+        self.assertNotIn("Todo listo", b.equipo_titular.get_label())
+        self.assertIn("git", b.equipo_sesion)
+        from tareas import instalar_agentes
+        with mock.patch.object(instalar_agentes, "terminal", return_value=["mi-terminal"]), \
+                mock.patch("shutil.which", return_value="/usr/bin/gh"), \
+                mock.patch("tareas.equipo.gh_con_sesion", return_value=False), \
+                mock.patch("enrutador.motores.terminal.abrir") as abrir, \
+                mock.patch("tareas.equipo.hay_git", return_value=True), \
+                mock.patch("tareas.equipo.puede_empujar", return_value=None):
+            b.equipo_sesion["git"].emit("clicked")
+        abrir.assert_called_once_with(["mi-terminal", "/usr/bin/gh", "auth", "login"])
+        self.assertIn("gh auth login", self.progreso("git"))
+
+        with mock.patch.object(b, "abrir_pagina") as pagina, \
+                mock.patch.object(instalar_agentes, "conectar_git",
+                                  return_value=instalar_agentes.Apertura("sin_gh", "")):
+            b.conectar_git()
+        pagina.assert_called_once_with("https://cli.github.com/")
+        self.assertIn("GitHub CLI", self.progreso("git"))
+
+        self.revisar(["claude"], git=True, empuja="helper")
+        self.assertEqual(self.filas()["git (para guardar versiones)"], "Listo")
+        self.assertNotIn("git", b.equipo_sesion)
+
     def test_abrir_pagina_usa_el_lanzador_del_sistema(self):
         with mock.patch("tareas.app.equipo.Gio.AppInfo.launch_default_for_uri") as lanzar:
             self.board.abrir_pagina("https://ejemplo.org/x")
@@ -437,7 +505,8 @@ class SinFuente(PestanaInicio):
         self.assertEqual(self.filas()["Claude Code"], "No instalado")
         with mock.patch("enrutador.clientes.instalados", return_value=["claude"]), \
                 mock.patch("enrutador.modelos_vivos.sesion", return_value=True), \
-                mock.patch("tareas.equipo.hay_git", return_value=True):
+                mock.patch("tareas.equipo.hay_git", return_value=True), \
+                mock.patch("tareas.equipo.puede_empujar", return_value="ssh"):
             b.equipo_revisar.emit("clicked")
         self.assertEqual(self.filas()["Claude Code"], "Listo")
         self.assertEqual(b.equipo_titular.get_label(), "Todo listo para empezar con Claude Code")

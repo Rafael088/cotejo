@@ -50,7 +50,7 @@ import threading
 from pathlib import Path
 
 from tareas import inicio, preparacion
-from . import clientes, config as cfg, mismo_cotejo, procesos, sandbox
+from . import clientes, config as cfg, mismo_cotejo, niveles, procesos, sandbox
 from .motores import fondo, terminal
 
 
@@ -93,9 +93,16 @@ def comando(config, cliente, modelo, prompt, carpeta=None):
     extra = (list(propios.get("argumentos_extra") or ()) +
              list(((config.get("preparar") or {}).get("argumentos_extra") or {})
                   .get(cliente.nombre) or ()))
+    concreto = niveles.modelo_concreto(modelo, config.get("modelos"))
+    if concreto is not None and concreto.cliente == cliente.nombre:
+        modelo_cliente = cliente.modelo_de(concreto.modelo, concreto.modelo_id)
+        extra += list(concreto.argumentos)
+    else:
+        # Compatibilidad: antes se guardaba el alias/id entendido directamente por el cliente.
+        modelo_cliente = cliente.modelo_de(modelo or "", "")
     if carpeta:
         extra += cliente.permisos(_carpetas_para(cliente, carpeta))[0]
-    argv = cliente.argv_sin_interfaz(cliente.modelo_de(modelo, ""), prompt,
+    argv = cliente.argv_sin_interfaz(modelo_cliente, prompt,
                                      comando=propios.get("comando"), extra=extra)
     if carpeta and cliente.nombre == "antigravity":
         hay, motivo = sandbox.disponible_bwrap()
@@ -161,9 +168,16 @@ def lanzar(respuestas, cliente=None, modelo=None, al_terminar=None, config=None)
         r = inicio.validar(respuestas)
     except ValueError as error:
         raise NoSePuede(str(error)) from error
-    elegido = _cliente(cliente)
+    concreto = niveles.modelo_concreto(modelo, config.get("modelos"))
+    elegido = _cliente(concreto.cliente if concreto is not None else cliente)
     if modelo is None:
         modelo = ((config.get("maestro") or {}).get("modelos") or {}).get(elegido.nombre, "")
+        concreto = niveles.modelo_concreto(modelo, config.get("modelos"))
+        if concreto is not None:
+            elegido = _cliente(concreto.cliente)
+            modelo = concreto.modelo
+    elif concreto is not None:
+        modelo = concreto.modelo
     prompt = inicio.armar(r)
     argv = comando(config, elegido, modelo, prompt, carpeta=r.carpeta)
     if shutil.which(argv[0]) is None:

@@ -190,6 +190,7 @@ class Columnas:
             filtro.append(b)
         cuerpo.append(filtro)
         lista = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE, css_classes=["columna"])
+        lista.connect("row-activated", self.al_activar)
         cuerpo.append(Gtk.ScrolledWindow(vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER,
                                          child=lista))
         vista.set_content(cuerpo)
@@ -201,18 +202,24 @@ class Columnas:
             filas = self.finalizadas_del_filtro()
             todos = self.seleccion == TODOS
             for proyecto, tarea in filas:
-                fila = Gtk.Box(spacing=px(ESPACIADO_MD), margin_top=px(ESPACIADO_XS),
-                               margin_bottom=px(ESPACIADO_XS))
-                fila.append(Gtk.Label(label=id_corto(tarea.id), xalign=0,
-                                      css_classes=["carta-codigo"]))
+                contenido = Gtk.Box(spacing=px(ESPACIADO_MD),
+                                    margin_top=px(ESPACIADO_XS),
+                                    margin_bottom=px(ESPACIADO_XS))
+                contenido.append(Gtk.Label(label=id_corto(tarea.id), xalign=0,
+                                           css_classes=["carta-codigo"]))
                 texto = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
                 texto.append(Gtk.Label(label=tarea.nombre_corto, xalign=0, wrap=True))
                 detalle = " · ".join(x for x in (tarea.cerrada, proyecto.nombre if todos else None) if x)
                 if detalle:
                     texto.append(Gtk.Label(label=detalle, xalign=0, css_classes=["dim-label"]))
-                fila.append(texto)
-                fila.append(self.menu(proyecto, tarea))
-                lista.append(self.fila_quieta(fila))
+                contenido.append(texto)
+                contenido.append(self.menu(proyecto, tarea))
+                fila = self.fila_quieta(contenido)
+                if isinstance(fila, Gtk.ListBoxRow):
+                    fila.proyecto = proyecto
+                    fila.tarea = tarea
+                    fila.set_activatable(True)
+                lista.append(fila)
             if not filas:
                 lista.append(self.fila_quieta(self.vacio(modelo.HECHA)))
 

@@ -32,6 +32,18 @@ def titulo_de(cliente):
     return "Otros"
 
 
+def texto_de_modelo(nivel):
+    """Cómo se llama un modelo del catálogo en la interfaz: su clave, que es con la que se lanza.
+
+    Los que no fijan un id (Codex, OpenCode, Antigravity) son «el del agente»: se lanzan sin
+    `-m` y cada cuenta usa el que tenga elegido.
+    """
+    clave = nivel.modelo or nivel.clave
+    if not nivel.modelo_id and clave == nivel.cliente:
+        return f"{clave} · el del agente"
+    return clave
+
+
 class Modelos:
     """Los métodos de `Board` que saben de los modelos de cada agente."""
 
