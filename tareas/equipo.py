@@ -34,6 +34,8 @@ import os
 import re
 import shutil
 from pathlib import Path
+
+from . import rutas
 from dataclasses import dataclass
 
 # La página oficial donde cada herramienta explica cómo instalarse.
@@ -197,7 +199,7 @@ def configs_de_git(casa=None, entorno=None):
     """Los archivos de config de git que mira git: sistema, global y el de XDG."""
     entorno = os.environ if entorno is None else entorno
     casa = _casa(casa)
-    xdg = Path(entorno.get("XDG_CONFIG_HOME") or casa / ".config")
+    xdg = rutas.config_xdg(casa, entorno)
     return [Path(entorno.get("GIT_CONFIG_SYSTEM") or "/etc/gitconfig"),
             xdg / "git" / "config",
             Path(entorno.get("GIT_CONFIG_GLOBAL") or casa / ".gitconfig")]
@@ -237,8 +239,7 @@ def gh_con_sesion(casa=None, entorno=None):
     if entorno.get("GH_TOKEN") or entorno.get("GITHUB_TOKEN"):
         return True
     casa = _casa(casa)
-    carpeta = entorno.get("GH_CONFIG_DIR") or Path(
-        entorno.get("XDG_CONFIG_HOME") or casa / ".config") / "gh"
+    carpeta = entorno.get("GH_CONFIG_DIR") or rutas.config_xdg(casa, entorno) / "gh"
     try:
         texto = (Path(carpeta) / "hosts.yml").read_text(encoding="utf-8", errors="replace")
     except OSError:
