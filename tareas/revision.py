@@ -419,8 +419,7 @@ def integrar(plan):
     En los proyectos de quien programa solo se llama cuando la persona dijo que sí; en los del
     Inicio, al aprobar (`integrar_sola`). Guarda primero `.cotejo/`; si hay conflicto, aborta
     el merge y conserva ese commit de fichas. La app queda como estaba y la rama no se borra.
-    `causa`
-    dice por qué no se integró (`otra-rama`, `sucio` con `sucios`, `conflicto` con `archivos`,
+    `causa` dice por qué no se integró (`otra-rama`, `sucio` con `sucios`, `conflicto` con `archivos`,
     `pisaria` con `archivos`: git se negó antes de empezar, o `git`).
     """
     if not plan or not plan.get("ofrecer"):

@@ -93,6 +93,26 @@ class IntegrarConFichas(ConRepo):
         self.assertNotIn(".cotejo/temporal", git(self.r.repo, "ls-tree", "-r", "HEAD"))
         self.assertTrue((self.r.repo / ".cotejo/temporal").exists())
 
+    def test_fichas_limpias_no_crean_un_commit_extra(self):
+        git(self.r.repo, "add", ".cotejo")
+        git(self.r.repo, "commit", "-qm", "fichas ya guardadas")
+        antes = git(self.r.repo, "rev-parse", "HEAD")
+        self.r.trabajar()
+        _plan, resultado = self.aprobar()
+        self.assertTrue(resultado["integrada"], resultado)
+        self.assertEqual(git(self.r.repo, "rev-parse", "HEAD^1"), antes)
+
+    def test_archivo_nuevo_ajeno_que_la_rama_pisaria_sigue_protegido(self):
+        self.arquitectura()
+        self.r.trabajar("borrador.txt", "Del agente\n")
+        (self.r.repo / "borrador.txt").write_text("De la persona\n", encoding="utf-8")
+        _plan, resultado = self.aprobar()
+        self.assertFalse(resultado["integrada"], resultado)
+        self.assertEqual(resultado["causa"], "pisaria")
+        self.assertEqual((self.r.repo / "borrador.txt").read_text(), "De la persona\n")
+        self.assertEqual((self.r.repo / "a.txt").read_text(), "uno\ndos\n")
+        self.assertIn(self.r.rama, self.ramas())
+
     def test_codigo_preparado_despues_del_plan_impide_el_guardado(self):
         self.arquitectura()
         plan = revision.plan_integracion(self.r.tarea_id, self.r.entregar())
