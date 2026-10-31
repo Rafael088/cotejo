@@ -12,7 +12,7 @@ from pathlib import Path
 
 from tareas import ramas_pendientes
 from tareas.cli import ESQUEMA, ErrorCLI
-from . import clientes, config as cfg, conversacion, decision, maestro, niveles
+from . import clientes, config as cfg, conversacion, decision, maestro, modelos_vivos, niveles
 
 # Mismo valor que `verbos.LO_DIJO_UNA_PERSONA`: una persona lo dijo (override o asignación).
 LO_DIJO_UNA_PERSONA = ("override", "asignacion")
@@ -112,6 +112,13 @@ def hablar(preparado, proyecto, pedido, cliente=None, modelo=None, simular=False
     config = preparado[0]
     if olvidar and not simular:
         conversacion.olvidar(_nombre(preparado[1], proyecto))
+    if not simular and cliente is None:
+        disponibles = modelos_vivos.utilizables(preguntar_cli=True)
+        if not disponibles:
+            aviso = modelos_vivos.aviso_sin_listos(preguntar_cli=True)
+            mensaje, _, paso = aviso.partition(". ")
+            raise ErrorCLI(mensaje.rstrip("."), paso.rstrip("."))
+        cliente = disponibles[0]
     hecho = armar(*preparado, proyecto, cliente, modelo, pedido)
     salida = {k: hecho[k] for k in ("esquema", "proyecto", "cliente", "titulo", "modelo",
                                     "directorio", "asignadas", "ramas_pendientes", "pedido")}
@@ -122,6 +129,10 @@ def hablar(preparado, proyecto, pedido, cliente=None, modelo=None, simular=False
     if shutil.which(hecho["argv"][0]) is None:
         raise ErrorCLI(f"«{hecho['cliente']}» no está instalado en esta máquina",
                        f"Los que sí: {', '.join(clientes.instalados()) or 'ninguno'}.")
+    actual = modelos_vivos.estado(hecho["cliente"], preguntar_cli=True)
+    if not actual.listo:
+        mensaje, _, paso = actual.problema.partition(". ")
+        raise ErrorCLI(mensaje.rstrip("."), paso.rstrip("."))
     headless = (config.get("motores") or {}).get("headless") or {}
     try:
         hilo = conversacion.empezar(

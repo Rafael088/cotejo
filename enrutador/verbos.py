@@ -439,8 +439,13 @@ def hablar_maestro(proyecto, pedido, cliente=None, modelo=None, simular=False,
 def cmd_maestro(args):
     """Decirle algo al maestro de un proyecto y esperar su respuesta."""
     if args.clientes:
+        from . import modelos_vivos
+        estados = modelos_vivos.resumen(preguntar_cli=True)
         imprimir({"esquema": ESQUEMA, "clientes": sorted(clientes.CLIENTES),
-                  "instalados": clientes.instalados()})
+                  "instalados": [e["cliente"] for e in estados if e["instalado"]],
+                  "listos": [e["cliente"] for e in estados if e["listo"]],
+                  "problemas": {e["cliente"]: e["problema"] for e in estados
+                                if e["instalado"] and not e["listo"]}})
         return OK
     if not args.proyecto:
         raise ErrorCLI("Falta el proyecto", "`cotejo maestro --proyecto <nombre>`.")
@@ -1089,7 +1094,7 @@ def anadir(sub):
     maestro_.add_argument("--simular", action="store_true",
                           help="Enseña qué lanzaría y con qué instrucción, sin lanzar nada")
     maestro_.add_argument("--clientes", action="store_true",
-                          help="Qué clientes sabe abrir y cuáles están instalados")
+                          help="Qué clientes sabe abrir, cuáles están listos y qué les falta")
     maestro_.set_defaults(funcion=cmd_maestro)
 
     importar = sub.add_parser(

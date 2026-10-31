@@ -387,6 +387,7 @@ class SinFuente(PestanaInicio):
     def revisar(self, agentes, git=True, sin_sesion=(), empuja="helper"):
         with mock.patch("enrutador.clientes.instalados", return_value=list(agentes)), \
                 mock.patch("enrutador.modelos_vivos.sesion", lambda n, **_: n not in sin_sesion), \
+                mock.patch("enrutador.modelos_vivos.en_cache", return_value=["modelo"]), \
                 mock.patch("tareas.equipo.hay_git", return_value=git), \
                 mock.patch("tareas.equipo.puede_empujar", return_value=empuja):
             return self.board.revisar_equipo()
@@ -505,6 +506,7 @@ class SinFuente(PestanaInicio):
         self.assertEqual(self.filas()["Claude Code"], "No instalado")
         with mock.patch("enrutador.clientes.instalados", return_value=["claude"]), \
                 mock.patch("enrutador.modelos_vivos.sesion", return_value=True), \
+                mock.patch("enrutador.modelos_vivos.en_cache", return_value=["sonnet"]), \
                 mock.patch("tareas.equipo.hay_git", return_value=True), \
                 mock.patch("tareas.equipo.puede_empujar", return_value="ssh"):
             b.equipo_revisar.emit("clicked")

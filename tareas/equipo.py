@@ -4,8 +4,9 @@ Es lo que enseña la pantalla del primer arranque (`tareas/app/equipo.py`): para
 (los de `enrutador.clientes`) y para git, si está en el PATH y, si no, la página oficial a la
 que llevar a la persona. Las direcciones están aquí, en un solo sitio.
 
-Cada agente está en uno de tres estados (cotejo-2j6un7): **no instalado**, **falta iniciar
-sesión** o **listo** (instalado y con sesión, `enrutador.modelos_vivos.sesion`). Los que tienen
+Cada agente está en uno de cuatro estados (cotejo-2j6un7): **no instalado**, **falta iniciar
+sesión**, **falta elegir modelo** o **listo** (lo decide `enrutador.modelos_vivos.estado`, igual
+que para el maestro). Los que tienen
 instalador oficial que Cotejo sabe correr (`instalar_agentes.INSTALADORES`) se instalan desde
 la pantalla; los demás (Gemini CLI, git) siguen enlazando a su página. A quien no tiene ninguno
 se le recomienda uno (`instalar_agentes.RECOMENDADO`).
@@ -54,6 +55,7 @@ TITULO_GIT = "git (para guardar versiones)"
 
 NO_INSTALADO = "No instalado"
 SIN_SESION = "Falta iniciar sesión"
+SIN_MODELO = "Falta elegir modelo"
 LISTO = "Listo"
 INSTALADO = "Instalado"     # instalado, y Cotejo no puede ver si tiene sesión (Antigravity CLI)
 SIN_CONEXION = "Falta conectar"   # git instalado, sin credenciales para empujar
@@ -76,6 +78,9 @@ class Pieza:
     instalable: bool = False      # Cotejo sabe correr su instalador oficial aquí
     recomendado: bool = False     # el que se sugiere a quien no tiene ninguno
     sesion_visible: bool = True   # Cotejo sabe si tiene sesión (Antigravity CLI no)
+    modelos: tuple = ()           # lo que el maestro puede lanzar con este agente
+    requiere_modelo: bool = False # git no usa modelos
+    modelos_conocidos: bool = True  # False si no se pudo preguntar al CLI
 
     @property
     def sesion_desconocida(self):
@@ -84,7 +89,9 @@ class Pieza:
 
     @property
     def listo(self):
-        return self.instalado and (self.con_sesion or not self.sesion_visible)
+        con_sesion = self.con_sesion or not self.sesion_visible
+        tiene_modelos = bool(self.modelos) or not self.modelos_conocidos
+        return self.instalado and con_sesion and (not self.requiere_modelo or tiene_modelos)
 
     @property
     def estado(self):
@@ -92,17 +99,28 @@ class Pieza:
             return NO_INSTALADO
         if self.sesion_desconocida:
             return INSTALADO
-        if self.con_sesion:
-            return LISTO
-        return SIN_CONEXION if self.clave == GIT else SIN_SESION
+        if not self.con_sesion:
+            return SIN_CONEXION if self.clave == GIT else SIN_SESION
+        if self.requiere_modelo and self.modelos_conocidos and not self.modelos:
+            return SIN_MODELO
+        return LISTO
 
     @property
     def pide_sesion(self):
         return self.instalado and not self.con_sesion and self.sesion_visible
 
     @property
+    def pide_modelo(self):
+        return (self.instalado and not self.sesion_desconocida
+                and (self.con_sesion or not self.sesion_visible)
+                and self.requiere_modelo and self.modelos_conocidos and not self.modelos)
+
+    @property
     def nota(self):
         """Una línea en llano bajo el nombre, o ""."""
+        if self.pide_modelo:
+            return (f"Abre {self.titulo}, configura un proveedor y un modelo, y pulsa "
+                    "«Revisar otra vez».")
         if self.sesion_desconocida:
             return ("Cotejo no puede ver si ya entraste con tu cuenta. Si no, ábrelo con "
                     "«Abrir» y entra; sin sesión, la tarea que le toque se para y lo dice.")
@@ -147,6 +165,10 @@ class Equipo:
     def titular(self):
         listos = [a.titulo for a in self.agentes if a.listo]
         if not listos and self.hay_instalado:
+            sin_modelo = [a.titulo for a in self.agentes if a.pide_modelo]
+            if sin_modelo:
+                return f"Te falta elegir un modelo en {sin_modelo[0]}" if len(sin_modelo) == 1 \
+                    else "Te falta elegir un modelo en un agente"
             sin = [a.titulo for a in self.agentes if a.pide_sesion]
             return f"Te falta iniciar sesión en {sin[0]}" if len(sin) == 1 else \
                 "Te falta iniciar sesión en un agente"
@@ -163,6 +185,9 @@ class Equipo:
     @property
     def mensaje(self):
         if not self.hay_agente and self.hay_instalado:
+            con_cuenta = next((a for a in self.agentes if a.pide_modelo), None)
+            if con_cuenta:
+                return con_cuenta.nota
             return ("Toca «Iniciar sesión»: se abre la página del agente en tu navegador para "
                     "que entres con tu cuenta. Cotejo lo nota solo cuando termines.")
         if not self.hay_agente:
@@ -273,16 +298,17 @@ def revisar(preguntar_cli=False):
     from enrutador import clientes, modelos_vivos
     from . import instalar_agentes as inst
     inst.sumar_al_path()
-    puestos = set(clientes.instalados())
-    ninguno = not puestos
+    estados = modelos_vivos.estados(preguntar_cli=preguntar_cli,
+                                     refrescar=preguntar_cli)
+    ninguno = not any(e.instalado for e in estados)
     agentes = tuple(
-        Pieza(nombre, cliente.titulo or nombre, nombre in puestos, PAGINAS.get(nombre, ""),
-              con_sesion=nombre in puestos and modelos_vivos.sesion(
-                  nombre, preguntar_cli=preguntar_cli),
-              instalable=inst.puede_instalar(nombre),
-              recomendado=ninguno and nombre == inst.RECOMENDADO,
-              sesion_visible=modelos_vivos.sesion_visible(nombre))
-        for nombre, cliente in clientes.CLIENTES.items())
+        Pieza(actual.cliente, actual.titulo, actual.instalado,
+              PAGINAS.get(actual.cliente, ""), con_sesion=actual.sesion,
+              instalable=inst.puede_instalar(actual.cliente),
+              recomendado=ninguno and actual.cliente == inst.RECOMENDADO,
+              sesion_visible=actual.sesion_visible, modelos=actual.modelos,
+              requiere_modelo=True, modelos_conocidos=actual.modelos_conocidos)
+        for actual in estados)
     instalado = hay_git()
     git = Pieza(GIT, TITULO_GIT, instalado, PAGINAS[GIT],
                 con_sesion=instalado and puede_empujar() is not None)

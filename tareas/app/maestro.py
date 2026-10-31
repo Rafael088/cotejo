@@ -35,14 +35,14 @@ class Maestro:
         botón principal recuerda el último elegido); enviar es del botón o de Enter, nunca de
         elegir: un desplegable no debería lanzar un agente sin que se pulse «Enviar».
         """
-        from enrutador import clientes, niveles
+        from enrutador import clientes, modelos_vivos, niveles
         caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
                        margin_top=px(ESPACIADO_SM), margin_bottom=px(ESPACIADO_SM),
                        margin_start=px(ESPACIADO_SM), margin_end=px(ESPACIADO_SM))
         popover = boton.get_popover()
         caja.append(Gtk.Label(label="EL MAESTRO HABLA CON", xalign=0,
                               css_classes=["menu-titulo"]))
-        instalados = clientes.instalados()
+        instalados = modelos_vivos.utilizables()
         actual = (self.cliente_del_maestro(instalados), self.modelo_del_maestro(instalados))
         grupos = niveles.por_cliente(self.definiciones_maestro(), instalados)
         for cliente, modelos in grupos:
@@ -61,7 +61,7 @@ class Maestro:
                                self.elegir_modelo_maestro(c, m, popover))
                 caja.append(opcion)
         if not instalados:
-            caja.append(Gtk.Label(label=clientes.SIN_AGENTE_TEXTO, xalign=0, wrap=True,
+            caja.append(Gtk.Label(label=modelos_vivos.aviso_sin_listos(), xalign=0, wrap=True,
                                   max_width_chars=36, css_classes=["menu-titulo"]))
         # Con los modelos registrados la lista crece; sin scroll el popover se sale de la
         # ventana y GTK no lo abre (el mismo fallo de «Asignar a», `cartas.py`).
@@ -103,18 +103,18 @@ class Maestro:
         self.elegir_modelo_maestro(
             cliente, niveles.modelo_por_defecto(cliente, self.definiciones_maestro()), popover)
 
-    def cliente_del_maestro(self, instalados):
-        """El agente del modelo elegido, si sigue instalado; si no, el último agente recordado."""
+    def cliente_del_maestro(self, disponibles):
+        """El agente del modelo elegido, si sigue listo; si no, el último recordado o el primero listo."""
         from enrutador import niveles
-        modelo = self.modelo_del_maestro(instalados)
+        modelo = self.modelo_del_maestro(disponibles)
         if modelo:
             concreto = niveles.modelo_concreto(modelo, self.definiciones_maestro())
-            if concreto is not None and concreto.cliente in instalados:
+            if concreto is not None and concreto.cliente in disponibles:
                 return concreto.cliente
         recordado = comun.cargar_board().get("cliente_maestro")
-        if recordado in instalados:
+        if recordado in disponibles:
             return recordado
-        return instalados[0] if instalados else None
+        return disponibles[0] if disponibles else None
 
     def barra_maestro(self):
         """El maestro en el pie: lo que se le dice y un solo botón para enviarlo.
@@ -155,10 +155,10 @@ class Maestro:
     # --- hablar ---------------------------------------------------------------------------------
 
     def al_ejecutar_maestro(self, *_args):
-        from enrutador import clientes
-        instalados = clientes.instalados()
-        if not instalados:
-            self.aviso(clientes.SIN_AGENTE_TEXTO, segundos=SEGUNDOS_SIN_AGENTE)
+        from enrutador import modelos_vivos
+        disponibles = modelos_vivos.utilizables()
+        if not disponibles:
+            self.aviso(modelos_vivos.aviso_sin_listos(), segundos=SEGUNDOS_SIN_AGENTE)
             return
         texto = " ".join(self.entrada_maestro.get_text().split())
         if not texto:
@@ -167,8 +167,8 @@ class Maestro:
             else:
                 self.ver_conversacion()
             return
-        self.hablar_al_maestro(self.cliente_del_maestro(instalados), texto,
-                               self.modelo_del_maestro(instalados))
+        self.hablar_al_maestro(self.cliente_del_maestro(disponibles), texto,
+                               self.modelo_del_maestro(disponibles))
 
     def hablar_al_maestro(self, cliente, texto, modelo=None):
         """Un mensaje al maestro del proyecto elegido. Lo escrito solo se borra si salió: si
@@ -291,8 +291,9 @@ class Maestro:
         de_uno = self.seleccion != TODOS and not sin_fuente
         for control in (self.boton_maestro, self.entrada_maestro):
             control.set_sensitive(de_uno)
-        from enrutador import clientes
-        sin_agente = not clientes.instalados()
+        from enrutador import clientes, modelos_vivos
+        disponibles = modelos_vivos.utilizables()
+        sin_agente = not disponibles
         con_texto = bool(self.entrada_maestro.get_text().strip())
         self.boton_maestro.set_label("Enviar" if con_texto else "Conversación")
         if con_texto:
@@ -304,11 +305,11 @@ class Maestro:
         elif not de_uno:
             ayuda = "Elige un proyecto para hablar con su maestro"
         elif sin_agente:
-            ayuda = clientes.SIN_AGENTE_TEXTO   # por qué el botón no hace nada
+            ayuda = modelos_vivos.aviso_sin_listos()   # por qué el botón no hace nada
         else:
             from enrutador import niveles
-            titulo = clientes.de(self.cliente_del_maestro(clientes.instalados())).titulo
-            modelo = self.modelo_del_maestro(clientes.instalados())
+            titulo = clientes.de(self.cliente_del_maestro(disponibles)).titulo
+            modelo = self.modelo_del_maestro(disponibles)
             nivel = niveles.modelo_concreto(modelo, self.definiciones_maestro()) if modelo \
                 else None
             con = f"{titulo} · {modelo}" if nivel is not None and nivel.modelo_id else titulo

@@ -108,6 +108,8 @@ class BarraMaestro(unittest.TestCase):
         self.guardado = guardado
         for parche in (mock.patch("enrutador.clientes.instalados",
                                   return_value=["claude", "codex"]),
+                       mock.patch("enrutador.modelos_vivos.utilizables",
+                                  return_value=["claude", "codex"]),
                        mock.patch("enrutador.motores.terminal.abrir", _nunca_una_terminal),
                        mock.patch("enrutador.conversacion.leer",
                                   return_value={"proyecto": "Uno", "turnos": []})):
@@ -222,7 +224,9 @@ class BarraMaestro(unittest.TestCase):
     def test_sin_clientes_avisa(self):
         falso = board_falso()
         falso.entrada_maestro.set_text("hola")
-        with mock.patch("enrutador.clientes.instalados", return_value=[]), \
+        with mock.patch("enrutador.modelos_vivos.utilizables", return_value=[]), \
+                mock.patch("enrutador.modelos_vivos.aviso_sin_listos",
+                           return_value=clientes.SIN_AGENTE_TEXTO), \
                 mock.patch("enrutador.verbos.hablar_maestro") as hablar:
             falso.al_ejecutar_maestro()
         hablar.assert_not_called()
@@ -247,7 +251,10 @@ class ConversacionEnElBoard(base.PestanaInicio):
                        mock.patch("enrutador.clientes.shutil.which",
                                   side_effect=lambda n, **_k: None
                                   if n in ("codex", "opencode", "gemini", "agy")
-                                  else "/usr/bin/" + os.path.basename(n))):
+                                  else "/usr/bin/" + os.path.basename(n)),
+                       # El maestro solo habla con un agente listo: el falso tiene sesión,
+                       # haya o no en la máquina (en el CI no hay).
+                       mock.patch("enrutador.modelos_vivos.sesion", return_value=True)):
             parche.start()
             self.addCleanup(parche.stop)
         return {"COTEJO_MOTOR": "agente", "FALSO_PROYECTO": "Faro"}

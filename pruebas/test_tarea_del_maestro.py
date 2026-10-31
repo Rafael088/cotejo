@@ -23,7 +23,8 @@ class TareaDelMaestro(ConClienteFalso):
     def test_creada_por_el_maestro_se_despacha_sin_devolverla_a_pendiente(self):
         with mock.patch.dict(os.environ, {"FALSO_CREAR": TEXTO, "FALSO_PROYECTO": "Uno",
                                           "FALSO_RESPUESTA": "Apunté la web del menú."}), \
-                mock.patch("enrutador.clientes.shutil.which", return_value="/usr/bin/x"):
+                mock.patch("enrutador.clientes.shutil.which", return_value="/usr/bin/x"), \
+                mock.patch("enrutador.modelos_vivos.sesion", return_value=True):   # el maestro solo habla con un agente listo
             codigo, respuesta = self.correr("maestro", "--proyecto", "Uno",
                                             "--pedido", "apunta la web del menú",
                                             "--cliente", "claude")

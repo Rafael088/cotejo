@@ -44,7 +44,10 @@ class Conversacion(PruebaDeEnrutador):
                                          self.estado / "preparaciones"),
                        mock.patch.object(terminal, "abrir", _nunca_una_terminal),
                        mock.patch("enrutador.clientes.shutil.which",
-                                  return_value="/usr/bin/x")):
+                                  return_value="/usr/bin/x"),
+                       # El maestro solo habla con un agente listo (cotejo-sclhtq): aquí el
+                       # falso tiene sesión, haya o no en la máquina (en el CI no hay).
+                       mock.patch("enrutador.modelos_vivos.sesion", return_value=True)):
             parche.start()
             self.addCleanup(parche.stop)
         self.escribir_config({
@@ -116,7 +119,8 @@ class Conversacion(PruebaDeEnrutador):
     def test_un_cliente_que_contesta_en_texto_plano_tambien_vale(self):
         with mock.patch.dict(os.environ, {"FALSO_PLANO": "1", "FALSO_RESPUESTA": "Hola, soy el"
                                           " maestro.", "FALSO_CREAR": "Algo nuevo",
-                                          "FALSO_PROYECTO": "Uno"}):
+                                          "FALSO_PROYECTO": "Uno"}), \
+                mock.patch("enrutador.modelos_vivos.listar", return_value=["gpt-prueba"]):
             self.escribir_config({
                 "proyectos": {"Uno": str(self.repo)},
                 "motores": {"headless": {"clientes": {"codex": {
