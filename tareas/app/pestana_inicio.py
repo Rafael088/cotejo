@@ -34,6 +34,7 @@ from .piezas import chip, con_mano, etiquetar, icono, vaciar
 INICIO, TABLERO = "inicio", "tablero"
 ANCHO_INICIO = 1080      # el contenido no se estira más que esto en una ventana ancha
 CAMBIO_PESTANA_MS = 160
+ANCHO_CHIP_ESTADO = 120   # la columna del chip de cada fila de proyecto
 
 
 class PestanaInicio:
@@ -275,7 +276,11 @@ class PestanaInicio:
         avance.set_visible(t.con_arquitectura)
         datos.append(avance)
         contenido.append(datos)
-        contenido.append(chip(t.texto_estado, "", *(["verde"] if t.por_comprobar else [])))
+        # El chip va en una columna de ancho fijo: si no, «1 por hacer» empuja la cifra y la
+        # barra de su fila y dejan de alinearse con las de «al día».
+        estado = Gtk.Box(width_request=px(ANCHO_CHIP_ESTADO), valign=Gtk.Align.CENTER)
+        estado.append(chip(t.texto_estado, "", *(["verde"] if t.por_comprobar else [])))
+        contenido.append(estado)
         acciones = Gtk.Box(spacing=px(ESPACIADO_XS), halign=Gtk.Align.START)
         for texto, nombre_icono, accion in (
                 ("Ver mi app", "web-browser-symbolic", self.ver_mi_app),

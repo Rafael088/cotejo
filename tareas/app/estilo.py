@@ -442,7 +442,7 @@ tooltip label { color: var(--k-texto); font-size: var(--k-dato); }
 .inicio-proyectos > row:hover { background: var(--k-superficie); }
 .inicio-proyecto-fila { min-height: 64px; padding: 0 var(--k-espacio-md); }
 .inicio-proyecto-nombre { font-weight: 600; font-size: var(--k-contenido); }
-.inicio-proyecto-datos { min-width: 120px; }
+.inicio-proyecto-datos { min-width: 170px; }
 .inicio-proyecto-datos .dato { font-weight: 400; letter-spacing: 0; }
 .inicio-accion { min-width: 30px; min-height: 30px; padding: 0; }
 .inicio-nuevo { border: 1px dashed var(--k-borde); border-radius: 10px; background: transparent;
