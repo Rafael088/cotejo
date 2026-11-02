@@ -138,7 +138,7 @@ class MapaDelProyecto(base.PestanaInicio):
         self.assertTrue(b.banda_proyectos.get_visible())
         b.abrir_proyecto("barberia")
         base.girar()
-        p.boton_inicio.emit("clicked")
+        b.boton_volver.emit("clicked")
         self.assertEqual(b.pestana_actual(), "inicio")
 
     def test_desde_el_plan_con_la_carpeta(self):

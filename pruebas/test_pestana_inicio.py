@@ -47,6 +47,12 @@ class PestanaInicio(unittest.TestCase):
     apps = 0
     con_vault = True
 
+    def test_el_verde_solo_queda_en_comprobacion(self):
+        raiz = Path(__file__).parents[1] / "tareas" / "app"
+        encontrados = {p.name for p in raiz.glob("*.py")
+                       if "suggested-action" in p.read_text(encoding="utf-8")}
+        self.assertEqual(encontrados, {"vista_resumen.py", "vista_revision.py"})
+
     def setUp(self):
         temporal = tempfile.TemporaryDirectory()
         self.addCleanup(temporal.cleanup)
@@ -118,7 +124,7 @@ class ConProyectos(PestanaInicio):
     def test_abre_en_inicio_con_el_resumen_y_una_tarjeta_por_proyecto(self):
         b = self.board
         self.assertEqual(b.pestana_actual(), pestana_inicio.INICIO)
-        self.assertTrue(b.botones_pestana[pestana_inicio.INICIO].get_active())
+        self.assertFalse(b.boton_volver.get_visible())
         self.assertFalse(b.banda_proyectos.get_visible())
         self.assertFalse(b.buscador.get_visible())
         todo = textos(b.pestanas.get_child_by_name(pestana_inicio.INICIO))
@@ -223,10 +229,9 @@ class ConProyectos(PestanaInicio):
             self.assertIsNone(b.preparar_proyecto())
         lanzar.assert_not_called()
 
-    def test_el_boton_inicio_sale_de_la_entrevista(self):
+    def test_el_logo_sale_de_la_entrevista(self):
         b = self.abrir_entrevista()
-        self.assertTrue(b.botones_pestana["inicio"].get_active())
-        b.botones_pestana["inicio"].emit("clicked")
+        b.ver_pestana("inicio")  # la misma acción conectada al gesto del logo
         self.assertEqual(b.pestana_actual(), "inicio")
 
     def test_sin_agente_instalado_no_se_puede_preparar(self):
@@ -311,10 +316,10 @@ class ConProyectos(PestanaInicio):
         self.assertEqual(b.seleccion, "Horizonte")
         self.assertTrue(b.banda_proyectos.get_visible())
         self.assertTrue(b.buscador.get_visible())
-        # Y el selector de la cabecera vuelve a Inicio.
-        b.botones_pestana[pestana_inicio.INICIO].set_active(True)
+        # Y la cabecera vuelve al mapa porque el tablero se abrió desde allí.
+        b.boton_volver.emit("clicked")
         girar()
-        self.assertEqual(b.pestana_actual(), pestana_inicio.INICIO)
+        self.assertEqual(b.pestana_actual(), "mapa")
 
     def test_agentes_lleva_a_revisar_el_equipo_despues_del_primer_arranque(self):
         b = self.board
@@ -518,7 +523,7 @@ class SinFuente(PestanaInicio):
         b = self.board
         b.equipo_seguir.emit("clicked")
         self.assertEqual(b.pestana_actual(), pestana_inicio.INICIO)
-        self.assertTrue(b.botones_pestana[pestana_inicio.INICIO].get_active())
+        self.assertFalse(b.boton_volver.get_visible())
 
     def test_sin_ningun_agente_ofrece_instalar_y_recomienda_uno(self):
         b = self.board

@@ -155,7 +155,7 @@ class RevisarPlan(base.PestanaInicio):
 
     def test_volver_al_inicio(self):
         b, p = self.abrir()
-        p.boton_inicio.emit("clicked")
+        b.boton_volver.emit("clicked")
         self.assertEqual(b.pestana_actual(), "inicio")
 
 

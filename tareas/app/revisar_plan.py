@@ -59,7 +59,7 @@ class FilaDecision(Gtk.Box):
         if estado == "propuesta":
             acciones = Gtk.Box(spacing=px(ESPACIADO_XS), valign=Gtk.Align.START)
             self.cambiar = con_mano(Gtk.Button(label="Cambiar"))
-            self.aceptar = con_mano(Gtk.Button(label="Aceptar", css_classes=["suggested-action"]))
+            self.aceptar = con_mano(Gtk.Button(label="Aceptar", css_classes=["principal"]))
             etiquetar(self.cambiar, f"Cambiar la decisión «{datos['titulo']}»")
             etiquetar(self.aceptar, f"Aceptar la decisión «{datos['titulo']}»")
             acciones.append(self.cambiar)
@@ -112,9 +112,6 @@ class PantallaRevisarPlan(Gtk.ScrolledWindow):
         cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_LG),
                          margin_top=px(ESPACIADO_XL) * 2, margin_bottom=px(ESPACIADO_XL) * 2,
                          margin_start=px(ESPACIADO_XL) * 2, margin_end=px(ESPACIADO_XL) * 2)
-        self.ruta = Gtk.Label(xalign=0, css_classes=["dato"])
-        cuerpo.append(self.ruta)
-
         self.objetivo = Gtk.Label(xalign=0, wrap=True, css_classes=["inicio-titular"])
         self.siguiente = Gtk.Label(xalign=0, wrap=True, css_classes=["carta-descripcion"])
         cuerpo.append(_bloque(Gtk.Label(label="EL OBJETIVO", xalign=0, css_classes=["dato"]),
@@ -139,11 +136,10 @@ class PantallaRevisarPlan(Gtk.ScrolledWindow):
         cuerpo.append(self.avisos)
 
         pie = Gtk.Box(spacing=px(ESPACIADO_SM), halign=Gtk.Align.END)
-        self.boton_inicio = con_mano(Gtk.Button(label="Volver al Inicio"))
         self.ver_mapa = con_mano(Gtk.Button(label="Ver el mapa del proyecto"))
         self.empezar = con_mano(Gtk.Button(label="Empezar la 0.1.0",
-                                           css_classes=["suggested-action"]))
-        for b in (self.boton_inicio, self.ver_mapa, self.empezar):
+                                           css_classes=["principal"]))
+        for b in (self.ver_mapa, self.empezar):
             etiquetar(b, b.get_label())
             pie.append(b)
         cuerpo.append(pie)
@@ -155,7 +151,6 @@ class PantallaRevisarPlan(Gtk.ScrolledWindow):
 
     def pintar(self, plan, al_aceptar, al_rechazar):
         self.plan = plan
-        self.ruta.set_label(f"{plan.proyecto}  ›  Plan de la 0.1.0")
         self.objetivo.set_label(plan.objetivo or "El agente no dejó escrito el objetivo.")
         self.siguiente.set_label(f"Siguiente paso: {plan.siguiente_paso}"
                                  if plan.siguiente_paso else "")
@@ -201,7 +196,6 @@ class PestanaRevisarPlan:
         self.plan_estado = None
         self.pantalla_plan = PantallaRevisarPlan()
         p = self.pantalla_plan
-        p.boton_inicio.connect("clicked", lambda *_: self.ver_pestana("inicio"))
         p.empezar.connect("clicked", lambda *_: self.empezar_version())
         p.ver_mapa.connect("clicked", lambda *_: self.mapa_del_plan())
         return p

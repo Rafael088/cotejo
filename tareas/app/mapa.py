@@ -55,12 +55,11 @@ class PantallaMapa(Gtk.ScrolledWindow):
         barra = Gtk.Box(spacing=px(ESPACIADO_SM))
         self.ruta = Gtk.Label(xalign=0, hexpand=True, css_classes=["dato"])
         barra.append(self.ruta)
-        self.boton_inicio = con_mano(Gtk.Button(label="Inicio"))
         self.boton_carpeta = con_mano(Gtk.Button(label="Abrir la carpeta"))
         self.boton_parar = con_mano(Gtk.Button(label="Parar", visible=False))
         self.boton_ver_app = con_mano(Gtk.Button(label="Ver mi app"))
         self.boton_tablero = con_mano(Gtk.Button(label="Ver el tablero"))
-        for b in (self.boton_inicio, self.boton_carpeta, self.boton_parar, self.boton_ver_app,
+        for b in (self.boton_carpeta, self.boton_parar, self.boton_ver_app,
                   self.boton_tablero):
             barra.append(b)
         cuerpo.append(barra)
@@ -203,7 +202,6 @@ class PestanaMapa:
         self.mapa_proyecto = None        # (nombre, carpeta) del que se ve
         self.pantalla_mapa = PantallaMapa(lambda: self.app.colores)
         p = self.pantalla_mapa
-        p.boton_inicio.connect("clicked", lambda *_: self.ver_pestana("inicio"))
         p.boton_tablero.connect("clicked", lambda *_: self.abrir_tablero(
             self.mapa_proyecto[0] if self.mapa_proyecto else ""))
         # cotejo-vn4qd2: siempre la carpeta principal del proyecto, nunca un worktree.
@@ -218,6 +216,7 @@ class PestanaMapa:
         """Tocar una tarjeta o un núcleo, o empezar desde el plan: el mapa de ese proyecto."""
         if not nombre:
             return
+        self.tablero_desde_mapa = False
         if carpeta is None and not self.fuente.problema:
             carpeta = self.fuente.carpeta_de(nombre)
         self.mapa_proyecto = (nombre, str(carpeta) if carpeta else "")
@@ -249,4 +248,5 @@ class PestanaMapa:
                        if nombre else "No sé qué proyecto abrir")
             return
         self.al_elegir_chip(chip_proyecto)
+        self.tablero_desde_mapa = True
         self.ver_pestana("tablero")

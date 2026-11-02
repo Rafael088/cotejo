@@ -96,8 +96,9 @@ class PestanaEquipo:
         """Vuelve a detectar (o usa `visto`) y repinta. Devuelve el `Equipo` que vio."""
         visto = visto if visto is not None else equipo.revisar()
         self.equipo_visto = visto
-        self.equipo_ceja.set_label("Primer arranque" if equipo.es_primer_arranque(self.fuente)
-                                   else "Tus agentes")
+        primer_arranque = equipo.es_primer_arranque(self.fuente)
+        self.equipo_ceja.set_label("Primer arranque" if primer_arranque else "Tus agentes")
+        self.equipo_seguir.set_visible(primer_arranque)
         vaciar(self.equipo_filas)
         self.equipo_enlaces = {}
         self.equipo_instalar = {}
@@ -126,14 +127,14 @@ class PestanaEquipo:
             linea.append(cancelar)
         elif pieza.clave == equipo.GIT and pieza.pide_sesion:
             boton = con_mano(Gtk.Button(label="Conectar", valign=Gtk.Align.CENTER,
-                                        css_classes=["suggested-action"]))
+                                        css_classes=["principal"]))
             etiquetar(boton, "Conectar git con tu cuenta de GitHub (abre una terminal)")
             boton.connect("clicked", lambda *_: self.conectar_git())
             self.equipo_sesion[pieza.clave] = boton
             linea.append(boton)
         elif pieza.pide_sesion and pieza.clave in instalar_agentes.SESIONES:
             boton = con_mano(Gtk.Button(label="Iniciar sesión", valign=Gtk.Align.CENTER,
-                                        css_classes=["suggested-action"]))
+                                        css_classes=["principal"]))
             etiquetar(boton, f"Iniciar sesión en {pieza.titulo} (abre tu navegador)")
             boton.connect("clicked", lambda _b, p=pieza: self.iniciar_sesion_agente(p.clave))
             self.equipo_sesion[pieza.clave] = boton
@@ -153,7 +154,7 @@ class PestanaEquipo:
             linea.append(enlace)
             if pieza.instalable:
                 instalar = con_mano(Gtk.Button(label="Instalar", valign=Gtk.Align.CENTER,
-                                               css_classes=["suggested-action"]))
+                                               css_classes=["principal"]))
                 etiquetar(instalar, f"Instalar {pieza.titulo} con su instalador oficial")
                 instalar.set_sensitive(not ocupado)
                 instalar.connect("clicked", lambda _b, p=pieza: self.instalar_agente(p.clave))

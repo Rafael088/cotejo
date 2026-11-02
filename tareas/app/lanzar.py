@@ -73,7 +73,7 @@ class EnVivo(Gtk.Box):
                                     css_classes=["vida-ayuda"])
         self.al_retomar = None        # lo pone la ficha: lanza un agente nuevo que retoma
         self.vida_retomar = Gtk.Button(label="Retomar", visible=False, halign=Gtk.Align.START,
-                                       css_classes=["suggested-action", "pill"])
+                                       css_classes=["principal", "pill"])
         self.vida_retomar.connect("clicked", self.al_pulsar_retomar)
         textos = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
                          hexpand=True)
@@ -328,7 +328,7 @@ class Lanzar:
         def reintentar(*_):
             dialogo.close()
             self.mover(proyecto, tarea, EN_CURSO)
-        boton = Gtk.Button(label="Reintentar", css_classes=["suggested-action", "pill"],
+        boton = Gtk.Button(label="Reintentar", css_classes=["principal", "pill"],
                            tooltip_text="La pasa a Haciendo y lanza un agente que retoma donde "
                            "quedó")
         boton.connect("clicked", reintentar)

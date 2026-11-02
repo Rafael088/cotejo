@@ -64,7 +64,7 @@ class Decisiones:
         vista.add_top_bar(cabecera)
 
         aceptar_boton = Gtk.Button(child=self.con_icono("estado-hecha", "Aceptar"),
-                                   css_classes=["suggested-action"])
+                                   css_classes=["principal"])
 
         def al_aceptar(*_):
             dialogo.close()

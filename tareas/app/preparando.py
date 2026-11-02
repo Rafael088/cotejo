@@ -42,11 +42,10 @@ class PantallaPreparando(Gtk.ScrolledWindow):
         cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_LG),
                          margin_top=px(ESPACIADO_XL) * 2, margin_bottom=px(ESPACIADO_XL) * 2,
                          margin_start=px(ESPACIADO_XL) * 2, margin_end=px(ESPACIADO_XL) * 2)
-        self.ruta = Gtk.Label(label="Inicio", xalign=0, css_classes=["dato"])
         self.eyebrow = Gtk.Label(xalign=0, css_classes=["dato"])
         self.titulo = Gtk.Label(xalign=0, wrap=True, css_classes=["inicio-titular"])
         self.reloj = Gtk.Label(xalign=0, css_classes=["dato"])
-        for w in (self.ruta, self.eyebrow, self.titulo, self.reloj):
+        for w in (self.eyebrow, self.titulo, self.reloj):
             cuerpo.append(w)
 
         self.lista = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_MD))
@@ -70,12 +69,11 @@ class PantallaPreparando(Gtk.ScrolledWindow):
         cuerpo.append(self.ver_registro)
 
         pie = Gtk.Box(spacing=px(ESPACIADO_SM), halign=Gtk.Align.END)
-        self.boton_inicio = con_mano(Gtk.Button(label="Volver al Inicio"))
         self.reintentar = con_mano(Gtk.Button(label="Reintentar", visible=False))
         self.en_terminal = con_mano(Gtk.Button(label="Abrir en terminal", visible=False))
         self.revisar = con_mano(Gtk.Button(label="Revisar el plan", visible=False,
-                                           css_classes=["suggested-action"]))
-        for b in (self.boton_inicio, self.reintentar, self.en_terminal, self.revisar):
+                                           css_classes=["principal"]))
+        for b in (self.reintentar, self.en_terminal, self.revisar):
             etiquetar(b, b.get_label())
             pie.append(b)
         cuerpo.append(pie)
@@ -90,7 +88,6 @@ class PantallaPreparando(Gtk.ScrolledWindow):
     def pintar(self, v):
         """Pone una `preparando.Vista`. Las filas de pasos se crean una vez y se actualizan."""
         self.vista = v
-        self.ruta.set_label(f"Inicio  ›  {v.proyecto}" if v.proyecto else "Inicio")
         self.eyebrow.set_label(v.eyebrow)
         self.titulo.set_label(v.titulo)
         self.reloj.set_label(v.reloj)
@@ -163,7 +160,6 @@ class PestanaPreparando:
         self.preparando_seguimiento = None
         self.pantalla_preparando = PantallaPreparando(self.refrescar_preparando)
         p = self.pantalla_preparando
-        p.boton_inicio.connect("clicked", lambda *_: self.ver_pestana("inicio"))
         p.reintentar.connect("clicked", lambda *_: self.reintentar_preparacion())
         p.en_terminal.connect("clicked", lambda *_: self.abrir_preparacion_en_terminal())
         p.revisar.connect("clicked", lambda *_: self.revisar_plan(self.estado_preparando()))

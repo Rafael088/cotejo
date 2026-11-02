@@ -183,7 +183,7 @@ def pintar_logo(logo, colores, alto=22):
 
 
 def cabecera_de_marca(producto, con_botones_de_ventana):
-    """La cabecera de marca del board: el logo de Cotejo, el nombre del producto y el subtítulo.
+    """La cabecera de marca: el logo de Cotejo, un producto opcional y el subtítulo.
 
     El rediseño del board (07ab95a y siguientes) le agregó volver, su propia caja de
     búsqueda y un menú de más opciones, y cada ventana terminó armando la marca por su
@@ -197,8 +197,8 @@ def cabecera_de_marca(producto, con_botones_de_ventana):
     cerrarse. CotejoBoard es la ventana grande y redimensionable y no tiene botón de cerrar
     propio, así que necesita los del sistema para minimizarse, maximizarse o cerrarse.
 
-    El logo es la palabra «Cotejo» con la C del check; al lado va el producto («Board») en
-    tenue, para que la marca sea una sola y el board, una parte de ella.
+    El logo es la palabra «Cotejo» con la C del check. Si `producto` tiene texto, se añade
+    al lado en tenue; si es vacío o None, no se crea la etiqueta de producto.
 
     Devuelve (cabecera, caja_titulo, subtitulo, logo); el logo sale vacío y lo pinta
     `pintar_logo`, que necesita los colores del tema.
@@ -211,8 +211,9 @@ def cabecera_de_marca(producto, con_botones_de_ventana):
     logo = Gtk.Picture(content_fit=Gtk.ContentFit.CONTAIN, can_shrink=False,
                        alternative_text="Cotejo", valign=Gtk.Align.END)
     nombre.append(logo)
-    nombre.append(Gtk.Label(label=producto, valign=Gtk.Align.END,
-                            css_classes=["marca-titulo", "marca-producto"]))
+    if producto:
+        nombre.append(Gtk.Label(label=producto, valign=Gtk.Align.END,
+                                css_classes=["marca-titulo", "marca-producto"]))
     textos.append(nombre)
     # El subtítulo es una frase que crece con la letra y con los proyectos: si no puede
     # encoger, empuja las pestañas de la cabecera y acaban pisándose (v1.3.1). Con elipsis

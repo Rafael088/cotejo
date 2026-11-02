@@ -71,6 +71,7 @@ CSS = """
   --popover-fg-color: var(--k-texto);
   --dialog-bg-color: var(--k-superficie);
   --dialog-fg-color: var(--k-texto);
+  /* El verde queda reservado para acciones que esperan comprobación humana. */
   --accent-bg-color: var(--k-senal);
   --accent-fg-color: var(--k-sobre-senal);
   --accent-color: var(--k-senal);
@@ -99,6 +100,10 @@ headerbar { min-height: 52px; box-shadow: none; border-bottom: 1px solid var(--k
 /* El subtítulo es una frase («4 sin terminar · menu-digital»), no un dato: en Inter, sin
    mayúsculas ni espaciado, que con la mono era lo que peor se leía de la cabecera. */
 .marca-subtitulo { font-size: var(--k-dato); color: var(--k-tenue); }
+.titulo-pantalla { font-family: "Sora"; font-weight: 600; font-size: var(--k-contenido); }
+.principal { background: var(--k-texto); color: var(--k-fondo); border-radius: 12px;
+             padding: 0 18px; min-height: 36px; font-weight: 600; }
+.principal:hover { background: var(--k-texto-chip); }
 .en-cotejo { color: var(--k-senal); }
 
 searchbar > revealer > box { background: var(--k-fondo); border-bottom: 1px solid var(--k-borde); box-shadow: none; }
@@ -423,13 +428,6 @@ tooltip label { color: var(--k-texto); font-size: var(--k-dato); }
 .riel-finalizada { padding: var(--k-espacio-sm) 0; }
 .riel-cuenta { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue); }
 
-/* Las pestañas Inicio | Tablero de la cabecera (v1.3.0): la elegida, en superficie alta. */
-.pestanas > button.pestana { font-size: var(--k-secundario); min-height: 30px;
-                             padding: 0 var(--k-espacio-md); color: var(--k-tenue);
-                             background: var(--k-superficie); }
-.pestanas > button.pestana:hover { background: var(--k-velo-fuerte); color: var(--k-texto); }
-.pestanas > button.pestana:checked { background: var(--k-superficie-alta); color: var(--k-texto);
-                                     font-weight: 600; }
 /* La pestaña Inicio: saludo en tenue, titular en Sora, tarjetas como las cartas del board.
    El verde sigue siendo solo para lo que espera comprobación (el chip «N por comprobar»). */
 .inicio-saludo { color: var(--k-tenue); font-size: var(--k-contenido); }
