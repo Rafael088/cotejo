@@ -30,7 +30,8 @@ export default function InstalarRapido({ nota, pie, id: ancla, className = '', s
   }, [])
 
   const descarga = DESCARGAS[sistema]
-  const sinPaquete = !descarga
+  // Linux no tiene paquete que descargar, pero tampoco es «otro sistema»: su comando va a la vista.
+  const sinPaquete = !descarga && sistema !== 'linux'
 
   return (
     <div className={`instalar-rapido ${className}`} style={style} id={ancla}>
@@ -39,7 +40,7 @@ export default function InstalarRapido({ nota, pie, id: ancla, className = '', s
           <div className="instalar-rapido__linux">
             <Comando texto={COMANDOS.linux} prompt="$" grande />
             <p className="instalar-rapido__nota instalar-rapido__nota--principal">
-              Pégalo en una terminal: baja la última versión, comprueba su firma y la instala.
+              Pégalo en una terminal: baja la última versión, comprueba que llegó intacta y la instala.
               Repetirlo actualiza.
             </p>
           </div>
