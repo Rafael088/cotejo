@@ -126,6 +126,36 @@ class CrearYRetirar(unittest.TestCase):
         self.assertEqual(worktrees.carpeta_de("cotejo-a1"), str(ruta))
         self.assertEqual([w["tarea"] for w in worktrees.todos()], ["cotejo-a1"])
 
+    def fichas(self, origen):
+        """Un `.cotejo/` commiteado vacío, como lo deja `init`, y sus tareas sin commitear, como
+        las deja la entrevista o el board."""
+        cotejo = self.repo / ".cotejo"
+        cotejo.mkdir()
+        (cotejo / "proyecto.md").write_text(
+            f"---\nid: proyecto\norigen: {origen}\n---\n# P\n", encoding="utf-8")
+        (cotejo / "tareas.md").write_text("# Tareas\n", encoding="utf-8")
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-q", "-m", "cotejo inicial")
+        (cotejo / "tareas.md").write_text("# Tareas\n- [ ] Portada ^cotejo-a1\n",
+                                          encoding="utf-8")
+
+    def test_un_proyecto_del_inicio_guarda_sus_fichas_antes_de_repartir(self):
+        # cotejo-en0crz: el worktree sale de HEAD; sin esto nacía sin su tarea.
+        self.fichas("inicio")
+        hecho = worktrees.crear("cotejo-a1", self.plan())
+        self.assertIn("^cotejo-a1",
+                      (Path(hecho["ruta"]) / ".cotejo" / "tareas.md").read_text(encoding="utf-8"))
+        self.assertEqual(git(self.repo, "status", "--porcelain"), "")
+        self.assertEqual(git(self.repo, "log", "-1", "--format=%s"),
+                         "Cotejo: guardar fichas antes de repartir")
+
+    def test_en_el_repo_de_quien_programa_no_se_commitea_nada(self):
+        self.fichas("cli")
+        antes = git(self.repo, "rev-parse", "HEAD")
+        worktrees.crear("cotejo-a1", self.plan())
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), antes)
+        self.assertIn(".cotejo/tareas.md", git(self.repo, "status", "--porcelain"))
+
     def test_despachar_otra_vez_la_misma_tarea_sigue_donde_quedo(self):
         primero = worktrees.crear("cotejo-a1", self.plan())
         (Path(primero["ruta"]) / "nuevo.txt").write_text("a medias\n", encoding="utf-8")

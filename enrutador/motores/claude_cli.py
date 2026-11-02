@@ -123,9 +123,13 @@ class ClaudeCLI(motor.Motor):
                                        hecho["encerrado"])
             entorno = {**os.environ, **variables, "PWD": str(encargo.directorio)}
         try:
+            # Sin entrada (cotejo-en0crz), como el agente del board (`fondo.py`): `codex exec`
+            # con la entrada abierta la lee como parte del prompt y espera su fin; desde una
+            # sesión cuya entrada nunca se cierra, no empezaba nunca y se cortaba a la media hora.
             proceso = subprocess.Popen(
-                lanzar, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-                cwd=str(encargo.directorio) if encargo.directorio else None, env=entorno)
+                lanzar, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                text=True, cwd=str(encargo.directorio) if encargo.directorio else None,
+                env=entorno)
         except FileNotFoundError:
             return motor.Resultado(
                 False, comando, 127, ejecutado=False,

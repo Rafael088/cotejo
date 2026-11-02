@@ -216,6 +216,16 @@ def _es_worktree_de(ruta, rama):
     return codigo == 0 and actual == rama
 
 
+def _guardar_fichas_del_inicio(repo):
+    """En un proyecto del Inicio, commitea su `.cotejo/` antes de sacar una rama nueva de HEAD
+    (cotejo-en0crz): el board, el maestro y la entrevista escriben ahí sin commitear, y el
+    worktree solo ve lo commiteado. En los repos de quien programa no se commitea nada por su
+    cuenta. Si no se puede, la tarea se reparte igual: es contexto, no el código."""
+    from . import origen, revision
+    if origen.es_del_inicio(repo):
+        revision.guardar_fichas(repo, "Cotejo: guardar fichas antes de repartir")
+
+
 def crear(tarea_id, plan):
     """Crea (o reutiliza) el worktree del plan y lo registra. Devuelve lo registrado.
 
@@ -240,6 +250,8 @@ def crear(tarea_id, plan):
         _git(repo, "worktree", "prune")
         ruta.parent.mkdir(parents=True, exist_ok=True)
         codigo, _, _ = _git(repo, "rev-parse", "--verify", "--quiet", f"refs/heads/{rama}")
+        if codigo != 0:
+            _guardar_fichas_del_inicio(repo)
         argumentos = (["worktree", "add", str(ruta), rama] if codigo == 0 else
                       ["worktree", "add", "-b", rama, str(ruta), "HEAD"])
         codigo, _, error = _git(repo, *argumentos, longpaths=True)

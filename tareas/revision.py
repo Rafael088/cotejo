@@ -385,7 +385,7 @@ def plan_integracion(tarea_id, entrega):
     return plan
 
 
-def _guardar_cotejo(repo, identidad):
+def _guardar_cotejo(repo, identidad, mensaje="Cotejo: guardar fichas antes de integrar"):
     """Guarda las fichas del maestro y del board antes del merge. Devuelve el error o None.
 
     Incluye las nuevas, modificadas y borradas; respeta los archivos ignorados. El pathspec y
@@ -408,9 +408,29 @@ def _guardar_cotejo(repo, identidad):
         return None
     if codigo != 1:
         return error or "No pude comprobar las fichas preparadas de .cotejo/"
-    codigo, _, error = _git(repo, *identidad, "commit", "--only", "-m",
-                            "Cotejo: guardar fichas antes de integrar", "--", ".cotejo/")
+    codigo, _, error = _git(repo, *identidad, "commit", "--only", "-m", mensaje,
+                            "--", ".cotejo/")
     return (error or "No pude guardar las fichas de .cotejo/") if codigo != 0 else None
+
+
+def _identidad(repo):
+    """Sin nombre o correo en git (quien no programa nunca los pone) el commit muere con
+    «Committer identity unknown»: se usa la de Cotejo solo para ese commit, con `-c`, sin
+    tocar la config de nadie (como el commit inicial de `init`)."""
+    if _git(repo, "config", "user.name")[0] != 0 or _git(repo, "config", "user.email")[0] != 0:
+        return ["-c", "user.name=Cotejo", "-c", "user.email=cotejo@localhost"]
+    return []
+
+
+def guardar_fichas(repo, mensaje):
+    """Commitea solo `.cotejo/` del repo (`_guardar_cotejo`). Devuelve el error o None.
+
+    Lo usa `worktrees.crear` en los proyectos del Inicio antes de sacar el worktree de una
+    tarea (cotejo-en0crz): el worktree sale de HEAD, y sin esto nacía con el `.cotejo/` del
+    commit inicial —sin tareas, arquitectura ni decisiones de la entrevista—, el agente no
+    encontraba su tarea e iba a leer el repo principal, donde OpenCode sin interfaz se corta.
+    """
+    return _guardar_cotejo(repo, _identidad(repo), mensaje)
 
 
 def integrar(plan):
@@ -442,12 +462,7 @@ def integrar(plan):
         if _git(repo, "rev-parse", "--verify", "--quiet", marca)[0] == 0:
             return {"integrada": False, "causa": "a-medias",
                     "motivo": f"{repo} está en mitad de otra operación de git; no integré nada"}
-    # Sin nombre o correo en git (quien no programa nunca los pone) el merge muere con
-    # «Committer identity unknown»: se usa la de Cotejo solo para este commit, con `-c`, sin
-    # tocar la config de nadie (como el commit inicial de `init`).
-    identidad = []
-    if _git(repo, "config", "user.name")[0] != 0 or _git(repo, "config", "user.email")[0] != 0:
-        identidad = ["-c", "user.name=Cotejo", "-c", "user.email=cotejo@localhost"]
+    identidad = _identidad(repo)
     error = _guardar_cotejo(repo, identidad)
     if error:
         return {"integrada": False, "causa": "git",

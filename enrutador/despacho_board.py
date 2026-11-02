@@ -451,6 +451,12 @@ CUANTAS_CAUSA = 12     # últimas líneas del agente para reconocer por qué no 
 # Las causas frecuentes de no entregar, y cómo se las dice a quien no programa. Los marcadores
 # son lo que el agente deja en su log (su mensaje, el error del cliente o el de `cotejo`); la
 # frase es llana a propósito: nada de worktree, git ni `.cotejo` (cotejo-granqk).
+# OpenCode sin interfaz niega solo lo que pediría confirmar (una carpeta fuera de la tarea) y
+# la corrida se acaba ahí (cotejo-en0crz); y un proveedor sin saldo contesta «Insufficient
+# account funds», que no es falta de cupo: no vuelve solo con esperar.
+_SIN_SALDO = ("insufficient account funds", "insufficient funds", "insufficient credits",
+              "payment required", "out of credits")
+_PERMISO_NEGADO = ("auto-rejecting", "rejected permission")
 _SIN_PERMISO = ("permission denied", "eacces", "read-only file system", "readonly file system",
                 "operation not permitted", "index.lock", "sandbox")
 _SIN_CUPO = ("usage limit", "rate limit", "rate limited", "quota", "429", "too many requests",
@@ -468,7 +474,10 @@ def causa_en_llano(lineas):
     texto = "\n".join(lineas or ()).lower()
     if not texto:
         return ""
-    for marcadores, causa in ((_SIN_PERMISO, "no tenía permiso para guardar su trabajo"),
+    for marcadores, causa in ((_SIN_SALDO, "la cuenta del modelo se quedó sin saldo"),
+                              (_PERMISO_NEGADO, "pidió entrar en una carpeta fuera de su tarea "
+                                                "y, sin nadie que le dijera que sí, se cortó"),
+                              (_SIN_PERMISO, "no tenía permiso para guardar su trabajo"),
                               (_SIN_CUPO, "se quedó sin cupo del modelo para seguir"),
                               (_SIN_RED, "se quedó sin internet"),
                               (_SIN_ENTREGA, "no pudo entregar el trabajo")):

@@ -17,6 +17,7 @@ proveedor (`opencode-go/kimi-k2.7-code`).
 import json
 import os
 import shutil
+import tempfile
 from dataclasses import dataclass
 
 from . import gemini_env
@@ -206,6 +207,10 @@ class Cliente:
         que no deja empujar a la fuerza ni a esas ramas, y un `sudo`/`su` que se niega).
         """
         ramas = ramas_protegidas(ramas)
+        if self.nombre == "opencode":
+            # Y la carpeta temporal (cotejo-en0crz): las pruebas y los servidores de prueba
+            # escriben ahí, y sin nadie que conteste, el permiso negado corta la corrida entera.
+            carpetas = [*carpetas, tempfile.gettempdir()]
         argv, env = self.permisos(carpetas, entorno=entorno)
         if self.nombre == "claude":
             from . import sandbox as caja
