@@ -188,7 +188,8 @@ class EjecutarConGuardas(Entorno):
         proceso = mock.Mock(pid=4242, returncode=0)
         proceso.communicate.return_value = ("", "")
         real = shutil.which
-        falso = mock.Mock(PIPE=subprocess.PIPE, TimeoutExpired=subprocess.TimeoutExpired)
+        falso = mock.Mock(PIPE=subprocess.PIPE, DEVNULL=subprocess.DEVNULL,
+                          TimeoutExpired=subprocess.TimeoutExpired)
         falso.Popen.return_value = proceso
         popen = falso.Popen
         with mock.patch.object(claude_cli, "subprocess", falso), \
@@ -208,6 +209,13 @@ class EjecutarConGuardas(Entorno):
         partes = entorno["PATH"].split(os.pathsep)
         self.assertIn(str(guardas.carpeta()), partes[:2])   # tras el lanzador de `cotejo`
         self.assertEqual(entorno["COTEJO_RAMAS_PROTEGIDAS"].split(",")[0], "main")
+
+    def test_el_agente_corre_sin_entrada_cotejo_en0crz(self):
+        # `codex exec` con la entrada abierta la espera y no empieza nunca.
+        for nombre in ("claude", "codex", "opencode"):
+            with self.subTest(nombre):
+                _, popen = self.lanzar(nombre)
+                self.assertEqual(popen.call_args.kwargs["stdin"], subprocess.DEVNULL)
 
     def test_opencode_recibe_su_permiso_por_entorno(self):
         _, popen = self.lanzar("opencode")
