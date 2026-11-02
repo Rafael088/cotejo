@@ -43,8 +43,8 @@ def board_falso(seleccion="Uno"):
     for metodo in ("barra_maestro", "al_ejecutar_maestro", "hablar_al_maestro", "poner_maestro",
                    "menu_maestro", "cliente_del_maestro", "elegir_cliente_maestro",
                    "modelo_del_maestro", "definiciones_maestro", "elegir_modelo_maestro",
-                   "crear_conversacion", "ver_conversacion", "cerrar_conversacion",
-                   "poner_en_su_sitio", "ajustar_conversacion",
+                   "crear_conversacion", "montar_conversacion", "ver_conversacion",
+                   "cerrar_conversacion", "poner_en_su_sitio", "ajustar_conversacion",
                    "pintar_conversacion", "proyecto_del_maestro", "parar_reloj_maestro",
                    "tic_maestro", "maestro_contesto", "parar_maestro", "olvidar_maestro",
                    "repartir_del_maestro"):

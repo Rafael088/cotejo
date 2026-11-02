@@ -159,7 +159,10 @@ class Maestro:
         return self.panel_maestro
 
     def montar_conversacion(self):
-        """Cuelga el panel del overlay: flota, no empuja, y se queda donde lo dejen."""
+        """Cuelga el panel del overlay la primera vez que se abre: hasta entonces no existe
+        para el overlay (el dot y los clics del tablero no lo ven)."""
+        if self.panel_maestro.get_parent() is not None or getattr(self, "encima", None) is None:
+            return
         self.encima.add_overlay(self.panel_maestro)
         for propiedad in ("width", "height"):
             self.encima.connect(f"notify::{propiedad}",
@@ -224,6 +227,7 @@ class Maestro:
         if self.proyecto_del_maestro() is None:
             return
         self.pintar_conversacion()
+        self.montar_conversacion()
         self.panel_maestro.minimizar(False)   # abrirla entera aunque estuviera minimizada
         self.panel_maestro.set_visible(True)
         self.poner_en_su_sitio()
