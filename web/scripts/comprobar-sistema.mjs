@@ -1,7 +1,12 @@
-// Comprueba, sin navegador, que la web elige bien el paquete de cada sistema:
+// Comprueba, sin navegador, que la web elige bien la instalación de cada sistema:
 // `node web/scripts/comprobar-sistema.mjs` (va en `npm run comprobar`). Prueba los navegadores
 // que importan para la descarga y los que no tienen paquete (macOS, Android, iOS, uno raro).
 import { sistemaDe } from '../src/sistema.js'
+
+// Vite sustituye esta constante al compilar. En esta comprobación de Node basta un valor neutro
+// para poder importar el mismo contrato que usa la interfaz.
+globalThis.__COTEJO_VERSION__ = 'prueba'
+const { COMANDOS, DESCARGAS } = await import('../src/config.js')
 
 const CASOS = [
   [{ userAgentData: { platform: 'Linux' }, platform: 'Linux x86_64', userAgent: 'Mozilla/5.0 (X11; Linux x86_64)' }, 'linux'],
@@ -22,9 +27,17 @@ for (const [nav, esperado] of CASOS) {
   }
 }
 
+if (DESCARGAS.linux) fallos.push('Linux no debe ofrecer una descarga de paquete')
+if (DESCARGAS.windows?.paquete !== 'Instalador .exe') {
+  fallos.push('Windows debe ofrecer el instalador .exe')
+}
+if (!COMANDOS.linux.includes('/install.sh | sh')) {
+  fallos.push('Linux debe instalarse con install.sh')
+}
+
 if (fallos.length) {
   console.error(`comprobar-sistema: ${fallos.length} fallo(s)`)
   for (const f of fallos) console.error(`  - ${f}`)
   process.exit(1)
 }
-console.log(`comprobar-sistema: ${CASOS.length} navegadores, cada uno con su paquete o con «otro»`)
+console.log(`comprobar-sistema: ${CASOS.length} navegadores; Linux usa install.sh, Windows el .exe y el resto «otro»`)

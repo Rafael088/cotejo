@@ -479,10 +479,19 @@ strong {
 
 .instalar-rapido__cabeza {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+.instalar-rapido__linux {
+  flex: 1;
+  min-width: 0;
+}
+
+.instalar-rapido__nota--principal {
+  max-width: 62ch;
 }
 
 .instalar-rapido__aparte {

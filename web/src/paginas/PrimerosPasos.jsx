@@ -17,11 +17,12 @@ function Fila({ cuando, titulo, children }) {
 }
 
 const PREGUNTAS = [
-  ['¿Qué es, en una frase?'],
-  ['¿Para quién?', 'por defecto, para ti'],
-  ['¿Qué tiene que hacer la 0.1.0?', 'tres cosas como mucho'],
-  ['¿Qué queda fuera?'],
-  ['¿Stack?', 'el que ya hay en la carpeta'],
+  ['¿Qué quieres construir?', 'en una frase'],
+  ['¿Quién la va a usar?'],
+  ['¿Qué tiene que hacer la primera versión?', 'tres cosas como mucho'],
+  ['¿Dónde la van a usar?'],
+  ['¿Qué más necesita?'],
+  ['¿Qué dejamos para después?', 'opcional'],
 ]
 
 export default function PrimerosPasos() {
@@ -44,8 +45,8 @@ export default function PrimerosPasos() {
           <Fila cuando="1 · 2 minutos" titulo="Instala.">
             <InstalarRapido />
             <p>
-              Linux: el AppImage. Windows: el instalador <code>.exe</code>. Ninguno pide
-              administrador ni abrir una terminal.
+              En Windows, el instalador <code>.exe</code>, sin administrador. En Linux, un comando
+              en la terminal, sin <code>sudo</code>.
             </p>
           </Fila>
           <Fila cuando="2 · al abrir" titulo="Revisa tu equipo.">
@@ -56,8 +57,9 @@ export default function PrimerosPasos() {
           </Fila>
           <Fila cuando="3 · «Nuevo proyecto»" titulo="Cuéntale el proyecto.">
             <p>
-              Una entrevista de cinco preguntas, sin IA. Al terminar, Cotejo arma el encargo, lanza
-              al agente por detrás y te enseña el progreso mientras prepara la carpeta.
+              Seis preguntas en tres bloques: la idea, cómo se usa, dónde y con quién. Sin IA. Al
+              terminar, Cotejo arma el encargo, lanza al agente por detrás y te enseña el progreso
+              mientras prepara la carpeta.
             </p>
             <div className="mensaje">
               <span className="mensaje__quien">la entrevista</span>
