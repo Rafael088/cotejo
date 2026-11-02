@@ -81,7 +81,8 @@ export default function ComoFunciona() {
           <>
             <CfHistoria montado={montado} quieto={quieto} activa={publico === 'no'} />
             <p className="cf-nota">
-              En Linux y Windows, Cotejo se instala con su paquete: no hace falta abrir una terminal.
+              En Windows, Cotejo se instala con su instalador <code>.exe</code>. En Linux, pegas un
+              comando en la terminal. Ninguno pide administrador.
             </p>
           </>,
         )}

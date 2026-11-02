@@ -136,7 +136,7 @@ export default function Demo() {
               Otra vez
             </button>
           )}
-          <span className="demo__lado demo__lado--der">CotejoBoard · mi-app</span>
+          <span className="demo__lado demo__lado--der">Cotejo · mi-app</span>
         </div>
         <div className="demo__cuerpo">
           <div className="demo-term" aria-live="off">

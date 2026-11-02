@@ -15,9 +15,9 @@ const NOTAS = {
   windows: 'Windows 10 y 11, en PowerShell.',
 }
 
-// La descarga de Cotejo: un botón con el paquete del sistema (AppImage en Linux, instalador
-// .exe en Windows) y, plegados, los comandos de siempre para quien programa. Los comandos
-// salen de config.js, nunca escritos aquí.
+// La instalación de Cotejo: en Linux, el comando queda a la vista; en Windows, aparece el botón
+// del instalador .exe. Los comandos también quedan plegados para PowerShell y el otro sistema.
+// Salen de config.js, nunca escritos aquí.
 // El prerender no sabe el sistema: arranca en Linux (igual en el servidor y al hidratar) y
 // cambia después de montar, para no descuadrar la hidratación.
 export default function InstalarRapido({ nota, pie, id: ancla, className = '', style }) {
@@ -35,7 +35,15 @@ export default function InstalarRapido({ nota, pie, id: ancla, className = '', s
   return (
     <div className={`instalar-rapido ${className}`} style={style} id={ancla}>
       <div className="instalar-rapido__cabeza">
-        {descarga ? (
+        {sistema === 'linux' ? (
+          <div className="instalar-rapido__linux">
+            <Comando texto={COMANDOS.linux} prompt="$" grande />
+            <p className="instalar-rapido__nota instalar-rapido__nota--principal">
+              Pégalo en una terminal: baja la última versión, comprueba su firma y la instala.
+              Repetirlo actualiza.
+            </p>
+          </div>
+        ) : descarga ? (
           <a className="boton boton--claro instalar-rapido__descarga" href={descarga.href}>
             <Icono nombre="descarga" tam={18} />
             <span>Descargar para {descarga.sistema}</span>

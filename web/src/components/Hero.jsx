@@ -20,7 +20,7 @@ export default function Hero() {
       <InstalarRapido
         id="instalar"
         nota="Gratis · beta"
-        pie="Linux y Windows. Sin terminal y sin administrador."
+        pie="Linux y Windows. Sin administrador; en Linux, con un comando."
         className="aparece"
         style={{ '--retraso': '0.2s' }}
       />
