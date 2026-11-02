@@ -126,6 +126,21 @@ class ArgumentosDeLosCuatroClientes(Entorno):
         carpetas = armado.carpetas_de_escritura(self.wt, self.worktree)
         self.assertIn(str(self.wt), carpetas)
         self.assertIn(str(self.repo / ".git"), carpetas)
+        # Sin `.cotejo/` en el repo no se da una carpeta que no existe.
+        self.assertNotIn(str(self.repo / ".cotejo"), carpetas)
+
+    def test_el_cotejo_del_repo_tambien_cotejo_en0crz(self):
+        # Ahí vive su tarea si el repo lo tiene sin commitear: OpenCode sin interfaz se cortaba
+        # al ir a leerla.
+        (self.repo / ".cotejo").mkdir()
+        carpetas = armado.carpetas_de_escritura(self.wt, self.worktree)
+        self.assertIn(str(self.repo / ".cotejo"), carpetas)
+        _, entorno = clientes.de("opencode").permisos(carpetas, entorno={})
+        externo = json.loads(entorno["OPENCODE_CONFIG_CONTENT"])["permission"][
+            "external_directory"]
+        self.assertEqual(externo[str(self.repo / ".cotejo") + "/*"], "allow")
+        # Y la carpeta temporal, donde escriben las pruebas y los servidores de prueba.
+        self.assertEqual(externo[tempfile.gettempdir().rstrip("/") + "/*"], "allow")
 
     def test_sin_carpeta_el_argv_queda_como_siempre(self):
         sin = motor.Encargo(prompt="P", modelo="haiku", cliente="claude")

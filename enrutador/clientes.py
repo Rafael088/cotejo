@@ -17,6 +17,7 @@ proveedor (`opencode-go/kimi-k2.7-code`).
 import json
 import os
 import shutil
+import tempfile
 from dataclasses import dataclass
 
 from . import gemini_env
@@ -119,8 +120,10 @@ class Cliente:
             return argv, {}
         if self.nombre == "opencode":
             entorno = os.environ if entorno is None else entorno
+            # Y la carpeta temporal (cotejo-en0crz): las pruebas y los servidores de prueba
+            # escriben ahí, y sin nadie que conteste el permiso negado corta la corrida entera.
             return [], {"OPENCODE_CONFIG_CONTENT": _opencode_con_permiso(
-                carpetas, entorno.get("OPENCODE_CONFIG_CONTENT"))}
+                [*carpetas, tempfile.gettempdir()], entorno.get("OPENCODE_CONFIG_CONTENT"))}
         if self.nombre == "gemini":
             return [], {"GEMINI_CLI_TRUST_WORKSPACE": "true"}
         if self.nombre == "antigravity":
