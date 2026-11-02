@@ -6,10 +6,11 @@ import re
 import time
 from pathlib import Path
 
-from gi.repository import GLib, Gtk
+from gi.repository import Gtk
 from enrutador import config as enrutador_config, niveles as enrutador_niveles
 
 from .. import modelo, rutas
+from ..markup import texto_a_markup
 from .escala import px
 
 
@@ -48,25 +49,6 @@ def guardar_board(**cambios):
         ruta.write_text(json.dumps(datos, ensure_ascii=False))
     except OSError:
         pass
-
-
-def texto_a_markup(texto):
-    """Markdown mínimo de una línea a Pango: enlaces a texto plano y `código` a monoespacio."""
-    texto = re.sub(r"\[\[([^\]|]+)\|([^\]]+)\]\]", r"\2", texto)
-    texto = re.sub(r"\[\[([^\]]+)\]\]", r"\1", texto)
-    texto = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", texto)
-    partes = texto.split("`")
-    salida = []
-    for i, parte in enumerate(partes):
-        parte = GLib.markup_escape_text(parte)
-        if i % 2 == 1 and i < len(partes) - 1:
-            parte = f'<span font_family="IBM Plex Mono" size="92%">{parte}</span>'
-        elif i % 2 == 1:
-            parte = "`" + parte
-        salida.append(parte)
-    markup = "".join(salida)
-    markup = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", markup)
-    return markup
 
 
 # Tokens de movimiento: dos duraciones, no una copiada en todo (entrar es lo único que se anima).

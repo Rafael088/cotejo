@@ -9,15 +9,16 @@ como la constelación; lo maneja la mezcla `maestro.py`.
 
 from gi.repository import Gtk, Pango
 
-from .comun import ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XS
+from .comun import ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XS, texto_a_markup
 from .escala import px
 from .piezas import con_mano, etiquetar
 
 ALTO_MAXIMO = 340
 
 
-def _etiqueta(texto, clases, xalign=0):
-    return Gtk.Label(label=texto, wrap=True, xalign=xalign, selectable=True,
+def _etiqueta(texto, clases, xalign=0, markup=False):
+    return Gtk.Label(label=texto_a_markup(texto) if markup else texto, use_markup=markup,
+                     wrap=True, xalign=xalign, selectable=True,
                      wrap_mode=Pango.WrapMode.WORD_CHAR, max_width_chars=72,
                      css_classes=clases)
 
@@ -87,7 +88,7 @@ class PanelMaestro(Gtk.Revealer):
                        css_classes=["maestro-burbuja",
                                     "maestro-persona" if persona else "maestro-respuesta"]
                        + ([] if persona or turno.get("ok", True) else ["maestro-fallo"]))
-        caja.append(_etiqueta(turno.get("texto") or "", ["maestro-texto"]))
+        caja.append(_etiqueta(turno.get("texto") or "", ["maestro-texto"], markup=not persona))
         ids = turno.get("repartir") or []
         if ids and not persona:
             hecho = bool(turno.get("repartido"))
