@@ -138,12 +138,16 @@ class Movimientos:
         plan = None
         if destino == modelo.HECHA and tarea.columna == "por-validar":
             plan = revision.plan_integracion(tarea.id, bitacora.ultima_entrega(tarea.id))
+        por_integrar = bool(plan and plan.get("del_inicio") and plan.get("repo"))
         try:
             actual = tarea
             if actual.hecha and destino != modelo.HECHA:
                 actual = self.fuente.marcar(actual, hecha=False)
-            actual = (self.fuente.marcar(actual, hecha=True) if destino == modelo.HECHA
-                      else self.fuente.poner_estado(actual, destino))
+            if destino == modelo.HECHA and por_integrar:
+                actual = self.fuente.poner_estado(actual, modelo.POR_INTEGRAR)
+            else:
+                actual = (self.fuente.marcar(actual, hecha=True) if destino == modelo.HECHA
+                          else self.fuente.poner_estado(actual, destino))
             self.foco_tras_pintar = actual.id
         except (modelo.TareaCambiada, OSError) as error:
             self.aviso(f"No pude moverla: cambió en {error}")
@@ -152,20 +156,22 @@ class Movimientos:
         # Quién hizo qué se anota después de escribir en la nota: el estado no depende de que
         # la bitácora llegue al disco. Los nombres distinguen las dos transiciones que son de
         # una persona, comprobar y rechazar, del resto de los movimientos a mano.
-        operacion = {modelo.HECHA: "comprobar"}.get(destino, "rechazar" if motivo else "mover")
-        bitacora.anotar(operacion, proyecto, actual, de=tarea.columna, a=destino,
+        escrito = modelo.POR_INTEGRAR if por_integrar else destino
+        operacion = ({modelo.HECHA: "comprobar"}.get(destino, "rechazar" if motivo else "mover")
+                     if not por_integrar else "mover")
+        bitacora.anotar(operacion, proyecto, actual, de=tarea.columna, a=escrito,
                         **({"motivo": motivo} if motivo else {}))
         # Dar por buena una tarea es lo único que no puede deshacer un agente, y hasta ahora
         # era también lo único que pasaba en silencio.
-        if destino == modelo.HECHA:
+        if destino == modelo.HECHA and not por_integrar:
             self.finalizadas.anotar(actual)
         # El dot reacciona a lo que hace una persona: celebra lo que se da por bueno y se
         # apena con lo que se devuelve. Se apunta antes de refrescar, que es quien lo pinta.
         presencia_dot = getattr(self, "presencia", None)
         if presencia_dot is not None:
-            if destino == modelo.HECHA:
+            if destino == modelo.HECHA and not por_integrar:
                 presencia_dot.celebrar(time.monotonic())
-            elif tarea.columna == "por-validar":
+            elif tarea.columna == "por-validar" and not por_integrar:
                 presencia_dot.fallar(actual.id, destino, time.monotonic())
         self.retirar_worktree(actual, destino)
         self.comprobaciones.pop(tarea.id, None)

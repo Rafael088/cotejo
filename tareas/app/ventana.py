@@ -442,7 +442,7 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
         self.seguir_ficha()
 
     def poner_subtitulo(self, proyectos, todos):
-        esperando = sum(1 for p in proyectos for t in p.tareas if t.estado == "por-validar")
+        esperando = sum(1 for p in proyectos for t in p.tareas if t.columna == "por-validar")
         donde = "en todos los proyectos" if todos else (proyectos[0].nombre if proyectos else "")
         if esperando:
             texto = f"{esperando} esperando que las compruebes · {donde}"

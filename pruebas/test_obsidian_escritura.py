@@ -112,6 +112,13 @@ class Estados(PruebaConVault):
         self.assertIn("#por-validar", texto)
         self.assertNotIn("#en-curso", texto)
 
+    def test_por_integrar_queda_abierta_y_persistida(self):
+        nueva = self.fuente.poner_estado(self.tarea(), modelo.POR_INTEGRAR)
+        self.assertFalse(nueva.hecha)
+        self.assertEqual((nueva.estado, nueva.columna),
+                         (modelo.POR_INTEGRAR, "por-validar"))
+        self.assertIn("- [ ] La tarea #por-integrar", self.leer_nota("Uno.md"))
+
     def test_volver_a_pendiente_borra_el_tag(self):
         primera = self.fuente.poner_estado(self.tarea(), "en-curso")
         self.fuente.poner_estado(primera, modelo.PENDIENTE)

@@ -323,8 +323,8 @@ class Revision:
 
     def integrar_sola(self, proyecto, tarea, plan):
         """Aprobada en un proyecto del Inicio: se mete en la rama principal sin preguntar y se
-        dice en llano, sin nombrar ramas (cotejo-00fwc2). La tarea sigue aprobada pase lo que
-        pase; si no entró, se ofrece reintentar o que un agente resuelva el choque."""
+        dice en llano, sin nombrar ramas (cotejo-00fwc2). Hasta que entre queda abierta como
+        «Por integrar»; si no entró, se ofrece reintentar o que un agente resuelva el choque."""
         if not plan.get("repo"):
             return  # sin repo no hay nada de código que decir
         # Una a la vez por tarea: mientras dura, la carta dice «Integrando…» y no se reaprueba.
@@ -351,6 +351,20 @@ class Revision:
 
     def al_integrar_sola(self, proyecto, tarea, plan, resultado):
         self.integrando.discard(tarea.id)
+        if resultado.get("integrada"):
+            try:
+                actual = self.fuente.marcar(tarea, hecha=True)
+                bitacora.anotar("comprobar", proyecto, actual, de=modelo.POR_INTEGRAR,
+                                a=modelo.HECHA)
+                self.finalizadas.anotar(actual)
+                presencia_dot = getattr(self, "presencia", None)
+                if presencia_dot is not None:
+                    presencia_dot.celebrar(time.monotonic())
+                self.foco_tras_pintar = actual.id
+                self.app.refrescar()
+            except (modelo.TareaCambiada, OSError) as error:
+                resultado = {"integrada": False, "causa": "estado",
+                             "motivo": f"La app ya está integrada, pero no pude cerrar la tarea: {error}"}
         self.pintar()
         aviso = revision.aviso_inicio(resultado)
         if aviso["agente"]:

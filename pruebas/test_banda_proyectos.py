@@ -9,6 +9,7 @@ import types
 import unittest
 
 import apoyo  # noqa: F401  (pone la raíz del repo en sys.path)
+from tareas import modelo
 
 try:
     from gi.repository import Gtk
@@ -29,13 +30,14 @@ class BandaDeProyectos(unittest.TestCase):
 
     def test_todos_los_proyectos_va_primero_con_su_aviso(self):
         def proyecto(nombre, estados):
-            tareas = [types.SimpleNamespace(estado=e) for e in estados]
+            tareas = [modelo.Tarea(texto="t", estado=e) for e in estados]
             return types.SimpleNamespace(nombre=nombre, tareas=tareas)
         falso = types.SimpleNamespace()
         filas = app.Board.filas_banda(falso, [proyecto("A", ["pendiente", "por-validar"]),
-                                              proyecto("B", ["pendiente"])])
-        self.assertEqual(filas[0], (app.comun.TODOS, "Todos los proyectos", 3, 1))
-        self.assertEqual(filas[1:], [("A", "A", 2, 1), ("B", "B", 1, 0)])
+                                              proyecto("B", ["pendiente", "por-integrar"])])
+        # Aprobada pero sin integrar sigue esperando a la persona (cotejo-345swc).
+        self.assertEqual(filas[0], (app.comun.TODOS, "Todos los proyectos", 4, 2))
+        self.assertEqual(filas[1:], [("A", "A", 2, 1), ("B", "B", 2, 1)])
 
     def test_la_banda_mide_el_60_por_ciento(self):
         self.assertEqual(app.comun.FRANJA_BANDA - 2, 3)  # tres de cinco partes iguales

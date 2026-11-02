@@ -20,6 +20,7 @@ from . import version as versiones
 
 PENDIENTE = "pendiente"
 HECHA = "hecha"
+POR_INTEGRAR = "por-integrar"
 
 # Las cuatro columnas, en orden. La última la escribe solo una persona: si el agente pudiera
 # marcar hecha la suya, «hecha» dejaría de significar «alguien la revisó».
@@ -165,7 +166,10 @@ class Tarea:
 
     @property
     def columna(self):
-        return HECHA if self.hecha else self.estado
+        # «Por integrar» es una entrega que la persona ya aprobó, pero que todavía no entró
+        # en la app. Sigue reclamando atención en Para comprobar y, sobre todo, sigue abierta.
+        return HECHA if self.hecha else ("por-validar" if self.estado == POR_INTEGRAR
+                                         else self.estado)
 
     @property
     def version_del_texto(self):
@@ -235,7 +239,7 @@ def resumen(proyectos):
         datos["proyectos"] += 1
         datos["pendientes"] += len(proyecto.tareas)
         datos["en_curso"] += sum(1 for t in proyecto.tareas if t.estado == "en-curso")
-        datos["por_validar"] += sum(1 for t in proyecto.tareas if t.estado == "por-validar")
+        datos["por_validar"] += sum(1 for t in proyecto.tareas if t.columna == "por-validar")
         datos["top"].append({"nombre": proyecto.nombre, "pendientes": len(proyecto.tareas)})
     # Los proyectos ya vienen ordenados por estado y prioridad: los primeros son los que importan.
     datos["top"] = datos["top"][:4]

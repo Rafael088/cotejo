@@ -56,6 +56,9 @@ class Cartas:
             # Aprobada en un proyecto del Inicio: su merge corre en segundo plano.
             arriba.append(chip("Integrando…", "recargar", "chip-integrando",
                                tooltip="Metiéndola en tu app"))
+        elif tarea.estado == modelo.POR_INTEGRAR:
+            arriba.append(chip("Por integrar", "recargar", "chip-integrando",
+                               tooltip="Aprobada, pero todavía no está en tu app"))
         if not compacta:
             arriba.append(Gtk.Box(hexpand=True))
             etiqueta = Gtk.Label(label=texto_a_markup(nombre_corto), use_markup=True, xalign=0,
