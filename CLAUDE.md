@@ -168,11 +168,14 @@ variable de entorno, nunca lanza el CLI) y qué modelos ofrece cada uno: `openco
 preguntan (caché en `<estado>/modelos/`, tope de segundos, y si fallan lo guardado o el respaldo);
 Claude y Gemini no listan y su lista son sus alias. Nada de eso gasta tokens.
 `niveles.DE_FABRICA` trae los de fábrica de los otros agentes (`gemini-pro|flash|flash-lite` por
-alias; `opencode` = «el modelo que tenga por defecto», sin `-m`; los cuatro modelos reales de
-Codex, `gpt-5.6-luna|terra|sol` y `gpt-6-astra`, con su nombre exacto), que un registrado con la
-misma clave tapa; los nombres viejos de Codex (`codex`, `codex-rapido`, `codex-fuerte`) siguen
-resolviendo por alias a luna/sol/astra (`niveles.ALIAS_DE_ANTES`); `niveles.grupos` arma
-«Asignar a» por agente y `niveles.del_cliente`
+alias; `opencode` = «el modelo que tenga por defecto», sin `-m`; Codex con su nombre exacto,
+`gpt-5.6-luna|terra|sol` y de n3 `gpt-5.6-sol-alto`, que es sol con `-c
+model_reasoning_effort=high`; astra no viene de fábrica), que un registrado con la misma clave
+tapa; los nombres viejos de Codex (`codex`, `codex-rapido`, `codex-fuerte`) siguen resolviendo
+por alias a luna/sol/sol-alto (`niveles.ALIAS_DE_ANTES`). Lo que se ofrece (`niveles._ofrecidos`,
+en «Asignar a», `modelos_de` y `del_cliente`) quita los de fábrica que repiten un registrado
+(mismo agente, id y argumentos) y los de Codex que su `models_cache.json` no lista; `por_nombre`
+los sigue resolviendo todos. `niveles.grupos` arma «Asignar a» por agente y `niveles.del_cliente`
 traduce un tamaño al agente del proyecto sin abaratar. El agente del proyecto es `agente:` en
 `.cotejo/proyecto.md` (`origen.agente_de`), que pone `init` con `COTEJO_AGENTE` (lo añade
 `preparar.lanzar`); con él, lo que el enrutador decide por tamaño se propone con ese agente

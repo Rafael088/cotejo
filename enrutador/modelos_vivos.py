@@ -289,7 +289,7 @@ def leer_cache_codex(entorno=None):
     entorno = os.environ if entorno is None else entorno
     carpeta = Path(entorno.get("CODEX_HOME") or _casa() / ".codex")
     try:
-        return leer_codex((carpeta / "models_cache.json").read_text(encoding="utf-8"))
+        return leer_codex((carpeta / "models_cache.json").read_text(encoding="utf-8")) or []
     except OSError:
         return []
 

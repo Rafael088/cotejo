@@ -84,15 +84,18 @@ DE_FABRICA = (
     # Codex (cotejo-ef3xzj): los nombres reales de la cuenta, leídos de su catálogo (los que
     # `codex debug models` marca `visibility: list`). Van de pequeño a grande: `grupos` los
     # invierte para enseñar el grande primero y `del_cliente` se queda, entre dos del mismo
-    # tamaño, con el último (el más capaz, nunca el más barato).
+    # tamaño, con el último (el más capaz, nunca el más barato). El n3 es sol con razonamiento
+    # alto, no astra (decisión del dueño, 2026-10-31): quien quiera astra lo registra con
+    # «Añadir modelo».
     Nivel("gpt-5.6-luna", "gpt-5.6-luna", "gpt-5.6-luna", 0.0, 0.0,
           "Codex, su modelo ligero (gpt-5.6-luna).", "codex", "n1"),
     Nivel("gpt-5.6-terra", "gpt-5.6-terra", "gpt-5.6-terra", 0.0, 0.0,
           "Codex, su modelo rápido (gpt-5.6-terra).", "codex", "n2"),
     Nivel("gpt-5.6-sol", "gpt-5.6-sol", "gpt-5.6-sol", 0.0, 0.0,
           "Codex, su modelo para el trabajo normal (gpt-5.6-sol).", "codex", "n2"),
-    Nivel("gpt-6-astra", "gpt-6-astra", "gpt-6-astra", 0.0, 0.0,
-          "Codex, su modelo grande (gpt-6-astra).", "codex", "n3"),
+    Nivel("gpt-5.6-sol-alto", "gpt-5.6-sol-alto", "gpt-5.6-sol", 0.0, 0.0,
+          "Codex, gpt-5.6-sol con razonamiento alto.", "codex", "n3",
+          ("-c", "model_reasoning_effort=high")),
     Nivel("opencode", "opencode", "", 0.0, 0.0,
           "OpenCode con el modelo que tenga por defecto.", "opencode", "n3"),
     # Antigravity CLI (cotejo-r4yg0n), como OpenCode: el modelo que tenga elegido (sin
@@ -111,7 +114,7 @@ POR_MODELO = {n.modelo: n for n in NIVELES if n.modelo}
 ALIAS_DE_ANTES = {
     "codex-rapido": "gpt-5.6-luna",
     "codex": "gpt-5.6-sol",
-    "codex-fuerte": "gpt-6-astra",
+    "codex-fuerte": "gpt-5.6-sol-alto",
 }
 
 # Cómo se llama cada nivel en el tag `#agente/<x>` de Cotejo. `persona` es el nivel humano: quien
@@ -150,6 +153,23 @@ def _de_fabrica(propios):
     return tuple(n for n in DE_FABRICA if n.clave not in tapados)
 
 
+def _ofrecidos(propios):
+    """Los de fábrica que se ofrecen en el menú y en las propuestas (cotejo-ef3xzj).
+
+    Fuera los que repiten un registrado —mismo agente, mismo id y mismos argumentos: quien
+    registró `sol` no quiere ver también `gpt-5.6-sol`— y, con Codex, los que su
+    `~/.codex/models_cache.json` no lista: ese archivo dice qué modelos tiene esta cuenta. Sin
+    archivo no se quita nada. `por_nombre` sigue resolviéndolos todos, para no perder una tarea
+    ya asignada a uno de ellos.
+    """
+    from . import modelos_vivos
+    repetidos = {(n.cliente, n.modelo_id, n.argumentos) for n in propios if n.modelo_id}
+    de_codex = set(modelos_vivos.leer_cache_codex())
+    return tuple(n for n in _de_fabrica(propios)
+                 if (n.cliente, n.modelo_id, n.argumentos) not in repetidos
+                 and not (n.cliente == "codex" and de_codex and n.modelo_id not in de_codex))
+
+
 def disponibles(definiciones=()):
     """Los niveles integrados, los de fábrica de los otros agentes y los que añadió el usuario."""
     propios = personalizados(definiciones)
@@ -185,7 +205,7 @@ def grupos(definiciones=(), listos=None, primero=""):
     salida = []
     for cliente in orden:
         nombres = (list(ORDEN_CLAUDE) if cliente == "claude" else
-                   [n.modelo for n in _de_fabrica(propios) if n.cliente == cliente][::-1])
+                   [n.modelo for n in _ofrecidos(propios) if n.cliente == cliente][::-1])
         nombres += [n.modelo for n in propios if n.cliente == cliente and n.modelo]
         if nombres:
             salida.append((cliente, list(dict.fromkeys(nombres))))
@@ -205,7 +225,7 @@ def modelos_de(cliente, definiciones=()):
     """
     propios = personalizados(definiciones)
     base = ([POR_MODELO[alias] for alias in ORDEN_CLAUDE] if cliente == "claude" else
-            [n for n in _de_fabrica(propios) if n.cliente == cliente and n.modelo])
+            [n for n in _ofrecidos(propios) if n.cliente == cliente and n.modelo])
     elegidos = {}
     for nivel in base:
         elegidos.setdefault(nivel.modelo, nivel)
@@ -256,7 +276,7 @@ def del_cliente(nivel, cliente, definiciones=()):
     if not cliente or cliente == "claude" or not nivel.despachable:
         return nivel
     propios = personalizados(definiciones)
-    fabrica = _de_fabrica(propios)
+    fabrica = _ofrecidos(propios)
     # Un registrado manda. Entre los de fábrica del mismo tamaño se queda el último, que es el
     # más capaz (van de pequeño a grande): ante la duda se escala, nunca se abarata.
     exactos_propios = [n for n in propios if n.cliente == cliente
