@@ -200,6 +200,21 @@ class Maestro(PruebaDeEnrutador):
         _, datos = self.correr("plan", "--proyecto", "Uno", "--solo-asignadas")
         self.assertEqual({t["id"] for t in datos["tareas"]}, {"cotejo-kimi", "cotejo-opus"})
 
+    def test_clientes_distingue_instalado_de_listo_y_dice_que_falta(self):
+        with mock.patch("enrutador.clientes.instalados",
+                        return_value=["opencode", "gemini"]), \
+                mock.patch("enrutador.modelos_vivos.sesion", return_value=True), \
+                mock.patch("enrutador.modelos_vivos.preguntar",
+                           side_effect=lambda n, *_a, **_k: [] if n == "opencode" else None), \
+                mock.patch("enrutador.modelos_vivos._leer_guardado", return_value=None):
+            # Sin lo guardado de la máquina: si no, los modelos de opencode de quien corre la
+            # prueba lo dejan «listo».
+            codigo, datos = self.correr("maestro", "--clientes")
+        self.assertEqual(codigo, verbos.OK)
+        self.assertEqual(datos["instalados"], ["opencode", "gemini"])
+        self.assertEqual(datos["listos"], ["gemini"])
+        self.assertIn("configura un proveedor y un modelo", datos["problemas"]["opencode"])
+
     def test_el_maestro_solo_propone_repartir_lo_asignado(self):
         # Con un agente instalado: sin ninguno, `--simular` también lo dice y no simula.
         with mock.patch("enrutador.clientes.shutil.which", return_value="/usr/bin/x"):
@@ -227,6 +242,27 @@ class Maestro(PruebaDeEnrutador):
         with mock.patch("enrutador.clientes.shutil.which", return_value="/usr/bin/x"):
             _, datos = self.correr("maestro", "--proyecto", "Uno", "--simular")
         self.assertEqual(datos["comando"][:4], ["claude", "-p", "--model", "opus"])
+
+    def test_el_modelo_exacto_decide_cliente_id_y_argumentos(self):
+        self.escribir_config({"modelos": [
+            {"clave": "astra", "modelo_id": "gpt-6-astra", "cliente": "codex",
+             "nivel": "n3", "argumentos": ["-c", "model_reasoning_effort=high"]},
+            {"clave": "sol", "modelo_id": "gpt-5.6-sol", "cliente": "codex",
+             "nivel": "n2", "argumentos": ["-c", "model_reasoning_effort=medium"]},
+        ], "proyectos": {"Uno": "/tmp/uno"}})
+        with mock.patch("enrutador.clientes.shutil.which", return_value="/usr/bin/x"):
+            for clave, ident, esfuerzo in (("astra", "gpt-6-astra", "high"),
+                                           ("sol", "gpt-5.6-sol", "medium")):
+                with self.subTest(clave=clave):
+                    _, datos = self.correr("maestro", "--proyecto", "Uno", "--modelo", clave,
+                                           "--simular")
+                    self.assertEqual(datos["cliente"], "codex")
+                    self.assertEqual(datos["modelo"], clave)
+                    self.assertEqual(datos["comando"][:4], ["codex", "exec", "-m", ident])
+                    # Sus argumentos van en el argv, antes del prompt (con o sin sandbox por
+                    # delante: lo que importa es que el cliente los reciba).
+                    pares = list(zip(datos["comando"], datos["comando"][1:]))
+                    self.assertIn(("-c", f"model_reasoning_effort={esfuerzo}"), pares)
 
     def test_sin_tareas_asignadas_tambien_se_puede_hablar(self):
         # Ya no solo reparte: también apunta tareas y contesta. Sin asignadas, se lo dice.

@@ -194,59 +194,62 @@ class VerMiApp(base.PestanaInicio):
         self.assertEqual(b.seleccion, "barberia")
         return b
 
-    def test_los_botones_flotantes_salen_en_el_tablero_con_un_proyecto(self):
+    def test_las_acciones_de_app_viven_en_el_menu_con_un_proyecto(self):
         b = self._en_el_tablero_con_barberia()
-        self.assertTrue(b.flotantes_app.get_visible())
-        botones = {}
-        hijo = b.flotantes_app.get_first_child()
-        while hijo is not None:
-            botones[hijo.get_label()] = hijo
-            hijo = hijo.get_next_sibling()
-        self.assertEqual(list(botones), ["Ver mi app", "Abrir la carpeta"])
+        self.assertTrue(b.acciones_menu_app.get_visible())
+        self.assertEqual([boton.cotejo_texto for boton in b.botones_menu_app],
+                         ["Ver mi app", "Abrir la carpeta", "Detener mi app"])
+        self.assertFalse(b.boton_menu_detener_app.get_sensitive())
 
-    def test_los_botones_flotantes_no_estan_con_todos_los_proyectos(self):
+    def test_las_acciones_de_app_no_estan_con_todos_los_proyectos(self):
         b = self._en_el_tablero_con_barberia()
-        self.assertTrue(b.flotantes_app.get_visible())
+        self.assertTrue(b.acciones_menu_app.get_visible())
         b.al_elegir_chip(b.botones_chip[TODOS])
         base.girar()
-        self.assertFalse(b.flotantes_app.get_visible())
+        self.assertFalse(b.acciones_menu_app.get_visible())
 
-    def test_ver_mi_app_flotante_abre_la_app_del_proyecto_elegido(self):
+    def test_ver_y_detener_desde_el_menu_actuan_sobre_el_proyecto_elegido(self):
         b = self._en_el_tablero_con_barberia()
         (self.carpeta / "index.html").write_text("<h1>hola</h1>", encoding="utf-8")
         falsos = self.poner(servidor_app.Resultado(
             True, "Abrí tu app en el navegador.", abrir="http://127.0.0.1:9/index.html",
             corriendo=True))
-        b.boton_flotante_ver_app.emit("clicked")
+        b.boton_menu_ver_app.emit("clicked")
         self.esperar_aviso()
         nombre, plan = falsos.abiertos[0]
         self.assertEqual(nombre, "barberia")
         self.assertEqual(plan.carpeta, str(self.carpeta))
         self.assertEqual(plan.como.tipo, "pagina")
+        self.assertTrue(b.boton_menu_detener_app.get_sensitive())
 
-    def test_el_flotante_ver_mi_app_se_apaga_sin_codigo_y_dice_por_que(self):
+        b.boton_menu_detener_app.emit("clicked")
+        base.girar()
+        self.assertEqual(falsos.parados, ["barberia"])
+        self.assertFalse(b.boton_menu_detener_app.get_sensitive())
+
+    def test_ver_mi_app_del_menu_se_apaga_sin_codigo_y_dice_por_que(self):
         from tareas import almacen
         almacen.Almacen(self.carpeta).crear("arquitectura", "Cómo se abre",
                                             "## Cómo se abre\n\n- comando: npm run dev\n")
         b = self._en_el_tablero_con_barberia()
         b.pintar()
         base.girar()
-        self.assertTrue(b.flotantes_app.get_visible())
-        self.assertFalse(b.boton_flotante_ver_app.get_sensitive())
-        self.assertEqual(b.boton_flotante_ver_app.get_tooltip_text(), como_se_abre.SIN_APP)
+        self.assertTrue(b.acciones_menu_app.get_visible())
+        self.assertFalse(b.boton_menu_ver_app.get_sensitive())
+        self.assertEqual(b.boton_menu_ver_app.get_tooltip_text(), como_se_abre.SIN_APP)
         # «Abrir la carpeta» no depende de que haya código.
-        self.assertTrue(b.boton_flotante_carpeta.get_sensitive())
+        self.assertTrue(b.boton_menu_carpeta.get_sensitive())
 
         (self.carpeta / "package.json").write_text('{"scripts": {"dev": "vite"}}',
                                                    encoding="utf-8")
         b.pintar()
         base.girar()
-        self.assertTrue(b.boton_flotante_ver_app.get_sensitive())
-        self.assertEqual(b.boton_flotante_ver_app.get_tooltip_text() or "", "")
+        self.assertTrue(b.boton_menu_ver_app.get_sensitive())
+        self.assertEqual(b.boton_menu_ver_app.get_tooltip_text() or "", "")
 
-    def test_abrir_la_carpeta_flotante_abre_la_principal_del_proyecto(self):
+    def test_abrir_la_carpeta_del_menu_abre_la_principal_del_proyecto(self):
         b = self._en_el_tablero_con_barberia()
-        b.boton_flotante_carpeta.emit("clicked")
+        b.boton_menu_carpeta.emit("clicked")
         uri = self.lanzador.call_args.args[0]
         self.assertEqual(Path(uri.removeprefix("file://")), self.carpeta)
 

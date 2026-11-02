@@ -235,7 +235,11 @@ class Movimientos:
         self.mover(proyecto, tarea, destino)
 
     def al_asignar(self, proyecto, tarea, agente, popover):
-        popover.popdown()
+        """Asignar desde el ⋮ o desde la ficha. Devuelve la tarea ya en la fuente (o None si no
+        se pudo), que es lo que deja a la ficha abierta pintar el modelo nuevo (cotejo-uy34ma)."""
+        if popover is not None:
+            popover.popdown()
+        actual = None
         try:
             actual = self.fuente.poner_agente(tarea, agente)
             self.foco_tras_pintar = actual.id
@@ -243,6 +247,7 @@ class Movimientos:
         except (modelo.TareaCambiada, OSError) as error:
             self.aviso(f"No pude asignarla: cambió en {error}")
         self.app.refrescar()
+        return actual
 
     def al_ver(self, _proyecto, _tarea, datos, popover):
         """La anotación entera, seleccionable: de una evidencia se copia el commit o el comando."""

@@ -221,7 +221,7 @@ class Cartas:
         if nombre_icono:
             fila.append(icono(nombre_icono, 15))
         fila.append(Gtk.Label(label=texto, xalign=0, hexpand=True,
-                              ellipsize=Pango.EllipsizeMode.END))
+                              ellipsize=Pango.EllipsizeMode.END, tooltip_text=texto))
         if atajo:
             fila.append(Gtk.Label(label=atajo, css_classes=["menu-atajo"]))
         clases = ["flat", "menu-item"] + (["sugerida"] if sugerida else [])

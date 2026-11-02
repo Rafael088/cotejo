@@ -207,7 +207,11 @@ merge sin preguntar y, si entra, `branch -d` de la rama (el worktree ya se retir
 segundo plano (`Board.en_fondo`, un hilo que vuelve con `GLib.idle_add`; las pruebas lo
 inyectan): mientras tanto la carta lleva «Integrando…» y esa tarea no se vuelve a aprobar. En
 ningún proyecto `.cotejo/` cuenta como «sin commitear» al integrar (el board lo reescribe al
-mover); si la rama lo pisaría, git se niega antes de empezar. Lo que ve la persona sale de
+mover). Antes del merge se guardan en un commit solo las fichas de `.cotejo/`, incluidas las
+nuevas y borradas, respetando los ignorados; así una ficha duplicada en la rama ya no provoca
+«would be overwritten» (cotejo-7kmlvw). Si ese guardado falla, no se intenta integrar. Si hay
+cambios incompatibles, se aborta el merge conservando el commit de fichas y la rama de la
+tarea para resolverlo, sin elegir una versión a ciegas. Lo que ve la persona sale de
 `aviso_inicio`, sin nombrar ramas: limpio, «Ya está en tu app»; choque, el merge se aborta y se
 ofrece «Que lo resuelva un agente» (crea una tarea de juntar los dos trabajos con el modelo de la
 aprobada, apunta qué rama junta en `<estado>/juntar/<id>.json` —`tareas/juntar.py`— y la mueve a
@@ -359,7 +363,12 @@ aparte: la respuesta de Codex es su stdout). La conversación de cada proyecto v
 `<estado>/maestro/<proyecto>.json` y viaja entera, recortada (`TURNOS_DE_MEMORIA`), en cada turno:
 no todos los clientes documentan cómo retomar su sesión sin interfaz. Un hilo espera el turno, lo
 anota con lo que propuso repartir y el board repinta y refresca (lo apuntado sale en el tablero);
-un turno con el proceso muerto se cierra al leer. Permisos por cliente en `conversacion.comando`:
+un turno con el proceso muerto se cierra al leer. Antes de armar la instrucción,
+`tareas/ramas_pendientes.py` compara las ramas `cotejo/*` de las tareas del proyecto con `HEAD` y
+le da al maestro las que aún tienen commits fuera, con su columna y el motivo correspondiente.
+Así una app vacía no se confunde con trabajo inexistente ni se manda rehacer lo que espera
+entrega, aprobación o integración. Las ramas históricas sin tarea en ese tablero no se mezclan.
+Permisos por cliente en `conversacion.comando`:
 Claude `--allowedTools Bash(cotejo:*)`, `Edit`/`Write` vedados y `--setting-sources user`; Codex
 `workspace-write` con la carpeta de las tareas como directorio de trabajo y la de estado (el código
 queda en solo lectura); OpenCode `edit: deny` y `bash` todo `deny` salvo `cotejo`, sin MCP ni

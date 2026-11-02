@@ -112,6 +112,25 @@ def _rematar_grupo(pgid, espera):
         pass
 
 
+def _parar_arbol_windows(proceso, espera):
+    """Para el proceso y sus descendientes en Windows; `terminate()` solo para al padre."""
+    try:
+        subprocess.run(["taskkill", "/PID", str(proceso.pid), "/T", "/F"],
+                       stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL, timeout=espera, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        # Instalaciones muy recortadas pueden no traer `taskkill`: al menos no dejamos al padre.
+        try:
+            proceso.terminate()
+        except (OSError, ProcessLookupError):
+            pass
+    try:
+        proceso.wait(espera)
+    except subprocess.TimeoutExpired:
+        proceso.kill()
+        proceso.wait(espera)
+
+
 class Servidores:
     """Un proceso por proyecto, vivo mientras el board lo necesite."""
 
@@ -239,10 +258,10 @@ class Servidores:
         proceso = uno.proceso
         try:
             if sys.platform == "win32":
-                proceso.terminate()
+                _parar_arbol_windows(proceso, espera)
             else:
                 os.killpg(proceso.pid, signal.SIGTERM)
-            proceso.wait(espera)
+                proceso.wait(espera)
         except subprocess.TimeoutExpired:
             if sys.platform != "win32":
                 os.killpg(proceso.pid, signal.SIGKILL)

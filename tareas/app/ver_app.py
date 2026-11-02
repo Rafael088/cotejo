@@ -1,9 +1,9 @@
 """«Ver mi app» y «Abrir la carpeta» en el board (v1.3.0, cotejo-vn4qd2).
 
 Una mezcla de `Board`. Quien no programa tiene que poder ver su app sin abrir una terminal ni
-saber qué es una rama: los dos botones viven en cada tarjeta del Inicio y en el mapa del
-proyecto, y siempre usan la carpeta principal del proyecto (`fuente.carpeta_de`), nunca un
-worktree: desde cotejo-00fwc2 lo aprobado ya está ahí.
+saber qué es una rama: los accesos viven en cada tarjeta del Inicio, en el mapa del proyecto y
+en el menú de la cabecera del board. Siempre usan la carpeta principal del proyecto
+(`fuente.carpeta_de`), nunca un worktree: desde cotejo-00fwc2 lo aprobado ya está ahí.
 
 Qué abrir lo decide `tareas/como_se_abre.py` (lo anotado en la arquitectura o, si no, una
 deducción prudente) y arrancarlo, esperar y pararlo, `tareas/servidor_app.py`, en un hilo para
@@ -13,12 +13,10 @@ fuera de cualquier sandbox: es la persona quien mira. Cerrar el board para las a
 
 import threading
 
-from gi.repository import Gio, GLib, Gtk
+from gi.repository import Gio, GLib
 
 from .. import como_se_abre, servidor_app
-from .comun import ESPACIADO_SM, MARGEN_TABLERO_LADOS, MARGEN_TABLERO_VERTICAL, TODOS
-from .escala import px
-from .piezas import con_mano
+from .comun import TODOS
 
 
 def correr_aparte(funcion):
@@ -32,42 +30,29 @@ class VerApp:
     def crear_ver_app(self):
         self.servidores = servidor_app.Servidores()
         self.abriendo_app = set()
+        # Cada cierre invalida los arranques que aún estén esperando en otro hilo. Si uno
+        # termina después de ocultar el board, `_app_abierta` lo para en vez de dejarlo vivo.
+        self.generacion_apps = 0
         self.connect("close-request", self._parar_apps_al_cerrar)
-        self.crear_botones_flotantes()
+        self.poner_acciones_app()
 
-    def crear_botones_flotantes(self):
-        """«Ver mi app» y «Abrir la carpeta» flotando en el tablero (v1.3.0, cotejo-rcohjm).
-
-        Viven en un overlay del tablero (`encima_tablero`), fuera de las columnas: salen con un
-        proyecto elegido (nunca con «Todos los proyectos») y abren lo mismo que sus iguales
-        del Inicio y del mapa, siempre sobre la carpeta principal del proyecto.
-        """
-        caja = Gtk.Box(spacing=px(ESPACIADO_SM), halign=Gtk.Align.END, valign=Gtk.Align.START,
-                       margin_top=px(MARGEN_TABLERO_VERTICAL),
-                       margin_end=px(MARGEN_TABLERO_LADOS))
-        self.boton_flotante_ver_app = con_mano(Gtk.Button(label="Ver mi app"))
-        self.boton_flotante_carpeta = con_mano(Gtk.Button(label="Abrir la carpeta"))
-        for boton, accion in ((self.boton_flotante_ver_app, self.al_ver_app_flotante),
-                              (self.boton_flotante_carpeta, self.al_abrir_carpeta_flotante)):
-            boton.connect("clicked", lambda _b, a=accion: a())
-            caja.append(boton)
-        self.flotantes_app = caja
-        self.encima_tablero.add_overlay(caja)
-        self.poner_botones_flotantes()
-
-    def al_ver_app_flotante(self):
+    def al_ver_app_menu(self):
         self.ver_mi_app(self.seleccion)
 
-    def al_abrir_carpeta_flotante(self):
+    def al_abrir_carpeta_menu(self):
         self.abrir_carpeta(self.seleccion)
 
-    def poner_botones_flotantes(self):
-        """Los botones solo con un proyecto elegido, no con «Todos los proyectos» ni sin fuente.
+    def al_detener_app_menu(self):
+        self.parar_app(self.seleccion)
 
-        Y «Ver mi app» se apaga con el mismo plan que en el Inicio y en el mapa: si el proyecto
-        todavía no tiene código (`sin_app`), no se puede pulsar y el tooltip dice por qué.
+    def poner_acciones_app(self):
+        """Mantiene al día el bloque del menú para el proyecto elegido.
+
+        No sale con «Todos los proyectos» porque no habría una carpeta ni un proceso únicos.
+        «Ver mi app» se apaga mientras aún no hay código y «Detener mi app» mientras Cotejo no
+        tenga un proceso vivo de ese proyecto.
         """
-        caja = getattr(self, "flotantes_app", None)
+        caja = getattr(self, "acciones_menu_app", None)
         if caja is None:
             return
         hay_proyecto = self.seleccion != TODOS and not self.fuente.problema
@@ -78,11 +63,15 @@ class VerApp:
                 sin_app = como_se_abre.plan_de(self._carpeta(self.seleccion)).sin_app
             except Exception:   # noqa: BLE001 — un error aquí no debe romper el pintado del tablero
                 sin_app = False
-        self.boton_flotante_ver_app.set_sensitive(not sin_app)
-        self.boton_flotante_ver_app.set_tooltip_text(
+        self.boton_menu_ver_app.set_sensitive(hay_proyecto and not sin_app)
+        self.boton_menu_ver_app.set_tooltip_text(
             como_se_abre.SIN_APP if sin_app else "")
+        servidores = getattr(self, "servidores", None)
+        vivo = bool(hay_proyecto and servidores and servidores.vivo(self.seleccion))
+        self.boton_menu_detener_app.set_sensitive(vivo)
 
     def _parar_apps_al_cerrar(self, *_):
+        self.generacion_apps += 1
         self.servidores.parar_todos()
         self.pintar_botones_app()
         return False          # el cierre sigue como siempre (ocultar la ventana)
@@ -105,17 +94,22 @@ class VerApp:
             return
         self.abriendo_app.add(nombre)
         self.aviso("Abriendo tu app…", segundos=3)
+        generacion = self.generacion_apps
 
         def abrir():
             try:
                 resultado = self.servidores.abrir(nombre, plan)
             except Exception as error:   # noqa: BLE001 — se dice, no se queda «abriendo»
                 resultado = servidor_app.Resultado(False, f"Tu app no arrancó: {error}")
-            GLib.idle_add(self._app_abierta, nombre, resultado)
+            GLib.idle_add(self._app_abierta, nombre, resultado, generacion)
         correr_aparte(abrir)
 
-    def _app_abierta(self, nombre, resultado):
+    def _app_abierta(self, nombre, resultado, generacion=None):
         self.abriendo_app.discard(nombre)
+        if generacion is not None and generacion != self.generacion_apps:
+            self.servidores.parar(nombre)
+            self.pintar_botones_app()
+            return GLib.SOURCE_REMOVE
         if resultado.abrir:
             self.lanzar(resultado.abrir)
         if resultado.corriendo:
@@ -152,6 +146,7 @@ class VerApp:
 
     def pintar_botones_app(self):
         """«Parar» solo si la app está en marcha; «Ver mi app» se apaga mientras no haya código."""
+        self.poner_acciones_app()
         pantalla = getattr(self, "pantalla_mapa", None)
         proyecto = getattr(self, "mapa_proyecto", None)
         if pantalla is None:

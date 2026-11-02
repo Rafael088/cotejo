@@ -174,6 +174,35 @@ class SesionEnElLlavero(ConMaquinaFalsa):
 
 
 class Listar(ConMaquinaFalsa):
+    def test_la_misma_comprobacion_exige_sesion_y_modelo_para_el_maestro(self):
+        self.cli("gemini")
+        sin_sesion = modelos_vivos.estado("gemini")
+        self.assertFalse(sin_sesion.listo)
+        self.assertIn("inicia sesión", sin_sesion.paso)
+        self.con_sesion("gemini")
+        listo = modelos_vivos.estado("gemini")
+        self.assertTrue(listo.listo)
+        self.assertIn("auto", listo.modelos)
+        self.assertIn("gemini", modelos_vivos.utilizables())
+
+    def test_sin_modelo_dice_el_paso_para_configurarlo(self):
+        self.cli("opencode", NADA)
+        self.con_sesion("opencode")
+        actual = modelos_vivos.estado("opencode", preguntar_cli=True)
+        self.assertFalse(actual.listo)
+        self.assertIn("no encontré ningún modelo", actual.problema)
+        self.assertIn("configura un proveedor y un modelo", actual.paso)
+
+    def test_un_cli_que_no_contesta_no_quita_el_agente(self):
+        # Un fallo pasajero al listar modelos no es «no tiene ninguno»: sigue ofreciéndose y,
+        # al lanzar, se vuelve a comprobar (cotejo-sclhtq).
+        self.cli("codex", ROTO)
+        self.con_sesion("codex")
+        actual = modelos_vivos.estado("codex", preguntar_cli=True)
+        self.assertTrue(actual.listo)
+        self.assertFalse(actual.modelos_conocidos)
+        self.assertIn("codex", modelos_vivos.utilizables(preguntar_cli=True))
+
     def test_opencode_y_codex_se_preguntan_al_cli(self):
         self.cli("opencode", OPENCODE)
         self.cli("codex", CODEX)
@@ -211,8 +240,10 @@ class Listar(ConMaquinaFalsa):
         self.assertEqual(modelos_vivos.listar("opencode", tope=1), [])  # sin instalar tampoco
 
     def test_leer_codex_aguanta_basura(self):
-        self.assertEqual(modelos_vivos.leer_codex("no es json"), [])
-        self.assertEqual(modelos_vivos.leer_codex('{"models": 3}'), [])
+        # Lo que no se entiende es «no pude preguntar» (`None`), no «no hay modelos» (`[]`).
+        self.assertIsNone(modelos_vivos.leer_codex("no es json"))
+        self.assertIsNone(modelos_vivos.leer_codex('{"models": 3}'))
+        self.assertEqual(modelos_vivos.leer_codex('{"models": []}'), [])
         self.assertEqual(modelos_vivos.leer_opencode("Error: algo\nproveedor/m\n\n"),
                          ["proveedor/m"])
 
@@ -288,6 +319,31 @@ class Catalogo(unittest.TestCase):
                          ["claude", "gemini"])
         self.assertEqual(dict(niveles.grupos((), ["gemini"]))["gemini"],
                          ["gemini-pro", "gemini-flash", "gemini-flash-lite"])
+
+    def test_modelos_de_por_cliente_y_el_de_por_defecto(self):
+        """La interfaz del maestro y de Preparar ofrecen modelos concretos, no solo agentes."""
+        propios = [{"clave": "astra", "modelo_id": "gpt-6-astra", "cliente": "codex",
+                    "nivel": "n3"},
+                   {"clave": "kimi", "modelo_id": "opencode-go/kimi", "cliente": "opencode",
+                    "nivel": "n2"}]
+        self.assertEqual([n.modelo for n in niveles.modelos_de("claude")],
+                         ["opus", "sonnet", "haiku"])
+        self.assertEqual([n.modelo for n in niveles.modelos_de("codex", propios)],
+                         ["codex-rapido", "codex", "codex-fuerte", "astra"])
+        self.assertEqual(niveles.modelos_de("otro"), ())
+        # Cada agente arranca con su equivalente a n2.
+        self.assertEqual(niveles.modelo_por_defecto("claude"), "sonnet")
+        self.assertEqual(niveles.modelo_por_defecto("codex"), "codex")
+        self.assertEqual(niveles.modelo_por_defecto("gemini"), "gemini-flash")
+        self.assertEqual(niveles.modelo_por_defecto("opencode"), "opencode")
+        self.assertEqual(niveles.modelo_por_defecto("antigravity"), "antigravity")
+        self.assertEqual(niveles.modelo_por_defecto("otro"), "")
+        # Agrupado por cliente y solo los que se piden (los instalados).
+        grupos = niveles.por_cliente(propios, ["claude", "codex", "opencode"])
+        self.assertEqual([c for c, _ in grupos], ["claude", "codex", "opencode"])
+        self.assertEqual([n.modelo for n in grupos[2][1]], ["opencode", "kimi"])
+        self.assertEqual(niveles.por_cliente(propios, ["gemini"]),
+                         [("gemini", [n for n in niveles.modelos_de("gemini")])])
 
     def test_sin_ningun_agente_listo_salen_todos(self):
         self.assertEqual([c for c, _ in niveles.grupos((), [])],

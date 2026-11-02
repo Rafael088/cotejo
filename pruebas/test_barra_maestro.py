@@ -37,11 +37,12 @@ def _nunca_una_terminal(*_a, **_k):
 
 
 def board_falso(seleccion="Uno"):
-    falso = types.SimpleNamespace(seleccion=seleccion, avisos=[],
+    falso = types.SimpleNamespace(seleccion=seleccion, avisos=[], definiciones=[],
                                   fuente=types.SimpleNamespace(problema=None))
     falso.aviso = lambda texto, segundos=4: falso.avisos.append(texto)
     for metodo in ("barra_maestro", "al_ejecutar_maestro", "hablar_al_maestro", "poner_maestro",
                    "menu_maestro", "cliente_del_maestro", "elegir_cliente_maestro",
+                   "modelo_del_maestro", "definiciones_maestro", "elegir_modelo_maestro",
                    "crear_conversacion", "ver_conversacion", "cerrar_conversacion",
                    "pintar_conversacion", "proyecto_del_maestro", "parar_reloj_maestro",
                    "tic_maestro", "maestro_contesto", "parar_maestro", "olvidar_maestro",
@@ -50,6 +51,45 @@ def board_falso(seleccion="Uno"):
     falso.panel = falso.crear_conversacion()
     falso.barra = falso.barra_maestro()
     return falso
+
+
+def botones_de(widget):
+    """Todos los `Gtk.Button` de un widget, aunque estén dentro de su scroll (el menú del
+    maestro lo lleva: con los modelos registrados la lista crece)."""
+    salida = []
+    if isinstance(widget, Gtk.Button):
+        salida.append(widget)
+    hijo = widget.get_first_child()
+    while hijo is not None:
+        salida += botones_de(hijo)
+        hijo = hijo.get_next_sibling()
+    return salida
+
+
+def etiquetas_de(widget):
+    """Todos los `Gtk.Label` de un widget, aunque estén dentro de su scroll."""
+    salida = []
+    if isinstance(widget, Gtk.Label):
+        salida.append(widget.get_label())
+    hijo = widget.get_first_child()
+    while hijo is not None:
+        salida += etiquetas_de(hijo)
+        hijo = hijo.get_next_sibling()
+    return salida
+
+
+def texto_de_boton(boton):
+    etiquetas = []
+    pendientes = [boton.get_first_child()]
+    while pendientes:
+        hijo = pendientes.pop()
+        while hijo is not None:
+            if isinstance(hijo, Gtk.Label):
+                etiquetas.append(hijo.get_label())
+            if hijo.get_first_child() is not None:
+                pendientes.append(hijo.get_first_child())
+            hijo = hijo.get_next_sibling()
+    return " ".join(etiquetas)
 
 
 def hablado(proyecto="Uno"):
@@ -67,6 +107,8 @@ class BarraMaestro(unittest.TestCase):
             self.addCleanup(parche.stop)
         self.guardado = guardado
         for parche in (mock.patch("enrutador.clientes.instalados",
+                                  return_value=["claude", "codex"]),
+                       mock.patch("enrutador.modelos_vivos.utilizables",
                                   return_value=["claude", "codex"]),
                        mock.patch("enrutador.motores.terminal.abrir", _nunca_una_terminal),
                        mock.patch("enrutador.conversacion.leer",
@@ -125,26 +167,53 @@ class BarraMaestro(unittest.TestCase):
         self.assertEqual(falso.entrada_maestro.get_text(), "solo la web")
         self.assertTrue(falso.avisos)
 
-    def test_elegir_otro_agente_solo_elige_y_lo_recuerda(self):
+    def test_elegir_otro_modelo_solo_elige_y_lo_recuerda(self):
         falso = board_falso()
         falso.menu_maestro(falso.boton_maestro)
         caja = falso.boton_maestro.get_popover().get_child()
-        opciones = []
-        hijo = caja.get_first_child()
-        while hijo is not None:
-            if isinstance(hijo, Gtk.Button):
-                opciones.append(hijo)
-            hijo = hijo.get_next_sibling()
-        self.assertEqual(len(opciones), 2)
+        opciones = botones_de(caja)
+        # Los modelos del catálogo, no solo los agentes: Claude trae sus tres alias y Codex sus
+        # tres de fábrica (uno es «el del agente»).
+        self.assertEqual([texto_de_boton(b) for b in opciones],
+                         ["opus", "sonnet", "haiku",
+                          "codex-rapido", "codex · el del agente", "codex-fuerte"])
+        elegido = next(b for b in opciones if "codex · el del agente" in texto_de_boton(b))
         with mock.patch("enrutador.verbos.hablar_maestro") as hablar:
-            opciones[1].emit("clicked")
+            elegido.emit("clicked")
         hablar.assert_not_called()
         self.assertEqual(self.guardado["cliente_maestro"], "codex")
+        self.assertEqual(self.guardado["modelo_maestro"], "codex")
         falso.entrada_maestro.set_text("hola")
         self.assertIn("Codex", falso.boton_maestro.get_tooltip_text())
         with mock.patch("enrutador.verbos.hablar_maestro", return_value=hablado()) as hablar:
             falso.al_ejecutar_maestro()
         self.assertEqual(hablar.call_args.args, ("Uno", "hola", "codex"))
+        self.assertEqual(hablar.call_args.kwargs["modelo"], "codex")
+
+    def test_el_menu_agrupa_por_cliente_y_solo_los_instalados(self):
+        falso = board_falso()
+        falso.definiciones = [
+            {"clave": "astra", "modelo_id": "gpt-6-astra", "cliente": "codex", "nivel": "n3"},
+            {"clave": "kimi", "modelo_id": "opencode-go/kimi", "cliente": "opencode",
+             "nivel": "n2"}]
+        falso.menu_maestro(falso.boton_maestro)
+        caja = falso.boton_maestro.get_popover().get_child()
+        textos = etiquetas_de(caja)
+        # Los títulos de grupo: Claude y Codex (instalados), sin OpenCode.
+        self.assertIn("Claude Code", textos)
+        self.assertIn("Codex", textos)
+        self.assertNotIn("OpenCode", textos)
+        self.assertIn("astra", [texto_de_boton(b) for b in botones_de(caja)])
+        self.assertNotIn("kimi", [texto_de_boton(b) for b in botones_de(caja)])
+        # Y elegir un modelo concreto lo recuerda y lo manda.
+        astra = next(b for b in botones_de(caja) if "astra" in texto_de_boton(b))
+        astra.emit("clicked")
+        self.assertEqual(self.guardado["modelo_maestro"], "astra")
+        falso.entrada_maestro.set_text("hola")
+        with mock.patch("enrutador.verbos.hablar_maestro", return_value=hablado()) as hablar:
+            falso.al_ejecutar_maestro()
+        self.assertEqual(hablar.call_args.kwargs["modelo"], "astra")
+        self.assertIn("astra", falso.boton_maestro.get_tooltip_text())
 
     def test_con_todos_los_proyectos_la_barra_no_se_usa(self):
         falso = board_falso(seleccion=app.comun.TODOS)
@@ -155,7 +224,9 @@ class BarraMaestro(unittest.TestCase):
     def test_sin_clientes_avisa(self):
         falso = board_falso()
         falso.entrada_maestro.set_text("hola")
-        with mock.patch("enrutador.clientes.instalados", return_value=[]), \
+        with mock.patch("enrutador.modelos_vivos.utilizables", return_value=[]), \
+                mock.patch("enrutador.modelos_vivos.aviso_sin_listos",
+                           return_value=clientes.SIN_AGENTE_TEXTO), \
                 mock.patch("enrutador.verbos.hablar_maestro") as hablar:
             falso.al_ejecutar_maestro()
         hablar.assert_not_called()
@@ -180,7 +251,10 @@ class ConversacionEnElBoard(base.PestanaInicio):
                        mock.patch("enrutador.clientes.shutil.which",
                                   side_effect=lambda n, **_k: None
                                   if n in ("codex", "opencode", "gemini", "agy")
-                                  else "/usr/bin/" + os.path.basename(n))):
+                                  else "/usr/bin/" + os.path.basename(n)),
+                       # El maestro solo habla con un agente listo: el falso tiene sesión,
+                       # haya o no en la máquina (en el CI no hay).
+                       mock.patch("enrutador.modelos_vivos.sesion", return_value=True)):
             parche.start()
             self.addCleanup(parche.stop)
         return {"COTEJO_MOTOR": "agente", "FALSO_PROYECTO": "Faro"}

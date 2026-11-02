@@ -39,6 +39,7 @@ import shutil
 import signal
 import subprocess
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 from tareas import rutas
@@ -265,14 +266,17 @@ def leer_opencode(salida):
 
 
 def leer_codex(salida):
-    """`codex debug models`: los de `visibility: list`, por su `priority`."""
+    """`codex debug models`: los de `visibility: list`, por su `priority`.
+
+    `None` si la salida no se entiende: no es lo mismo «no tiene ningún modelo» que «no pude
+    preguntar», y solo lo primero debe dejar al agente fuera del maestro."""
     try:
         datos = json.loads(salida)
     except ValueError:
-        return []
+        return None
     lista = datos.get("models") if isinstance(datos, dict) else datos
     if not isinstance(lista, list):
-        return []
+        return None
     visibles = [m for m in lista if isinstance(m, dict) and m.get("slug")
                 and m.get("visibility", "list") == "list"]
     visibles.sort(key=lambda m: m.get("priority") if isinstance(m.get("priority"), int) else 999)
@@ -330,7 +334,7 @@ def preguntar(nombre, tope=TOPE):
         return None
     if hecho.returncode != 0:
         return None
-    return LECTORES[nombre](hecho.stdout) or None
+    return LECTORES[nombre](hecho.stdout)
 
 
 def en_cache(nombre):
@@ -341,35 +345,126 @@ def en_cache(nombre):
     return list(RESPALDO.get(nombre, ()))
 
 
+def _modelos(nombre, preguntar_cli=False, refrescar=False, tope=TOPE):
+    """`(modelos, conocido)`: lo que ofrece este agente y si Cotejo lo sabe de verdad.
+
+    «No lo sé» (el CLI falló, tardó o contestó algo que no se entiende) no es «no tiene
+    ninguno»: solo lo segundo impide ofrecerlo, porque un fallo pasajero no debe dejar sin
+    maestro a quien sí puede trabajar (`estado`)."""
+    guardado = _leer_guardado(nombre)
+    fresco = bool(guardado and guardado["modelos"]
+                  and time.time() - float(guardado.get("en") or 0) < CADUCA)
+    if fresco and not refrescar:
+        return list(guardado["modelos"]), True
+    if not preguntar_cli:
+        return en_cache(nombre), fresco
+    if nombre not in PREGUNTA:
+        return list(RESPALDO.get(nombre, ())), True
+    vivos = preguntar(nombre, tope)
+    if vivos is not None:
+        if vivos:
+            _guardar(nombre, vivos)
+        return list(vivos), True
+    return en_cache(nombre), fresco
+
+
 def listar(nombre, refrescar=False, tope=TOPE):
     """Los modelos de este agente: lo guardado si es reciente, si no se le pregunta al CLI (y
     se guarda), y si no contesta, `en_cache`. `refrescar` salta lo guardado."""
-    guardado = _leer_guardado(nombre)
-    if (not refrescar and guardado and guardado["modelos"]
-            and time.time() - float(guardado.get("en") or 0) < CADUCA):
-        return list(guardado["modelos"])
-    vivos = preguntar(nombre, tope)
-    if vivos:
-        _guardar(nombre, vivos)
-        return vivos
-    return en_cache(nombre)
+    return _modelos(nombre, preguntar_cli=True, refrescar=refrescar, tope=tope)[0]
+
+
+@dataclass(frozen=True)
+class EstadoAgente:
+    """Una sola respuesta para Inicio/Ajustes y para el maestro."""
+
+    cliente: str
+    titulo: str
+    instalado: bool
+    sesion: bool
+    sesion_visible: bool
+    modelos: tuple
+    modelos_conocidos: bool = False
+
+    @property
+    def listo(self):
+        """Instalado, con sesión (o sin forma de verla) y con modelos cuando se sabe que no
+        tiene ninguno. Un «no pude preguntar» no lo deja fuera."""
+        con_sesion = self.sesion or not self.sesion_visible
+        tiene_modelos = bool(self.modelos) or not self.modelos_conocidos
+        return self.instalado and con_sesion and tiene_modelos
+
+    @property
+    def paso(self):
+        """Qué tiene que hacer la persona para que el agente llegue a estar listo."""
+        if not self.instalado:
+            return f"Instala {self.titulo} desde Ajustes y pulsa «Revisar otra vez»"
+        if self.sesion_visible and not self.sesion:
+            return (f"Abre {self.titulo}, inicia sesión con tu cuenta y pulsa "
+                    "«Revisar otra vez»")
+        if not self.modelos:
+            return (f"Abre {self.titulo}, configura un proveedor y un modelo, y pulsa "
+                    "«Revisar otra vez»")
+        return ""
+
+    @property
+    def problema(self):
+        if self.listo:
+            return ""
+        if not self.instalado:
+            falta = "no está instalado"
+        elif self.sesion_visible and not self.sesion:
+            falta = "está instalado, pero falta iniciar sesión"
+        else:
+            falta = "tiene sesión, pero no encontré ningún modelo disponible"
+        return f"{self.titulo} {falta}. {self.paso}."
+
+
+def estado(nombre, preguntar_cli=False, refrescar=False):
+    """Estado utilizable de un agente; nunca ofrece al maestro algo que no puede lanzar."""
+    cliente = clientes.de(nombre)
+    instalado = nombre in clientes.instalados()
+    visible = sesion_visible(nombre)
+    con_sesion = instalado and sesion(nombre, preguntar_cli=preguntar_cli)
+    puede_mirar_modelos = instalado and (con_sesion or not visible)
+    modelos, conocidos = (_modelos(nombre, preguntar_cli=preguntar_cli, refrescar=refrescar)
+                          if puede_mirar_modelos else ([], False))
+    return EstadoAgente(nombre, cliente.titulo or nombre, instalado, con_sesion, visible,
+                        tuple(modelos), bool(conocidos))
+
+
+def estados(preguntar_cli=False, refrescar=False):
+    """Estado de todos los agentes conocidos, en el orden estable de la interfaz."""
+    return [estado(nombre, preguntar_cli=preguntar_cli, refrescar=refrescar)
+            for nombre in clientes.CLIENTES]
+
+
+def utilizables(preguntar_cli=False, refrescar=False):
+    """Los que Inicio/Ajustes y el maestro consideran listos, con la misma comprobación."""
+    return [actual.cliente for actual in estados(preguntar_cli, refrescar) if actual.listo]
+
+
+def aviso_sin_listos(preguntar_cli=False):
+    """Por qué no hay maestro, priorizando lo que ya está instalado sobre instalar otro."""
+    vistos = estados(preguntar_cli=preguntar_cli)
+    pendiente = next((e for e in vistos if e.instalado and not e.listo), None)
+    if pendiente:
+        return pendiente.problema
+    return clientes.SIN_AGENTE_TEXTO
 
 
 def resumen(refrescar=False, preguntar_cli=True):
     """Para la CLI (`cotejo modelos vivos`): por cada agente conocido, si está instalado, si
     tiene sesión y sus modelos (en vivo o, con `preguntar_cli=False`, lo guardado)."""
-    puestos = set(clientes.instalados())
     salida = []
-    for nombre, cliente in clientes.CLIENTES.items():
-        instalado = nombre in puestos
-        con_sesion = instalado and sesion(nombre, preguntar_cli=preguntar_cli)
-        visible = sesion_visible(nombre)
-        modelos = ((listar(nombre, refrescar) if preguntar_cli else en_cache(nombre))
-                   if con_sesion or (instalado and not visible) else [])
-        salida.append({"cliente": nombre, "titulo": cliente.titulo or nombre,
-                       "instalado": instalado, "sesion": con_sesion,
-                       "sesion_visible": visible,
-                       "lista_el_cli": nombre in PREGUNTA, "modelos": modelos})
+    for actual in estados(preguntar_cli=preguntar_cli, refrescar=refrescar):
+        salida.append({"cliente": actual.cliente, "titulo": actual.titulo,
+                       "instalado": actual.instalado, "sesion": actual.sesion,
+                       "sesion_visible": actual.sesion_visible, "listo": actual.listo,
+                       "problema": actual.problema,
+                       "lista_el_cli": actual.cliente in PREGUNTA,
+                       "modelos_conocidos": actual.modelos_conocidos,
+                       "modelos": list(actual.modelos)})
     return salida
 
 

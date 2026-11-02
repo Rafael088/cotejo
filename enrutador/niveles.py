@@ -125,7 +125,7 @@ DEFECTO = POR_CLAVE["n2"]
 def personalizados(definiciones=()):
     """Construye niveles de modelos registrados en la config, sin modificar los integrados."""
     if all(isinstance(definicion, Nivel) for definicion in definiciones or ()):
-        return tuple(definiciones)
+        return tuple(definiciones or ())
     salida = []
     for definicion in definiciones or ():
         clave = str(definicion.get("clave", "")).strip().lower()
@@ -195,6 +195,56 @@ def grupos(definiciones=(), listos=None, primero=""):
     return salida
 
 
+def modelos_de(cliente, definiciones=()):
+    """Los modelos concretos de `cliente`, en el orden en que se ofrecen.
+
+    Trae los de fábrica de ese agente y los registrados que son suyos (un registrado con la
+    misma clave tapa al de fábrica). Claude enseña sus alias de siempre (`opus`, `sonnet`,
+    `haiku`) y después los que se le registren. Lo que se devuelve son `Nivel`: quien pinta
+    saca de ahí la clave con la que se lanza (`modelo`) y el id exacto para nombrarlo.
+    """
+    propios = personalizados(definiciones)
+    base = ([POR_MODELO[alias] for alias in ORDEN_CLAUDE] if cliente == "claude" else
+            [n for n in _de_fabrica(propios) if n.cliente == cliente and n.modelo])
+    elegidos = {}
+    for nivel in base:
+        elegidos.setdefault(nivel.modelo, nivel)
+    for nivel in propios:
+        if nivel.cliente == cliente and nivel.modelo:
+            elegidos[nivel.modelo] = nivel
+    return tuple(elegidos.values())
+
+
+def por_cliente(definiciones=(), clientes=()):
+    """El catálogo agrupado por agente: `[(cliente, [Nivel, …])]` de los que se piden.
+
+    `clientes` son los instalados, que es lo que tiene sentido ofrecer en una interfaz: no se
+    propone un modelo de un agente que no está en la máquina. Un cliente sin modelos no sale.
+    """
+    salida = []
+    for cliente in clientes:
+        modelos = modelos_de(cliente, definiciones)
+        if modelos:
+            salida.append((cliente, list(modelos)))
+    return salida
+
+
+def modelo_por_defecto(cliente, definiciones=()):
+    """La clave que ese agente usaría sin elegir un modelo concreto: su equivalente a n2.
+
+    Es lo que dejan puesto las interfaces para que no haya que decidir nada: Claude, `sonnet`;
+    Codex, su modelo por defecto; Gemini, `gemini-flash`. "" si ese agente no tiene modelos.
+    """
+    disponibles = modelos_de(cliente, definiciones)
+    if not disponibles:
+        return ""
+    preferido = del_cliente(DEFECTO, cliente, definiciones)
+    for nivel in disponibles:
+        if nivel.clave == preferido.clave or nivel.modelo == preferido.modelo:
+            return nivel.modelo
+    return disponibles[0].modelo
+
+
 def del_cliente(nivel, cliente, definiciones=()):
     """El modelo de `cliente` para el tamaño de `nivel` (el agente del proyecto, cotejo-qixs4j).
 
@@ -250,6 +300,20 @@ def por_nombre(nombre, extras=(), alias_persona=None):
     if nivel is None and nombre in ALIAS_DE_ANTES:
         nivel = resolver(ALIAS_DE_ANTES[nombre])
     return nivel
+
+
+def modelo_concreto(nombre, definiciones=()):
+    """Resuelve una clave del catálogo a su destino ejecutable.
+
+    A diferencia de :func:`por_nombre`, los niveles abstractos ``n1``/``n2``/``n3`` no son
+    elecciones de modelo para una interfaz: sus alias históricos sí (haiku/sonnet/opus). Un
+    nombre desconocido devuelve ``None`` para conservar la compatibilidad con configuraciones
+    antiguas que guardaban directamente lo que entiende el cliente.
+    """
+    nivel = por_nombre(nombre, definiciones)
+    if nivel in NIVELES and (nombre or "").strip().lower() in POR_CLAVE:
+        return None
+    return nivel if nivel is not None and nivel.despachable else None
 
 
 def _instalado(cliente):

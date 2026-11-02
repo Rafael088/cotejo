@@ -132,6 +132,16 @@ class VentanaDeFinalizada(unittest.TestCase):
         self.assertIn("2026-10-09 · Uno",
                       [h.get_label() for h in hijos(d) if isinstance(h, Gtk.Label)])
 
+    def test_la_entrega_finalizada_enseña_evidencia_rama_y_commit(self):
+        entrega = {"evidencia": "se implementó y pasó la suite"}
+        datos = {"rama": "cotejo/cotejo-aaaa01", "head": "a" * 40,
+                 "commits": [{"corto": "abcdef1", "asunto": "detalle final"}]}
+        caja = app.Board.entrega_finalizada(types.SimpleNamespace(), entrega, datos)
+        etiquetas = [h.get_label() for h in hijos(caja) if isinstance(h, Gtk.Label)]
+        self.assertIn("se implementó y pasó la suite", etiquetas)
+        self.assertIn("cotejo/cotejo-aaaa01 · commit aaaaaaaaaaaa", etiquetas)
+        self.assertIn("abcdef1  detalle final", etiquetas)
+
 
 @unittest.skipUnless(HAY_GTK, "sin GTK no se puede cargar el CSS")
 class CssQueGtkEntiende(unittest.TestCase):

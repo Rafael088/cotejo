@@ -2,7 +2,7 @@
 
 from gi.repository import Adw, Gtk, Pango
 
-from .. import modelo, seguir_ficha
+from .. import bitacora, modelo, revision, seguir_ficha
 from .comun import (
     ESPACIADO_LG, ESPACIADO_SM, ESPACIADO_XL, ESPACIADO_XS, ICONOS_COLUMNA, ICONOS_DIFICULTAD,
     NOMBRES_DIFICULTAD, anotacion_visible, id_corto,
@@ -69,6 +69,7 @@ class Detalle:
         """
         version, nombre_corto, descripcion = tarea.partes
         nombres = dict(modelo.COLUMNAS)
+        finalizada = tarea.columna == modelo.HECHA
         dialogo = Adw.Dialog(title=f"{id_corto(tarea.id)} · {nombres[tarea.columna]}",
                              content_width=px(560))
         vista = Adw.ToolbarView(css_classes=["detalle"])
@@ -117,8 +118,8 @@ class Detalle:
         # Quién la tiene, cuánto cuesta y dónde vive: tres datos en una franja, cada uno con
         # su rótulo encima, en vez de una tabla de clave y valor que había que leer entera.
         datos = Gtk.Box(spacing=px(ESPACIADO_XL), css_classes=["detalle-datos"], homogeneous=False)
-        datos.append(self.dato_de_detalle("Modelo", self.selector_de_agente(proyecto, tarea,
-                                                                            dialogo)))
+        datos.append(self.dato_de_detalle("Hecha por" if finalizada else "Modelo",
+                                          self.selector_de_agente(proyecto, tarea, dialogo)))
         dificultad = Gtk.Box(spacing=px(ESPACIADO_XS))
         if tarea.dificultad:
             dificultad.append(icono(ICONOS_DIFICULTAD.get(tarea.dificultad, ""), 14))
@@ -137,7 +138,8 @@ class Detalle:
         # propia sección (`seccion_sin_entregar`, cotejo-granqk) en vez de esta «DEVUELTA», que
         # repetía lo que dijo el agente en crudo y con jerga.
         no_entrego = self.seccion_sin_entregar(proyecto, tarea, dialogo)
-        visible = anotacion_visible(tarea, self.app.bitacora.get(tarea.id))
+        visible = (None if finalizada else
+                   anotacion_visible(tarea, self.app.bitacora.get(tarea.id)))
         if no_entrego is not None:
             cuerpo.append(no_entrego)
         elif visible is not None:
@@ -154,11 +156,17 @@ class Detalle:
                                   css_classes=["anotacion-texto"]))
             cuerpo.append(caja)
         # Lo que se ve del trabajo entregado (`entregar --captura`): grande y sin abrir nada.
-        entregada = self.app.bitacora.get(tarea.id)
-        vistas = seccion_capturas(entregada if (entregada or {}).get("operacion") == "entregar"
-                                  else None, dialogo)
+        entregada = (bitacora.ultima_entrega(tarea.id)
+                     if finalizada else self.app.bitacora.get(tarea.id))
+        entregada = (entregada if (entregada or {}).get("operacion") == "entregar"
+                     else None)
+        vistas = seccion_capturas(entregada, dialogo)
         if vistas is not None:
             cuerpo.append(vistas)
+
+        if finalizada and entregada is not None:
+            entrega = revision.resumen(entregada) or {}
+            cuerpo.append(self.entrega_finalizada(entregada, entrega))
 
         # Lanzada desde el board (v1.3.0, `lanzar.py`): en Haciendo, lo que hace su agente en
         # vivo; en Pendiente, por qué quedó en espera o que está pausada (cotejo-z7ma7r).
@@ -188,6 +196,10 @@ class Detalle:
         vista.set_content(Gtk.ScrolledWindow(child=cuerpo, propagate_natural_height=True,
                                              max_content_height=px(520),
                                              hscrollbar_policy=Gtk.PolicyType.NEVER))
+
+        if finalizada:
+            dialogo.set_child(vista)
+            return dialogo
 
         # Mover, abajo y fijo: atrás a la izquierda, adelante a la derecha y en verde, como
         # el orden de las columnas. Nunca a Finalizada desde aquí: eso es comprobar.
@@ -222,6 +234,29 @@ class Detalle:
         dialogo.set_child(vista)
         return dialogo
 
+    def entrega_finalizada(self, entregada, datos):
+        """La entrega de una tarea aprobada, sin acciones que puedan modificarla."""
+        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_SM),
+                       css_classes=["anotacion", "entregada"])
+        caja.append(Gtk.Label(label="ENTREGA", xalign=0, css_classes=["detalle-clave"]))
+        evidencia = (entregada.get("evidencia") or "").strip()
+        if evidencia:
+            caja.append(Gtk.Label(label=evidencia, xalign=0, wrap=True, selectable=True,
+                                  focusable=False, css_classes=["anotacion-texto"]))
+        git = " · ".join(parte for parte in (
+            datos.get("rama") or "",
+            f"commit {(datos.get('head') or '')[:12]}" if datos.get("head") else "",
+        ) if parte)
+        if git:
+            caja.append(Gtk.Label(label=git, xalign=0, selectable=True, focusable=False,
+                                  css_classes=["revision-dato"]))
+        commits = datos.get("commits") or []
+        for commit in commits:
+            caja.append(Gtk.Label(label=f"{commit['corto']}  {commit['asunto']}", xalign=0,
+                                  wrap=True, selectable=True, focusable=False,
+                                  css_classes=["salida-prueba"]))
+        return caja
+
     @staticmethod
     def dato_de_detalle(rotulo, valor, expandir=False):
         """Uno de los datos de la franja de la ficha: rótulo pequeño encima, valor debajo."""
@@ -236,44 +271,68 @@ class Detalle:
         """El modelo de la ficha: un botón con el que tiene, que despliega a quién pasársela.
 
         En Finalizada es solo el nombre: lo hecho ya no cambia de manos.
+
+        Asignar no cierra la ficha: el modelo nuevo se pinta en el mismo botón y la lista se
+        rehace con la tarea al día, para poder seguir leyendo lo que se estaba leyendo
+        (cotejo-uy34ma). Antes se cerraba, y en Pendiente parecía que la ventana se caía sola.
         """
-        quien = ("sin-agente" if not tarea.agente else
-                 "persona" if tarea.agente in self.alias_persona else "agente")
-        fila = Gtk.Box(spacing=px(ESPACIADO_XS))
-        fila.append(icono(quien, 14))
-        fila.append(Gtk.Label(label=tarea.agente or "Sin asignar",
-                              css_classes=["detalle-valor"]
-                              + ([] if tarea.agente else ["detalle-tenue"])))
-        if tarea.hecha:
-            return fila
-        boton = Gtk.MenuButton(child=fila, always_show_arrow=True,
-                               css_classes=["flat", "detalle-agente"])
+        if tarea.columna == modelo.HECHA:
+            return _fila_de_agente(tarea, self.alias_persona)
+        boton = Gtk.MenuButton(child=_fila_de_agente(tarea, self.alias_persona),
+                               always_show_arrow=True, css_classes=["flat", "detalle-agente"])
         etiquetar(boton, f"Cambiar el modelo, ahora {tarea.agente or 'sin asignar'}")
         boton.set_tooltip_text("Cambiar a quién está asignada")
         caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
                        margin_top=px(ESPACIADO_SM), margin_bottom=px(ESPACIADO_SM),
                        margin_start=px(ESPACIADO_SM), margin_end=px(ESPACIADO_SM))
         popover = Gtk.Popover(child=caja)
-        caja.append(Gtk.Label(label="ASIGNAR A", xalign=0, css_classes=["menu-titulo"]))
+
+        def poner_al_dia(actual):
+            """La tarea ya escrita en la fuente: el botón y el menú, con lo nuevo."""
+            boton.set_child(_fila_de_agente(actual, self.alias_persona))
+            etiquetar(boton, f"Cambiar el modelo, ahora {actual.agente or 'sin asignar'}")
+            while caja.get_first_child() is not None:
+                caja.remove(caja.get_first_child())
+            caja.append(Gtk.Label(label="ASIGNAR A", xalign=0, css_classes=["menu-titulo"]))
+            caja.append(self.lista_de_agentes(proyecto, actual, popover, asignar, anadir_aqui))
 
         def asignar(p, t, agente, pop):
-            dialogo.close()
-            self.al_asignar(p, t, agente, pop)
-        caja.append(self.lista_de_agentes(proyecto, tarea, popover, asignar))
+            pop.popdown()
+            actual = self.al_asignar(p, t, agente, pop)
+            if actual is not None:
+                poner_al_dia(actual)
+
+        def anadir(p, t, _cliente, pop):
+            pop.popdown()
+
+            def al_agregar(clave):
+                actual = self.al_asignar(p, t, clave, pop)
+                if actual is not None:
+                    poner_al_dia(actual)
+            self.abrir_anadir_modelo(self.agente_del_proyecto(p) or None, al_agregar)
+
+        caja.append(Gtk.Label(label="ASIGNAR A", xalign=0, css_classes=["menu-titulo"]))
+        # Un Board falso de las pruebas viejas no sabe abrir el diálogo de añadir (modelos.py).
+        anadir_aqui = anadir if hasattr(self, "abrir_anadir_modelo") else None
+        caja.append(self.lista_de_agentes(proyecto, tarea, popover, asignar, anadir_aqui))
         boton.set_popover(popover)
         return con_mano(boton)
 
-    def lista_de_agentes(self, proyecto, tarea, popover, funcion=None):
-        """Las opciones de «Asignar a», con scroll: con los modelos que registran los clientes
-        la lista pasa de treinta, y sin él el popover no cabe en la ventana y GTK no lo abre."""
+    def lista_de_agentes(self, proyecto, tarea, popover, funcion=None, funcion_anadir=None):
+        """Las opciones de «Asignar a», con scroll y agrupadas por cliente.
+
+        Con los modelos que registran los clientes la lista pasa de treinta: sin scroll el
+        popover no cabe en la ventana y GTK no lo abre, y sin un ancho mínimo las etiquetas
+        recortadas lo dejaban en una columna ilegible. «Añadir modelo…» va una sola vez al
+        pie, separado de los modelos, en vez de repetirse bajo cada grupo (cotejo-uy34ma).
+        """
         agentes = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
         # Por agente, con el del proyecto primero (cotejo-qixs4j, `modelos.py`). Un Board falso
         # de las pruebas viejas no trae `grupos_de`: ahí, la lista plana de siempre.
         grupos = (self.grupos_de(proyecto) if hasattr(self, "grupos_de")
                   else [(None, [a for a in self.agentes if a not in self.alias_persona])])
-        agrupado = len(grupos) > 1
         for cliente, nombres in grupos:
-            if agrupado:
+            if cliente:
                 from .modelos import titulo_de
                 agentes.append(Gtk.Label(label=titulo_de(cliente), xalign=0,
                                          css_classes=["menu-titulo"]))
@@ -281,11 +340,17 @@ class Detalle:
                 if agente != tarea.agente:
                     agentes.append(self.opcion(agente, funcion or self.al_asignar, proyecto,
                                                tarea, agente, popover, "agente"))
-            if cliente and hasattr(self, "al_anadir_y_asignar"):
-                agentes.append(self.opcion("Añadir modelo…", self.al_anadir_y_asignar, proyecto,
-                                           tarea, cliente, popover, "agente"))
+        anadir = funcion_anadir or getattr(self, "al_anadir_y_asignar", None)
+        if anadir is not None:
+            agentes.append(Gtk.Separator(margin_top=px(ESPACIADO_SM),
+                                         margin_bottom=px(ESPACIADO_XS)))
+            agentes.append(self.opcion("Añadir modelo…", anadir, proyecto, tarea, None,
+                                       popover, "mas"))
         personas = tuple(a for a in self.agentes if a in self.alias_persona) or \
             tuple(self.alias_persona[:1])
+        if personas or tarea.agente:
+            agentes.append(Gtk.Separator(margin_top=px(ESPACIADO_SM),
+                                         margin_bottom=px(ESPACIADO_XS)))
         for agente in personas + ("",):
             if agente == tarea.agente:
                 continue
@@ -293,4 +358,17 @@ class Detalle:
             agentes.append(self.opcion(agente or "Sin agente", funcion or self.al_asignar,
                                        proyecto, tarea, agente, popover, quien))
         return Gtk.ScrolledWindow(child=agentes, hscrollbar_policy=Gtk.PolicyType.NEVER,
-                                  propagate_natural_height=True, max_content_height=px(320))
+                                  propagate_natural_height=True, max_content_height=px(320),
+                                  width_request=px(300))
+
+
+def _fila_de_agente(tarea, alias_persona):
+    """El nombre del modelo con su icono, dentro del botón que abre «Asignar a»."""
+    quien = ("sin-agente" if not tarea.agente else
+             "persona" if tarea.agente in alias_persona else "agente")
+    fila = Gtk.Box(spacing=px(ESPACIADO_XS))
+    fila.append(icono(quien, 14))
+    fila.append(Gtk.Label(label=tarea.agente or "Sin asignar",
+                          css_classes=["detalle-valor"]
+                          + ([] if tarea.agente else ["detalle-tenue"])))
+    return fila

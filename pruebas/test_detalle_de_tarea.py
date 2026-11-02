@@ -3,6 +3,7 @@
 Arma la ventana de verdad con un Board falso, sin presentarla. Se salta sin GTK.
 """
 
+import dataclasses
 import types
 import unittest
 
@@ -29,12 +30,17 @@ def hijos(widget):
         hijo = hijo.get_next_sibling()
 
 
-def dialogo(estado, texto="v1.2.4 · Banda de proyectos: una franja al 60 %", bitacora=None):
+def dialogo(estado, texto="v1.2.4 · Banda de proyectos: una franja al 60 %", bitacora=None,
+            al_asignar=None):
     movidas, asignadas = [], []
+
+    def asignar(p, t, agente, pop):
+        asignadas.append(agente)
+        return al_asignar(t, agente) if al_asignar is not None else None
     falso = types.SimpleNamespace(
         agentes=("opus", "sonnet", "persona"), alias_persona=("persona",),
         app=types.SimpleNamespace(bitacora=bitacora or {}),
-        al_asignar=lambda p, t, agente, pop: asignadas.append(agente),
+        al_asignar=asignar,
         mover=lambda p, t, destino: movidas.append(destino))
     for nombre in ("selector_de_agente", "lista_de_agentes", "opcion", "motivo_en_espera",
                    "seccion_en_espera", "seccion_en_vivo", "seccion_pausada",
@@ -113,6 +119,55 @@ class VentanaDeDetalle(unittest.TestCase):
                     if isinstance(h, Gtk.Button) and "menu-item" in h.get_css_classes()]
         opciones[0].emit("clicked")
         self.assertEqual(asignadas, ["opus"])
+
+    def test_asignar_deja_la_ficha_abierta_con_el_modelo_nuevo(self):
+        """cotejo-uy34ma: antes `asignar` cerraba el diálogo y parecía que se caía solo."""
+        d, _, asignadas = dialogo("pendiente", al_asignar=lambda t, agente:
+                                  dataclasses.replace(t, agente=agente))
+        cerrados = []
+        cerrar = d.close
+
+        def cerrar_contando(*_a):
+            cerrados.append(True)
+            return cerrar()
+        d.close = cerrar_contando
+        selector = [h for h in hijos(d) if isinstance(h, Gtk.MenuButton)][0]
+        opciones = [h for h in hijos(selector.get_popover())
+                    if isinstance(h, Gtk.Button) and "menu-item" in h.get_css_classes()]
+        opciones[0].emit("clicked")
+        self.assertEqual(asignadas, ["opus"])
+        self.assertEqual(cerrados, [])
+        self.assertIn("opus", etiquetas(d))
+        # Y la lista se rehace: el recién asignado ya no se ofrece y el viejo sí.
+        textos = etiquetas(selector.get_popover())
+        self.assertNotIn("opus", textos)
+        self.assertIn("sonnet", textos)
+
+    def test_la_lista_de_modelos_es_ancha_y_no_crece_de_alto(self):
+        """cotejo-uy34ma: sin ancho mínimo el popover quedaba en una columna ilegible."""
+        d, _, _ = dialogo("pendiente")
+        selector = [h for h in hijos(d) if isinstance(h, Gtk.MenuButton)][0]
+        lista = [h for h in hijos(selector.get_popover())
+                 if isinstance(h, Gtk.ScrolledWindow)][0]
+        ancho = lista.measure(Gtk.Orientation.HORIZONTAL, -1).natural
+        alto = lista.measure(Gtk.Orientation.VERTICAL, -1).natural
+        self.assertGreaterEqual(ancho, 280)
+        self.assertLessEqual(alto, 340)
+
+    def test_la_lista_va_agrupada_por_cliente_y_anadir_una_sola_vez(self):
+        falso = types.SimpleNamespace(
+            agentes=("opus", "sonnet", "codex"), alias_persona=("persona",),
+            grupos_de=lambda _p: [("claude", ["opus", "sonnet"]), ("codex", ["codex"])],
+            al_anadir_y_asignar=lambda *a: None)
+        for nombre in ("lista_de_agentes", "opcion"):
+            setattr(falso, nombre, types.MethodType(getattr(app.Board, nombre), falso))
+        falso.al_asignar = lambda *a: None
+        tarea = modelo.Tarea("Una tarea", id="cotejo-aaa111", agente="sonnet")
+        lista = app.Board.lista_de_agentes(falso, None, tarea, None)
+        textos = [h.get_label() for h in hijos(lista) if isinstance(h, Gtk.Label)]
+        self.assertIn("Claude Code", textos)
+        self.assertIn("Codex", textos)
+        self.assertEqual(textos.count("Añadir modelo…"), 1)
 
     def test_en_finalizada_el_modelo_no_se_cambia(self):
         d, _, _ = dialogo("hecha")
