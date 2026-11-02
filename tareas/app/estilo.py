@@ -97,6 +97,7 @@ headerbar { min-height: 52px; box-shadow: none; border-bottom: 1px solid var(--k
 .marca-titulo { font-family: "Sora"; font-weight: 600; font-size: var(--k-ventana); letter-spacing: -0.01em; }
 .marca-producto { color: var(--k-tenue); }
 .dato { font-family: "IBM Plex Mono"; font-size: var(--k-dato); color: var(--k-tenue); letter-spacing: 0.06em; }
+.dato-sin-mono { font-size: var(--k-dato); color: var(--k-tenue); }
 /* El subtítulo es una frase («4 sin terminar · menu-digital»), no un dato: en Inter, sin
    mayúsculas ni espaciado, que con la mono era lo que peor se leía de la cabecera. */
 .marca-subtitulo { font-size: var(--k-dato); color: var(--k-tenue); }
@@ -139,6 +140,7 @@ checkbutton check:checked { background: var(--k-senal); border-color: var(--k-se
 
 button.flat { color: var(--k-tenue); border-radius: 8px; }
 button.flat:hover { color: var(--k-texto); background: var(--k-velo-fuerte); }
+.boton-logo.flat { padding: 0; min-height: 0; }
 
 /* Board */
 .columna-titulo { font-family: "Sora"; font-weight: 600; font-size: var(--k-contenido); }
@@ -428,21 +430,30 @@ tooltip label { color: var(--k-texto); font-size: var(--k-dato); }
 .riel-finalizada { padding: var(--k-espacio-sm) 0; }
 .riel-cuenta { font-family: "IBM Plex Mono"; font-size: var(--k-etiqueta); color: var(--k-tenue); }
 
-/* La pestaña Inicio: saludo en tenue, titular en Sora, tarjetas como las cartas del board.
-   El verde sigue siendo solo para lo que espera comprobación (el chip «N por comprobar»). */
+/* Inicio: la constelación manda; debajo, una lista compacta y plana. */
 .inicio-saludo { color: var(--k-tenue); font-size: var(--k-contenido); }
 .inicio-titular { font-family: "Sora"; font-weight: 600; font-size: var(--k-portada); letter-spacing: -0.01em; }
-.inicio-tarjeta, .inicio-nuevo { padding: var(--k-espacio-lg); min-height: 112px; }
-.inicio-nuevo { border-style: dashed; background: transparent; }
+.inicio-entregas { background: var(--k-columna); border-radius: 10px; padding: var(--k-espacio-xs) var(--k-espacio-md); }
+.inicio-punto { color: var(--k-senal); font-size: var(--k-contenido); }
+.inicio-seccion { font-weight: 600; font-size: var(--k-etiqueta); color: var(--k-tenue); }
+.inicio-proyectos { background: var(--k-columna); border-radius: 14px; }
+.inicio-proyectos > row { background: transparent; border-bottom: 1px solid var(--k-borde-hondo); }
+.inicio-proyectos > row:last-child { border-bottom: 0; }
+.inicio-proyectos > row:hover { background: var(--k-superficie); }
+.inicio-proyecto-fila { min-height: 64px; padding: 0 var(--k-espacio-md); }
+.inicio-proyecto-nombre { font-weight: 600; font-size: var(--k-contenido); }
+.inicio-proyecto-datos { min-width: 120px; }
+.inicio-proyecto-datos .dato { font-weight: 400; letter-spacing: 0; }
+.inicio-accion { min-width: 30px; min-height: 30px; padding: 0; }
+.inicio-nuevo { border: 1px dashed var(--k-borde); border-radius: 10px; background: transparent;
+                padding: var(--k-espacio-xl); }
 .inicio-nuevo:hover { background: var(--k-velo-sutil); }
-.inicio-mas { font-family: "Sora"; font-weight: 600; font-size: var(--k-portada); color: var(--k-tenue); }
-/* La descripción del proyecto en su tarjeta: tenue, pero sin la negrita del botón que la
-   envuelve (v1.3.1). */
-.inicio-descripcion { font-weight: normal; }
-/* La barra de avance se ve también al 0 %: el carril es una línea del borde, no un velo casi
-   invisible (v1.3.1). */
-.inicio-avance trough { min-height: 6px; border-radius: 3px; background: var(--k-borde-hondo); }
-.inicio-avance progress { min-height: 6px; border-radius: 3px; background: var(--k-tenue); }
+.inicio-descripcion { font-weight: normal; font-size: var(--k-secundario); color: var(--k-tenue); }
+.inicio-avance trough { min-height: 4px; border-radius: 2px; background: var(--k-borde-hondo); }
+.inicio-avance progress { min-height: 4px; border-radius: 2px; background: var(--k-tenue); }
+.inicio-equipo { padding-top: var(--k-espacio-sm); }
+.inicio-enlace.flat { padding: 0; min-height: 0; }
+.inicio-equipo.sin-agentes, .inicio-equipo.sin-agentes button.flat { color: var(--k-ambar); }
 /* La entrevista de «Nuevo proyecto» (cotejo-kf94so). */
 .entrevista-marco { background: var(--k-columna); border: 1px solid var(--k-borde); border-radius: 8px; }
 .entrevista-texto { background: transparent; color: var(--k-texto); font-size: var(--k-contenido); }
@@ -456,8 +467,9 @@ tooltip label { color: var(--k-texto); font-size: var(--k-dato); }
 .plan-bloque { padding: var(--k-espacio-lg); }
 .plan-tarea { padding: var(--k-espacio-xs) 0; border-top: 1px solid var(--k-borde-hondo); }
 .chip.chip-tu { color: var(--k-texto); border: 1px solid var(--k-texto); background: transparent; }
-.constelacion-caja { background: var(--k-columna); border: 1px solid var(--k-borde); border-radius: 10px; padding: var(--k-espacio-md); }
-.constelacion-leyenda { padding-top: var(--k-espacio-sm); border-top: 1px solid var(--k-borde-hondo); }
+.inicio-constelacion { padding: var(--k-espacio-lg) 0 var(--k-espacio-xl); }
+.constelacion-caja { background: transparent; border: 0; padding: 0; }
+.constelacion-leyenda { padding-top: var(--k-espacio-sm); }
 /* Los nombres de la leyenda son palabras, no datos: en Inter y sin espaciado. */
 .constelacion-leyenda .dato { font-family: "Inter"; letter-spacing: 0; }
 /* El mapa del proyecto (cotejo-p86sa9): cuatro capas sobre el fondo, piezas como cartas

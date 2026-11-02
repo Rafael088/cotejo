@@ -187,7 +187,8 @@ def dibujar_punto(cr, ancho, alto, estado, colores):
 
 def leyenda(colores):
     """Hecho · En curso · Espera que lo compruebes · Falta, con el mismo punto del dibujo."""
-    caja = Gtk.Box(spacing=px(ESPACIADO_LG), css_classes=["constelacion-leyenda"])
+    caja = Gtk.Box(spacing=px(ESPACIADO_LG), halign=Gtk.Align.START,
+                   css_classes=["constelacion-leyenda"])
     for estado in c.ESTADOS_LEYENDA:
         uno = Gtk.Box(spacing=px(ESPACIADO_XS))
         punto = Gtk.DrawingArea(content_width=px(LADO_LEYENDA), content_height=px(LADO_LEYENDA),

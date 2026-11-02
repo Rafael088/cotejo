@@ -9,6 +9,7 @@ GTK en `test_resumen_inicio.py`.
 
 import os
 import tempfile
+import types
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -131,8 +132,11 @@ class ConProyectos(PestanaInicio):
         self.assertIn("Tienes 2 proyectos y 1 entrega por comprobar", todo)
         self.assertIn("1 por comprobar", todo)
         self.assertIn("sin arquitectura todavía", todo)
-        self.assertIn("Empezar un proyecto", todo)
-        # Faro (con una entrega por comprobar) primero; «Nuevo proyecto» al final.
+        self.assertFalse(b.inicio_vacio.get_visible())
+        self.assertTrue(b.inicio_entregas.get_visible())
+        self.assertEqual(b.inicio_entregas_texto.get_label(),
+                         "1 entrega espera que las compruebes")
+        # Faro (con una entrega por comprobar) primero.
         nombres = [t for t in todo if t in ("Faro", "Horizonte")]
         self.assertEqual(nombres, ["Faro", "Horizonte"])
         # La constelación sale con los dos proyectos (sin arquitectura: dos núcleos huecos).
@@ -140,6 +144,30 @@ class ConProyectos(PestanaInicio):
         self.assertEqual([p.nombre for p in b.constelacion.proyectos], ["Faro", "Horizonte"])
         b.poner_constelacion(None)
         self.assertFalse(b.area_constelacion.get_visible())
+
+    def test_la_franja_comprobar_abre_el_tablero(self):
+        b = self.board
+        boton = b.inicio_entregas.get_last_child()
+        boton.emit("clicked")
+        self.assertEqual(b.pestana_actual(), pestana_inicio.TABLERO)
+
+    def test_el_pie_usa_la_foto_del_equipo_y_no_pregunta_a_los_clis(self):
+        b = self.board
+        b.equipo_visto = types.SimpleNamespace(agentes=(
+            types.SimpleNamespace(listo=True), types.SimpleNamespace(listo=True)))
+        with mock.patch("tareas.equipo.revisar") as revisar:
+            b.pintar_estado_equipo()
+        revisar.assert_not_called()
+        self.assertEqual(b.inicio_equipo_texto.get_label(), "2 agentes listos ·")
+        self.assertEqual(b.inicio_equipo_enlace.get_label(), "Ver tus agentes")
+
+        b.equipo_visto = None
+        sin_agentes = types.SimpleNamespace(agentes=())
+        with mock.patch("tareas.equipo.revisar", return_value=sin_agentes) as revisar:
+            b.pintar_estado_equipo()
+        revisar.assert_called_once_with(preguntar_cli=False)
+        self.assertEqual(b.inicio_equipo_texto.get_label(), "Ningún agente listo ·")
+        self.assertEqual(b.inicio_equipo_enlace.get_label(), "Instalar uno")
 
     def test_nuevo_proyecto_abre_la_entrevista(self):
         b = self.board
@@ -321,12 +349,12 @@ class ConProyectos(PestanaInicio):
         girar()
         self.assertEqual(b.pestana_actual(), "mapa")
 
-    def test_agentes_lleva_a_revisar_el_equipo_despues_del_primer_arranque(self):
+    def test_el_enlace_de_agentes_lleva_a_revisar_el_equipo(self):
         b = self.board
         with mock.patch("enrutador.clientes.instalados", return_value=[]), \
                 mock.patch("tareas.instalar_agentes.sumar_al_path", return_value=[]), \
                 mock.patch("tareas.instalar_agentes.instalado", return_value=False):
-            b.inicio_agentes.emit("clicked")
+            b.inicio_equipo_enlace.emit("clicked")
         self.assertEqual(b.pestana_actual(), "equipo")
         self.assertEqual(b.equipo_ceja.get_label(), "Tus agentes")
         b.equipo_seguir.emit("clicked")
