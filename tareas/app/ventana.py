@@ -103,7 +103,7 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
         pintar_logo(self.logo, app.colores)
         caja_logo = self.logo.get_parent()
         caja_logo.remove(self.logo)
-        self.boton_inicio = Gtk.Button(child=self.logo, css_classes=["flat"],
+        self.boton_inicio = Gtk.Button(child=self.logo, css_classes=["flat", "boton-logo"],
                                        tooltip_text="Inicio")
         self.boton_inicio.set_cursor_from_name("pointer")
         etiquetar(self.boton_inicio, "Ir al Inicio")

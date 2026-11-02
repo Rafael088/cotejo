@@ -84,9 +84,9 @@ class MapaDelProyecto(base.PestanaInicio):
     def test_desde_la_tarjeta_del_inicio(self):
         b = self.board
         self.assertEqual(b.pestana_actual(), "inicio")
-        tarjeta = next(t for t in _hijos_boton(b.inicio_tarjetas)
-                       if "barberia" in base.textos(t))
-        tarjeta.emit("clicked")
+        fila = next(f for f in _filas(b.inicio_tarjetas)
+                    if "barberia" in base.textos(f))
+        b.inicio_tarjetas.emit("row-activated", fila)
         base.girar()
         self.comprobar_mapa()
 
@@ -184,12 +184,10 @@ class MapaDelProyecto(base.PestanaInicio):
         self.assertEqual(p.mapa.pieza("mis-turnos-del-dia")["estado"], "en-curso")
 
 
-def _hijos_boton(flowbox):
-    hijo = flowbox.get_first_child()
+def _filas(lista):
+    hijo = lista.get_first_child()
     while hijo is not None:
-        tarjeta = hijo.get_child()
-        # La tarjeta de un proyecto es su botón con «Ver mi app» debajo (cotejo-vn4qd2).
-        yield (tarjeta.get_first_child() if hasattr(tarjeta, "botones_app") else tarjeta)
+        yield hijo
         hijo = hijo.get_next_sibling()
 
 

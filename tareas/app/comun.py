@@ -321,6 +321,8 @@ UMBRAL_ARRASTRE = 6  # píxeles que hay que mover el mouse para que un clic pase
 # Los atajos que el board ya tenía. Se enseñan porque tenerlos y no decirlos es igual que
 # no tenerlos: hasta ahora solo se llegaba a ellos por accidente o leyendo el código.
 ATAJOS = (
+    ("Ctrl 1", "Ir al Inicio"),
+    ("Ctrl 2", "Ir al Tablero"),
     ("Ctrl F", "Buscar entre las tareas"),
     ("Ctrl ← / →", "Mover la tarea a la columna de al lado"),
     ("Alt ← / →", "Pasar el dot a otra tarea en curso"),

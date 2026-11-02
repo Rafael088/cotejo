@@ -153,7 +153,7 @@ class VerMiApp(base.PestanaInicio):
         base.girar()
         tarjeta = b.inicio_tarjetas.get_first_child().get_child()
         ver_app = tarjeta.botones_app.get_first_child()
-        self.assertEqual(ver_app.get_label(), "Ver mi app")
+        self.assertEqual(ver_app.get_icon_name(), "web-browser-symbolic")
         self.assertFalse(ver_app.get_sensitive())
         self.assertIn("primera pantalla", ver_app.get_tooltip_text() or "")
 
@@ -173,10 +173,11 @@ class VerMiApp(base.PestanaInicio):
         botones = {}
         hijo = tarjeta.botones_app.get_first_child()
         while hijo is not None:
-            botones[hijo.get_label()] = hijo
+            botones[hijo.get_tooltip_text()] = hijo
             hijo = hijo.get_next_sibling()
         # «Parar la app» también está, oculto mientras la app no corre (cotejo-jzwwiz).
-        self.assertEqual(list(botones), ["Ver mi app", "Abrir la carpeta", "Parar la app"])
+        self.assertEqual(list(botones),
+                         ["Ver mi app", "Abrir la carpeta", "Parar la app", "Ver el tablero"])
         with mock.patch.object(b, "abrir_proyecto") as abrir_mapa:
             botones["Abrir la carpeta"].emit("clicked")
         abrir_mapa.assert_not_called()      # el botón no es la tarjeta: no lleva al mapa
@@ -189,7 +190,7 @@ class VerMiApp(base.PestanaInicio):
         base.girar()
         tarjeta = b.inicio_tarjetas.get_first_child().get_child()
         parar = tarjeta.boton_parar_app
-        self.assertEqual(parar.get_label(), "Parar la app")
+        self.assertEqual(parar.get_icon_name(), "media-playback-stop-symbolic")
         self.assertFalse(parar.get_visible())
 
         falsos = self.poner(servidor_app.Resultado(True, "x", corriendo=True))

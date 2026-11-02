@@ -29,11 +29,12 @@ from .comun import ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XL, ESPAC
 from .escala import px
 from .comun import animaciones_activas
 from .constelacion import caja_constelacion
-from .piezas import chip, con_mano, etiquetar, vaciar
+from .piezas import chip, con_mano, etiquetar, icono, vaciar
 
 INICIO, TABLERO = "inicio", "tablero"
 ANCHO_INICIO = 1080      # el contenido no se estira más que esto en una ventana ancha
 CAMBIO_PESTANA_MS = 160
+ANCHO_CHIP_ESTADO = 120   # la columna del chip de cada fila de proyecto
 
 
 class PestanaInicio:
@@ -131,18 +132,25 @@ class PestanaInicio:
         textos.append(self.inicio_saludo)
         textos.append(self.inicio_titular)
         cabeza.append(textos)
-        # «Revisar el equipo» después del primer arranque (cotejo-2j6un7): instalar o conectar
-        # un agente más tarde.
-        self.inicio_agentes = con_mano(Gtk.Button(label="Agentes", valign=Gtk.Align.END))
-        etiquetar(self.inicio_agentes, "Agentes: instalar o conectar uno")
-        self.inicio_agentes.connect("clicked", self.ver_equipo)
-        cabeza.append(self.inicio_agentes)
-        nuevo = con_mano(Gtk.Button(label="+  Nuevo proyecto",
-                                    valign=Gtk.Align.END, css_classes=["principal"]))
+        contenido_nuevo = Gtk.Box(spacing=px(ESPACIADO_SM))
+        contenido_nuevo.append(Gtk.Image(icon_name="list-add-symbolic"))
+        contenido_nuevo.append(Gtk.Label(label="Nuevo proyecto"))
+        nuevo = con_mano(Gtk.Button(child=contenido_nuevo, valign=Gtk.Align.END,
+                                    css_classes=["principal"]))
         etiquetar(nuevo, "Nuevo proyecto")
         nuevo.connect("clicked", lambda *_: self.nuevo_proyecto())
         cabeza.append(nuevo)
         cuerpo.append(cabeza)
+
+        self.inicio_entregas = Gtk.Box(spacing=px(ESPACIADO_SM),
+                                       css_classes=["inicio-entregas"], visible=False)
+        self.inicio_entregas.append(Gtk.Label(label="•", css_classes=["inicio-punto"]))
+        self.inicio_entregas_texto = Gtk.Label(xalign=0, hexpand=True)
+        self.inicio_entregas.append(self.inicio_entregas_texto)
+        comprobar = con_mano(Gtk.Button(label="Comprobar", css_classes=["flat"]))
+        comprobar.connect("clicked", lambda *_: self.ver_tablero())
+        self.inicio_entregas.append(comprobar)
+        cuerpo.append(self.inicio_entregas)
 
         # Un repo de la lista que ya no existe (v1.3.0): se salta, y aquí se dice en llano.
         self.inicio_aviso = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
@@ -160,12 +168,24 @@ class PestanaInicio:
                                          css_classes=["inicio-constelacion"], visible=False)
         cuerpo.append(self.area_constelacion)
 
-        self.inicio_tarjetas = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE,
-                                           homogeneous=True, min_children_per_line=1,
-                                           max_children_per_line=4,
-                                           row_spacing=px(ESPACIADO_MD), column_spacing=px(ESPACIADO_MD),
-                                           valign=Gtk.Align.START)
+        self.inicio_proyectos_titulo = Gtk.Label(label="Proyectos", xalign=0,
+                                                  css_classes=["inicio-seccion"], visible=False)
+        cuerpo.append(self.inicio_proyectos_titulo)
+        self.inicio_tarjetas = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE,
+                                           css_classes=["inicio-proyectos"], visible=False)
+        self.inicio_tarjetas.connect("row-activated", self._abrir_fila_proyecto)
         cuerpo.append(self.inicio_tarjetas)
+
+        self.inicio_vacio = self.tarjeta_nuevo()
+        cuerpo.append(self.inicio_vacio)
+
+        self.inicio_equipo = Gtk.Box(spacing=px(ESPACIADO_XS), css_classes=["inicio-equipo"])
+        self.inicio_equipo_texto = Gtk.Label(css_classes=["dato-sin-mono"])
+        self.inicio_equipo.append(self.inicio_equipo_texto)
+        self.inicio_equipo_enlace = con_mano(Gtk.Button(css_classes=["flat", "inicio-enlace"]))
+        self.inicio_equipo_enlace.connect("clicked", self.ver_equipo)
+        self.inicio_equipo.append(self.inicio_equipo_enlace)
+        cuerpo.append(self.inicio_equipo)
 
         ancho = Adw.Clamp(child=cuerpo, maximum_size=px(ANCHO_INICIO), tightening_threshold=px(ANCHO_INICIO))
         return Gtk.ScrolledWindow(child=ancho, hexpand=True, vexpand=True,
@@ -195,11 +215,36 @@ class PestanaInicio:
             self.inicio_aviso_titulo.set_label(faltan[0])
             self.inicio_aviso_detalle.set_label("\n\n".join(faltan[1]))
         self.inicio_aviso.set_visible(bool(faltan))
+        entregas = sum(t.por_comprobar for t in tarjetas)
+        self.inicio_entregas_texto.set_label(
+            f"{entregas} {'entrega espera' if entregas == 1 else 'entregas esperan'} que las compruebes")
+        self.inicio_entregas.set_visible(entregas > 0)
         self.pintar_constelacion(tarjetas)
         vaciar(self.inicio_tarjetas)
         for uno in tarjetas:
             self.inicio_tarjetas.append(self.tarjeta_de_proyecto(uno))
-        self.inicio_tarjetas.append(self.tarjeta_nuevo())
+        hay = bool(tarjetas)
+        self.inicio_proyectos_titulo.set_visible(hay)
+        self.inicio_tarjetas.set_visible(hay)
+        self.inicio_vacio.set_visible(not hay)
+        self.pintar_estado_equipo()
+
+    def pintar_estado_equipo(self):
+        """Una foto barata del equipo: nunca pregunta a los CLIs mientras pinta."""
+        visto = getattr(self, "equipo_visto", None) or equipo.revisar(preguntar_cli=False)
+        listos = sum(1 for agente in visto.agentes if agente.listo)
+        if listos:
+            self.inicio_equipo_texto.set_label(
+                f"{listos} {'agente listo' if listos == 1 else 'agentes listos'} ·")
+            self.inicio_equipo_enlace.set_label("Ver tus agentes")
+            self.inicio_equipo.remove_css_class("sin-agentes")
+        else:
+            self.inicio_equipo_texto.set_label("Ningún agente listo ·")
+            self.inicio_equipo_enlace.set_label("Instalar uno")
+            self.inicio_equipo.add_css_class("sin-agentes")
+
+    def _abrir_fila_proyecto(self, _lista, fila):
+        self.abrir_proyecto(fila.nombre_proyecto)
 
     def pintar_constelacion(self, tarjetas):
         """La constelación con las mismas tarjetas que se pintan debajo; sin ninguna, nada."""
@@ -214,34 +259,40 @@ class PestanaInicio:
         self.constelacion.poner(tarjetas)
 
     def tarjeta_de_proyecto(self, t):
-        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_SM))
-        fila = Gtk.Box(spacing=px(ESPACIADO_SM))
-        nombre = Gtk.Label(label=t.nombre, xalign=0, hexpand=True,
-                           ellipsize=Pango.EllipsizeMode.END, css_classes=["carta-nombre"])
-        fila.append(nombre)
-        fila.append(chip(t.texto_estado, "", *(["verde"] if t.por_comprobar else [])))
-        caja.append(fila)
-        if t.objetivo:
-            caja.append(Gtk.Label(label=t.objetivo, xalign=0, wrap=True, lines=2,
-                                  ellipsize=Pango.EllipsizeMode.END,
-                                  css_classes=["carta-descripcion", "inicio-descripcion"]))
+        contenido = Gtk.Box(spacing=px(ESPACIADO_LG), css_classes=["inicio-proyecto-fila"])
+        identidad = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
+                            hexpand=True, valign=Gtk.Align.CENTER)
+        identidad.append(Gtk.Label(label=t.nombre, xalign=0,
+                                    ellipsize=Pango.EllipsizeMode.END,
+                                    css_classes=["inicio-proyecto-nombre"]))
+        identidad.append(Gtk.Label(label=t.objetivo, xalign=0,
+                                    ellipsize=Pango.EllipsizeMode.END,
+                                    css_classes=["inicio-descripcion"]))
+        contenido.append(identidad)
+        datos = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
+                        valign=Gtk.Align.CENTER, css_classes=["inicio-proyecto-datos"])
+        datos.append(Gtk.Label(label=t.texto_avance, xalign=0, css_classes=["dato"]))
         avance = Gtk.ProgressBar(fraction=t.avance or 0, css_classes=["inicio-avance"])
         avance.set_visible(t.con_arquitectura)
-        caja.append(avance)
-        caja.append(Gtk.Label(label=t.texto_avance, xalign=0, css_classes=["dato"]))
-        boton = con_mano(Gtk.Button(child=caja, css_classes=["carta", "inicio-tarjeta"]))
-        etiquetar(boton, f"Proyecto {t.nombre}, {t.texto_estado}, {t.texto_avance}")
-        boton.connect("clicked", lambda *_: self.abrir_proyecto(t.nombre))
-        # Las acciones de la app van fuera del botón de la tarjeta: pulsarlas no abre el mapa.
-        tarjeta = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS))
-        tarjeta.append(boton)
+        datos.append(avance)
+        contenido.append(datos)
+        # El chip va en una columna de ancho fijo: si no, «1 por hacer» empuja la cifra y la
+        # barra de su fila y dejan de alinearse con las de «al día».
+        estado = Gtk.Box(width_request=px(ANCHO_CHIP_ESTADO), valign=Gtk.Align.CENTER)
+        estado.append(chip(t.texto_estado, "", *(["verde"] if t.por_comprobar else [])))
+        contenido.append(estado)
         acciones = Gtk.Box(spacing=px(ESPACIADO_XS), halign=Gtk.Align.START)
-        for texto, accion in (("Ver mi app", self.ver_mi_app), ("Abrir la carpeta", self.abrir_carpeta)):
-            b = con_mano(Gtk.Button(label=texto, css_classes=["flat"]))
+        for texto, nombre_icono, accion in (
+                ("Ver mi app", "web-browser-symbolic", self.ver_mi_app),
+                ("Abrir la carpeta", "folder-open-symbolic", self.abrir_carpeta)):
+            b = con_mano(Gtk.Button(icon_name=nombre_icono, css_classes=["flat", "inicio-accion"],
+                                    tooltip_text=texto))
             etiquetar(b, f"{texto} de {t.nombre}")
             b.connect("clicked", lambda _b, a=accion: a(t.nombre, t.carpeta or None))
             acciones.append(b)
-        parar = con_mano(Gtk.Button(label="Parar la app", css_classes=["flat"]))
+        parar = con_mano(Gtk.Button(icon_name="media-playback-stop-symbolic",
+                                    css_classes=["flat", "inicio-accion"],
+                                    tooltip_text="Parar la app"))
         etiquetar(parar, f"Parar la app de {t.nombre}")
         parar.connect("clicked", lambda *_: self.parar_app(t.nombre))
         parar.set_visible(self.servidores.vivo(t.nombre))
@@ -251,24 +302,34 @@ class PestanaInicio:
             ver_app = acciones.get_first_child()
             ver_app.set_sensitive(False)
             ver_app.set_tooltip_text(como_se_abre.SIN_APP)
-        tarjeta.append(acciones)
-        tarjeta.botones_app = acciones
-        tarjeta.boton_parar_app = parar
-        tarjeta.nombre_proyecto = t.nombre
+        tablero = con_mano(Gtk.Button(child=icono("tablero"),
+                                      css_classes=["flat", "inicio-accion"],
+                                      tooltip_text="Ver el tablero"))
+        etiquetar(tablero, f"Ver el tablero de {t.nombre}")
+        tablero.connect("clicked", lambda *_: self.abrir_tablero(t.nombre))
+        acciones.append(tablero)
+        contenido.append(acciones)
+        tarjeta = Gtk.ListBoxRow(child=contenido, activatable=True, selectable=False)
+        for widget in (tarjeta, contenido):
+            widget.botones_app = acciones
+            widget.boton_parar_app = parar
+            widget.nombre_proyecto = t.nombre
         return tarjeta
 
     def tarjeta_nuevo(self):
         caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
                        valign=Gtk.Align.CENTER, halign=Gtk.Align.CENTER)
-        caja.append(Gtk.Label(label="+", css_classes=["inicio-mas"]))
         caja.append(Gtk.Label(label="Empezar un proyecto", css_classes=["vacio-titulo"]))
         caja.append(Gtk.Label(label="Contestas unas preguntas y tu agente lo prepara",
                               wrap=True, justify=Gtk.Justification.CENTER,
                               css_classes=["vacio-pista"]))
-        boton = con_mano(Gtk.Button(child=caja, css_classes=["carta", "inicio-nuevo"]))
+        boton = con_mano(Gtk.Button(label="Empezar un proyecto", css_classes=["principal"]))
         etiquetar(boton, "Empezar un proyecto")
         boton.connect("clicked", lambda *_: self.nuevo_proyecto())
-        return boton
+        caja.append(boton)
+        marco = Gtk.Box(css_classes=["inicio-nuevo"])
+        marco.append(caja)
+        return marco
 
     # `abrir_proyecto(nombre)` (tocar una tarjeta o un núcleo) vive en `mapa.py` (cotejo-p86sa9):
     # abre el mapa del proyecto, y de ahí «Ver el tablero» (`abrir_tablero`) lleva al tablero.
