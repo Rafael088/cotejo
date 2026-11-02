@@ -120,10 +120,8 @@ class Cliente:
             return argv, {}
         if self.nombre == "opencode":
             entorno = os.environ if entorno is None else entorno
-            # Y la carpeta temporal (cotejo-en0crz): las pruebas y los servidores de prueba
-            # escriben ahí, y sin nadie que conteste el permiso negado corta la corrida entera.
             return [], {"OPENCODE_CONFIG_CONTENT": _opencode_con_permiso(
-                [*carpetas, tempfile.gettempdir()], entorno.get("OPENCODE_CONFIG_CONTENT"))}
+                carpetas, entorno.get("OPENCODE_CONFIG_CONTENT"))}
         if self.nombre == "gemini":
             return [], {"GEMINI_CLI_TRUST_WORKSPACE": "true"}
         if self.nombre == "antigravity":
@@ -209,6 +207,10 @@ class Cliente:
         que no deja empujar a la fuerza ni a esas ramas, y un `sudo`/`su` que se niega).
         """
         ramas = ramas_protegidas(ramas)
+        if self.nombre == "opencode":
+            # Y la carpeta temporal (cotejo-en0crz): las pruebas y los servidores de prueba
+            # escriben ahí, y sin nadie que conteste, el permiso negado corta la corrida entera.
+            carpetas = [*carpetas, tempfile.gettempdir()]
         argv, env = self.permisos(carpetas, entorno=entorno)
         if self.nombre == "claude":
             from . import sandbox as caja

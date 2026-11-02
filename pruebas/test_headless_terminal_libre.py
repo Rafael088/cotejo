@@ -135,7 +135,7 @@ class ArgumentosDeLosCuatroClientes(Entorno):
         (self.repo / ".cotejo").mkdir()
         carpetas = armado.carpetas_de_escritura(self.wt, self.worktree)
         self.assertIn(str(self.repo / ".cotejo"), carpetas)
-        _, entorno = clientes.de("opencode").permisos(carpetas, entorno={})
+        _, entorno = clientes.de("opencode").terminal_libre(carpetas, ["main"], entorno={})
         externo = json.loads(entorno["OPENCODE_CONFIG_CONTENT"])["permission"][
             "external_directory"]
         self.assertEqual(externo[str(self.repo / ".cotejo") + "/*"], "allow")
