@@ -356,7 +356,8 @@ class ConProyectos(PestanaInicio):
                 mock.patch("tareas.instalar_agentes.instalado", return_value=False):
             b.inicio_equipo_enlace.emit("clicked")
         self.assertEqual(b.pestana_actual(), "equipo")
-        self.assertEqual(b.equipo_ceja.get_label(), "Tus agentes")
+        self.assertEqual(b.equipo_titular.get_label(), "Tus agentes")
+        self.assertIn("de 5 listos", b.equipo_mensaje.get_label())
         b.equipo_seguir.emit("clicked")
         self.assertEqual(b.pestana_actual(), pestana_inicio.INICIO)
 
@@ -441,11 +442,14 @@ class SinFuente(PestanaInicio):
     def filas(self):
         """{titulo: estado} de lo que pinta la pantalla."""
         resultado = {}
-        fila = self.board.equipo_filas.get_first_child()
-        while fila is not None:
-            t = textos(fila)
-            resultado[t[0]] = t[1]
-            fila = fila.get_next_sibling()
+        def visitar(widget):
+            if hasattr(widget, "pieza"):
+                resultado[widget.pieza.titulo] = widget.pieza.estado
+            hijo = widget.get_first_child()
+            while hijo is not None:
+                visitar(hijo)
+                hijo = hijo.get_next_sibling()
+        visitar(self.board.equipo_filas)
         return resultado
 
     def test_la_primera_vez_abre_revisar_el_equipo_y_no_el_primer_arranque_viejo(self):
@@ -465,18 +469,20 @@ class SinFuente(PestanaInicio):
         self.assertEqual(filas.pop("Antigravity CLI"), "No instalado")   # cotejo-r4yg0n
         self.assertEqual(set(filas.values()), {"Listo"})
         self.assertEqual(set(b.equipo_enlaces), {"antigravity"})
-        self.assertEqual(b.equipo_titular.get_label(), "Todo listo: tienes 4 agentes")
+        self.assertEqual(b.equipo_titular.get_label(),
+                         "Antes de empezar, Cotejo revisa tu equipo")
 
         self.revisar(["antigravity"], git=True, sin_sesion={"antigravity"})
         self.assertEqual(self.filas()["Antigravity CLI"], "Instalado")   # su sesión no se ve
         self.assertEqual(b.equipo_titular.get_label(),
-                         "Todo listo para empezar con Antigravity CLI")
+                         "Antes de empezar, Cotejo revisa tu equipo")
 
         self.revisar([], git=False)
         self.assertEqual(set(self.filas().values()), {"No instalado"})
         self.assertEqual(set(b.equipo_enlaces),
                          {"claude", "opencode", "codex", "gemini", "antigravity", "git"})
-        self.assertEqual(b.equipo_titular.get_label(), "Te falta un agente de IA")
+        self.assertEqual(b.equipo_titular.get_label(),
+                         "Antes de empezar, Cotejo revisa tu equipo")
 
         self.revisar(["gemini"], git=True)
         filas = self.filas()
@@ -544,7 +550,8 @@ class SinFuente(PestanaInicio):
                 mock.patch("tareas.equipo.puede_empujar", return_value="ssh"):
             b.equipo_revisar.emit("clicked")
         self.assertEqual(self.filas()["Claude Code"], "Listo")
-        self.assertEqual(b.equipo_titular.get_label(), "Todo listo para empezar con Claude Code")
+        self.assertEqual(b.equipo_titular.get_label(),
+                         "Antes de empezar, Cotejo revisa tu equipo")
         self.assertNotIn("claude", b.equipo_enlaces)
 
     def test_seguir_al_inicio_pasa_a_la_pestana_inicio(self):
@@ -565,8 +572,20 @@ class SinFuente(PestanaInicio):
         todo = " | ".join(textos(b.pestanas.get_child_by_name("equipo")))
         self.assertIn("Si no sabes cuál elegir, empieza por este.", todo)
         self.assertIn("Solo con licencia de empresa", todo)
-        self.assertIn("Primer arranque", todo)
-        self.assertEqual(b.equipo_titular.get_label(), "Te falta un agente de IA")
+        self.assertNotIn("Primer arranque", todo)
+        self.assertEqual(b.equipo_titular.get_label(),
+                         "Antes de empezar, Cotejo revisa tu equipo")
+
+    def test_agrupa_agentes_y_git_y_deja_una_accion_principal_por_fila(self):
+        b = self.board
+        self.revisar(["claude", "codex"], git=True, sin_sesion={"claude"})
+        todo = textos(b.equipo_filas)
+        self.assertIn("Listos", todo)
+        self.assertIn("Les falta algo", todo)
+        self.assertIn("Herramientas", todo)
+        self.assertIsNone(b.equipo_enlaces["opencode"].get_label())
+        self.assertEqual(b.equipo_enlaces["gemini"].get_label(), "Cómo instalarlo")
+        self.assertEqual(b.equipo_instalar["opencode"].get_label(), "Instalar")
 
     def test_instalar_corre_el_oficial_y_ensena_el_progreso(self):
         b = self.board
@@ -608,7 +627,8 @@ class SinFuente(PestanaInicio):
         claude.chmod(0o755)
         b.revisar_equipo()
         self.assertEqual(self.filas()["Claude Code"], "Falta iniciar sesión")
-        self.assertEqual(b.equipo_titular.get_label(), "Te falta iniciar sesión en Claude Code")
+        self.assertEqual(b.equipo_titular.get_label(),
+                         "Antes de empezar, Cotejo revisa tu equipo")
         with mock.patch.object(instalar_agentes, "terminal", return_value=["mi-terminal"]), \
                 mock.patch("enrutador.motores.terminal.abrir") as abrir:
             b.equipo_sesion["claude"].emit("clicked")

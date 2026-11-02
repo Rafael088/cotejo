@@ -468,6 +468,19 @@ tooltip label { color: var(--k-texto); font-size: var(--k-dato); }
 .plan-tarea { padding: var(--k-espacio-xs) 0; border-top: 1px solid var(--k-borde-hondo); }
 .chip.chip-tu { color: var(--k-texto); border: 1px solid var(--k-texto); background: transparent; }
 .inicio-constelacion { padding: var(--k-espacio-lg) 0 var(--k-espacio-xl); }
+/* Tus agentes: tres listas compactas dentro del mismo ancho contenido que el Inicio. */
+.equipo-grupo-titulo { font-weight: 600; font-size: var(--k-etiqueta); color: var(--k-tenue); }
+.equipo-lista { background: var(--k-columna); border-radius: 14px; }
+.equipo-lista > row { background: transparent; border-bottom: 1px solid var(--k-borde-hondo); }
+.equipo-lista > row:last-child { border-bottom: 0; }
+.equipo-fila { min-height: 52px; padding: var(--k-espacio-xs) var(--k-espacio-md); }
+.equipo-nombre { font-weight: 500; }
+.equipo-nota { font-size: var(--k-dato); color: var(--k-tenue); }
+.equipo-estado { color: var(--k-tenue); }
+.equipo-punto { font-size: var(--k-contenido); }
+.equipo-revisar { font-size: var(--k-dato); }
+.equipo-enlace { font-size: var(--k-dato); }
+.equipo-enlace image { min-width: 18px; min-height: 18px; }
 .constelacion-caja { background: transparent; border: 0; padding: 0; }
 .constelacion-leyenda { padding-top: var(--k-espacio-sm); }
 /* Los nombres de la leyenda son palabras, no datos: en Inter y sin espaciado. */

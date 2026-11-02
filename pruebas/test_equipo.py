@@ -115,6 +115,13 @@ class Equipo(unittest.TestCase):
         self.assertFalse(revisar([]).hay_agente)
         self.assertTrue(revisar(["claude"]).hay_agente)
 
+    def test_resume_y_separa_los_agentes_sin_meter_git(self):
+        e = revisar(["claude", "codex"])
+        self.assertEqual([a.clave for a in e.agentes_listos], ["claude", "codex"])
+        self.assertEqual(len(e.agentes_pendientes), 3)
+        self.assertEqual(e.resumen_agentes, "2 de 5 listos.")
+        self.assertNotIn("git", [a.clave for a in e.agentes_listos + e.agentes_pendientes])
+
     def test_las_paginas_cubren_todos_los_clientes(self):
         for nombre in clientes.CLIENTES:
             self.assertIn(nombre, equipo.PAGINAS)
