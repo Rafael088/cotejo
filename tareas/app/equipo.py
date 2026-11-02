@@ -138,9 +138,9 @@ class PestanaEquipo:
 
     def _fila_equipo(self, pieza, ocupado):
         fila = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
-                       css_classes=["equipo-fila"])
+                       css_classes=["equipo-fila"], valign=Gtk.Align.FILL)
         fila.pieza = pieza
-        linea = Gtk.Box(spacing=px(ESPACIADO_MD), valign=Gtk.Align.CENTER)
+        linea = Gtk.Box(spacing=px(ESPACIADO_MD), valign=Gtk.Align.CENTER, vexpand=True)
         identidad = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
                             hexpand=True, valign=Gtk.Align.CENTER)
         identidad.append(Gtk.Label(label=pieza.titulo, xalign=0,
