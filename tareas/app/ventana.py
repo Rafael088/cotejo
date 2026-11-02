@@ -153,13 +153,15 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
         self.scroll_tablero.get_hadjustment().connect(
             "notify::page-size", lambda *_a: self.ajustar_columnas())
 
-        # La conversación con el maestro sube encima del pie (cotejo-9ybn1a).
-        cuerpo.append(self.crear_conversacion())
         self.pie = self.crear_pie()
         cuerpo.append(self.pie)
         # El dot (D5) va en un overlay sobre el tablero y el pie: no empuja ni tapa nada.
         self.encima = Gtk.Overlay(child=cuerpo)
         self.montar_dot()
+        # La conversación con el maestro también flota (cotejo-w8vteb): vive en el overlay,
+        # no en la caja del cuerpo, así que enseñarla no redimensiona las columnas.
+        self.crear_conversacion()
+        self.montar_conversacion()
         # Inicio y Tablero (v1.3.0): el tablero de siempre es una de las dos pestañas.
         vista.set_content(self.crear_pestanas(self.encima))
 

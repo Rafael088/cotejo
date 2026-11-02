@@ -1,4 +1,5 @@
-"""El maestro en el board: la barra del pie y la conversación que sube encima (cotejo-9ybn1a).
+"""El maestro en el board: la barra del pie y el panel flotante de la conversación
+(cotejo-9ybn1a, cotejo-w8vteb).
 
 La persona le escribe en llano y ve la conversación en la app: añade tareas, contesta sobre el
 proyecto y propone repartir lo asignado. Nunca se abre una terminal: cada mensaje es un turno
@@ -11,7 +12,7 @@ from gi.repository import Adw, GLib, Gtk
 
 from .. import modelo
 from . import comun
-from .comun import ESPACIADO_MD, ESPACIADO_SM, TODOS
+from .comun import ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, TODOS
 from .conversacion import PanelMaestro
 from .escala import px
 from .modelos import texto_de_modelo
@@ -146,11 +147,23 @@ class Maestro:
         return barra
 
     def crear_conversacion(self):
-        """El panel de la conversación, oculto hasta que se le habla al maestro."""
+        """El panel de la conversación, oculto hasta que se le habla al maestro.
+
+        No se cuelga aquí: `montar_conversacion` lo pone en el overlay del board cuando ya
+        existe. Así flota encima del tablero y no ocupa el sitio que empujaría las columnas.
+        """
         self.panel_maestro = PanelMaestro(self.repartir_del_maestro, self.parar_maestro,
                                           self.olvidar_maestro, self.cerrar_conversacion)
+        self.panel_maestro.set_visible(False)
         self.reloj_maestro = None
         return self.panel_maestro
+
+    def montar_conversacion(self):
+        """Cuelga el panel del overlay: flota, no empuja, y se queda donde lo dejen."""
+        self.encima.add_overlay(self.panel_maestro)
+        for propiedad in ("width", "height"):
+            self.encima.connect(f"notify::{propiedad}",
+                                lambda *_a: self.ajustar_conversacion())
 
     # --- hablar ---------------------------------------------------------------------------------
 
@@ -162,10 +175,12 @@ class Maestro:
             return
         texto = " ".join(self.entrada_maestro.get_text().split())
         if not texto:
-            if self.panel_maestro.get_reveal_child():
-                self.cerrar_conversacion()
-            else:
+            if not self.panel_maestro.get_visible():
                 self.ver_conversacion()
+            elif self.panel_maestro.minimizado:
+                self.panel_maestro.minimizar(False)
+            else:
+                self.cerrar_conversacion()
             return
         self.hablar_al_maestro(self.cliente_del_maestro(disponibles), texto,
                                self.modelo_del_maestro(disponibles))
@@ -209,11 +224,44 @@ class Maestro:
         if self.proyecto_del_maestro() is None:
             return
         self.pintar_conversacion()
-        self.panel_maestro.set_reveal_child(True)
+        self.panel_maestro.minimizar(False)   # abrirla entera aunque estuviera minimizada
+        self.panel_maestro.set_visible(True)
+        self.poner_en_su_sitio()
 
     def cerrar_conversacion(self):
-        self.panel_maestro.set_reveal_child(False)
+        """Oculta el panel sin parar al maestro: el turno sigue y la respuesta se guarda."""
+        self.panel_maestro.set_visible(False)
         self.parar_reloj_maestro()
+
+    def poner_en_su_sitio(self):
+        """La primera vez, abajo al centro, encima del pie. Después, donde la persona la dejó."""
+        if not self.panel_maestro.get_visible() or getattr(self, "encima", None) is None:
+            return
+        if self.panel_maestro.movido:
+            self.panel_maestro.reencajar()
+        else:
+            GLib.idle_add(self._colocar_conversacion)
+
+    def _colocar_conversacion(self):
+        """Calcula el hueco con el tamaño natural del panel, sin esperar a que se asigne."""
+        panel = self.panel_maestro
+        ancho_encima, alto_encima = self.encima.get_width(), self.encima.get_height()
+        if not panel.get_visible() or ancho_encima < 2 or alto_encima < 2:
+            return False
+        margen = px(ESPACIADO_LG)
+        ancho = min(px(720), max(px(280), ancho_encima - 2 * margen))
+        panel.set_size_request(ancho, -1)
+        _minimo, alto, _mb, _nb = panel.measure(Gtk.Orientation.VERTICAL, ancho)
+        alto_pie = self.pie.get_height() or px(64)
+        panel.mover_a((ancho_encima - ancho) // 2,
+                      max(margen, alto_encima - alto - alto_pie - margen), movido=False)
+        return False
+
+    def ajustar_conversacion(self):
+        """Con la ventana redimensionada: recentrar (o solo reencajar, si la movieron)."""
+        if getattr(self, "panel_maestro", None) is None or not self.panel_maestro.get_visible():
+            return
+        self.poner_en_su_sitio()
 
     def pintar_conversacion(self):
         """Repinta el panel y, mientras el maestro contesta, vuelve a mirar cada poco."""
@@ -234,7 +282,7 @@ class Maestro:
 
     def tic_maestro(self):
         self.reloj_maestro = None
-        if self.panel_maestro.get_reveal_child():
+        if self.panel_maestro.get_visible():
             self.pintar_conversacion()
         return False
 
@@ -317,7 +365,7 @@ class Maestro:
                      f"Ver la conversación con el maestro de este proyecto ({con})")
         self.boton_maestro.set_tooltip_text(ayuda)
         panel = getattr(self, "panel_maestro", None)
-        if panel is not None and panel.get_reveal_child():
+        if panel is not None and panel.get_visible():
             if de_uno:
                 self.pintar_conversacion()
             else:

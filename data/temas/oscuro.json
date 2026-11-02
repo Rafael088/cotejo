@@ -24,6 +24,7 @@
     "velo": "rgba(255, 255, 255, 0.05)",
     "velo-fuerte": "rgba(255, 255, 255, 0.06)",
     "barra": "rgba(255, 255, 255, 0.14)",
-    "barra-activa": "rgba(255, 255, 255, 0.30)"
+    "barra-activa": "rgba(255, 255, 255, 0.30)",
+    "sombra": "rgba(0, 0, 0, 0.55)"
   }
 }

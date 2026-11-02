@@ -297,11 +297,14 @@ window.sin-animaciones .vida-punto { transition: none; opacity: 1; }
 .maestro-ejecutar.con-texto > separator { background: var(--k-sobre-senal); opacity: 0.25; }
 .maestro-ejecutar:disabled > button, .maestro-ejecutar:disabled > menubutton > button {
     color: var(--k-tenue); background: var(--k-velo); border-color: var(--k-borde); }
-/* La conversación con el maestro (cotejo-9ybn1a): sube encima del pie. La persona a la
-   derecha sobre el velo del acento; el maestro a la izquierda, en superficie; el verde solo
-   en el botón que lanza algo (Repartir). */
+/* La conversación con el maestro (cotejo-9ybn1a) es un panel flotante encima del tablero
+   (cotejo-w8vteb): no ocupa sitio en la caja, así que las columnas no se mueven al abrirlo.
+   La sombra y el borde lo separan del tablero; se arrastra por su título y se minimiza o se
+   cierra sin parar al maestro. La persona a la derecha sobre el velo del acento; el maestro a
+   la izquierda, en superficie; el verde solo en el botón que lanza algo (Repartir). */
 .maestro-panel { border: 1px solid var(--k-borde); border-radius: 12px; background: var(--k-fondo);
-                 padding: var(--k-espacio-md); }
+                 padding: var(--k-espacio-md); box-shadow: 0 10px 28px 0 var(--k-sombra); }
+.maestro-cabeza { padding-bottom: var(--k-espacio-xs); }
 .maestro-burbuja { border-radius: 10px; padding: var(--k-espacio-sm) var(--k-espacio-md); }
 .maestro-persona { background: var(--k-senal-suave); }
 .maestro-respuesta { background: var(--k-superficie); border: 1px solid var(--k-borde-hondo); }

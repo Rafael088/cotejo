@@ -1,10 +1,15 @@
-"""La conversación con el maestro, encima del pie del board (v1.3.0, cotejo-9ybn1a).
+"""La conversación con el maestro, en un panel flotante encima del tablero (v1.3.1,
+cotejo-w8vteb).
 
-Un `Gtk.Revealer` que sube sobre el tablero cuando se le escribe al maestro: los mensajes de la
-persona a la derecha, las respuestas a la izquierda, y mientras contesta lo que va haciendo
-(cada `cotejo` que corre, en llano). Si el maestro propone repartir, su respuesta lleva el botón
-«Repartir». No es una mezcla de `Board`: es un widget que recibe qué pintar y a quién avisar,
-como la constelación; lo maneja la mezcla `maestro.py`.
+Los mensajes de la persona a la derecha, las respuestas a la izquierda, y mientras contesta lo
+que va haciendo (cada `cotejo` que corre, en llano). Si el maestro propone repartir, su
+respuesta lleva el botón «Repartir». No es una mezcla de `Board`: es un widget que recibe qué
+pintar y a quién avisar, como la constelación; lo maneja la mezcla `maestro.py`.
+
+Flota: vive en el overlay del board, con `halign`/`valign` y márgenes, así que enseñarlo no
+empuja ni redimensiona las columnas. Se arrastra por su título y se puede minimizar (queda la
+cabecera) o cerrar; ni minimizar ni cerrar paran al maestro: su turno sigue y la respuesta se
+guarda para cuando se vuelva a abrir.
 """
 
 from gi.repository import Gtk, Pango
@@ -22,44 +27,110 @@ def _etiqueta(texto, clases, xalign=0):
                      css_classes=clases)
 
 
-class PanelMaestro(Gtk.Revealer):
+class PanelMaestro(Gtk.Box):
     """`al_repartir(indice, ids)`, `al_parar()`, `al_olvidar()` y `al_cerrar()` son de quien lo
-    usa; el panel solo pinta (`pintar`) y avisa."""
+    usa; el panel solo pinta (`pintar`), flota (`mover_a`) y avisa."""
 
     def __init__(self, al_repartir, al_parar, al_olvidar, al_cerrar):
-        super().__init__(transition_type=Gtk.RevealerTransitionType.SLIDE_UP,
-                         reveal_child=False, css_classes=["maestro-panel-revelador"])
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_SM),
+                         halign=Gtk.Align.START, valign=Gtk.Align.START,
+                         css_classes=["maestro-panel"])
         self.al_repartir, self.al_parar = al_repartir, al_parar
-        caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_SM),
-                       css_classes=["maestro-panel"], halign=Gtk.Align.CENTER,
-                       margin_bottom=px(ESPACIADO_XS))
-        caja.set_size_request(px(720), -1)
-        cabeza = Gtk.Box(spacing=px(ESPACIADO_SM))
+        self.minimizado = False
+        # Si la persona lo movió, deja de recentrarse al redimensionar la ventana.
+        self.movido = False
+        self._desde_arrastre = None
+        self.set_size_request(px(720), -1)
+        cabeza = Gtk.Box(spacing=px(ESPACIADO_SM), css_classes=["maestro-cabeza"])
         self.titulo = Gtk.Label(xalign=0, hexpand=True, css_classes=["menu-titulo"],
                                 ellipsize=Pango.EllipsizeMode.END)
+        etiquetar(self.titulo, "Arrastra desde aquí para mover la conversación")
+        self.titulo.set_cursor_from_name("grab")
         cabeza.append(self.titulo)
+        self.pensando_icono = Gtk.Spinner(visible=False, css_classes=["maestro-chispa"])
+        cabeza.append(self.pensando_icono)
+        self.boton_minimizar = con_mano(Gtk.Button(
+            icon_name="window-minimize-symbolic", css_classes=["flat", "maestro-accion"]))
+        etiquetar(self.boton_minimizar, "Minimizar la conversación (el maestro sigue)")
+        self.boton_minimizar.connect("clicked", lambda *_: self.alternar_minimizado())
+        cabeza.append(self.boton_minimizar)
         self.boton_olvidar = con_mano(Gtk.Button(label="Empezar de nuevo",
                                                  css_classes=["flat", "maestro-accion"]))
         etiquetar(self.boton_olvidar, "Borrar esta conversación y empezar otra")
         self.boton_olvidar.connect("clicked", lambda *_: al_olvidar())
         cabeza.append(self.boton_olvidar)
         cerrar = con_mano(Gtk.Button(icon_name="window-close-symbolic", css_classes=["flat"]))
-        etiquetar(cerrar, "Ocultar la conversación (no se borra)")
+        etiquetar(cerrar, "Ocultar la conversación (no se borra y no para al maestro)")
         cerrar.connect("clicked", lambda *_: al_cerrar())
         cabeza.append(cerrar)
-        caja.append(cabeza)
+        self.cabeza = cabeza
+        self.append(cabeza)
         self.mensajes = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_SM))
         self.scroll = Gtk.ScrolledWindow(child=self.mensajes, propagate_natural_height=True,
                                          max_content_height=px(ALTO_MAXIMO),
                                          hscrollbar_policy=Gtk.PolicyType.NEVER)
-        caja.append(self.scroll)
-        self.set_child(caja)
+        self.append(self.scroll)
         self.botones_repartir = []
         self.boton_parar = None
+        # El título arrastra el panel; los botones de la cabecera no, para que pulsarlos no lo
+        # muevan. El gesto es de arrastre y no de clic: con el ratón quieto no pasa nada.
+        arrastre = Gtk.GestureDrag()
+        arrastre.connect("drag-begin", self._al_empezar_arrastre)
+        arrastre.connect("drag-update", self._al_arrastrar)
+        self.titulo.add_controller(arrastre)
+
+    # --- flotar ---------------------------------------------------------------------------------
+
+    def mover_a(self, x, y, movido=True):
+        """Lo deja en (x, y) dentro del overlay, sin salirse. `movido=False` es colocarlo, no
+        que la persona lo haya movido (así se sigue recentrando al cambiar el tamaño)."""
+        padre = self.get_parent()
+        if padre is not None:
+            ancho, alto = padre.get_width(), padre.get_height()
+            if ancho > 0:
+                x = min(x, max(0, ancho - self.get_width()))
+            if alto > 0:
+                y = min(y, max(0, alto - self.get_height()))
+        x, y = max(0, round(x)), max(0, round(y))
+        self.movido = self.movido or movido
+        self.set_margin_start(x)
+        self.set_margin_top(y)
+
+    def reencajar(self):
+        """Después de cambiar el tamaño de la ventana: que siga dentro del tablero."""
+        self.mover_a(self.get_margin_start(), self.get_margin_top(), movido=False)
+
+    def _al_empezar_arrastre(self, _gesto, _x, _y):
+        self._desde_arrastre = (self.get_margin_start(), self.get_margin_top())
+
+    def _al_arrastrar(self, _gesto, desplazado_x, desplazado_y):
+        if self._desde_arrastre is None:
+            self._desde_arrastre = (self.get_margin_start(), self.get_margin_top())
+        self.mover_a(self._desde_arrastre[0] + desplazado_x,
+                     self._desde_arrastre[1] + desplazado_y)
+
+    # --- minimizar ------------------------------------------------------------------------------
+
+    def alternar_minimizado(self):
+        """Deja solo la cabecera: la conversación sigue ahí, y el maestro también."""
+        self.minimizar(not self.minimizado)
+
+    def minimizar(self, si=True):
+        self.minimizado = bool(si)
+        self.scroll.set_visible(not self.minimizado)
+        self.boton_minimizar.set_icon_name(
+            "window-restore-symbolic" if self.minimizado else "window-minimize-symbolic")
+        etiquetar(self.boton_minimizar,
+                  "Volver a ver la conversación" if self.minimizado else
+                  "Minimizar la conversación (el maestro sigue)")
+
+    # --- pintar ---------------------------------------------------------------------------------
 
     def pintar(self, proyecto, titulo, datos, en_vivo=()):
         """Repinta la conversación entera: es corta y así no hay estados a medias."""
         self.titulo.set_label(f"MAESTRO · {proyecto}" + (f" · {titulo}" if titulo else ""))
+        self.pensando_icono.set_spinning(bool(datos.get("en_curso")))
+        self.pensando_icono.set_visible(bool(datos.get("en_curso")))
         hijo = self.mensajes.get_first_child()
         while hijo is not None:
             siguiente = hijo.get_next_sibling()

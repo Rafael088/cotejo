@@ -24,6 +24,7 @@
     "velo": "rgba(16, 17, 20, 0.05)",
     "velo-fuerte": "rgba(16, 17, 20, 0.06)",
     "barra": "rgba(16, 17, 20, 0.18)",
-    "barra-activa": "rgba(16, 17, 20, 0.36)"
+    "barra-activa": "rgba(16, 17, 20, 0.36)",
+    "sombra": "rgba(16, 17, 20, 0.20)"
   }
 }

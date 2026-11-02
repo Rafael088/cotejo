@@ -65,6 +65,7 @@ TOKENS = {
     "velo-fuerte": "Hover de los botones planos; pastilla del contador",
     "barra": "La barra de desplazamiento en reposo",
     "barra-activa": "La barra de desplazamiento con el ratón encima",
+    "sombra": "La sombra de lo que flota encima del board: el panel del maestro",
 }
 
 # Lo que tiene que leerse, medido como WCAG: (delante, detrás, mínimo, dónde, opacidad).
