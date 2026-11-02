@@ -301,18 +301,22 @@ except (ImportError, ValueError):
 @unittest.skipUnless(HAY_GTK, "sin GTK o sin pantalla no se pueden construir los widgets")
 class AprobarEnElBoard(unittest.TestCase):
     def tarea(self, **extra):
-        return modelo.Tarea("Cambia a", id="cotejo-aaa111", donde="x", estado="por-validar",
-                            **extra)
+        return modelo.Tarea("Cambia a", id="cotejo-aaa111", donde="x",
+                            estado=extra.pop("estado", "por-validar"), **extra)
 
     def escribir(self, plan):
         llamadas = []
         falso = types.SimpleNamespace(
-            fuente=types.SimpleNamespace(marcar=lambda t, hecha: t),
+            fuente=types.SimpleNamespace(
+                marcar=lambda t, hecha: t,
+                poner_estado=lambda t, estado: modelo.Tarea(
+                    t.texto, id=t.id, donde=t.donde, estado=estado)),
             finalizadas=types.SimpleNamespace(anotar=lambda t: None),
             retirar_worktree=lambda t, d: None,
             app=types.SimpleNamespace(refrescar=lambda: None), comprobaciones={},
             ofrecer_integrar=lambda t, p: llamadas.append("ofrecer"),
-            integrar_sola=lambda pr, t, p: llamadas.append("sola"), aviso=lambda *a, **k: None)
+            integrar_sola=lambda pr, t, p: llamadas.append(("sola", t)),
+            aviso=lambda *a, **k: None)
         with mock.patch.object(revision, "plan_integracion", return_value=plan), \
                 mock.patch.object(app.vista_revision.bitacora, "anotar"), \
                 mock.patch.object(app.vista_revision.bitacora, "ultima_entrega", return_value={}):
@@ -320,7 +324,10 @@ class AprobarEnElBoard(unittest.TestCase):
         return llamadas
 
     def test_del_inicio_integra_sola_y_sin_marca_ofrece(self):
-        self.assertEqual(self.escribir({"del_inicio": True, "repo": "/r"}), ["sola"])
+        llamadas = self.escribir({"del_inicio": True, "repo": "/r"})
+        self.assertEqual(llamadas[0][0], "sola")
+        self.assertEqual(llamadas[0][1].estado, modelo.POR_INTEGRAR)
+        self.assertFalse(llamadas[0][1].hecha)
         self.assertEqual(self.escribir({"del_inicio": False, "repo": "/r"}), ["ofrecer"])
 
     def falso(self, en_fondo=None):
@@ -330,6 +337,11 @@ class AprobarEnElBoard(unittest.TestCase):
         falso.aviso = lambda texto, **k: falso.avisos.append((texto, k.get("boton", "")))
         falso.ofrecer_agente_para_choque = lambda *a: falso.choques.append(a)
         falso.pintar = lambda: setattr(falso, "pintadas", falso.pintadas + 1)
+        falso.fuente = types.SimpleNamespace(marcar=lambda t, hecha: modelo.Tarea(
+            t.texto, id=t.id, donde=t.donde, estado=t.estado, hecha=hecha))
+        falso.finalizadas = types.SimpleNamespace(anotar=lambda t: None)
+        falso.app = types.SimpleNamespace(refrescar=lambda: None)
+        falso.foco_tras_pintar = None
         falso.en_fondo = en_fondo or (lambda trabajo, al_terminar: al_terminar(trabajo()))
         falso.al_integrar_sola = lambda *a: app.Board.al_integrar_sola(falso, *a)
         return falso
@@ -349,16 +361,19 @@ class AprobarEnElBoard(unittest.TestCase):
                                                            modelo.HECHA), False)
             self.assertEqual(falso.avisos, [("Todavía la estoy metiendo en tu app", "")])
             trabajo, al_terminar = pendientes.pop()
-            al_terminar(trabajo())
+            with mock.patch.object(app.vista_revision.bitacora, "anotar"):
+                al_terminar(trabajo())
         sola.assert_called_once_with({"repo": "/r"}, "cotejo-aaa111")
         self.assertEqual(falso.integrando, set())
         self.assertEqual(falso.avisos[-1], ("Aprobada. Ya está en tu app.", ""))
 
     def test_limpio_lo_dice_y_nada_mas(self):
         falso = self.falso()
-        with mock.patch.object(revision, "integrar_sola", return_value={"integrada": True}):
+        with mock.patch.object(revision, "integrar_sola", return_value={"integrada": True}), \
+                mock.patch.object(app.vista_revision.bitacora, "anotar") as anotar:
             app.Board.integrar_sola(falso, None, self.tarea(), {"repo": "/r"})
         self.assertEqual(falso.avisos, [("Aprobada. Ya está en tu app.", "")])
+        anotar.assert_called_once()
 
     def test_conflicto_ofrece_el_agente(self):
         falso = self.falso()
@@ -376,6 +391,16 @@ class AprobarEnElBoard(unittest.TestCase):
                                              "sucios": ["a.txt"]}):
             app.Board.integrar_sola(falso, None, self.tarea(), {"repo": "/r"})
         self.assertEqual(falso.avisos[0][1], "Reintentar")
+
+    def test_si_no_entra_no_cierra_la_tarea(self):
+        falso = self.falso()
+        falso.fuente.marcar = mock.Mock()
+        with mock.patch.object(revision, "integrar_sola",
+                               return_value={"integrada": False, "causa": "sucio",
+                                             "sucios": ["a.txt"]}):
+            app.Board.integrar_sola(falso, None,
+                                    self.tarea(estado=modelo.POR_INTEGRAR), {"repo": "/r"})
+        falso.fuente.marcar.assert_not_called()
 
     def test_sin_repo_no_dice_nada(self):
         falso = self.falso()

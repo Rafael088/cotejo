@@ -239,9 +239,9 @@ class Banda:
 
     def filas_banda(self, proyectos):
         total = sum(len(p.tareas) for p in proyectos)
-        esperando = sum(1 for p in proyectos for t in p.tareas if t.estado == "por-validar")
+        esperando = sum(1 for p in proyectos for t in p.tareas if t.columna == "por-validar")
         filas = [(TODOS, "Todos los proyectos", total, esperando)]
         for p in proyectos:
             filas.append((p.nombre, p.nombre, len(p.tareas),
-                          sum(1 for t in p.tareas if t.estado == "por-validar")))
+                          sum(1 for t in p.tareas if t.columna == "por-validar")))
         return filas

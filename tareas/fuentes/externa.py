@@ -68,7 +68,7 @@ from ..modelo import (HECHA, PENDIENTE, FuenteNoResponde, NoSeCreaAqui, Proyecto
                       TareaCambiada)
 
 ESQUEMA = 1
-ESTADOS = (PENDIENTE, "en-curso", "por-validar")
+ESTADOS = (PENDIENTE, "en-curso", "por-validar", "por-integrar")
 TIMEOUT = 30
 # "cerrada" es opcional y de un adaptador que puede equivocarse: una que no tenga esta forma
 # se descarta en vez de colar una fecha rara al filtro de la columna Finalizada.

@@ -44,7 +44,7 @@ FENCE_RE = re.compile(r"^\s*(```|~~~)")
 # habría colado como "#en-curso" dejando "-luego" tirado en el texto. Un tag de Obsidian
 # sigue mientras haya letras, dígitos, guion bajo, guion o barra.
 FIN_TAG = r"(?![\w/-])"
-ESTADO_RE = re.compile(r"\s*#(por-validar|en-curso)" + FIN_TAG)
+ESTADO_RE = re.compile(r"\s*#(por-integrar|por-validar|en-curso)" + FIN_TAG)
 
 # Ya se escribe a mano así en notas existentes: "texto — AAAA-MM-DD", con guion largo y al final del todo
 # (antes de la marca, que es lo único que va después). marcar() la copia en vez de inventar un

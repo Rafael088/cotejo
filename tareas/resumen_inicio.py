@@ -138,7 +138,7 @@ def tarjeta(proyecto, version="", objetivo="", piezas=(), carpeta="", sin_app=Fa
         nombre=proyecto.nombre,
         version=version or "",
         objetivo=(objetivo or "").strip().splitlines()[0] if (objetivo or "").strip() else "",
-        por_comprobar=sum(1 for t in proyecto.tareas if t.estado == "por-validar"),
+        por_comprobar=sum(1 for t in proyecto.tareas if t.columna == "por-validar"),
         sin_terminar=sum(1 for t in proyecto.tareas if t.estado != "hecha"),
         piezas=len(estados),
         piezas_hechas=sum(1 for e in estados if e == "hecho"),

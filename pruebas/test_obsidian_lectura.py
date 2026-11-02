@@ -174,11 +174,14 @@ class Estados(PruebaConVault):
             "- [ ] Pendiente",
             "- [ ] Haciéndola #en-curso",
             "- [ ] Esperando #por-validar",
+            "- [ ] Aprobada #por-integrar",
             "- [x] Finalizada",
         ))
         _, tareas = self.tareas_de("Uno")
         self.assertEqual([t.columna for t in tareas],
-                         [modelo.PENDIENTE, "en-curso", "por-validar", modelo.HECHA])
+                         [modelo.PENDIENTE, "en-curso", "por-validar", "por-validar",
+                          modelo.HECHA])
+        self.assertEqual(tareas[3].estado, modelo.POR_INTEGRAR)
 
     def test_una_hecha_no_sale_si_no_se_piden(self):
         self.escribir_nota("Uno.md", proyecto("- [ ] Falta", "- [x] Ya está"))
