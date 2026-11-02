@@ -30,7 +30,7 @@ instalado**, **falta iniciar sesión**, **falta elegir modelo** o **listo** (cot
 Se llega aquí el primer arranque y, después, con «Agentes» en el Inicio o con «¿Falta un
 agente?» en el diálogo «Añadir modelo» (`ver_equipo`).
 
-«Revisar otra vez» vuelve a detectar y «Seguir al Inicio» pasa a la pestaña Inicio. Es una página
+«Revisar otra vez» vuelve a detectar y «Empezar» pasa a Inicio solo en el primer arranque. Es una página
 más de la pila (`"equipo"`, sin botón en el selector). Qué se detecta lo decide
 `tareas/equipo.py`, y qué se corre `tareas/instalar_agentes.py`, los dos sin GTK; aquí solo se
 pinta. Los hilos nunca tocan GTK: avisan con `GLib.idle_add`.
@@ -38,18 +38,19 @@ pinta. Los hilos nunca tocan GTK: avisan con `GLib.idle_add`.
 
 import threading
 
-from gi.repository import Gio, GLib, Gtk
+from gi.repository import Adw, Gio, GLib, Gtk
 
 from enrutador import modelos_vivos
 
 from .. import equipo, instalar_agentes
 from .comun import ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XL, ESPACIADO_XS
 from .escala import px
-from .piezas import chip, con_mano, etiquetar, vaciar
+from .piezas import con_mano, etiquetar, vaciar
 
 EQUIPO = "equipo"
 SONDEO = 3            # segundos entre una detección y la siguiente
 LINEAS_A_LA_VISTA = 6
+ANCHO_EQUIPO = 760
 
 
 def _foto(visto):
@@ -63,31 +64,34 @@ class PestanaEquipo:
         self.equipo_sondeo = 0
         self.equipo_sondeando = False   # hay un hilo detectando
         self.equipo_visto = None
-        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_LG),
+        cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XL),
                          margin_top=px(ESPACIADO_XL) * 2, margin_bottom=px(ESPACIADO_XL) * 2,
                          margin_start=px(ESPACIADO_XL) * 2, margin_end=px(ESPACIADO_XL) * 2)
-        self.equipo_ceja = Gtk.Label(label="Primer arranque", xalign=0, css_classes=["dato"])
-        cuerpo.append(self.equipo_ceja)
-        cuerpo.append(Gtk.Label(label="Antes de empezar, Cotejo revisa tu equipo", xalign=0,
-                                wrap=True, css_classes=["inicio-titular"]))
-        cuerpo.append(Gtk.Label(
-            label="Para preparar proyectos hace falta un agente de IA. Esto es lo que encontré:",
-            xalign=0, wrap=True, css_classes=["vacio-pista"]))
-        self.equipo_filas = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_SM))
-        cuerpo.append(self.equipo_filas)
-        self.equipo_titular = Gtk.Label(xalign=0, wrap=True, css_classes=["vacio-titulo"])
+        cabeza = Gtk.Box(spacing=px(ESPACIADO_MD))
+        textos = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
+                         hexpand=True)
+        self.equipo_titular = Gtk.Label(xalign=0, wrap=True, css_classes=["inicio-titular"])
         self.equipo_mensaje = Gtk.Label(xalign=0, wrap=True, css_classes=["vacio-pista"])
-        cuerpo.append(self.equipo_titular)
-        cuerpo.append(self.equipo_mensaje)
-        botones = Gtk.Box(spacing=px(ESPACIADO_MD))
-        self.equipo_revisar = con_mano(Gtk.Button(label="Revisar otra vez"))
+        textos.append(self.equipo_titular)
+        textos.append(self.equipo_mensaje)
+        cabeza.append(textos)
+        contenido_revisar = Gtk.Box(spacing=px(ESPACIADO_XS))
+        contenido_revisar.append(Gtk.Image(icon_name="view-refresh-symbolic"))
+        contenido_revisar.append(Gtk.Label(label="Revisar otra vez"))
+        self.equipo_revisar = con_mano(Gtk.Button(child=contenido_revisar, valign=Gtk.Align.START,
+                                                  css_classes=["flat", "equipo-revisar"]))
         self.equipo_revisar.connect("clicked", lambda *_: self.revisar_equipo())
-        self.equipo_seguir = con_mano(Gtk.Button(label="Seguir al Inicio"))
+        cabeza.append(self.equipo_revisar)
+        cuerpo.append(cabeza)
+        self.equipo_filas = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_LG))
+        cuerpo.append(self.equipo_filas)
+        self.equipo_seguir = con_mano(Gtk.Button(label="Empezar", halign=Gtk.Align.START,
+                                                 css_classes=["principal"]))
         self.equipo_seguir.connect("clicked", lambda *_: self.seguir_al_inicio())
-        botones.append(self.equipo_revisar)
-        botones.append(self.equipo_seguir)
-        cuerpo.append(botones)
-        return Gtk.ScrolledWindow(child=cuerpo, hexpand=True, vexpand=True,
+        cuerpo.append(self.equipo_seguir)
+        ancho = Adw.Clamp(child=cuerpo, maximum_size=px(ANCHO_EQUIPO),
+                          tightening_threshold=px(ANCHO_EQUIPO))
+        return Gtk.ScrolledWindow(child=ancho, hexpand=True, vexpand=True,
                                   hscrollbar_policy=Gtk.PolicyType.NEVER, css_classes=["inicio"])
 
     # --- pintar -----------------------------------------------------------------------------
@@ -97,7 +101,6 @@ class PestanaEquipo:
         visto = visto if visto is not None else equipo.revisar()
         self.equipo_visto = visto
         primer_arranque = equipo.es_primer_arranque(self.fuente)
-        self.equipo_ceja.set_label("Primer arranque" if primer_arranque else "Tus agentes")
         self.equipo_seguir.set_visible(primer_arranque)
         vaciar(self.equipo_filas)
         self.equipo_enlaces = {}
@@ -106,19 +109,47 @@ class PestanaEquipo:
         self.equipo_cancelar = {}
         self.equipo_progreso = {}
         ocupado = any(t.corriendo for t in self.equipo_trabajos.values())
-        for pieza in visto.piezas:
-            self.equipo_filas.append(self._fila_equipo(pieza, ocupado))
-        self.equipo_titular.set_label(visto.titular)
-        self.equipo_mensaje.set_label(visto.mensaje)
+        self._grupo_equipo("Listos", visto.agentes_listos, ocupado)
+        pendientes = visto.agentes_pendientes
+        self._grupo_equipo("Para instalar" if pendientes and all(not p.instalado for p in pendientes)
+                           else "Les falta algo", pendientes, ocupado)
+        self._grupo_equipo("Herramientas", (visto.git,), ocupado)
+        if primer_arranque:
+            self.equipo_titular.set_label("Antes de empezar, Cotejo revisa tu equipo")
+            self.equipo_mensaje.set_label(
+                "Para preparar proyectos hace falta un agente de IA. Esto es lo que encontré:")
+        else:
+            self.equipo_titular.set_label("Tus agentes")
+            self.equipo_mensaje.set_label(
+                f"{visto.resumen_agentes} Cotejo los vuelve a revisar solo cada pocos segundos.")
         self._sondear_equipo_si_hace_falta()
         return visto
 
+    def _grupo_equipo(self, titulo, piezas, ocupado):
+        if not piezas:
+            return
+        grupo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_SM))
+        grupo.append(Gtk.Label(label=titulo, xalign=0, css_classes=["equipo-grupo-titulo"]))
+        lista = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE, css_classes=["equipo-lista"])
+        for pieza in piezas:
+            lista.append(self._fila_equipo(pieza, ocupado))
+        grupo.append(lista)
+        self.equipo_filas.append(grupo)
+
     def _fila_equipo(self, pieza, ocupado):
         fila = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
-                       css_classes=["carta"])
-        linea = Gtk.Box(spacing=px(ESPACIADO_MD))
-        linea.append(Gtk.Label(label=pieza.titulo, xalign=0, hexpand=True))
-        linea.append(chip(pieza.estado, "", *(["verde"] if pieza.listo else [])))
+                       css_classes=["equipo-fila"], valign=Gtk.Align.FILL)
+        fila.pieza = pieza
+        linea = Gtk.Box(spacing=px(ESPACIADO_MD), valign=Gtk.Align.CENTER, vexpand=True)
+        identidad = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
+                            hexpand=True, valign=Gtk.Align.CENTER)
+        identidad.append(Gtk.Label(label=pieza.titulo, xalign=0,
+                                   css_classes=["equipo-nombre"]))
+        detalle = self._detalle_pieza(pieza)
+        if detalle:
+            identidad.append(Gtk.Label(label=detalle, xalign=0, wrap=True,
+                                       css_classes=["equipo-nota"]))
+        linea.append(identidad)
         trabajo = self.equipo_trabajos.get(pieza.clave)
         if trabajo is not None and trabajo.corriendo:
             cancelar = con_mano(Gtk.Button(label="Cancelar", valign=Gtk.Align.CENTER))
@@ -140,15 +171,23 @@ class PestanaEquipo:
             self.equipo_sesion[pieza.clave] = boton
             linea.append(boton)
         elif pieza.sesion_desconocida and pieza.clave in instalar_agentes.SESIONES:
-            abrir = con_mano(Gtk.Button(label="Abrir", valign=Gtk.Align.CENTER))
+            linea.append(self._estado_listo())
+            abrir = con_mano(Gtk.Button(label="Abrir", valign=Gtk.Align.CENTER,
+                                        css_classes=["flat"]))
             etiquetar(abrir, f"Abrir {pieza.titulo} en una terminal para entrar con tu cuenta")
             abrir.connect("clicked", lambda _b, p=pieza: self.iniciar_sesion_agente(p.clave))
             self.equipo_sesion[pieza.clave] = abrir
             linea.append(abrir)
         elif not pieza.instalado:
-            enlace = con_mano(Gtk.Button(label=pieza.texto_enlace, valign=Gtk.Align.CENTER,
-                                         css_classes=["flat"]))
-            etiquetar(enlace, f"{pieza.texto_enlace} (abre su página oficial)")
+            solo_enlace = not pieza.instalable
+            if solo_enlace:
+                enlace = con_mano(Gtk.Button(label="Cómo instalarlo", valign=Gtk.Align.CENTER,
+                                              css_classes=["flat", "equipo-enlace"]))
+            else:
+                enlace = con_mano(Gtk.Button(child=Gtk.Image(icon_name="web-browser-symbolic"),
+                                              valign=Gtk.Align.CENTER,
+                                              css_classes=["flat", "equipo-enlace"]))
+            etiquetar(enlace, f"Cómo instalar {pieza.titulo}")
             enlace.connect("clicked", lambda _b, p=pieza: self.abrir_pagina(p.pagina))
             self.equipo_enlaces[pieza.clave] = enlace
             linea.append(enlace)
@@ -160,15 +199,28 @@ class PestanaEquipo:
                 instalar.connect("clicked", lambda _b, p=pieza: self.instalar_agente(p.clave))
                 self.equipo_instalar[pieza.clave] = instalar
                 linea.append(instalar)
+        elif pieza.listo:
+            linea.append(self._estado_listo())
         fila.append(linea)
-        if pieza.nota:
-            fila.append(Gtk.Label(label=pieza.nota, xalign=0, wrap=True,
-                                  css_classes=["vacio-pista"]))
         progreso = Gtk.Label(xalign=0, wrap=True, selectable=True, css_classes=["dato"])
         self.equipo_progreso[pieza.clave] = progreso
         fila.append(progreso)
         self._pintar_progreso(pieza.clave)
         return fila
+
+    @staticmethod
+    def _detalle_pieza(pieza):
+        if pieza.listo and pieza.modelos:
+            nombres = [str(modelo) for modelo in pieza.modelos[:3]]
+            return ", ".join(nombres) + ("…" if len(pieza.modelos) > 3 else "")
+        return pieza.nota
+
+    @staticmethod
+    def _estado_listo():
+        estado = Gtk.Box(spacing=px(ESPACIADO_XS), css_classes=["equipo-estado"])
+        estado.append(Gtk.Label(label="•", css_classes=["equipo-punto"]))
+        estado.append(Gtk.Label(label="Listo"))
+        return estado
 
     def _pintar_progreso(self, clave):
         etiqueta = getattr(self, "equipo_progreso", {}).get(clave)

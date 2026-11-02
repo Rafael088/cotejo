@@ -162,6 +162,19 @@ class Equipo:
         return tuple(p for p in self.piezas if not p.listo)
 
     @property
+    def agentes_listos(self):
+        """Agentes que ya pueden usarse (también si su sesión no se puede comprobar)."""
+        return tuple(a for a in self.agentes if a.listo)
+
+    @property
+    def agentes_pendientes(self):
+        return tuple(a for a in self.agentes if not a.listo)
+
+    @property
+    def resumen_agentes(self):
+        return f"{len(self.agentes_listos)} de {len(self.agentes)} listos."
+
+    @property
     def titular(self):
         listos = [a.titulo for a in self.agentes if a.listo]
         if not listos and self.hay_instalado:
