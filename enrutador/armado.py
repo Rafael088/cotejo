@@ -82,13 +82,19 @@ def ramas_protegidas(directorio, worktree=None):
 def carpetas_de_escritura(trabajo, worktree=None):
     """Las de preparar para la carpeta de trabajo (ella y la de estado de Cotejo, **sin** la de
     su config: cotejo-dgb7l2) más el `.git` del repo si trabaja en un worktree: ahí van sus
-    commits. En macOS la de estado cuelga de la de config, y se da solo la de estado."""
+    commits. En macOS la de estado cuelga de la de config, y se da solo la de estado.
+
+    Y el `.cotejo/` del repo (cotejo-en0crz), como en el sandbox de Claude: ahí vive su tarea
+    cuando el repo lo tiene sin commitear, y los verbos de Cotejo lo leen y escriben. OpenCode
+    sin interfaz se corta en cuanto se le niega una carpeta; sin esta, el agente que iba a
+    leer su tarea al repo terminaba sin entregar."""
     config = os.path.abspath(Path(configuracion.ruta()).expanduser().parent)
     lista = [c for c in preparar.carpetas_de_escritura(trabajo) if c != config]
     if worktree:
-        git = Path(worktree["repo"]) / ".git"
-        if git.is_dir():
-            lista.append(str(git))
+        for nombre in (".git", ".cotejo"):
+            carpeta = Path(worktree["repo"]) / nombre
+            if carpeta.is_dir():
+                lista.append(str(carpeta))
     return list(dict.fromkeys(lista))
 
 

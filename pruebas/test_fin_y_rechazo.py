@@ -392,6 +392,18 @@ class CausaEnLlano(unittest.TestCase):
                 self.assertEqual(despacho_board.causa_en_llano([linea]),
                                  "no pudo entregar el trabajo")
 
+    def test_sin_saldo_y_permiso_negado_cotejo_en0crz(self):
+        # Lo que dejaron kimi y deepseek-flash en Carritos (cotejo-dmji36), tal cual.
+        self.assertEqual(despacho_board.causa_en_llano(
+            ["Error: Upstream request failed: Insufficient account funds"]),
+            "la cuenta del modelo se quedó sin saldo")
+        self.assertEqual(despacho_board.causa_en_llano(
+            ["! permission requested: external_directory (/tmp/*); auto-rejecting",
+             "✗ python3 -m http.server 8765 failed",
+             "Error: The user rejected permission to use this specific tool call."]),
+            "pidió entrar en una carpeta fuera de su tarea y, sin nadie que le dijera que sí, "
+            "se cortó")
+
     def test_el_orden_de_las_causas_manda(self):
         # Aunque el cupo salga antes en el texto, el permiso se mira primero.
         self.assertEqual(despacho_board.causa_en_llano(
