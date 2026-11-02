@@ -13,7 +13,7 @@ Sirve para que cualquier persona, programe o no, construya software con IA de fo
 Se usa con cualquier agente de terminal (Claude Code, Codex, Antigravity CLI, Gemini CLI, opencode) o con cualquier agente que hable MCP. Es gratis, en Windows y Linux.
 
 > [!WARNING]
-> **Cotejo 1.2 es software en fase beta.** Todavía puede tener fallos o comportarse de forma
+> **Cotejo 1.3 es software en fase beta.** Todavía puede tener fallos o comportarse de forma
 > inesperada. Se ofrece «tal cual», sin garantías de ningún tipo, como dice su licencia
 > ([`LICENSE`](LICENSE), cláusula 8). Si algo falla, cuéntalo en un [issue](../../issues).
 
@@ -25,9 +25,18 @@ línea, como en el paso 1 de abajo.
 gratuito: puedes leer, revisar y auditar este código, y reportar fallos, pero no copiarlo,
 modificarlo ni redistribuirlo (ver [`LICENSE`](LICENSE), cláusulas 2.4 y 3).
 
+## Empezar desde la app (sin terminal)
+
+Desde la 1.3, quien no programa empieza en la propia app. Abre Cotejo: la primera vez revisa qué
+agentes de IA tienes y, si falta uno, lo instala con su instalador oficial y te lleva a iniciar
+sesión. En el **Inicio**, «Nuevo proyecto» te hace seis preguntas en llano, lanza al agente por
+detrás para que prepare el plan y, cuando aceptas sus decisiones, «Empezar la 0.1.0» reparte las
+tareas y abre el mapa del proyecto. Arrastrar una tarea a Haciendo la pone a trabajar; tú la
+compruebas cuando llega a «Para comprobar».
+
 ## Empezar en un repo
 
-Cuatro pasos, de la instalación a la primera tarea comprobada.
+Si programas, cuatro pasos, de la instalación a la primera tarea comprobada.
 
 **1. Instala Cotejo.** Una línea, sin clonar nada (el detalle, las opciones y el paquete de Arch están en [«Instalar»](#instalar)):
 
