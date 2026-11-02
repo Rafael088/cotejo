@@ -64,8 +64,8 @@ class SinTocarNada(PruebaDeEnrutador):
         # Los de Claude y los de fábrica de los otros agentes (cotejo-qixs4j).
         self.assertEqual({n["modelo"] for n in datos["niveles"]},
                          {"humano", "haiku", "sonnet", "opus", "gemini-pro", "gemini-flash",
-                          "gemini-flash-lite", "codex-rapido", "codex", "codex-fuerte",
-                          "opencode", "antigravity"})
+                          "gemini-flash-lite", "gpt-5.6-sol-alto", "gpt-5.6-sol", "gpt-5.6-terra",
+                          "gpt-5.6-luna", "opencode", "antigravity"})
 
     def test_modelos_agregar_deja_el_modelo_disponible_para_cualquier_cliente(self):
         codigo, agregado = self.correr(

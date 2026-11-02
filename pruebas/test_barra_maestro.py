@@ -173,22 +173,22 @@ class BarraMaestro(unittest.TestCase):
         caja = falso.boton_maestro.get_popover().get_child()
         opciones = botones_de(caja)
         # Los modelos del catálogo, no solo los agentes: Claude trae sus tres alias y Codex sus
-        # tres de fábrica (uno es «el del agente»).
+        # cuatro de fábrica con nombre exacto (cotejo-ef3xzj).
         self.assertEqual([texto_de_boton(b) for b in opciones],
-                         ["opus", "sonnet", "haiku",
-                          "codex-rapido", "codex · el del agente", "codex-fuerte"])
-        elegido = next(b for b in opciones if "codex · el del agente" in texto_de_boton(b))
+                         ["opus", "sonnet", "haiku", "gpt-5.6-luna", "gpt-5.6-terra",
+                          "gpt-5.6-sol", "gpt-5.6-sol-alto"])
+        elegido = next(b for b in opciones if texto_de_boton(b) == "gpt-5.6-sol")
         with mock.patch("enrutador.verbos.hablar_maestro") as hablar:
             elegido.emit("clicked")
         hablar.assert_not_called()
         self.assertEqual(self.guardado["cliente_maestro"], "codex")
-        self.assertEqual(self.guardado["modelo_maestro"], "codex")
+        self.assertEqual(self.guardado["modelo_maestro"], "gpt-5.6-sol")
         falso.entrada_maestro.set_text("hola")
         self.assertIn("Codex", falso.boton_maestro.get_tooltip_text())
         with mock.patch("enrutador.verbos.hablar_maestro", return_value=hablado()) as hablar:
             falso.al_ejecutar_maestro()
         self.assertEqual(hablar.call_args.args, ("Uno", "hola", "codex"))
-        self.assertEqual(hablar.call_args.kwargs["modelo"], "codex")
+        self.assertEqual(hablar.call_args.kwargs["modelo"], "gpt-5.6-sol")
 
     def test_el_menu_agrupa_por_cliente_y_solo_los_instalados(self):
         falso = board_falso()

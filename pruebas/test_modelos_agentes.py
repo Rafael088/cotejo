@@ -24,6 +24,20 @@ from tareas import almacen, origen, revisar_plan
 
 from test_revisar_plan import ConProyecto
 
+
+def setUpModule():
+    # Lo que se ofrece de Codex depende de su `models_cache.json` (cotejo-ef3xzj): sin uno de
+    # mentira, las pruebas leerían el de la máquina. Una carpeta vacía es «no se sabe»: sin filtro.
+    global _CODEX_VACIO, _SIN_CACHE_CODEX
+    _CODEX_VACIO = tempfile.TemporaryDirectory()
+    _SIN_CACHE_CODEX = mock.patch.dict(os.environ, {"CODEX_HOME": _CODEX_VACIO.name})
+    _SIN_CACHE_CODEX.start()
+
+
+def tearDownModule():
+    _SIN_CACHE_CODEX.stop()
+    _CODEX_VACIO.cleanup()
+
 OPENCODE = """#!/bin/sh
 [ "$1" = "models" ] || exit 3
 echo "opencode/gratis-free"
@@ -247,6 +261,19 @@ class Listar(ConMaquinaFalsa):
         self.assertEqual(modelos_vivos.leer_opencode("Error: algo\nproveedor/m\n\n"),
                          ["proveedor/m"])
 
+    def test_codex_lee_su_models_cache_antes_que_al_cli(self):
+        # Sin CLI que conteste, el catálogo guardado por Codex basta y no lanza nada.
+        self.cli("codex", ROTO)
+        self.archivo(".codex/models_cache.json", json.dumps({"models": [
+            {"slug": "oculto", "visibility": "hide", "priority": 1},
+            {"slug": "gpt-luna", "visibility": "list", "priority": 9},
+            {"slug": "gpt-terra", "visibility": "list", "priority": 8}]}))
+        self.assertEqual(modelos_vivos.leer_cache_codex(), ["gpt-terra", "gpt-luna"])
+        self.assertEqual(modelos_vivos.preguntar("codex"), ["gpt-terra", "gpt-luna"])
+        self.assertEqual(modelos_vivos.listar("codex"), ["gpt-terra", "gpt-luna"])
+        self.archivo(".codex/models_cache.json", "roto")
+        self.assertEqual(modelos_vivos.leer_cache_codex(), [])
+
     def test_resumen_para_la_cli(self):
         self.cli("codex", CODEX)
         self.con_sesion("codex")
@@ -267,26 +294,37 @@ class Catalogo(unittest.TestCase):
     def test_claude_se_lanza_con_el_alias(self):
         self.assertEqual(clientes.de("claude").modelo_de("opus", "claude-opus-5-5"), "opus")
 
-    def test_codex_de_fabrica_se_lanza_sin_modelo(self):
-        codex = niveles.por_nombre("codex")
-        self.assertEqual((codex.cliente, codex.modelo_id), ("codex", ""))
+    def test_codex_de_fabrica_se_lanza_con_su_nombre_exacto(self):
+        codex = niveles.por_nombre("gpt-5.6-sol")
+        self.assertEqual((codex.cliente, codex.modelo_id), ("codex", "gpt-5.6-sol"))
         cliente = clientes.de("codex")
         argv = cliente.argv_sin_interfaz(cliente.modelo_de(codex.modelo, codex.modelo_id), "hola")
-        self.assertEqual(argv, ["codex", "exec", "hola"])
+        self.assertEqual(argv, ["codex", "exec", "-m", "gpt-5.6-sol", "hola"])
         gemini = niveles.por_nombre("gemini-pro")
         self.assertEqual(clientes.de("gemini").modelo_de(gemini.modelo, gemini.modelo_id), "pro")
 
+    def test_los_nombres_de_codex_de_antes_siguen_resolviendo(self):
+        for viejo, nuevo in (("codex-rapido", "gpt-5.6-luna"), ("codex", "gpt-5.6-sol"),
+                             ("codex-fuerte", "gpt-5.6-sol-alto")):
+            self.assertEqual(niveles.por_nombre(viejo).modelo, nuevo, viejo)
+        # Un registrado con la clave vieja manda sobre el alias, como antes.
+        propio = [{"clave": "codex", "modelo_id": "gpt-5.6-terra", "cliente": "codex",
+                   "nivel": "n2"}]
+        self.assertEqual(niveles.por_nombre("codex", propio).modelo_id, "gpt-5.6-terra")
+
     def test_un_registrado_con_la_misma_clave_gana_al_de_fabrica(self):
-        propio = [{"clave": "codex", "modelo_id": "gpt-terra", "cliente": "codex", "nivel": "n2"}]
-        self.assertEqual(niveles.por_nombre("codex", propio).modelo_id, "gpt-terra")
-        self.assertEqual(sum(n.clave == "codex" for n in niveles.disponibles(propio)), 1)
+        propio = [{"clave": "gpt-5.6-terra", "modelo_id": "otro-terra", "cliente": "codex",
+                   "nivel": "n2"}]
+        self.assertEqual(niveles.por_nombre("gpt-5.6-terra", propio).modelo_id, "otro-terra")
+        self.assertEqual(sum(n.clave == "gpt-5.6-terra" for n in niveles.disponibles(propio)), 1)
 
     def test_grupos_con_el_agente_del_proyecto_primero(self):
         propios = [{"clave": "kimi", "modelo_id": "opencode-go/kimi", "cliente": "opencode",
                     "nivel": "n2"},
                    {"clave": "raro", "modelo_id": "x", "cliente": "otro", "nivel": "n2"}]
         grupos = niveles.grupos(propios, ["claude", "codex", "opencode"], primero="codex")
-        self.assertEqual(grupos, [("codex", ["codex-fuerte", "codex", "codex-rapido"]),
+        self.assertEqual(grupos, [("codex", ["gpt-5.6-sol-alto", "gpt-5.6-sol",
+                                             "gpt-5.6-terra", "gpt-5.6-luna"]),
                                   ("claude", ["opus", "sonnet", "haiku"]),
                                   ("opencode", ["opencode", "kimi"]),
                                   ("otro", ["raro"])])
@@ -305,11 +343,12 @@ class Catalogo(unittest.TestCase):
         self.assertEqual([n.modelo for n in niveles.modelos_de("claude")],
                          ["opus", "sonnet", "haiku"])
         self.assertEqual([n.modelo for n in niveles.modelos_de("codex", propios)],
-                         ["codex-rapido", "codex", "codex-fuerte", "astra"])
+                         ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.6-sol-alto",
+                          "astra"])
         self.assertEqual(niveles.modelos_de("otro"), ())
         # Cada agente arranca con su equivalente a n2.
         self.assertEqual(niveles.modelo_por_defecto("claude"), "sonnet")
-        self.assertEqual(niveles.modelo_por_defecto("codex"), "codex")
+        self.assertEqual(niveles.modelo_por_defecto("codex"), "gpt-5.6-sol")
         self.assertEqual(niveles.modelo_por_defecto("gemini"), "gemini-flash")
         self.assertEqual(niveles.modelo_por_defecto("opencode"), "opencode")
         self.assertEqual(niveles.modelo_por_defecto("antigravity"), "antigravity")
@@ -330,7 +369,10 @@ class Catalogo(unittest.TestCase):
         self.assertIs(niveles.del_cliente(n2, "claude"), n2)
         self.assertEqual(niveles.del_cliente(n1, "gemini").modelo, "gemini-flash-lite")
         self.assertEqual(niveles.del_cliente(n3, "gemini").modelo, "gemini-pro")
-        self.assertEqual(niveles.del_cliente(n1, "codex").modelo, "codex-rapido")
+        self.assertEqual(niveles.del_cliente(n1, "codex").modelo, "gpt-5.6-luna")
+        # Dos de fábrica del mismo tamaño: se queda el más capaz (sol, no terra).
+        self.assertEqual(niveles.del_cliente(n2, "codex").modelo, "gpt-5.6-sol")
+        self.assertEqual(niveles.del_cliente(n3, "codex").modelo, "gpt-5.6-sol-alto")
         propios = [{"clave": "barato", "modelo_id": "p/b", "cliente": "opencode", "nivel": "n1"}]
         self.assertEqual(niveles.del_cliente(n1, "opencode", propios).modelo, "barato")
         # n2 sin registrado de n2: escala al de fábrica (n3), nunca baja al n1.
@@ -339,7 +381,8 @@ class Catalogo(unittest.TestCase):
 
 
 class TamanosDeCodex(unittest.TestCase):
-    """n1/n2/n3 de Codex (cotejo-t46992): luna, el modelo por defecto y ese con razonamiento alto."""
+    """n1/n2/n3 de Codex (cotejo-ef3xzj): sus modelos reales, de luna a sol con razonamiento
+    alto. Astra no viene de fábrica."""
 
     def argv(self, elegida, config=None):
         from enrutador import armado, despacho_board
@@ -350,9 +393,9 @@ class TamanosDeCodex(unittest.TestCase):
         return [a for a in argv if a != "--skip-git-repo-check"][:argv.index("hola")]
 
     def test_el_proyecto_de_codex_reparte_por_tamano(self):
-        for dificultad, modelo, nivel in (("facil", "codex-rapido", "n1"),
-                                          ("medio", "codex", "n2"),
-                                          ("dificil", "codex-fuerte", "n3")):
+        for dificultad, modelo, nivel in (("facil", "gpt-5.6-luna", "n1"),
+                                          ("medio", "gpt-5.6-sol", "n2"),
+                                          ("dificil", "gpt-5.6-sol-alto", "n3")):
             elegida = decision.decidir("algo", dificultad=dificultad, reglas_humano=(),
                                        reglas_nivel=(), cliente="codex")
             self.assertEqual((elegida.nivel.modelo, elegida.nivel.nivel_base, elegida.nivel.cliente),
@@ -361,22 +404,25 @@ class TamanosDeCodex(unittest.TestCase):
     def test_el_argv_de_cada_nivel(self):
         prefijo = ["codex", "exec"]
         esperado = {"facil": prefijo + ["-m", "gpt-5.6-luna"],
-                    "medio": prefijo,
-                    "dificil": prefijo + ["-c", "model_reasoning_effort=high"]}
+                    "medio": prefijo + ["-m", "gpt-5.6-sol"],
+                    "dificil": prefijo + ["-m", "gpt-5.6-sol", "-c",
+                                          "model_reasoning_effort=high"]}
         for dificultad, inicio in esperado.items():
             elegida = decision.decidir("algo", dificultad=dificultad, reglas_humano=(),
                                        reglas_nivel=(), cliente="codex")
             argv = self.argv(elegida)
             self.assertEqual(argv[:len(inicio)], inicio, dificultad)
             self.assertEqual(argv[-1].startswith("hola"), True)
-            self.assertEqual("-m" in argv, dificultad == "facil", dificultad)
-            self.assertEqual("-c" in argv, dificultad == "dificil", dificultad)
+            if dificultad != "dificil":
+                self.assertNotIn("-c", argv, dificultad)
 
     def test_por_el_motor_headless_con_cliente_falso(self):
         from enrutador import motor
         from enrutador.motores import claude_cli
-        for dificultad, esperado in (("facil", ["-m", "gpt-5.6-luna"]), ("medio", []),
-                                     ("dificil", ["-c", "model_reasoning_effort=high"])):
+        for dificultad, esperado in (("facil", ["-m", "gpt-5.6-luna"]),
+                                     ("medio", ["-m", "gpt-5.6-sol"]),
+                                     ("dificil", ["-m", "gpt-5.6-sol", "-c",
+                                                  "model_reasoning_effort=high"])):
             n = decision.decidir("algo", dificultad=dificultad, reglas_humano=(),
                                  reglas_nivel=(), cliente="codex").nivel
             encargo = motor.Encargo(prompt="hola", modelo=n.modelo, modelo_id=n.modelo_id,
@@ -384,10 +430,10 @@ class TamanosDeCodex(unittest.TestCase):
             argv = claude_cli.ClaudeCLI({}).argv(encargo)
             self.assertEqual(argv, ["codex", "exec"] + esperado + ["hola"], dificultad)
 
-    def test_la_clave_codex_sigue_siendo_n2_y_sin_modelo(self):
+    def test_la_clave_codex_de_antes_sigue_siendo_n2(self):
         codex = niveles.por_nombre("codex")
-        self.assertEqual((codex.nivel_base, codex.modelo_id, codex.argumentos), ("n2", "", ()))
-        self.assertEqual(clientes.de("codex").modelo_de("codex-fuerte", ""), "")
+        self.assertEqual((codex.clave, codex.nivel_base, codex.modelo_id),
+                         ("gpt-5.6-sol", "n2", "gpt-5.6-sol"))
 
     def test_un_registrado_de_codex_con_ese_nivel_manda(self):
         propios = [{"clave": "terra", "modelo_id": "gpt-5.6-terra", "cliente": "codex",
@@ -398,9 +444,9 @@ class TamanosDeCodex(unittest.TestCase):
                          ("terra", ("-c", "model_reasoning_effort=max")))
         # Los otros tamaños siguen con los de fábrica.
         self.assertEqual(niveles.del_cliente(niveles.POR_CLAVE["n1"], "codex", propios).modelo,
-                         "codex-rapido")
+                         "gpt-5.6-luna")
         self.assertEqual(niveles.del_cliente(niveles.POR_CLAVE["n2"], "codex", propios).modelo,
-                         "codex")
+                         "gpt-5.6-sol")
         encargo = types.SimpleNamespace(nivel=elegido)
         self.assertEqual(self.sin_permisos(self.argv(encargo))[:6],
                          ["codex", "exec", "-m", "gpt-5.6-terra", "-c",
@@ -415,14 +461,51 @@ class TamanosDeCodex(unittest.TestCase):
 
     def test_el_menu_de_codex_va_de_mayor_a_menor(self):
         self.assertEqual(dict(niveles.grupos((), ["codex"]))["codex"],
-                         ["codex-fuerte", "codex", "codex-rapido"])
+                         ["gpt-5.6-sol-alto", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"])
+
+    def test_astra_no_viene_de_fabrica(self):
+        self.assertNotIn("gpt-6-astra", [n.modelo_id for n in niveles.DE_FABRICA])
+
+    def con_cache(self, *slugs):
+        carpeta = tempfile.TemporaryDirectory()
+        self.addCleanup(carpeta.cleanup)
+        Path(carpeta.name, "models_cache.json").write_text(json.dumps({"models": [
+            {"slug": s, "visibility": "list", "priority": i} for i, s in enumerate(slugs)]}))
+        parche = mock.patch.dict(os.environ, {"CODEX_HOME": carpeta.name})
+        parche.start()
+        self.addCleanup(parche.stop)
+
+    def test_solo_se_ofrecen_los_que_lista_su_models_cache(self):
+        # Una cuenta sin terra: no sale en el menú ni en las propuestas, pero lo ya asignado a
+        # terra sigue resolviendo.
+        self.con_cache("gpt-5.6-sol", "gpt-5.6-luna")
+        self.assertEqual(dict(niveles.grupos((), ["codex"]))["codex"],
+                         ["gpt-5.6-sol-alto", "gpt-5.6-sol", "gpt-5.6-luna"])
+        self.assertEqual(niveles.por_nombre("gpt-5.6-terra").modelo_id, "gpt-5.6-terra")
+        # Solo luna en la cuenta: n2 no baja a luna ni sube a un id que no existe; se queda
+        # con el nivel tal cual, como cuando el agente no tiene de ese tamaño.
+        self.con_cache("gpt-5.6-luna")
+        n2 = niveles.POR_CLAVE["n2"]
+        self.assertIs(niveles.del_cliente(n2, "codex"), n2)
+        self.assertEqual([n.modelo for n in niveles.modelos_de("codex")], ["gpt-5.6-luna"])
+
+    def test_un_registrado_igual_no_sale_dos_veces(self):
+        # Quien registró `sol` (gpt-5.6-sol, sin argumentos) no ve también `gpt-5.6-sol`.
+        propios = [{"clave": "sol", "modelo_id": "gpt-5.6-sol", "cliente": "codex", "nivel": "n2"}]
+        menu = dict(niveles.grupos(propios, ["codex"]))["codex"]
+        self.assertIn("sol", menu)
+        self.assertNotIn("gpt-5.6-sol", menu)
+        # El de razonamiento alto es otro modelo: sigue.
+        self.assertIn("gpt-5.6-sol-alto", menu)
+        self.assertEqual(niveles.del_cliente(niveles.POR_CLAVE["n2"], "codex", propios).modelo,
+                         "sol")
 
 
 class Decision(unittest.TestCase):
     def test_la_propuesta_es_del_agente_del_proyecto(self):
         elegida = decision.decidir("cambiar el color del botón", reglas_humano=(),
                                    reglas_nivel=(), cliente="codex")
-        self.assertEqual((elegida.por, elegida.nivel.modelo), ("defecto", "codex"))
+        self.assertEqual((elegida.por, elegida.nivel.modelo), ("defecto", "gpt-5.6-sol"))
         self.assertIn("Codex", elegida.razon)
         gemini = decision.decidir("algo", dificultad="dificil", reglas_humano=(),
                                   reglas_nivel=(), cliente="gemini")
@@ -460,9 +543,9 @@ class AgenteDelProyecto(ConProyecto):
                   "alias_persona": None}
         with mock.patch("enrutador.preparar.descartar"):
             asignadas = revisar_plan.empezar(self.estado, reglas)
-        self.assertEqual(asignadas, [{"id": "cotejo-aaa111", "agente": "codex"},
-                                     {"id": "cotejo-ccc333", "agente": "codex-fuerte"}])
-        self.assertIn("#agente/codex ^cotejo-aaa111", self.tareas_md())
+        self.assertEqual(asignadas, [{"id": "cotejo-aaa111", "agente": "gpt-5.6-sol"},
+                                     {"id": "cotejo-ccc333", "agente": "gpt-5.6-sol-alto"}])
+        self.assertIn("#agente/gpt-5.6-sol ^cotejo-aaa111", self.tareas_md())
         self.assertIn("#agente/persona ^cotejo-bbb222", self.tareas_md())
 
 
@@ -475,7 +558,7 @@ class AnadirModelo(unittest.TestCase):
     def test_clave_a_partir_del_id(self):
         self.assertEqual(modelos_vivos.nueva_clave("opencode-go/kimi-k2.7-code"), "kimi-k2.7-code")
         self.assertEqual(modelos_vivos.nueva_clave("x/Opus"), "opus-2")       # reservada
-        self.assertEqual(modelos_vivos.nueva_clave("codex"), "codex-2")       # de fábrica
+        self.assertEqual(modelos_vivos.nueva_clave("gpt-5.6-luna"), "gpt-5.6-luna-2")  # de fábrica
         self.assertEqual(modelos_vivos.nueva_clave("a/b c", ["b-c"]), "b-c-2")
 
     def test_definicion_valida(self):
@@ -548,7 +631,7 @@ class EnElBoard(ConMaquinaFalsa):
         lista = falso.lista_de_agentes(types.SimpleNamespace(nombre="Uno"), self.tarea(),
                                        Gtk.Popover())
         vistos = [t for t in textos(lista) if t]
-        self.assertEqual(vistos[:3], ["Codex", "codex-fuerte", "codex"])
+        self.assertEqual(vistos[:3], ["Codex", "gpt-5.6-sol-alto", "gpt-5.6-sol"])
         self.assertLess(vistos.index("Claude Code"), vistos.index("Gemini CLI"))
         self.assertIn("gemini-flash-lite", vistos)
         self.assertNotIn("OpenCode", vistos)            # sin sesión
@@ -557,8 +640,8 @@ class EnElBoard(ConMaquinaFalsa):
 
     def test_preguntar_ofrece_todos_con_la_propuesta_primero(self):
         falso = self.board("codex")
-        modelos = falso.modelos_para_preguntar("codex", types.SimpleNamespace(nombre="Uno"))
-        self.assertEqual(modelos[:2], ["codex", "codex-fuerte"])
+        modelos = falso.modelos_para_preguntar("gpt-5.6-sol", types.SimpleNamespace(nombre="Uno"))
+        self.assertEqual(modelos[:2], ["gpt-5.6-sol", "gpt-5.6-sol-alto"])
         self.assertIn("opus", modelos)
         self.assertIn("gemini-pro", modelos)
 

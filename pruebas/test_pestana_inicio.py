@@ -264,19 +264,19 @@ class ConProyectos(PestanaInicio):
         self.assertEqual(b.modelo_elegido(), "sonnet")
         self.assertEqual(modelos(b.ent_modelo), ["opus", "sonnet", "haiku"])
         b.ent_agente.set_selected(1)   # Codex
-        self.assertEqual(b.modelo_elegido(), "codex")
+        self.assertEqual(b.modelo_elegido(), "gpt-5.6-sol")
         self.assertEqual(modelos(b.ent_modelo),
-                         ["codex-rapido", "codex · el del agente", "codex-fuerte"])
+                         ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.6-sol-alto"])
         b.ent_modelo.set_selected(
-            [m.modelo for m in b.ent_modelos].index("codex-fuerte"))
-        self.assertEqual(b.modelo_elegido(), "codex-fuerte")
+            [m.modelo for m in b.ent_modelos].index("gpt-5.6-sol-alto"))
+        self.assertEqual(b.modelo_elegido(), "gpt-5.6-sol-alto")
         b.ent_carpeta.set_text("/tmp/mi-proyecto")
         estado = {"id": "mi-proyecto-abc123", "proyecto": "mi-proyecto"}
         with mock.patch("enrutador.preparar.lanzar", return_value=estado) as lanzar, \
                 mock.patch.object(b, "mostrar_preparando"):
             b.preparar_proyecto()
         self.assertEqual(lanzar.call_args.kwargs["cliente"], "codex")
-        self.assertEqual(lanzar.call_args.kwargs["modelo"], "codex-fuerte")
+        self.assertEqual(lanzar.call_args.kwargs["modelo"], "gpt-5.6-sol-alto")
 
     def test_el_formulario_ensena_los_modelos_registrados_de_su_agente(self):
         b = self.abrir_entrevista(agentes=("codex",))

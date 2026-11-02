@@ -18,13 +18,15 @@ Dos preguntas, las dos sin gastar un token ni abrir un navegador:
   siempre, `clientes.instalados()`.
 - **¿Qué modelos tiene?** (`listar`). Se le pregunta al CLI solo cuando sabe listarlos sin
   hablar con ningún modelo: `opencode models` (una línea `proveedor/modelo` por modelo) y
-  `codex debug models` (el catálogo en JSON; cuentan los de `visibility: list`) y `agy models`
-  (una línea `slug  Nombre` por modelo, https://antigravity.google/docs/cli/headless). Claude Code y
-  Gemini CLI no listan: aceptan alias que sobreviven a cada modelo nuevo (`claude --model opus`;
-  `gemini -m pro|flash|flash-lite|auto`) y esos son su lista, `RESPALDO`. Lo que contesta el CLI
-  se guarda en `<estado>/modelos/<cliente>.json` (`CADUCA` segundos) y la llamada tiene tope
-  (`TOPE`); si el CLI falla, tarda o no está, se usa lo último guardado y, si nada, el respaldo,
-  que es corto y conservador a propósito: nunca un id inventado.
+  `codex debug models` (el catálogo en JSON; cuentan los de `visibility: list`), que es el mismo
+  JSON que Codex ya guardó en `~/.codex/models_cache.json` (o `$CODEX_HOME`), y `agy models`
+  (una línea `slug  Nombre` por modelo, https://antigravity.google/docs/cli/headless). Con Codex
+  se lee primero ese archivo —no hay que lanzar nada— y solo si no está se le pregunta al CLI.
+  Claude Code y Gemini CLI no listan: aceptan alias que sobreviven a cada modelo nuevo
+  (`claude --model opus`; `gemini -m pro|flash|flash-lite|auto`) y esos son su lista, `RESPALDO`.
+  Lo que contesta el CLI se guarda en `<estado>/modelos/<cliente>.json` (`CADUCA` segundos) y la
+  llamada tiene tope (`TOPE`); si el CLI falla, tarda o no está, se usa lo último guardado y, si
+  nada, el respaldo, que es corto y conservador a propósito: nunca un id inventado.
 
 El board pinta con `en_cache` (nunca lanza nada al pintar) y refresca con `listar` en un hilo
 desde «Añadir modelo». Las pruebas ponen CLIs falsos en un PATH temporal y `HOME` en otra parte.
@@ -281,6 +283,17 @@ def leer_codex(salida):
     return [m["slug"] for m in visibles]
 
 
+def leer_cache_codex(entorno=None):
+    """Los modelos que Codex ya se guardó en `~/.codex/models_cache.json` (mismo JSON que
+    `codex debug models`): ahorra lanzar el CLI y funciona sin red. Vacío si no está o está roto."""
+    entorno = os.environ if entorno is None else entorno
+    carpeta = Path(entorno.get("CODEX_HOME") or _casa() / ".codex")
+    try:
+        return leer_codex((carpeta / "models_cache.json").read_text(encoding="utf-8")) or []
+    except OSError:
+        return []
+
+
 def leer_agy(salida):
     """`agy models`: una línea por modelo, el slug y su nombre (`gemini-3.8-flash-medium
     Gemini 3.8 Flash (Medium)`); cuenta la primera palabra si parece un slug."""
@@ -299,9 +312,17 @@ LECTORES = {"opencode": leer_opencode, "codex": leer_codex, "antigravity": leer_
 
 
 def preguntar(nombre, tope=TOPE):
-    """Le pide la lista al CLI. None si no sabe listar, no está, falla o tarda más de `tope`."""
+    """Le pide la lista al CLI. None si no sabe listar, no está, falla o tarda más de `tope`.
+
+    Con Codex se lee antes su `models_cache.json`: es el mismo catálogo que contesta
+    `codex debug models`, sin lanzar ni gastar. El CLI es el respaldo de ese archivo.
+    """
     if nombre not in PREGUNTA:
         return None
+    if nombre == "codex":
+        guardados = leer_cache_codex()
+        if guardados:
+            return guardados
     ejecutable = shutil.which(clientes.de(nombre).ejecutable)
     if ejecutable is None:
         return None
