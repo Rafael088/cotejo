@@ -455,8 +455,24 @@ tooltip label { color: var(--k-texto); font-size: var(--k-dato); }
 .inicio-enlace.flat { padding: 0; min-height: 0; }
 .inicio-equipo.sin-agentes, .inicio-equipo.sin-agentes button.flat { color: var(--k-ambar); }
 /* La entrevista de «Nuevo proyecto» (cotejo-kf94so). */
-.entrevista-marco { background: var(--k-columna); border: 1px solid var(--k-borde); border-radius: 8px; }
+.entrevista-bajada { color: var(--k-tenue); font-size: var(--k-contenido); }
+.entrevista-bloque { background: var(--k-columna); border-radius: 14px; padding: var(--k-espacio-xl); }
+.entrevista-bloque-titulo { font-family: "Sora"; font-weight: 600; font-size: var(--k-encabezado); }
+.entrevista-pregunta { font-weight: 500; font-size: var(--k-contenido); color: var(--k-texto); }
+.entrevista-opcional, .entrevista-ejemplo { color: var(--k-tenue-hondo); }
+.entrevista-marco { background: var(--k-superficie); border: 1px solid var(--k-borde); border-radius: 10px; }
 .entrevista-texto { background: transparent; color: var(--k-texto); font-size: var(--k-contenido); }
+.entrevista-opcion { background: transparent; color: var(--k-tenue); border: 1px solid var(--k-borde);
+                     border-radius: 12px; padding: var(--k-espacio-sm) var(--k-espacio-md); }
+.entrevista-opcion image { opacity: 0; }
+.entrevista-opcion:checked { background: var(--k-superficie-alta); color: var(--k-texto);
+                             border-color: var(--k-texto); }
+.entrevista-opcion:checked image { opacity: 1; }
+.entrevista-cambiar.flat { padding: 0 var(--k-espacio-sm); min-height: 30px; }
+.entrevista-selectores { padding-top: var(--k-espacio-xs); }
+.entrevista-pie { background: var(--k-fondo); border-top: 1px solid var(--k-borde-hondo); }
+.entrevista-estado { color: var(--k-tenue); font-size: var(--k-secundario); }
+.entrevista-error { color: var(--k-ambar); font-size: var(--k-secundario); }
 /* La pantalla Preparando (cotejo-hiifrz): el verde queda para lo que espera a la persona. */
 .preparando-simbolo { font-size: var(--k-contenido); color: var(--k-tenue); }
 .preparando-simbolo.paso-en-curso, .paso-en-curso.carta-nombre { color: var(--k-texto); }

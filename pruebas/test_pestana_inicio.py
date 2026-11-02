@@ -175,14 +175,17 @@ class ConProyectos(PestanaInicio):
             b.nuevo_proyecto()
         self.assertEqual(b.pestana_actual(), "entrevista")
         todo = textos(b.pestanas.get_child_by_name("entrevista"))
-        for pregunta in ("1. ¿Qué quieres construir?", "2. ¿Quién la va a usar?",
-                         "3. ¿Qué tiene que hacer la primera versión?",
-                         "4. ¿Dónde la van a usar?", "5. ¿Qué más necesita?",
-                         "6. ¿Qué dejamos para después? (opcional)"):
+        for pregunta in ("¿Qué quieres construir?", "¿Quién la va a usar?",
+                         "¿Qué tiene que hacer la primera versión?",
+                         "¿Dónde la van a usar?", "¿Qué más necesita?",
+                         "¿Qué dejamos para después?"):
             self.assertIn(pregunta, todo)
+        for bloque in ("La idea", "Cómo se usa", "Dónde y con quién"):
+            self.assertIn(bloque, todo)
         # Los ejemplos van en gris: vacía, no se puede preparar el proyecto de ejemplo.
         self.assertEqual(b.ent_que_es.get_text(), "")
-        self.assertEqual(b.ent_que_es.get_placeholder_text(), entrevista.EJEMPLOS["que_es"])
+        self.assertEqual(b.ent_que_es.get_placeholder_text(),
+                         "Por ejemplo: " + entrevista.EJEMPLOS["que_es"])
         self.assertTrue(b.ent_que_hace_ejemplo.get_visible())
         self.assertFalse(b.ent_preparar.get_sensitive())
         b.ent_que_hace.get_buffer().set_text("Ver citas")
@@ -190,6 +193,17 @@ class ConProyectos(PestanaInicio):
         self.assertEqual(b.ent_ver.get_label(), "Ver lo que se le enviará a tu agente")
         self.assertEqual(b.agente_elegido(), "claude")
         self.assertEqual(b.ent_agente_pista.get_label(), "detectado")
+        self.assertIn("Lo prepara Claude Code con", b.ent_agente_resumen.get_label())
+        self.assertFalse(b.ent_selectores.get_reveal_child())
+        b.ent_cambiar.emit("clicked")
+        self.assertTrue(b.ent_selectores.get_reveal_child())
+        pantalla = b.pestanas.get_child_by_name("entrevista")
+        self.assertIsInstance(pantalla.get_first_child(), Gtk.ScrolledWindow)
+        self.assertTrue(pantalla.get_last_child().has_css_class("entrevista-pie"))
+        marcada = b.ent_donde["En el celular"]
+        self.assertTrue(marcada.has_css_class("entrevista-opcion"))
+        self.assertEqual(marcada.get_child().get_first_child().get_icon_name(),
+                         "object-select-symbolic")
         b.cancelar_entrevista()
         self.assertEqual(b.pestana_actual(), pestana_inicio.INICIO)
 
@@ -249,13 +263,14 @@ class ConProyectos(PestanaInicio):
             self.assertTrue(b.ent_preparar.get_sensitive())
             getattr(b, vacio).set_text("")
             self.assertFalse(b.ent_preparar.get_sensitive(), vacio)
-            self.assertTrue(b.ent_error.get_visible())
+            self.assertIn("Faltan:", b.ent_estado.get_label())
         b.ent_carpeta.set_text("/tmp/algo")
         b.ent_que_hace.get_buffer().set_text("")
         self.assertFalse(b.ent_preparar.get_sensitive())
         with mock.patch("enrutador.preparar.lanzar") as lanzar:
             self.assertIsNone(b.preparar_proyecto())
         lanzar.assert_not_called()
+        self.assertTrue(b.ent_error.get_visible())
 
     def test_el_logo_sale_de_la_entrevista(self):
         b = self.abrir_entrevista()

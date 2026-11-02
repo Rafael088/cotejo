@@ -47,6 +47,13 @@ class Entrevista(unittest.TestCase):
             entrevista.respuestas("Algo", "", "Cosas", [], [], "", "relativa/ruta"))
         self.assertIn("absoluta", motivo)
 
+    def test_faltantes_nombra_solo_las_obligatorias_en_orden(self):
+        r = entrevista.respuestas("", "", "", [], [], "", "")
+        self.assertEqual(entrevista.faltantes(r), [
+            "¿Qué quieres construir?", "¿Qué tiene que hacer la primera versión?", "La carpeta"])
+        r = entrevista.respuestas("Algo", "", "Hacer cosas", [], [], "", "/tmp/algo")
+        self.assertEqual(entrevista.faltantes(r), [])
+
 
 if __name__ == "__main__":
     unittest.main()

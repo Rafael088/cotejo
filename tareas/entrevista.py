@@ -38,6 +38,12 @@ NECESITA = (
     ("Enviar avisos (WhatsApp, correo)", True),
 )
 
+OBLIGATORIAS = (
+    ("que_es", "¿Qué quieres construir?"),
+    ("que_hace", "¿Qué tiene que hacer la primera versión?"),
+    ("carpeta", "La carpeta"),
+)
+
 CARPETA_BASE = "Proyectos"
 PALABRAS_NOMBRE = 4
 _RELLENO = {"a", "al", "app", "aplicacion", "con", "de", "del", "el", "en", "la", "las", "lo", "los",
@@ -76,6 +82,12 @@ def prompt_o_error(r):
         return inicio.armar(r), ""
     except ValueError as error:
         return "", str(error)
+
+
+def faltantes(r):
+    """Etiquetas, en orden de lectura, de las respuestas obligatorias que siguen vacías."""
+    return [etiqueta for clave, etiqueta in OBLIGATORIAS
+            if not (getattr(r, clave) or "").strip()]
 
 
 def rellenadas(r):
