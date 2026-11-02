@@ -165,7 +165,7 @@ class VerMiApp(base.PestanaInicio):
         uri = self.lanzador.call_args.args[0]
         self.assertEqual(Path(uri.removeprefix("file://")), self.carpeta)
 
-    def test_las_tarjetas_del_inicio_llevan_los_dos_botones(self):
+    def test_las_tarjetas_del_inicio_llevan_sus_botones(self):
         b = self.board
         b.ver_pestana("inicio")
         base.girar()
@@ -175,12 +175,32 @@ class VerMiApp(base.PestanaInicio):
         while hijo is not None:
             botones[hijo.get_label()] = hijo
             hijo = hijo.get_next_sibling()
-        self.assertEqual(list(botones), ["Ver mi app", "Abrir la carpeta"])
+        # «Parar la app» también está, oculto mientras la app no corre (cotejo-jzwwiz).
+        self.assertEqual(list(botones), ["Ver mi app", "Abrir la carpeta", "Parar la app"])
         with mock.patch.object(b, "abrir_proyecto") as abrir_mapa:
             botones["Abrir la carpeta"].emit("clicked")
         abrir_mapa.assert_not_called()      # el botón no es la tarjeta: no lleva al mapa
         uri = self.lanzador.call_args.args[0]
         self.assertEqual(Path(uri.removeprefix("file://")), self.carpeta)
+
+    def test_la_tarjeta_del_inicio_ofrece_parar_solo_mientras_la_app_corre(self):
+        b = self.board
+        b.ver_pestana("inicio")
+        base.girar()
+        tarjeta = b.inicio_tarjetas.get_first_child().get_child()
+        parar = tarjeta.boton_parar_app
+        self.assertEqual(parar.get_label(), "Parar la app")
+        self.assertFalse(parar.get_visible())
+
+        falsos = self.poner(servidor_app.Resultado(True, "x", corriendo=True))
+        falsos.vivos.add("barberia")
+        b.pintar_botones_app()
+        self.assertTrue(parar.get_visible())
+
+        parar.emit("clicked")
+        base.girar()
+        self.assertEqual(falsos.parados, ["barberia"])
+        self.assertFalse(parar.get_visible())
 
     def test_cerrar_el_board_para_las_apps(self):
         falsos = self.poner(servidor_app.Resultado(True, "x"))
