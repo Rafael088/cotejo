@@ -179,7 +179,7 @@ class PestanaEntrevista:
 
     def _opciones(self, cuerpo, titulo, ayuda, opciones):
         """Casillas (texto → Gtk.ToggleButton) en una fila que se parte; devuelve {texto: botón}."""
-        flujo = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=False,
+        flujo = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True,
                             max_children_per_line=4, row_spacing=px(ESPACIADO_SM),
                             column_spacing=px(ESPACIADO_SM))
         botones = {}
