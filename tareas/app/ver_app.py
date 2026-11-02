@@ -147,6 +147,14 @@ class VerApp:
     def pintar_botones_app(self):
         """«Parar» solo si la app está en marcha; «Ver mi app» se apaga mientras no haya código."""
         self.poner_acciones_app()
+        tarjetas = getattr(self, "inicio_tarjetas", None)
+        hijo = tarjetas.get_first_child() if tarjetas is not None else None
+        while hijo is not None:
+            tarjeta = hijo.get_child()
+            parar = getattr(tarjeta, "boton_parar_app", None)
+            if parar is not None:
+                parar.set_visible(self.servidores.vivo(tarjeta.nombre_proyecto))
+            hijo = hijo.get_next_sibling()
         pantalla = getattr(self, "pantalla_mapa", None)
         proyecto = getattr(self, "mapa_proyecto", None)
         if pantalla is None:

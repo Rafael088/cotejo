@@ -225,7 +225,7 @@ class PestanaInicio:
         boton = con_mano(Gtk.Button(child=caja, css_classes=["carta", "inicio-tarjeta"]))
         etiquetar(boton, f"Proyecto {t.nombre}, {t.texto_estado}, {t.texto_avance}")
         boton.connect("clicked", lambda *_: self.abrir_proyecto(t.nombre))
-        # «Ver mi app» y «Abrir la carpeta» (cotejo-vn4qd2): fuera del botón de la tarjeta.
+        # Las acciones de la app van fuera del botón de la tarjeta: pulsarlas no abre el mapa.
         tarjeta = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS))
         tarjeta.append(boton)
         acciones = Gtk.Box(spacing=px(ESPACIADO_XS), halign=Gtk.Align.START)
@@ -234,6 +234,11 @@ class PestanaInicio:
             etiquetar(b, f"{texto} de {t.nombre}")
             b.connect("clicked", lambda _b, a=accion: a(t.nombre, t.carpeta or None))
             acciones.append(b)
+        parar = con_mano(Gtk.Button(label="Parar la app", css_classes=["flat"]))
+        etiquetar(parar, f"Parar la app de {t.nombre}")
+        parar.connect("clicked", lambda *_: self.parar_app(t.nombre))
+        parar.set_visible(self.servidores.vivo(t.nombre))
+        acciones.append(parar)
         # Sin código todavía, «Ver mi app» no se puede pulsar y dice por qué en el tooltip.
         if t.sin_app:
             ver_app = acciones.get_first_child()
@@ -241,6 +246,8 @@ class PestanaInicio:
             ver_app.set_tooltip_text(como_se_abre.SIN_APP)
         tarjeta.append(acciones)
         tarjeta.botones_app = acciones
+        tarjeta.boton_parar_app = parar
+        tarjeta.nombre_proyecto = t.nombre
         return tarjeta
 
     def tarjeta_nuevo(self):
