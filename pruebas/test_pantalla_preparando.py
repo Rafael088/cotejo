@@ -188,7 +188,7 @@ class Preparando(base.PestanaInicio):
         b, p = self.abrir()
         with mock.patch("enrutador.preparar.reintentar") as r, \
                 mock.patch("enrutador.preparar.abrir_en_terminal") as t:
-            p.boton_inicio.emit("clicked")
+            b.boton_volver.emit("clicked")
         self.assertEqual(b.pestana_actual(), "inicio")
         r.assert_not_called()
         t.assert_not_called()

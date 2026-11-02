@@ -1,12 +1,7 @@
-"""La cabecera no se pisa al crecer la letra (cotejo-hd82wk, v1.3.1).
-
-El subtítulo de la marca es una frase que crece con la letra y con los proyectos. Antes no
-podía encoger y empujaba las pestañas Inicio | Tablero hasta que se tocaban. Aquí se fija que
-el subtítulo se recorta con elipsis, que el texto entero queda en su tooltip, y que las
-pestañas viven en el hueco central de la cabecera y no pegadas al título.
-"""
+"""La cabecera de marca y la navegación entre pantallas."""
 
 import unittest
+from types import SimpleNamespace
 
 import apoyo  # noqa: F401  (pone la raíz del repo en sys.path)
 
@@ -28,25 +23,41 @@ class Cabecera(base.PestanaInicio):
         self.assertFalse(subtitulo.get_wrap())
         self.assertEqual(subtitulo.get_tooltip_text(), subtitulo.get_label())
 
-    def test_las_pestanas_van_en_el_hueco_central_de_la_cabecera(self):
-        self.assertIs(self.board.cabecera.get_title_widget(), self.board.selector_pestanas)
-        claves = [c for c in self.board.selector_pestanas.get_css_classes()]
-        self.assertIn("pestanas", claves)
+    def test_el_titulo_de_pantalla_va_en_el_centro(self):
+        self.assertIs(self.board.cabecera.get_title_widget(), self.board.titulo_pantalla)
+        self.assertEqual(self.board.titulo_pantalla.get_label(), "")
 
-    def test_el_subtitulo_largo_no_pisa_las_pestanas(self):
+    def test_titulo_central_de_cada_pantalla(self):
         b = self.board
-        b.subtitulo.set_label("Esperando que las compruebes · " * 8)
-        base.girar(120)
-        caja = b.subtitulo.get_parent().get_parent()
-        ok_caja, c_caja = caja.compute_bounds(b.cabecera)
-        ok_pestanas, c_pestanas = b.selector_pestanas.compute_bounds(b.cabecera)
-        self.assertTrue(ok_caja and ok_pestanas)
-        # El título acaba antes de que empiecen las pestañas, y las pestañas caben dentro.
-        self.assertLessEqual(c_caja.get_x() + c_caja.get_width(), c_pestanas.get_x())
-        self.assertLessEqual(c_pestanas.get_x() + c_pestanas.get_width(),
-                             b.cabecera.get_width())
-        # La elipsis hace su trabajo: el subtítulo ocupa menos de lo que mide entero.
-        self.assertLess(b.subtitulo.get_width(), b.subtitulo.get_preferred_size()[1].width)
+        b.mapa_proyecto = ("Faro", "")
+        b.plan_estado = {"proyecto": "Faro"}
+        b.pantalla_preparando.vista = SimpleNamespace(proyecto="Faro")
+        esperados = {"tablero": "Tablero", "equipo": "Tus agentes",
+                     "entrevista": "Nuevo proyecto", "preparando": "Faro",
+                     "plan": "Faro", "mapa": "Faro"}
+        for pantalla, titulo in esperados.items():
+            with self.subTest(pantalla=pantalla):
+                self.assertEqual(b.titulo_de_pantalla(pantalla), titulo)
+
+    def test_la_marca_no_dice_board(self):
+        caja_marca = self.board.boton_inicio.get_parent().get_parent().get_parent()
+        self.assertNotIn("Board", base.textos(caja_marca))
+        self.assertEqual(self.board.logo.get_alternative_text(), "Cotejo")
+        self.assertIn("flat", self.board.boton_inicio.get_css_classes())
+        self.assertEqual(self.board.boton_inicio.get_tooltip_text(), "Inicio")
+
+    def test_subtitulo_solo_en_tablero_y_volver_fuera_del_inicio(self):
+        b = self.board
+        self.assertFalse(b.subtitulo.get_visible())
+        self.assertFalse(b.boton_volver.get_visible())
+        b.ver_pestana("tablero")
+        self.assertTrue(b.subtitulo.get_visible())
+        self.assertTrue(b.boton_volver.get_visible())
+        self.assertEqual(b.titulo_pantalla.get_label(), "Tablero")
+        b.ver_pestana("entrevista")
+        self.assertFalse(b.subtitulo.get_visible())
+        self.assertTrue(b.boton_volver.get_visible())
+        self.assertEqual(b.titulo_pantalla.get_label(), "Nuevo proyecto")
 
 
 if __name__ == "__main__":

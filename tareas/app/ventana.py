@@ -99,14 +99,26 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
         self.set_content(self.pila)
 
         cabecera, caja_titulo, self.subtitulo, self.logo = cabecera_de_marca(
-            "Board", con_botones_de_ventana=True)
+            None, con_botones_de_ventana=True)
         pintar_logo(self.logo, app.colores)
+        caja_logo = self.logo.get_parent()
+        caja_logo.remove(self.logo)
+        self.boton_inicio = Gtk.Button(child=self.logo, css_classes=["flat"],
+                                       tooltip_text="Inicio")
+        self.boton_inicio.set_cursor_from_name("pointer")
+        etiquetar(self.boton_inicio, "Ir al Inicio")
+        self.boton_inicio.connect("clicked", lambda *_: self.ver_pestana("inicio"))
+        caja_logo.append(self.boton_inicio)
+        self.boton_volver = Gtk.Button(icon_name="go-previous-symbolic", css_classes=["flat"],
+                                       tooltip_text="Volver", visible=False)
+        self.boton_volver.set_cursor_from_name("pointer")
+        etiquetar(self.boton_volver, "Volver")
+        self.boton_volver.connect("clicked", lambda *_: self.volver())
+        cabecera.pack_start(self.boton_volver)
         cabecera.pack_start(caja_titulo)
-        # Las pestañas van en el hueco central de la cabecera, no pegadas al título: así
-        # siguen centradas aunque el subtítulo crezca con la letra (v1.3.1).
         self.cabecera = cabecera
-        self.selector_pestanas = self.selector_de_pestanas()
-        cabecera.set_title_widget(self.selector_pestanas)
+        self.titulo_pantalla = Gtk.Label(css_classes=["titulo-pantalla"])
+        cabecera.set_title_widget(self.titulo_pantalla)
 
         # De derecha a izquierda: lo que se usa a diario queda suelto y lo demás se guarda.
         cabecera.pack_end(self.menu_cabecera())
@@ -213,6 +225,12 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
 
     def al_tecla(self, _control, tecla, _codigo, estado):
         control = bool(estado & Gdk.ModifierType.CONTROL_MASK)
+        if control and tecla in (Gdk.KEY_1, Gdk.KEY_KP_1):
+            self.ver_pestana("inicio")
+            return True
+        if control and tecla in (Gdk.KEY_2, Gdk.KEY_KP_2):
+            self.ver_tablero()
+            return True
         if tecla == Gdk.KEY_Escape:
             # Con algo buscado, Escape borra la búsqueda antes de cerrar nada: cerrar la
             # ventana entera por querer ver otra vez todas las tareas es perder el sitio.

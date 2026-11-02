@@ -15,7 +15,7 @@ Es el contenedor de lo que viene en la 1.3.0, y deja los enganches a la vista:
 - `abrir_proyecto(nombre)`: lo que hace tocar una tarjeta: el mapa del proyecto
   (cotejo-p86sa9, `tareas/app/mapa.py`), desde el que «Ver el tablero» lleva al tablero.
 
-Las dos pestañas viven en una `Gtk.Stack` (`self.pestanas`); el selector va en la cabecera.
+Las pantallas viven en una `Gtk.Stack` (`self.pestanas`); la cabecera refleja la visible.
 Sin fuente configurada (primer arranque) se abre en «Revisar el equipo» (`tareas/app/equipo.py`,
 cotejo-36mzm0), que pasa al Inicio; con la fuente rota, en el tablero, donde está la explicación.
 """
@@ -32,7 +32,6 @@ from .constelacion import caja_constelacion
 from .piezas import chip, con_mano, etiquetar, vaciar
 
 INICIO, TABLERO = "inicio", "tablero"
-PESTANAS = ((INICIO, "Inicio"), (TABLERO, "Tablero"))
 ANCHO_INICIO = 1080      # el contenido no se estira más que esto en una ventana ancha
 CAMBIO_PESTANA_MS = 160
 
@@ -55,28 +54,6 @@ class PestanaInicio:
         self.inicio_al_dia = False   # se repinta al verse: fuera de vista no se lee nada
         return self.pestanas
 
-    def selector_de_pestanas(self):
-        """Inicio | Tablero, en la cabecera. Dos botones de alternar enlazados."""
-        caja = Gtk.Box(css_classes=["linked", "pestanas"], valign=Gtk.Align.CENTER)
-        self.botones_pestana = {}
-        primero = None
-        for clave, texto in PESTANAS:
-            boton = con_mano(Gtk.ToggleButton(label=texto, css_classes=["pestana"]))
-            if primero is None:
-                primero = boton
-            else:
-                boton.set_group(primero)
-            boton.connect("toggled", self.al_alternar_pestana, clave)
-            # Con la entrevista a la vista «Inicio» sigue activo y no emite `toggled`.
-            boton.connect("clicked", self.al_alternar_pestana, clave)
-            self.botones_pestana[clave] = boton
-            caja.append(boton)
-        return caja
-
-    def al_alternar_pestana(self, boton, clave):
-        if boton.get_active() and self.pestana_actual() != clave:
-            self.ver_pestana(clave)
-
     def pestana_actual(self):
         return self.pestanas.get_visible_child_name()
 
@@ -91,12 +68,14 @@ class PestanaInicio:
         """Enseña una pestaña. Lo que solo es del tablero (la banda de proyectos, buscar) se
         esconde en Inicio; el dot entra la primera vez que se ve el tablero. `al_abrir` es la
         primera vez, al crear la ventana: ahí el dot lo hace entrar la app, después del logo."""
+        if clave not in (TABLERO, "mapa"):
+            self.tablero_desde_mapa = False
         self.pestanas.set_transition_duration(CAMBIO_PESTANA_MS if animaciones_activas() else 0)
         self.pestanas.set_visible_child_name(clave)
-        boton = self.botones_pestana.get(clave)
-        if boton is not None and not boton.get_active():
-            boton.set_active(True)
         en_tablero = clave == TABLERO
+        self.boton_volver.set_visible(clave != INICIO)
+        self.subtitulo.set_visible(en_tablero)
+        self.titulo_pantalla.set_label(self.titulo_de_pantalla(clave))
         for widget in (self.banda_proyectos, self.buscador):
             widget.set_visible(en_tablero)
         if clave == "equipo":
@@ -105,6 +84,34 @@ class PestanaInicio:
             self.entrar_dot()
         elif not self.inicio_al_dia:
             self.pintar_inicio()
+
+    def titulo_de_pantalla(self, clave):
+        if clave == TABLERO:
+            return "Tablero"
+        if clave == "equipo":
+            return "Primer arranque" if equipo.es_primer_arranque(self.fuente) else "Tus agentes"
+        if clave == "entrevista":
+            return "Nuevo proyecto"
+        if clave == "mapa":
+            return (self.mapa_proyecto or ("",))[0]
+        if clave == "plan":
+            return (self.plan_estado or {}).get("proyecto", "")
+        if clave == "preparando":
+            vista = getattr(self.pantalla_preparando, "vista", None)
+            return getattr(vista, "proyecto", "") if vista else ""
+        return ""
+
+    def volver(self):
+        """Vuelve a la pantalla lógica anterior, sin apropiarse de Alt+← del dot."""
+        destino = "mapa" if self.pestana_actual() == TABLERO and \
+            getattr(self, "tablero_desde_mapa", False) else INICIO
+        self.tablero_desde_mapa = False
+        self.ver_pestana(destino)
+
+    def ver_tablero(self):
+        """Entrada pública al tablero para las acciones del Inicio."""
+        self.tablero_desde_mapa = False
+        self.ver_pestana(TABLERO)
 
     def tablero_a_la_vista(self):
         return getattr(self, "pestanas", None) is None or self.pestana_actual() == TABLERO
@@ -131,7 +138,7 @@ class PestanaInicio:
         self.inicio_agentes.connect("clicked", self.ver_equipo)
         cabeza.append(self.inicio_agentes)
         nuevo = con_mano(Gtk.Button(label="+  Nuevo proyecto",
-                                    valign=Gtk.Align.END, css_classes=["suggested-action"]))
+                                    valign=Gtk.Align.END, css_classes=["principal"]))
         etiquetar(nuevo, "Nuevo proyecto")
         nuevo.connect("clicked", lambda *_: self.nuevo_proyecto())
         cabeza.append(nuevo)

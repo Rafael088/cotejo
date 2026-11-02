@@ -31,7 +31,6 @@ class PestanaEntrevista:
         cuerpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_LG),
                          margin_top=px(ESPACIADO_XL) * 2, margin_bottom=px(ESPACIADO_XL) * 2,
                          margin_start=px(ESPACIADO_XL) * 2, margin_end=px(ESPACIADO_XL) * 2)
-        cuerpo.append(Gtk.Label(label="Inicio  ›  Nuevo proyecto", xalign=0, css_classes=["dato"]))
         cuerpo.append(Gtk.Label(label="Cuéntale a tu agente qué quieres construir", xalign=0,
                                 wrap=True, css_classes=["inicio-titular"]))
         self.entrevista_avance = Gtk.ProgressBar(css_classes=["inicio-avance"])
@@ -108,7 +107,7 @@ class PestanaEntrevista:
         cancelar = con_mano(Gtk.Button(label="Cancelar"))
         cancelar.connect("clicked", lambda *_: self.cancelar_entrevista())
         self.ent_preparar = con_mano(Gtk.Button(label="Preparar proyecto",
-                                                css_classes=["suggested-action"]))
+                                                css_classes=["principal"]))
         etiquetar(self.ent_preparar, "Preparar proyecto")
         self.ent_preparar.connect("clicked", lambda *_: self.preparar_proyecto())
         pie.append(cancelar)

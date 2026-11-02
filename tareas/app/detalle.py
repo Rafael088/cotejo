@@ -228,7 +228,7 @@ class Detalle:
         acciones.append(Gtk.Box(hexpand=True))
         if i + 1 < len(orden) - 1:
             acciones.append(accion(f"Pasar a {nombres[orden[i + 1]]}", orden[i + 1],
-                                   "flecha-derecha", "suggested-action", icono_al_final=True))
+                                   "flecha-derecha", "principal", icono_al_final=True))
         if acciones.get_first_child() is not acciones.get_last_child():
             vista.add_bottom_bar(acciones)
         dialogo.set_child(vista)
