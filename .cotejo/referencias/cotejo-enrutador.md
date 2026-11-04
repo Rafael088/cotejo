@@ -1,7 +1,7 @@
 ---
 id: ref-vqak
 temas: [cotejo, enrutador]
-resumen: "Enrutador que decide y despacha qué modelo (Haiku, Sonnet u Opus, o una persona) atiende cada tarea de Cotejo; nació como proyecto aparte (FocoRouter) y hoy vive en enrutador/ dentro de este repo."
+resumen: Enrutador que decide y despacha qué modelo (Haiku, Sonnet u Opus, o una persona) atiende cada tarea de Cotejo; nació como proyecto aparte (FocoRouter) y hoy vive en enrutador/ dentro de este repo.
 ---
 # Cotejo - Enrutador
 
@@ -33,9 +33,9 @@ resumen: "Enrutador que decide y despacha qué modelo (Haiku, Sonnet u Opus, o u
 | Nivel | Quién | Para qué |
 | --- | --- | --- |
 | n0 | **una persona** | Comprar, firmar, llamar a alguien, abrir una cuenta, tocar algo físico, decidir por gusto |
-| n1 | `claude-haiku-4-5` | Trabajo mecánico y acotado |
-| n2 | `claude-sonnet-5` | El trabajo normal de código. **El defecto** |
-| n3 | `claude-opus-5` | Arquitectura, contratos, lo que cruza varios archivos |
+| n1 | `claude-haiku-5-5` | Trabajo mecánico y acotado |
+| n2 | `claude-sonnet-5-5` | El trabajo normal de código. **El defecto** |
+| n3 | `claude-opus-5-5` | Arquitectura, contratos, lo que cruza varios archivos |
 
 **El orden de decisión** — de lo más explícito a lo más adivinado, y cada escalón dice por qué ganó
 

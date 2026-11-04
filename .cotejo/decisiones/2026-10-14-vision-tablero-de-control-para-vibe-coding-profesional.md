@@ -5,6 +5,7 @@ temas: [vision, producto]
 estado: reemplazada
 autor: agente
 reemplaza: dec-4dmg
+aceptada_el: 2026-10-15
 reemplazada_por: dec-hgq7
 ---
 # Visión: tablero de control para vibe coding profesional

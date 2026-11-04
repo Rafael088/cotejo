@@ -2,9 +2,10 @@
 id: dec-hgq7
 fecha: 2026-10-22
 temas: [fase-2, inicio, producto]
-estado: propuesta
+estado: aceptada
 autor: agente
 reemplaza: dec-22dl
+aceptada_el: 2026-10-22
 ---
 # El inicio en la app crea proyectos de punta a punta
 
