@@ -66,7 +66,10 @@ def sin_consola(argv):
 def _es_exe(programa, _path, _pathext):
     # Con caché por PATH: en Windows `which` prueba cada extensión en cada carpeta, y el board
     # lanza ocho git seguidos al soltar una carta.
-    ruta = shutil.which(programa)
+    try:
+        ruta = shutil.which(programa)
+    except (OSError, ValueError, AttributeError):
+        return False  # sin saber qué es: la consola invisible, que vale para todo
     return bool(ruta) and ruta.lower().endswith(".exe")
 
 
