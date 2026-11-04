@@ -67,6 +67,10 @@ MAX_VOLCADOS = 30
 HUECO_APUNTADO_MS = 100   # los huecos del bucle de más de esto se apuntan uno a uno
 ESCRITO_POR_EL_AGENTE = "agente-falso.log"
 TOPE_DESPACHO_S = 120   # lo más que se espera a que vuelva el despacho en segundo plano
+# Lo que se espera, con el board ya fuera, a que se vaya lo que colgaba de él (cotejo-cz80zj):
+# `gdbus.exe`, el bus de sesión que GLib arranca solo en Windows, sale sin nadie conectado tras
+# su espera de inactividad (3 s en GLib). Lo que siga vivo pasado esto, se quedó.
+GRACIA_S = 10
 
 
 # --- lo que no depende de Windows (lo prueba test_probar_windows.py en Linux) -------------------
@@ -102,6 +106,9 @@ def config_humo(carpeta, python_agente, falso, por_cmd=False):
     return {"enrutador": {
         "proyectos": {PROYECTO: str(carpeta / "repo")},
         "motores": {"headless": {"comando": comando, "aislar": False}},
+        # El falso ocupa unos MB: que la capacidad no lo deje en espera solo porque el Windows
+        # de la persona tiene el navegador abierto (el humo mide procesos, no la memoria).
+        "capacidad": {"mb_por_agente": 100, "reserva_mb": 256},
     }}
 
 
@@ -135,18 +142,33 @@ def entorno_del_humo(carpeta, espera_s, volcar_ms=0, faulthandler_s=0, perfil=Fa
     return entorno
 
 
-def descendientes(procesos, raiz):
-    """Los pids que cuelgan de `raiz` (sin contarla), a partir de una foto (pid, ppid)."""
+def descendientes(procesos, raiz, creado=None):
+    """Los pids que cuelgan de `raiz` (sin contarla), a partir de una foto (pid, ppid).
+
+    En Windows el ppid de un proceso no cambia cuando su padre muere, y ese pid se recicla: si
+    el board (o uno de sus hijos que ya salió) recibe el pid del padre muerto de otro programa,
+    ese programa entero parecía colgar del board. Pasó con el Chrome de la persona: 35
+    `chrome.exe` contados como del board y cerrados al limpiar (cotejo-cz80zj). Con `creado`
+    (pid → instante de creación, o None si no se sabe), un hijo solo cuenta si nació después
+    que su padre, que es lo que dice Windows para fiarse de un ppid. Si una de las dos fechas
+    no se sabe (ya salió: un `git` de un instante), cuenta como hasta ahora.
+    """
     hijos = {}
     for p in procesos:
         if p["pid"] != p["ppid"]:
             hijos.setdefault(p["ppid"], []).append(p["pid"])
     vistos, pendientes = set(), [raiz]
     while pendientes:
-        for hijo in hijos.get(pendientes.pop(), ()):
-            if hijo not in vistos and hijo != raiz:
-                vistos.add(hijo)
-                pendientes.append(hijo)
+        padre = pendientes.pop()
+        for hijo in hijos.get(padre, ()):
+            if hijo in vistos or hijo == raiz:
+                continue
+            if creado is not None:
+                nacio, nacio_padre = creado(hijo), creado(padre)
+                if nacio is not None and nacio_padre is not None and nacio < nacio_padre:
+                    continue   # nació antes que su «padre»: es de otro que tuvo ese pid
+            vistos.add(hijo)
+            pendientes.append(hijo)
     return vistos
 
 
@@ -231,6 +253,9 @@ def resumen_legible(datos):
           f"→{len(agente.get('vivos', []))} vivos, pregunta={agente.get('pregunto')}"
           for _ in [0] if agente.get("respuesta")],
         f"quedan al salir {quedan}",
+        *[("se fueron solos tras salir: "
+           + ", ".join(f"{n} {s} s" for n, s in sorted(tardaron.items())))
+          for tardaron in [datos.get("al_salir", {}).get("tardaron_s")] if tardaron],
         f".tmp en lanzados {len(datos.get('temporales', []))}",
         f"volcados {len(datos.get('volcados', []))}",
     ]
@@ -264,6 +289,7 @@ class Win32:
         k32.OpenProcess.argtypes = [w.DWORD, w.BOOL, w.DWORD]
         k32.OpenProcess.restype = w.HANDLE
         k32.TerminateProcess.argtypes = [w.HANDLE, w.UINT]
+        k32.GetProcessTimes.argtypes = [w.HANDLE] + [ctypes.POINTER(w.FILETIME)] * 4
         self.ENUM = ctypes.WINFUNCTYPE(w.BOOL, w.HWND, w.LPARAM)
         u32.EnumWindows.argtypes = [self.ENUM, w.LPARAM]
         u32.GetClassNameW.argtypes = [w.HWND, w.LPWSTR, ctypes.c_int]
@@ -275,6 +301,19 @@ class Win32:
                                             ctypes.POINTER(ctypes.c_size_t)]
         u32.SendMessageTimeoutW.restype = w.LPARAM
         u32.PostMessageW.argtypes = [w.HWND, w.UINT, w.WPARAM, w.LPARAM]
+
+    def creado(self, pid):
+        """Cuándo nació `pid` (en unidades de FILETIME), o None si no se puede abrir."""
+        h = self.k32.OpenProcess(0x1000, False, pid)   # PROCESS_QUERY_LIMITED_INFORMATION
+        if not h:
+            return None
+        try:
+            tiempos = [self.w.FILETIME() for _ in range(4)]
+            if not self.k32.GetProcessTimes(h, *[self.ctypes.byref(t) for t in tiempos]):
+                return None
+            return (tiempos[0].dwHighDateTime << 32) | tiempos[0].dwLowDateTime
+        finally:
+            self.k32.CloseHandle(h)
 
     def procesos(self):
         foto = self.k32.CreateToolhelp32Snapshot(0x2, 0)   # TH32CS_SNAPPROCESS
@@ -347,15 +386,25 @@ class Muestreo(threading.Thread):
         self.base_hwnd = {v["hwnd"] for v in base_ventanas}
         self.parar = threading.Event()
         self.vistos = {}            # pid → nombre de todo lo que colgó del board
+        self.nacimientos = {}       # pid → cuándo nació (ver `descendientes`)
         self.conhost_nuevos = {}    # pid → nombre de quien lo abrió
         self.terminales = {}        # hwnd → ventana de terminal que no estaba
         self.max_conhost = 0
         self.wt_max = 0
 
+    def creado(self, pid, nombre):
+        # Por pid y nombre: lo de un proceso vivo no cambia, y el del board se guarda mientras
+        # vive (después ya no se podría abrir). Un pid reciclado por otro programa es otra clave.
+        clave = (pid, "el board" if pid == self.pid else nombre)
+        if self.nacimientos.get(clave) is None:
+            self.nacimientos[clave] = self.win.creado(pid)
+        return self.nacimientos[clave]
+
     def una(self):
         procesos = self.win.procesos()
         nombres = {p["pid"]: p["nombre"] for p in procesos}
-        for pid in descendientes(procesos, self.pid):
+        for pid in descendientes(procesos, self.pid,
+                                 lambda pid: self.creado(pid, nombres.get(pid))):
             self.vistos.setdefault(pid, nombres.get(pid, "?"))
         for p in procesos:
             if (p["nombre"].lower() == "conhost.exe" and p["pid"] not in self.base_pids
@@ -446,6 +495,34 @@ def esperar_a(condicion, tope_s, paso=0.2):
     return condicion()
 
 
+def seguir_hasta_que_se_vayan(foto, vistos, gracia_s=GRACIA_S, paso=0.25, reloj=time.monotonic,
+                              dormir=time.sleep):
+    """Con el board ya fuera: lo que colgaba de él y seguía vivo, y cuánto tardó en irse.
+
+    `foto()` es la lista de procesos de ahora; `vistos`, {pid: nombre} de todo lo que colgó del
+    board. Devuelve `al_instante` (lo vivo al empezar), `procesos` (lo vivo tras `gracia_s`),
+    `tardaron_s` ({nombre: segundos} de lo que se fue mientras tanto) y `vivos` (la última
+    foto, {pid: nombre})."""
+    def vivos_ahora():
+        return {p["pid"]: p["nombre"] for p in foto()}
+
+    inicio = reloj()
+    vivos = vivos_ahora()
+    pendientes = {pid: n for pid, n in vistos.items() if vivos.get(pid) == n}
+    al_instante = [{"pid": pid, "nombre": n} for pid, n in pendientes.items()]
+    tardaron = {}
+    while pendientes and reloj() - inicio < gracia_s:
+        dormir(paso)
+        vivos = vivos_ahora()
+        for pid, nombre in list(pendientes.items()):
+            if vivos.get(pid) != nombre:
+                tardaron[nombre] = round(reloj() - inicio, 2)
+                del pendientes[pid]
+    return {"al_instante": al_instante,
+            "procesos": [{"pid": pid, "nombre": n} for pid, n in pendientes.items()],
+            "tardaron_s": tardaron, "vivos": vivos}
+
+
 def arbol_del_agente(procesos, vistos):
     """Lo del agente que colgaba del board y sigue vivo: su `cmd.exe`, su `python.exe` y lo
     que ellos lanzaron (sin los `git`, que vienen y van, ni los `conhost`)."""
@@ -503,12 +580,21 @@ def vigilar(args):
         agente_antes = arbol_del_agente(win.procesos(), muestreo.vistos)
         win.cerrar(ventana["hwnd"])
         esperar_a(lambda: board.poll() is not None, 10)
-        time.sleep(3)
-        vivos = {p["pid"]: p["nombre"] for p in win.procesos()}
-        datos["al_cerrar"] = {
-            "board_vivo": board.poll() is None,
-            "procesos": [{"pid": pid, "nombre": nombre} for pid, nombre in muestreo.vistos.items()
-                         if vivos.get(pid) == nombre]}
+        if board.poll() is None:
+            # Cerrar solo ocultó la ventana (Linux, o una rama de antes): lo que cuelga sigue.
+            time.sleep(3)
+            vivos = {p["pid"]: p["nombre"] for p in win.procesos()}
+            datos["al_cerrar"] = {
+                "board_vivo": True,
+                "procesos": [{"pid": pid, "nombre": nombre}
+                             for pid, nombre in muestreo.vistos.items()
+                             if vivos.get(pid) == nombre]}
+        else:
+            muestreo.parar.set()
+            muestreo.join(2)
+            seguido = seguir_hasta_que_se_vayan(win.procesos, dict(muestreo.vistos))
+            vivos = seguido.pop("vivos")
+            datos["al_cerrar"] = {"board_vivo": False, **seguido}
         if cerrar_trabajando:
             datos["al_cerrar"]["agente"] = {
                 "respuesta": cerrar_trabajando,
@@ -520,16 +606,30 @@ def vigilar(args):
             board.wait(20)
         except subprocess.TimeoutExpired:
             pass
-        muestreo.parar.set()
-        muestreo.join(2)
-        muestreo.una()
-        despues = win.procesos()
-        vivos = {p["pid"]: p["nombre"] for p in despues}
-        quedan = [{"pid": pid, "nombre": nombre} for pid, nombre in muestreo.vistos.items()
-                  if vivos.get(pid) == nombre]
+        if muestreo.is_alive():
+            muestreo.parar.set()
+            muestreo.join(2)
+            muestreo.una()
         if board.poll() is None:
+            seguido = {"al_instante": [], "procesos": [], "tardaron_s": {}}
+        elif datos["al_cerrar"].get("board_vivo") is False:
+            seguido = {k: v for k, v in datos["al_cerrar"].items()
+                       if k in ("al_instante", "tardaron_s")}
+            vivos = {p["pid"]: p["nombre"] for p in win.procesos()}
+            seguido["procesos"] = [{"pid": pid, "nombre": n} for pid, n in muestreo.vistos.items()
+                                   if vivos.get(pid) == n]
+        else:
+            seguido = seguir_hasta_que_se_vayan(win.procesos, dict(muestreo.vistos))
+            seguido.pop("vivos")
+        despues = win.procesos()
+        quedan = seguido["procesos"]
+        if board.poll() is None:
+            vivos = {p["pid"]: p["nombre"] for p in despues}
+            quedan = [{"pid": pid, "nombre": nombre} for pid, nombre in muestreo.vistos.items()
+                      if vivos.get(pid) == nombre]
             quedan.insert(0, {"pid": board.pid, "nombre": "pythonw.exe (el board)"})
-        datos["al_salir"] = {"board_salio": board.poll() is not None, "procesos": quedan}
+        datos["al_salir"] = {"board_salio": board.poll() is not None, **seguido,
+                             "procesos": quedan}
         datos["conhost"].update({
             "despues": contar(despues, "conhost.exe"), "max_durante": muestreo.max_conhost,
             "nuevos": len(muestreo.conhost_nuevos),

@@ -88,6 +88,7 @@ class Entorno(unittest.TestCase):
         self.assertTrue(comando[0].endswith("python.exe"))   # de consola, como un CLI de verdad
         self.assertTrue(comando[1].endswith("cliente_falso.py"))
         self.assertFalse(enrutador["motores"]["headless"]["aislar"])
+        self.assertLessEqual(enrutador["capacidad"]["mb_por_agente"], 100)   # cabe en una máquina usada
         self.assertTrue((RAIZ / "pruebas" / "cliente_falso.py").exists())
 
     def test_al_cerrar_trabajando_el_falso_va_detras_de_un_cmd_como_uno_de_npm(self):
@@ -110,6 +111,34 @@ class Entorno(unittest.TestCase):
         self.assertEqual(humo.arbol_del_agente(procesos, vistos),
                          [{"pid": 2, "nombre": "cmd.exe"}, {"pid": 3, "nombre": "python.exe"}])
 
+    def test_seguir_lo_que_queda_dice_cuanto_tardo_cada_uno(self):
+        reloj = [0.0]
+        fotos = [  # gdbus se va a los 3 s; el python, nunca
+            [{"pid": 7, "nombre": "gdbus.exe"}, {"pid": 8, "nombre": "python.exe"}],
+            [{"pid": 7, "nombre": "gdbus.exe"}, {"pid": 8, "nombre": "python.exe"}],
+            [{"pid": 8, "nombre": "python.exe"}]]
+
+        def foto():
+            return fotos[min(int(reloj[0] // 1.5), len(fotos) - 1)]
+
+        def dormir(s):
+            reloj[0] += s
+
+        hecho = humo.seguir_hasta_que_se_vayan(foto, {7: "gdbus.exe", 8: "python.exe",
+                                                      9: "git.exe"},
+                                               gracia_s=10, paso=1.5, reloj=lambda: reloj[0],
+                                               dormir=dormir)
+        self.assertEqual(hecho["al_instante"], [{"pid": 7, "nombre": "gdbus.exe"},
+                                                {"pid": 8, "nombre": "python.exe"}])
+        self.assertEqual(hecho["procesos"], [{"pid": 8, "nombre": "python.exe"}])
+        self.assertEqual(hecho["tardaron_s"], {"gdbus.exe": 3.0})
+
+    def test_sin_nada_vivo_no_espera(self):
+        dormido = []
+        hecho = humo.seguir_hasta_que_se_vayan(lambda: [], {7: "gdbus.exe"},
+                                               dormir=dormido.append)
+        self.assertEqual((hecho["procesos"], dormido), ([], []))
+
     def test_la_nota_trae_una_tarea_con_modelo_y_su_id(self):
         nota = humo.nota_humo()
         linea = next(l for l in nota.splitlines() if l.startswith("- [ ]"))
@@ -131,6 +160,17 @@ class Procesos(unittest.TestCase):
         self.assertEqual(humo.descendientes(self.FOTO, 100), {101, 102, 103, 104})
         self.assertEqual(humo.descendientes(self.FOTO, 103), {104})
         self.assertEqual(humo.descendientes(self.FOTO, 999), set())
+
+    def test_un_pid_reciclado_no_mete_a_otro_programa_en_el_arbol(self):
+        # El board (10) recibió el pid del padre muerto de Chrome: los chrome.exe tienen ppid 10
+        # pero nacieron antes que él. Su git (11) nació después: ese sí es suyo.
+        procesos = [{"pid": 11, "ppid": 10}, {"pid": 20, "ppid": 10}, {"pid": 21, "ppid": 20}]
+        nacio = {10: 500, 11: 600, 20: 100, 21: 120}
+        self.assertEqual(humo.descendientes(procesos, 10, nacio.get), {11})
+        self.assertEqual(humo.descendientes(procesos, 10), {11, 20, 21})   # sin fechas, todos
+        # Uno que ya salió (sin fecha) cuenta: era suyo, y ya no se puede cerrar.
+        self.assertEqual(humo.descendientes(procesos + [{"pid": 12, "ppid": 10}], 10, nacio.get),
+                         {11, 12})
 
     def test_un_ciclo_de_pids_reusados_no_cuelga(self):
         foto = [{"pid": 1, "ppid": 2, "nombre": "a"}, {"pid": 2, "ppid": 1, "nombre": "b"}]
@@ -209,6 +249,8 @@ class Resumen(unittest.TestCase):
                                  {"pid": 3, "nombre": "python.exe"}], "vivos": []}},
             temporales=[])
         linea = humo.resumen_legible(datos)
+        datos["al_salir"] = {"procesos": [], "tardaron_s": {"gdbus.exe": 3.1}}
+        self.assertIn("se fueron solos tras salir: gdbus.exe 3.1 s", humo.resumen_legible(datos))
         for trozo in ("al cerrar: board vivo=False, quedan 0",
                       "cerrar trabajando (parar): agente 2→0 vivos", ".tmp en lanzados 0"):
             self.assertIn(trozo, linea)
