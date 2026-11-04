@@ -44,8 +44,14 @@ que la ficha enseña plegado— y queda `detenido` con el worktree para retomarl
 cerraron con el board cerrado los recoge `recoger` al refrescar. Nada de eso relanza: lanzar
 es siempre de una persona. Devolver de Para comprobar a Haciendo con motivo (`rechazar`) lanza uno nuevo en el
 mismo worktree con el encargo, la nota de retomar y lo que pidieron cambiar.
+
+**Permisos desde la ficha** (v1.3.1, cotejo-0xpu71). OpenCode sin interfaz rechaza una petición
+de `external_directory` y termina. Ese final no devuelve la tarea: se guarda como
+`esperando-permiso`, la ficha enseña las rutas y `aceptar_permiso` lanza una continuación en el
+mismo worktree con solo esos patrones aprobados. Los comandos prohibidos siguen prohibidos.
 """
 
+import re
 import socket
 import subprocess
 import threading
@@ -174,7 +180,8 @@ def lanzar(tarea_id, al_terminar=None, config=None, forzar=False):
     return _lanzar(tarea_id, al_terminar, config, rechazada=False, forzar=forzar)
 
 
-def _lanzar(tarea_id, al_terminar, config, rechazada, rechazo_dado=None, forzar=False):
+def _lanzar(tarea_id, al_terminar, config, rechazada, rechazo_dado=None, forzar=False,
+            continuacion=False):
     """`lanzar`, y con `rechazada` el relanzamiento de `rechazar`: la tarea ya está en
     Haciendo a nombre de su modelo (se la devolvieron desde Para comprobar), así que no se
     toma otra vez, y el agente nuevo recibe además lo que le pidieron cambiar. `rechazo_dado` es
@@ -202,10 +209,10 @@ def _lanzar(tarea_id, al_terminar, config, rechazada, rechazo_dado=None, forzar=
         _rechazar(tarea, elegida, "falta_modelo", FaltaModelo(
             f"Nadie le ha asignado modelo. La propuesta es {elegida.nivel.modelo} "
             f"({elegida.razon}).", elegida.nivel.modelo, elegida.razon))
-    esperado = "en-curso" if rechazada else "pendiente"
+    esperado = "en-curso" if rechazada or continuacion else "pendiente"
     if tarea.get("estado") != esperado:
         _rechazar(tarea, elegida, "no_pendiente", NoSePuede(
-            f"La tarea no está {'en Haciendo' if rechazada else 'pendiente'}, está en "
+            f"La tarea no está {'en Haciendo' if rechazada or continuacion else 'pendiente'}, está en "
             f"«{tarea.get('estado')}»."))
 
     calculo = None if forzar else hueco(config)
@@ -264,7 +271,7 @@ def _lanzar(tarea_id, al_terminar, config, rechazada, rechazo_dado=None, forzar=
     # Tomarla: desde aquí, cualquier fallo la suelta antes de decir que no. Una rechazada ya
     # está en Haciendo a su nombre: lo que tenía en Pendiente es lo del lanzamiento anterior.
     id_antes, asignada = tarea["id"], tarea.get("agente", "")
-    if rechazada:
+    if rechazada or continuacion:
         asignada = (anterior or {}).get("asignada") or asignada
     else:
         try:
@@ -273,6 +280,9 @@ def _lanzar(tarea_id, al_terminar, config, rechazada, rechazo_dado=None, forzar=
             _rechazar(tarea, elegida, "no_pendiente", NoSePuede(str(error)))
 
     def soltar(motivo, rechazo):
+        if continuacion:
+            _rechazar(tarea, elegida, rechazo,
+                      NoSePuede(f"{motivo} La petición sigue pendiente en Haciendo."))
         try:
             cotejo.soltar(tarea["id"], motivo, asignada=asignada)
         except ErrorCLI:
@@ -327,6 +337,13 @@ def _lanzar(tarea_id, al_terminar, config, rechazada, rechazo_dado=None, forzar=
         reanudacion = {"vez": 2, "anterior": asignada or None, "commits": None,
                        "sin_commitear": None, "rechazo": rechazo.get("motivo"),
                        "nota": prompt[len(encargo.prompt) + 2:]}
+    permisos_aprobados = list(dict.fromkeys((anterior or {}).get("permisos_aprobados") or ()))
+    if continuacion:
+        rutas = ((anterior or {}).get("permiso") or {}).get("rutas") or ()
+        permisos_aprobados = list(dict.fromkeys([*permisos_aprobados, *rutas]))
+        prompt += ("\n\n## Acceso aceptado\n\nLa persona aceptó el acceso que solicitaste a: "
+                   + ", ".join(permisos_aprobados)
+                   + ". Continúa la tarea donde se interrumpió y entrégala al terminar.")
     ramas = ramas_protegidas(directorio, worktree)
     argv = comando(config, cliente, elegida, prompt,
                    carpetas_de_escritura(trabajo, worktree), ramas, guardas.politica_gemini(),
@@ -349,11 +366,15 @@ def _lanzar(tarea_id, al_terminar, config, rechazada, rechazo_dado=None, forzar=
                 # guarda: va solo en el entorno del agente.
                 "sandbox": {"activo": encerrado["activo"], "motivo": encerrado["motivo"],
                             "avisos": encerrado["avisos"]},
+                "permisos_aprobados": permisos_aprobados,
                 "lanzamientos": int((anterior or {}).get("lanzamientos") or 0) + 1}
     try:
         # El lanzador de `cotejo` primero y las guardas detrás, antes que lo del sistema.
         entorno = armado.entorno(cliente, carpetas_de_escritura(trabajo, worktree), ramas,
                                  encerrado)
+        if cliente.nombre == "opencode" and permisos_aprobados:
+            entorno["OPENCODE_CONFIG_CONTENT"] = clientes.opencode_aprobar_externos(
+                entorno.get("OPENCODE_CONFIG_CONTENT"), permisos_aprobados)
         ajustes = (config.get("motores") or {}).get("headless") or {}
         proceso = fondo.lanzar(argv, trabajo, str(log), ajustes, entorno,
                                etiqueta="tarea-" + worktrees.seguro(tarea["id"]))
@@ -467,6 +488,37 @@ _SIN_ENTREGA = ("no puedes entregar", "no puedes bloquear", "solo se bloquea",
                 "ya está finalizada", "ya la entregaste", "tómala primero", "hace falta evidencia",
                 "la evidencia es obligatoria", "the following arguments are required")
 
+_PETICION_EXTERNA = re.compile(
+    r"permission requested:\s*external_directory\s*\(([^)]*)\).*auto-rejecting",
+    re.IGNORECASE,
+)
+
+
+def permiso_solicitado(registro):
+    """La petición de acceso que dejó el cliente al terminar, o ``None``.
+
+    OpenCode sin interfaz rechaza la llamada y sale; se reconoce su línea estable y se guardan
+    los patrones pedidos para que la persona pueda ver exactamente qué aprobará.
+    """
+    if not registro or (registro.get("fin") or {}).get("como") == lanzados.FIN_ENTREGO:
+        return None
+    try:
+        with open(registro.get("log") or "", "rb") as archivo:
+            archivo.seek(0, 2)
+            fin = archivo.tell()
+            archivo.seek(max(int(registro.get("log_desde") or 0), fin - 16 * 1024))
+            texto = archivo.read().decode(errors="replace")
+    except (OSError, TypeError, ValueError):
+        return None
+    hallada = _PETICION_EXTERNA.search(texto)
+    if hallada is None:
+        return None
+    rutas = [ruta.strip() for ruta in hallada.group(1).split(",") if ruta.strip()]
+    if not rutas:
+        return None
+    return {"tipo": "external_directory", "rutas": rutas,
+            "detalle": "Acceso a " + ", ".join(rutas)}
+
 
 def causa_en_llano(lineas):
     """La causa más probable de entre `lineas` (lo que dijo el agente), en una frase llana, o
@@ -517,19 +569,34 @@ def fin(tarea_id, pid):
     entregar**: vuelve a Pendiente con su modelo y el motivo en llano (`cotejo.soltar`), y queda
     `detenido` con el worktree, para retomarla. Si la bloqueó o la movió alguien, no se toca.
     Nunca lanza nada. Devuelve el registro, o None si otro ya le hizo el fin."""
+    registro = lanzados.leer(tarea_id) or {}
+    permiso = permiso_solicitado(registro)
+    tarea_actual = None
+    if registro.get("fase") == lanzados.TERMINADO and permiso:
+        try:
+            tarea_actual = f.Cotejo().tarea(tarea_id)
+        except ErrorCLI:
+            tarea_actual = {}
+        # Si después de la herramienta rechazada consiguió entregar o bloquear, manda el estado
+        # de la tarea. Solo se espera aprobación cuando de verdad quedó en Haciendo.
+        if (tarea_actual.get("estado") == "en-curso"
+                and tarea_actual.get("agente") == registro.get("modelo")):
+            return lanzados.cambiar_fase(
+                tarea_id, lanzados.ESPERANDO_PERMISO, permiso=permiso)
     if not lanzados.reclamar_fin(tarea_id, pid):
         return None
     ahora = int(time.time())
-    registro = lanzados.leer(tarea_id) or {}
     como = lanzados.FIN_OTRO
     # Devuelta desde Para comprobar mientras volvía: eso lo lleva `rechazar`, no el fin.
     rechazada = (registro.get("rechazo") or {}).get("de_pid") == pid
     if registro.get("fase") == lanzados.TERMINADO and not rechazada:
         cotejo = f.Cotejo()
-        try:
-            tarea = cotejo.tarea(tarea_id)
-        except ErrorCLI:
-            tarea = {}
+        if tarea_actual is None:
+            try:
+                tarea_actual = cotejo.tarea(tarea_id)
+            except ErrorCLI:
+                tarea_actual = {}
+        tarea = tarea_actual
         if tarea.get("estado") == "por-validar":
             como = lanzados.FIN_ENTREGO
         elif tarea.get("estado") == "en-curso" and tarea.get("agente") == registro.get("modelo"):
@@ -563,6 +630,18 @@ def recoger():
         if (registro or {}).get("fase") == lanzados.TERMINADO and fin(tarea_id, pid):
             recogidos.append(tarea_id)
     return recogidos
+
+
+def aceptar_permiso(tarea_id, al_terminar=None, config=None):
+    """Acepta la petición visible y lanza una continuación sin mover la tarea de Haciendo."""
+    registro = lanzados.leer(tarea_id)
+    if not registro or registro.get("fase") != lanzados.ESPERANDO_PERMISO:
+        raise NoSePuede("Esta tarea no tiene una petición de acceso pendiente.")
+    permiso = registro.get("permiso") or {}
+    if permiso.get("tipo") != "external_directory" or not permiso.get("rutas"):
+        raise NoSePuede("No entiendo qué acceso pidió el agente; no cambié nada.")
+    return _lanzar(tarea_id, al_terminar, config, rechazada=False, forzar=True,
+                   continuacion=True)
 
 
 # --- el rechazo (cotejo-o253bs) -----------------------------------------------------------------
@@ -680,6 +759,6 @@ def pausar(tarea_id, motivo=PAUSA):
     return lanzados.estado(registro)
 
 
-__all__ = ["NoSePuede", "pausar", "fin", "recoger", "rechazar", "motivo_sin_entregar", "causa_en_llano", "EsDeUnaPersona", "FaltaModelo", "SinHueco", "lanzar", "estado",
+__all__ = ["NoSePuede", "pausar", "fin", "recoger", "rechazar", "aceptar_permiso", "motivo_sin_entregar", "causa_en_llano", "EsDeUnaPersona", "FaltaModelo", "SinHueco", "lanzar", "estado",
            "detener", "vigilar", "esperar_vigilantes", "decidir", "hueco", "comando",
            "carpetas_de_escritura", "ramas_protegidas"]

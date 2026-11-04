@@ -283,6 +283,31 @@ def _opencode_con_permiso(carpetas, previo=None):
     return json.dumps(datos, ensure_ascii=False)
 
 
+def opencode_aprobar_externos(previo, patrones):
+    """Añade exactamente los patrones de `external_directory` que una persona aceptó.
+
+    OpenCode imprime los patrones que pidió (a veces ya terminan en ``/*``); no se vuelven a
+    expandir como carpetas porque eso produciría reglas distintas, por ejemplo ``/*/*``.
+    El resto de la configuración —incluidos los comandos prohibidos— queda intacto.
+    """
+    try:
+        datos = json.loads(previo) if previo else {}
+    except ValueError:
+        datos = {}
+    if not isinstance(datos, dict):
+        datos = {}
+    permiso = datos.get("permission")
+    permiso = dict(permiso) if isinstance(permiso, dict) else {}
+    externo = permiso.get("external_directory")
+    externo = dict(externo) if isinstance(externo, dict) else {}
+    for patron in patrones or ():
+        if isinstance(patron, str) and patron.strip():
+            externo[patron.strip()] = "allow"
+    permiso["external_directory"] = externo
+    datos["permission"] = permiso
+    return json.dumps(datos, ensure_ascii=False)
+
+
 # --- los prohibidos de fábrica del agente que lanza el board (dec-kiik) -------------------------
 
 # Siempre protegida, aunque el repo diga que su rama por defecto es otra.

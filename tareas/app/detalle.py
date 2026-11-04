@@ -176,6 +176,8 @@ class Detalle:
                 dialogo.close()
                 self.retomar_la_caida(proyecto, tarea)
             dialogo.en_vivo.al_retomar = retomar_caida
+            dialogo.en_vivo.al_aceptar_permiso = lambda: self.aceptar_permiso_del_agente(
+                tarea, dialogo.en_vivo)
             dialogo.en_vivo.refrescar()      # ya con el botón a mano
             cuerpo.append(dialogo.en_vivo)
         espera = self.motivo_en_espera(tarea)

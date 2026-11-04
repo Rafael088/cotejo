@@ -30,6 +30,10 @@ fin y aquí solo se avisa (`agente_terminado`): entregó y está en Para comprob
 y su revisión guardan sus mensajes; o terminó sin entregar y volvió a Pendiente, pausada, con el
 motivo. Devolver de Para comprobar a Haciendo con motivo (`relanzar_al_rechazar`) lanza un
 agente nuevo en el mismo worktree con lo que se pidió cambiar.
+
+**Una petición de acceso** (cotejo-0xpu71) aparece dentro de «Lo que hace el agente» con las
+rutas exactas y «Aceptar acceso». Al pulsarlo se relanza la continuación fuera del hilo de GTK;
+la tarea nunca sale de Haciendo y la ficha sigue mostrando el mismo trabajo.
 """
 
 import traceback
@@ -89,6 +93,24 @@ class EnVivo(Gtk.Box):
         self.vida.append(textos)
         self.append(self.vida)
         self.nivel_vida = None
+        self.al_aceptar_permiso = None
+        self.permiso_texto = Gtk.Label(xalign=0, wrap=True, selectable=True, focusable=False,
+                                       wrap_mode=Pango.WrapMode.WORD_CHAR,
+                                       css_classes=["anotacion-texto"])
+        self.permiso_boton = Gtk.Button(label="Aceptar acceso", halign=Gtk.Align.START,
+                                        css_classes=["principal", "pill"])
+        self.permiso_boton.connect("clicked", self.al_pulsar_permiso)
+        self.permiso = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
+                               spacing=px(ESPACIADO_XS), visible=False,
+                               css_classes=["anotacion", "detenida"])
+        cabeza_permiso = Gtk.Box(spacing=px(ESPACIADO_XS))
+        cabeza_permiso.append(icono("aviso", 12))
+        cabeza_permiso.append(Gtk.Label(label="SOLICITA ACCESO", xalign=0,
+                                        css_classes=["anotacion-titulo"]))
+        self.permiso.append(cabeza_permiso)
+        self.permiso.append(self.permiso_texto)
+        self.permiso.append(self.permiso_boton)
+        self.append(self.permiso)
         self.situacion = Gtk.Label(xalign=0, wrap=True, css_classes=["detalle-valor"],
                                    wrap_mode=Pango.WrapMode.WORD_CHAR)
         self.append(self.situacion)
@@ -118,6 +140,17 @@ class EnVivo(Gtk.Box):
         dice = retomar.resumen((registro or {}).get("reanudacion"))
         self.reanudacion.set_label(dice)
         self.reanudacion.set_visible(bool(dice))
+        solicitud = ((registro or {}).get("permiso") or {}
+                     if (registro or {}).get("fase") == lanzados.ESPERANDO_PERMISO else {})
+        rutas = solicitud.get("rutas") or ()
+        self.permiso_texto.set_label(
+            "El agente necesita entrar en " + ", ".join(rutas)
+            + ". Al aceptar continuará en el mismo trabajo, sin devolver la tarea."
+            if rutas else "")
+        self.permiso.set_visible(bool(rutas))
+        if rutas:
+            self.permiso_boton.set_label("Aceptar acceso")
+            self.permiso_boton.set_sensitive(self.al_aceptar_permiso is not None)
         self.pintar_vida(registro)
         nuevas = self.seguimiento.nuevas(registro) if registro else []
         buffer = self.registro.get_buffer()
@@ -136,6 +169,12 @@ class EnVivo(Gtk.Box):
     def al_pulsar_retomar(self, *_):
         if self.al_retomar is not None:
             self.al_retomar()
+
+    def al_pulsar_permiso(self, *_):
+        if self.al_aceptar_permiso is not None:
+            self.permiso_boton.set_sensitive(False)
+            self.permiso_boton.set_label("Aceptando…")
+            self.al_aceptar_permiso()
 
     def pintar_vida(self, registro):
         """Pone la señal de vida. El latido es una clase que alterna en cada tic y solo si las
@@ -470,6 +509,29 @@ class Lanzar:
             self.aviso(f"{id_corto(estado.get('id'))}: {lanzados.situacion(estado)}")
         self.app.refrescar()
         return GLib.SOURCE_REMOVE
+
+    def aceptar_permiso_del_agente(self, tarea, en_vivo):
+        """Acepta fuera del hilo de GTK y sigue la continuación en la misma ficha."""
+        from enrutador import despacho_board as db
+        tablero = self
+
+        def trabajo():
+            return db.aceptar_permiso(
+                tarea.id, al_terminar=lambda e: GLib.idle_add(
+                    tablero.vigente().agente_terminado, e))
+
+        def al_volver(estado, error):
+            actual = self.vigente()
+            if error is not None:
+                en_vivo.permiso_boton.set_label("Aceptar acceso")
+                en_vivo.permiso_boton.set_sensitive(True)
+                actual.aviso(f"No pude aceptar el acceso: {error}")
+            else:
+                actual.aviso(f"{estado.get('modelo') or 'El agente'} continúa con el acceso "
+                             "aceptado.")
+            actual.app.refrescar()
+
+        segundo_plano.en_segundo_plano(trabajo, al_volver)
 
     # --- sin modelo: se pregunta ------------------------------------------------------------
 

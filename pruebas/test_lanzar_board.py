@@ -340,6 +340,28 @@ class LanzarDesdeElBoard(base.PestanaInicio):
         base.girar(1300)
         self.assertEqual(vivo.refrescos, quieto)
 
+    def test_la_ficha_muestra_la_peticion_de_acceso_y_permite_aceptarla(self):
+        self.board.ver_pestana("tablero")
+        with mock.patch.dict(os.environ, {"FALSO_PERMISO": "1", "FALSO_CODIGO": "1"}):
+            self.arrastrar("parseo")
+            self.assertTrue(self.esperar(
+                lambda: (lanzados.leer("cotejo-con") or {}).get("fase")
+                == lanzados.ESPERANDO_PERMISO, 8000))
+        fila = self.fila("parseo", "en-curso")
+        ficha = self.board.dialogo_detalle(fila.proyecto, fila.tarea)
+        vivo = ficha.en_vivo
+        textos = " ".join(base.textos(ficha.get_child()))
+        self.assertIn("SOLICITA ACCESO", textos)
+        self.assertIn("/home/rafael/Imágenes/*", textos)
+        boton = self.buscar_boton(ficha.get_child(), "Aceptar acceso")
+        self.assertIsNotNone(boton)
+        with mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):
+            boton.emit("clicked")
+            self.assertTrue(self.esperar(
+                lambda: (lanzados.leer("cotejo-con") or {}).get("fase") == lanzados.LANZADO,
+                8000))
+        self.assertEqual(self.fila("parseo", "en-curso").tarea.columna, "en-curso")
+
     def test_agente_cerrado_sin_entregar_ofrece_retomar_y_lanza_otro(self):
         """cotejo-21y2ah: si el proceso murió, la ficha lo dice como un hecho y «Retomar» la
         deja pausada y lanza un agente nuevo en el mismo worktree, sin arrastrar nada."""

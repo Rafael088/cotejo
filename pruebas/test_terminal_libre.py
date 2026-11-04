@@ -125,6 +125,17 @@ class TerminalLibre(unittest.TestCase):
         self.assertEqual(externo["/w/tarea/*"], "allow")
         self.assertEqual(externo["*"], "ask")                  # fuera de sus carpetas, no
 
+    def test_opencode_suma_solo_los_accesos_que_acepto_la_persona(self):
+        previo = json.dumps({"model": "x/y", "permission": {
+            "bash": {"sudo *": "deny"}, "external_directory": {"*": "ask"}}})
+        datos = json.loads(clientes.opencode_aprobar_externos(
+            previo, ["/home/rafael/Imágenes/*", "/tmp/opencode/*"]))
+        self.assertEqual(datos["model"], "x/y")
+        self.assertEqual(datos["permission"]["bash"], {"sudo *": "deny"})
+        self.assertEqual(datos["permission"]["external_directory"], {
+            "*": "ask", "/home/rafael/Imágenes/*": "allow",
+            "/tmp/opencode/*": "allow"})
+
     def casa(self, ajustes=None):
         """Una casa de la persona para Gemini (`GEMINI_CLI_HOME`), sin tocar la de verdad."""
         carpeta = Path(tempfile.mkdtemp())
