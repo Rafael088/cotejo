@@ -106,6 +106,9 @@ def config_humo(carpeta, python_agente, falso, por_cmd=False):
     return {"enrutador": {
         "proyectos": {PROYECTO: str(carpeta / "repo")},
         "motores": {"headless": {"comando": comando, "aislar": False}},
+        # El falso ocupa unos MB: que la capacidad no lo deje en espera solo porque el Windows
+        # de la persona tiene el navegador abierto (el humo mide procesos, no la memoria).
+        "capacidad": {"mb_por_agente": 100, "reserva_mb": 256},
     }}
 
 

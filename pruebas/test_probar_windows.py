@@ -88,6 +88,7 @@ class Entorno(unittest.TestCase):
         self.assertTrue(comando[0].endswith("python.exe"))   # de consola, como un CLI de verdad
         self.assertTrue(comando[1].endswith("cliente_falso.py"))
         self.assertFalse(enrutador["motores"]["headless"]["aislar"])
+        self.assertLessEqual(enrutador["capacidad"]["mb_por_agente"], 100)   # cabe en una máquina usada
         self.assertTrue((RAIZ / "pruebas" / "cliente_falso.py").exists())
 
     def test_al_cerrar_trabajando_el_falso_va_detras_de_un_cmd_como_uno_de_npm(self):
