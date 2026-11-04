@@ -1057,7 +1057,24 @@ class FrescuraDeContexto(unittest.TestCase):
             cli.main(["contexto", "--repo", str(self.repo)])
         datos = json.loads(buf.getvalue())
         self.assertEqual(datos["proyecto"]["actualizado"], "2026-01-01")
+        self.assertEqual(datos["proyecto"]["siguiente_paso"], "")
+        self.assertEqual(datos["proyecto"]["siguiente_paso_desactualizado"], {
+            "actualizado": "2026-01-01", "ultima_version_publicada": "v2"})
         self.assertIn("cotejo editar proyecto", datos["salida"])
+
+    def test_contexto_omite_paso_anterior_al_tag_aunque_aun_no_sea_viejo(self):
+        self.commit("2026-01-01")
+        self.git("commit", "-q", "--allow-empty", "-m", "release", fecha="2026-01-10")
+        self.git("tag", "v2", fecha="2026-01-10")
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf), \
+                mock.patch.object(conocimiento, "_hoy",
+                                  return_value=__import__("datetime").date(2026, 1, 11)):
+            cli.main(["contexto", "--repo", str(self.repo)])
+        proyecto = json.loads(buf.getvalue())["proyecto"]
+        self.assertEqual(proyecto["siguiente_paso"], "")
+        self.assertEqual(proyecto["siguiente_paso_desactualizado"], {
+            "actualizado": "2026-01-01", "ultima_version_publicada": "v2"})
 
     def test_dias_viejo_de_la_config_y_su_validacion(self):
         from tareas import configuracion

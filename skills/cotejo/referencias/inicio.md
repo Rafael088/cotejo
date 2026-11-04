@@ -70,7 +70,7 @@ cotejo crear "Nombre corto: qué hay que hacer" --proyecto <nombre> --version 0.
 ## 4. Comprobar y entregar el resultado a la persona
 
 ```sh
-cotejo contexto --repo <carpeta>     # < 1k tokens: objetivo, stack, siguiente paso, version, decisiones (y cuáles están propuestas), tareas
+cotejo contexto --repo <carpeta>     # < 1k tokens: objetivo, stack, siguiente paso vigente, version, decisiones (y cuáles están propuestas), tareas
 cotejo version --proyecto <nombre>   # en curso 0.1.0, tareas pendientes
 ```
 
