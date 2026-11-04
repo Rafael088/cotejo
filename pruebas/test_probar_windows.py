@@ -90,6 +90,26 @@ class Entorno(unittest.TestCase):
         self.assertFalse(enrutador["motores"]["headless"]["aislar"])
         self.assertTrue((RAIZ / "pruebas" / "cliente_falso.py").exists())
 
+    def test_al_cerrar_trabajando_el_falso_va_detras_de_un_cmd_como_uno_de_npm(self):
+        config = humo.config_humo("C:/t/humo", INST + r"\runtime\bin\python.exe",
+                                  CODIGO + r"\pruebas\cliente_falso.py", por_cmd=True)
+        comando = config["enrutador"]["motores"]["headless"]["comando"]
+        self.assertEqual(comando[:2], ["cmd.exe", "/c"])
+        self.assertTrue(comando[2].endswith("python.exe"))
+        entorno = humo.entorno_del_humo(Path("C:/t/humo"), 60, al_cerrar="parar")
+        self.assertEqual(entorno["COTEJO_HUMO_AL_CERRAR"], "parar")
+        self.assertNotIn("COTEJO_HUMO_AL_CERRAR", humo.entorno_del_humo(Path("C:/t"), 8))
+
+    def test_el_arbol_del_agente_es_lo_suyo_vivo(self):
+        procesos = [{"pid": 2, "ppid": 1, "nombre": "cmd.exe"},
+                    {"pid": 3, "ppid": 2, "nombre": "python.exe"},
+                    {"pid": 4, "ppid": 1, "nombre": "git.exe"},
+                    {"pid": 5, "ppid": 2, "nombre": "conhost.exe"}]
+        vistos = {2: "cmd.exe", 3: "python.exe", 4: "git.exe", 5: "conhost.exe",
+                  6: "python.exe"}   # el 6 ya no está
+        self.assertEqual(humo.arbol_del_agente(procesos, vistos),
+                         [{"pid": 2, "nombre": "cmd.exe"}, {"pid": 3, "nombre": "python.exe"}])
+
     def test_la_nota_trae_una_tarea_con_modelo_y_su_id(self):
         nota = humo.nota_humo()
         linea = next(l for l in nota.splitlines() if l.startswith("- [ ]"))
@@ -181,6 +201,18 @@ class Resumen(unittest.TestCase):
                       "quedan al salir 1", "volcados 1"):
             self.assertIn(trozo, linea)
 
+    def test_la_linea_dice_lo_del_cierre_con_el_agente_trabajando(self):
+        datos = dict(EJEMPLO, al_cerrar={
+            "board_vivo": False, "procesos": [],
+            "agente": {"respuesta": "parar", "pregunto": ["cotejo-humo-win"],
+                       "antes": [{"pid": 2, "nombre": "cmd.exe"},
+                                 {"pid": 3, "nombre": "python.exe"}], "vivos": []}},
+            temporales=[])
+        linea = humo.resumen_legible(datos)
+        for trozo in ("al cerrar: board vivo=False, quedan 0",
+                      "cerrar trabajando (parar): agente 2→0 vivos", ".tmp en lanzados 0"):
+            self.assertIn(trozo, linea)
+
     def test_resumen_por_la_linea_de_comandos_y_su_codigo(self):
         with tempfile.TemporaryDirectory() as carpeta:
             bueno = Path(carpeta) / "humo.json"
@@ -267,7 +299,7 @@ class Script(unittest.TestCase):
 
     def test_lo_que_no_vale_se_rechaza_antes_de_conectarse(self):
         for argumentos in (["--nada"], ["--solo", "todo-y-mas"], ["--espera", "8; rm"],
-                           ["--patron", "x'; Remove-Item"]):
+                           ["--patron", "x'; Remove-Item"], ["--cerrar-trabajando", "x"]):
             hecho = self.correr("--en-seco", *argumentos)
             self.assertEqual(hecho.returncode, 2, argumentos)
 

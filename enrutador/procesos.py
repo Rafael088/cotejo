@@ -59,19 +59,44 @@ def anotado_muerto(linea):
 
 
 def terminar(pid, programa=""):
-    """Para el proceso `pid` (y su grupo, si lo encabeza) si sigue siendo `programa`.
+    """Para el proceso `pid` y lo que lanzó si sigue siendo `programa`.
 
     Devuelve True si había algo que parar. Comprueba antes con `vivo`: un pid reciclado es de
     otro programa, y a ese no se le manda nada.
+
+    En POSIX se para su grupo si lo encabeza (los agentes van con `start_new_session`: sus
+    hijos y nietos están en él). En Windows no hay grupos que matar y `os.kill` solo cierra ese
+    proceso: un agente de npm es `cmd.exe /c opencode.cmd`, y parar el `cmd` dejaba vivo el
+    `opencode.exe` (cotejo-qtegjk). Allí se para el árbol entero con `taskkill /T`, que lo
+    recorre por el padre de cada proceso, mientras la raíz sigue viva.
     """
     if not vivo(pid, programa):
         return False
     pid = int(pid)
+    if sys.platform == "win32":
+        return _terminar_arbol_windows(pid)
     try:
         if sys.platform != "win32" and os.getpgid(pid) == pid:
             os.killpg(pid, signal.SIGTERM)
         else:
             os.kill(pid, signal.SIGTERM)
+    except OSError:
+        return False
+    return True
+
+
+def _terminar_arbol_windows(pid):
+    from . import subproceso
+    try:
+        hecho = subproceso.run(["taskkill", "/PID", str(pid), "/T", "/F"],
+                               stdin=subproceso.DEVNULL, stdout=subproceso.DEVNULL,
+                               stderr=subproceso.DEVNULL, timeout=15, check=False)
+        if hecho.returncode == 0:
+            return True
+    except (OSError, subproceso.TimeoutExpired):
+        pass   # una instalación sin `taskkill`: al menos la raíz
+    try:
+        os.kill(pid, signal.SIGTERM)   # en Windows es TerminateProcess
     except OSError:
         return False
     return True
