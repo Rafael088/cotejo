@@ -403,6 +403,12 @@ class App(Adw.Application):
             else:
                 GLib.idle_add(lambda: self.board.entrar_dot() and False)
         self.desde_cero = False
+        # En Windows la ventana nueva suele salir maximizada porque sus 1280 × 820 no caben
+        # en el área útil. Ese maximizado implícito no sobrevive a cerrar (ocultar) y volver
+        # a abrir desde el menú Inicio: GTK la presenta con su tamaño natural. Pedirlo en cada
+        # apertura hace que tanto la ventana nueva como la reutilizada tengan el mismo estado.
+        if sys.platform == "win32":
+            self.board.maximize()
         self.board.present()
         if sys.platform == "win32" and not escala.forzado() and not self.vigilando_escala:
             self.vigilando_escala = True
