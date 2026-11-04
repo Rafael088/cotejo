@@ -98,7 +98,7 @@ def nota_humo():
     return f"---\ntipo: proyecto\n---\n\n# {PROYECTO}\n\n- [ ] {TEXTO} ^{TAREA}\n"
 
 
-def entorno_del_humo(carpeta, espera_s, volcar_ms=0, faulthandler_s=0):
+def entorno_del_humo(carpeta, espera_s, volcar_ms=0, faulthandler_s=0, perfil=False):
     """Lo que el humo añade al entorno del board: sus carpetas y los ganchos de volcado."""
     carpeta = Path(carpeta)
     entorno = {"COTEJO_CONFIG": str(carpeta / "config.json"),
@@ -116,6 +116,8 @@ def entorno_del_humo(carpeta, espera_s, volcar_ms=0, faulthandler_s=0):
         entorno["COTEJO_HUMO_VOLCAR_MS"] = str(int(volcar_ms))
     if faulthandler_s:
         entorno["COTEJO_HUMO_FAULTHANDLER_S"] = str(faulthandler_s)
+    if perfil:
+        entorno["COTEJO_HUMO_PERFIL"] = "1"
     return entorno
 
 
@@ -204,6 +206,8 @@ def resumen_legible(datos):
         + (f", despacho {b['despacho_ms']} ms" if b.get("despacho_ms") is not None else "")
         + ")",
         f"colgada={b.get('colgada')}",
+        *([f"refrescos {r.get('cuantos')} (peor {r.get('peor_ms')} ms)"]
+          for r in [datos.get("refrescos")] if r),
         f"quedan al salir {quedan}",
         f"volcados {len(datos.get('volcados', []))}",
     ]
@@ -432,7 +436,8 @@ def vigilar(args):
         datos["terminal"]["procesos_antes"] = sum(contar(base_procesos, n)
                                                   for n in PROCESOS_TERMINAL)
         entorno = entorno_del_lanzador(args.instalacion, args.codigo)
-        entorno.update(entorno_del_humo(carpeta, args.espera, args.volcar_ms, args.faulthandler_s))
+        entorno.update(entorno_del_humo(carpeta, args.espera, args.volcar_ms, args.faulthandler_s,
+                                        args.perfil))
         pythonw = Path(args.instalacion) / "runtime" / "bin" / "pythonw.exe"
         registro = open(carpeta / "board.log", "w", encoding="utf-8")
         board = subprocess.Popen([str(pythonw), str(Path(__file__).resolve()), "board",
@@ -493,6 +498,7 @@ def vigilar(args):
         datos["agente"]["espera_s"] = args.espera
         datos["bloqueo"] = resumen_bloqueo(pulso.muestras, pulso.colgada,
                                            board_json.get("bucle"), board_json.get("soltar_en"))
+        datos["refrescos"] = board_json.get("refrescos", {})
         datos["procesos_vistos"] = sorted({n for n in muestreo.vistos.values()})
         datos["ok"] = bool(datos["agente"].get("lanzado"))
         if not datos["ok"]:
@@ -560,6 +566,7 @@ def board(args):
         return 1
 
     aplicacion.App.poner_lo_del_usuario = lambda self: None   # nada del $HOME de la persona
+    medir_refrescos(aplicacion.App, estado, volcados)
     app = aplicacion.App()
     app.set_application_id(f"{APP_ID}{os.getpid()}")
     app.set_flags(app.get_flags() | Gio.ApplicationFlags.NON_UNIQUE)
@@ -640,6 +647,35 @@ def board(args):
     codigo = app.run([sys.argv[0], "--board"])
     guardar()
     return codigo
+
+
+def medir_refrescos(clase, estado, volcados):
+    """Cuánto tarda cada `refrescar` del board (en el hilo de GTK): el peor y cuántos hubo. Con
+    `COTEJO_HUMO_PERFIL=1`, además, cProfile de todos ellos en `volcados/perfil.txt`."""
+    import cProfile
+    import io
+    import pstats
+    original = clase.refrescar
+    perfil = cProfile.Profile() if os.environ.get("COTEJO_HUMO_PERFIL") == "1" else None
+    datos = estado.setdefault("refrescos", {"cuantos": 0, "peor_ms": 0.0, "total_ms": 0.0})
+
+    def refrescar(self, *args, **kwargs):
+        antes = time.monotonic()
+        try:
+            if perfil is None:
+                return original(self, *args, **kwargs)
+            return perfil.runcall(original, self, *args, **kwargs)
+        finally:
+            ms = (time.monotonic() - antes) * 1000
+            datos["cuantos"] += 1
+            datos["peor_ms"] = round(max(datos["peor_ms"], ms), 1)
+            datos["total_ms"] = round(datos["total_ms"] + ms, 1)
+            if perfil is not None:
+                texto = io.StringIO()
+                pstats.Stats(perfil, stream=texto).sort_stats("cumulative").print_stats(45)
+                (volcados / "perfil.txt").write_text(texto.getvalue(), encoding="utf-8")
+
+    clase.refrescar = refrescar
 
 
 def ganchos(volcados, ultimo):
@@ -783,6 +819,8 @@ def argumentos(argv=None):
                    help="volcar los hilos del board si su bucle pasa estos ms sin latir")
     v.add_argument("--faulthandler-s", type=float, default=0,
                    help="faulthandler.dump_traceback_later cada estos segundos")
+    v.add_argument("--perfil", type=int, default=0,
+                   help="1: perfilar (cProfile) cada refresco del board en volcados/perfil.txt")
     b = sub.add_parser("board", help="(lo lanza vigilar) el board de la rama")
     b.add_argument("--carpeta", required=True)
     s = sub.add_parser("suite", help="la batería de la rama con el runtime instalado")
