@@ -230,5 +230,36 @@ class BoardSinBloqueos(base.PestanaInicio):
         self.assertIsNotNone(self.fila("contrato", "en-curso"))
 
 
+class UnaFotoDeLosClientes(unittest.TestCase):
+    """En Windows cada `shutil.which` recorre el PATH con PATHEXT; un refresco del board
+    preguntaba ~11 veces por cada cliente. Dentro de `una_foto` se mira una vez por ejecutable,
+    y fuera de ella se mira siempre (la CLI y las pruebas que cambian el PATH no notan nada)."""
+
+    def test_dentro_de_la_foto_cada_ejecutable_se_busca_una_vez(self):
+        from enrutador import clientes
+        with mock.patch("enrutador.clientes.shutil.which", return_value="/x") as which:
+            with clientes.una_foto():
+                for _ in range(5):
+                    clientes.instalados()
+                with clientes.una_foto():          # anidada: la misma foto
+                    clientes.instalados()
+            self.assertEqual(which.call_count, len(clientes.CLIENTES))
+            clientes.instalados()
+            self.assertEqual(which.call_count, 2 * len(clientes.CLIENTES))
+
+    def test_la_foto_es_del_hilo_que_la_abre(self):
+        from enrutador import clientes
+        visto = []
+        with mock.patch("enrutador.clientes.shutil.which", return_value=None) as which:
+            with clientes.una_foto():
+                clientes.instalados()
+                hilo = threading.Thread(target=lambda: visto.append(clientes.instalados()))
+                hilo.start()
+                hilo.join()
+                clientes.instalados()
+        self.assertEqual(visto, [[]])
+        self.assertEqual(which.call_count, 2 * len(clientes.CLIENTES))
+
+
 if __name__ == "__main__":
     unittest.main()
