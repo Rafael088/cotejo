@@ -15,15 +15,14 @@ todos fallen igual cuando no hay dónde leer.
 
 import datetime
 import os
-import subprocess
 import unicodedata
 from pathlib import Path
 
 from . import bitacora as historial
 from . import (almacen, arquitectura, como_se_abre, configuracion, importar_obsidian, modelo,
                reintento, version as version_proyecto)
+from .fechas_git import fecha as _git_fecha, ultimo_tag as _ultimo_tag
 from .cli import ESQUEMA, ErrorCLI, imprimir, nucleo
-from enrutador import subproceso
 
 
 # --- lo que comparten `buscar`, `leer` y `contexto` --------------------------------------------
@@ -301,34 +300,6 @@ def _acotar_vigentes(entradas, tope):
     ordenadas = sorted(entradas, key=_fecha_de, reverse=True)
     elegidas = ordenadas[:tope] if tope else ordenadas
     return [_linea_vigente(e) for e in elegidas], len(ordenadas)
-
-
-def _git_fecha(raiz, *args):
-    """Fecha (AAAA-MM-DD) que imprime `git log -1 --format=%cs <args>`, o None si no hay git,
-    el archivo no está en un commit o algo falla. Nunca levanta: la frescura es una pista."""
-    try:
-        hecho = subproceso.run(["git", "-C", str(raiz), "log", "-1", "--format=%cs", *args],
-                               stdin=subprocess.DEVNULL, capture_output=True, text=True,
-                               timeout=10)
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    texto = hecho.stdout.strip()
-    return texto if hecho.returncode == 0 and texto else None
-
-
-def _ultimo_tag(raiz):
-    """(nombre, fecha) del tag más reciente alcanzable desde HEAD, o None si no hay."""
-    try:
-        hecho = subproceso.run(["git", "-C", str(raiz), "describe", "--tags", "--abbrev=0"],
-                               stdin=subprocess.DEVNULL, capture_output=True, text=True,
-                               timeout=10)
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    nombre = hecho.stdout.strip()
-    if hecho.returncode != 0 or not nombre:
-        return None
-    fecha = _git_fecha(raiz, nombre)
-    return (nombre, fecha) if fecha else None
 
 
 def _hoy():
