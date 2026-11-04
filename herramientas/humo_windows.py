@@ -58,6 +58,7 @@ TOPE_MS = 5000          # lo más que se espera a que la ventana atienda un WM_N
 MUESTREO_S = 0.1
 UMBRALES_MS = (100, 250, 1000)
 MAX_VOLCADOS = 30
+HUECO_APUNTADO_MS = 100   # los huecos del bucle de más de esto se apuntan uno a uno
 ESCRITO_POR_EL_AGENTE = "agente-falso.log"
 TOPE_DESPACHO_S = 120   # lo más que se espera a que vuelva el despacho en segundo plano
 
@@ -181,6 +182,7 @@ def resumen_bloqueo(muestras, colgada_vista, bucle=None, soltar_en=None):
     resumen["bucle_peor_hueco_desde_soltar_ms"] = bucle.get("peor_hueco_desde_soltar_ms")
     resumen["soltar_ms"] = bucle.get("soltar_ms")
     resumen["despacho_ms"] = bucle.get("despacho_ms")
+    resumen["bucle_huecos"] = bucle.get("huecos", [])
     return resumen
 
 
@@ -585,6 +587,10 @@ def board(args):
             if soltar_en is not None and ahora >= soltar_en:
                 bucle["peor_hueco_desde_soltar_ms"] = max(
                     bucle["peor_hueco_desde_soltar_ms"] or 0, hueco)
+            if hueco > HUECO_APUNTADO_MS and len(bucle.setdefault("huecos", [])) < 40:
+                # Cuándo (s desde soltar la carta, o desde abrir si aún no) y cuánto.
+                desde = soltar_en if soltar_en is not None else 0
+                bucle["huecos"].append([round(ultimo[0] - desde, 2), hueco])
         ultimo[0] = ahora
         return True
 
@@ -668,6 +674,9 @@ def medir_refrescos(clase, estado, volcados):
         finally:
             ms = (time.monotonic() - antes) * 1000
             datos["cuantos"] += 1
+            if len(datos.setdefault("lista", [])) < 60:
+                desde = estado.get("soltar_en")
+                datos["lista"].append([round(antes - desde, 2) if desde else None, round(ms, 1)])
             datos["peor_ms"] = round(max(datos["peor_ms"], ms), 1)
             datos["total_ms"] = round(datos["total_ms"] + ms, 1)
             if perfil is not None:
