@@ -93,10 +93,9 @@ export default function PrimerosPasos() {
           <h2 id="t-seguridad-windows" className="titulo-2">Seguridad en Windows.</h2>
           <p className="parrafo">
             En Windows, el agente que lanza Cotejo no queda encerrado dentro de la carpeta del
-            proyecto. Puede acceder a otros archivos con los permisos de tu cuenta. Cotejo limita
-            los permisos que concede OpenCode y bloquea desde el PATH algunos comandos peligrosos,
-            pero esas barreras no son un encierro. El board te lo recuerda la primera vez que
-            lanza un agente.
+            proyecto: puede abrir y cambiar otros archivos de tu cuenta, igual que tú. Cotejo le
+            pone algunos frenos, como negarle los comandos más peligrosos, pero eso no es un
+            encierro. El board te lo recuerda la primera vez que lanza un agente.
           </p>
         </div>
       </section>

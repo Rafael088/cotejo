@@ -307,9 +307,9 @@ class Lanzar:
             return None
         dialogo = Adw.AlertDialog(
             heading="En Windows, el agente no queda encerrado",
-            body=("Puede acceder a otros archivos con los permisos de tu cuenta. Cotejo limita "
-                  "los permisos que concede OpenCode y bloquea desde el PATH algunos comandos "
-                  "peligrosos, pero eso no equivale a encerrarlo dentro de su carpeta."))
+            body=("Puede abrir y cambiar otros archivos de tu cuenta, igual que tú. Cotejo le "
+                  "pone algunos frenos, como negarle los comandos más peligrosos, pero todavía "
+                  "no puede encerrarlo dentro de la carpeta del proyecto."))
         dialogo.add_response("entendido", "Entendido")
         dialogo.set_default_response("entendido")
         dialogo.set_close_response("entendido")
