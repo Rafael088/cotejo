@@ -27,6 +27,7 @@ import time
 from pathlib import Path
 
 from .. import aislamiento, armado, clientes, cotejo as f, guardas, motor, sandbox
+from .. import subproceso
 
 
 class ClaudeCLI(motor.Motor):
@@ -126,7 +127,7 @@ class ClaudeCLI(motor.Motor):
             # Sin entrada (cotejo-en0crz), como el agente del board (`fondo.py`): `codex exec`
             # con la entrada abierta la lee como parte del prompt y espera su fin; desde una
             # sesión cuya entrada nunca se cierra, no empezaba nunca y se cortaba a la media hora.
-            proceso = subprocess.Popen(
+            proceso = subproceso.Popen(
                 lanzar, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 text=True, cwd=str(encargo.directorio) if encargo.directorio else None,
                 env=entorno)

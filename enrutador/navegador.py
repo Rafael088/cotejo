@@ -26,6 +26,7 @@ import tempfile
 import threading
 import types
 from pathlib import Path
+from . import subproceso
 
 FIREFOX = ("firefox",)
 CHROMIUM = ("chromium", "chromium-browser", "google-chrome", "google-chrome-stable")
@@ -147,7 +148,7 @@ def capturar(destino, salida, ancho=1280, alto=800, espera=ESPERA, entorno=None,
     perfil = tempfile.mkdtemp(prefix="cotejo-navegador-")
     try:
         (Path(perfil) / "user.js").write_text(prefs_del_perfil(), encoding="utf-8")
-        proceso = subprocess.Popen(
+        proceso = subproceso.Popen(
             argv_captura(tipo, ruta, a_url(destino), salida, perfil, ancho, alto),
             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             start_new_session=True)

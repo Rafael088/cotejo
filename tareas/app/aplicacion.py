@@ -249,7 +249,15 @@ class App(Adw.Application):
     # --- datos ------------------------------------------------------------
 
     def refrescar(self):
-        """Escanea el vault una sola vez y reparte: el board y el archivo que lee la barra."""
+        """Escanea el vault una sola vez y reparte: el board y el archivo que lee la barra.
+
+        Qué clientes hay instalados se mira una vez por refresco (`clientes.una_foto`): en
+        Windows cada `shutil.which` cuesta y el repintado preguntaba una docena de veces."""
+        from enrutador import clientes
+        with clientes.una_foto():
+            self._refrescar()
+
+    def _refrescar(self):
         avisos = []
         self.recoger_lanzados()
         # Con las hechas: el board necesita las cuatro columnas.

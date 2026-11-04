@@ -11,6 +11,7 @@ import os
 import subprocess
 
 from .. import aislamiento
+from .. import subproceso
 
 
 def lanzar(comando, directorio, registro, ajustes=None, entorno=None, etiqueta=""):
@@ -26,7 +27,7 @@ def lanzar(comando, directorio, registro, ajustes=None, entorno=None, etiqueta="
     entorno = {**(entorno or {}), **({"PWD": str(directorio)} if directorio else {})}
     os.makedirs(os.path.dirname(registro), exist_ok=True)
     with open(registro, "ab") as salida:
-        return subprocess.Popen(
+        return subproceso.Popen(
             lanzar, cwd=str(directorio) if directorio else None,
             env={**os.environ, **(entorno or {})},
             stdin=subprocess.DEVNULL, stdout=salida, stderr=subprocess.STDOUT,
@@ -42,7 +43,7 @@ def lanzar_aparte(comando, directorio, salida, errores, ajustes=None, entorno=No
     entorno = {**(entorno or {}), **({"PWD": str(directorio)} if directorio else {})}
     os.makedirs(os.path.dirname(salida), exist_ok=True)
     with open(salida, "ab") as out, open(errores, "ab") as err:
-        return subprocess.Popen(
+        return subproceso.Popen(
             lanzar_, cwd=str(directorio) if directorio else None,
             env={**os.environ, **entorno}, stdin=subprocess.DEVNULL, stdout=out, stderr=err,
             start_new_session=True)

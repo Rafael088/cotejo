@@ -31,6 +31,7 @@ from .almacen import ARCHIVO_PROYECTO, Almacen, CARPETA as CARPETA_COTEJO, TIPOS
 from .cli import ESQUEMA, ErrorCLI, imprimir
 from .fuentes.obsidian import vault_valido
 from .fuentes.repo import ARCHIVO as ARCHIVO_TAREAS
+from enrutador import subproceso
 
 NOMBRE_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 # Los que un adaptador no puede usar como parámetro: los pone Cotejo.
@@ -137,7 +138,7 @@ def _iniciar_repo(destino):
     existia = destino.exists()
     destino.mkdir(parents=True, exist_ok=True)
     try:
-        subprocess.run(_version.comando_git(destino, "init", "-q"), check=True,
+        subproceso.run(_version.comando_git(destino, "init", "-q"), check=True,
                        capture_output=True, stdin=subprocess.DEVNULL, timeout=60)
     except (OSError, subprocess.SubprocessError) as error:
         if not existia:
@@ -150,7 +151,7 @@ def _iniciar_repo(destino):
 def _git_salida(raiz, *args):
     """(código, salida+error) de un git en `raiz`; código None si no hay git o no arranca."""
     try:
-        hecho = subprocess.run(_version.comando_git(raiz, *args), stdin=subprocess.DEVNULL,
+        hecho = subproceso.run(_version.comando_git(raiz, *args), stdin=subprocess.DEVNULL,
                                capture_output=True, text=True, timeout=60)
     except (OSError, subprocess.SubprocessError) as error:
         return None, str(error)

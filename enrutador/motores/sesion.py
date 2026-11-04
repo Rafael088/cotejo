@@ -18,6 +18,7 @@ import subprocess
 import time
 
 from .. import motor
+from .. import subproceso
 
 # `claude --bg` imprime «backgrounded · <id>» **con códigos de color**, y esos códigos llevan
 # dígitos dentro (`ESC[36m`). Buscar el id sin quitarlos antes no falla a medias: engancha el
@@ -64,7 +65,7 @@ class Sesion(motor.Motor):
         comando = self.argv(encargo)
         arranque = time.monotonic()
         try:
-            hecho = subprocess.run(
+            hecho = subproceso.run(
                 comando, capture_output=True, text=True,
                 timeout=self.ajustes.get("timeout_seg", 120),
                 cwd=str(encargo.directorio) if encargo.directorio else None)

@@ -21,6 +21,7 @@ import os
 import shlex
 import subprocess
 import time
+from enrutador import subproceso
 
 # Versión de lo que va dentro de `git` y `pruebas` en la bitácora. Las claves se agregan; no
 # se renombran ni se quitan (el mismo contrato que la bitácora y `estado.json`).
@@ -59,7 +60,7 @@ def correr_prueba(comando, carpeta, tiempo=TIEMPO_PRUEBA):
     registro = {"comando": comando, "argv": argv, "carpeta": str(carpeta)}
     inicio = time.monotonic()
     try:
-        hecho = subprocess.run(argv, cwd=carpeta, stdin=subprocess.DEVNULL,
+        hecho = subproceso.run(argv, cwd=carpeta, stdin=subprocess.DEVNULL,
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                timeout=tiempo)
         registro["codigo"] = hecho.returncode
@@ -83,7 +84,7 @@ def correr_prueba(comando, carpeta, tiempo=TIEMPO_PRUEBA):
 def _git(carpeta, *args):
     """La salida de un git, o None si falla. Sin shell, sin entrada y con tiempo límite."""
     try:
-        hecho = subprocess.run(["git", "-C", str(carpeta), *args], stdin=subprocess.DEVNULL,
+        hecho = subproceso.run(["git", "-C", str(carpeta), *args], stdin=subprocess.DEVNULL,
                                capture_output=True, timeout=20)
     except (OSError, subprocess.TimeoutExpired):
         return None

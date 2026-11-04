@@ -28,6 +28,10 @@
 #   --espera S          segundos que el agente falso se queda trabajando (8)
 #   --volcar-ms N       el board vuelca sus hilos (faulthandler) si su bucle pasa N ms sin latir
 #   --faulthandler-s S  además, faulthandler.dump_traceback_later(S, repeat=True)
+#   --perfil            perfilar (cProfile) los refrescos del board: volcados/perfil.txt
+#   --compilar          compilar la copia (compileall) antes: como una instalación que ya
+#                       arrancó una vez y tiene su __pycache__; sin esto, el primer import de
+#                       cada módulo se compila en el momento y cuenta en lo que se mide
 #   --tope-suite S      segundos máximos de la suite (1800)
 #   --salida DIR        dónde dejar lo que vuelve (/tmp/probar-windows/<rama>)
 #   --conservar         no borrar la copia en el Windows
@@ -46,6 +50,8 @@ PATRON=""
 ESPERA=8
 VOLCAR_MS=0
 FH_S=0
+PERFIL=0
+COMPILAR=0
 TOPE_SUITE=1800
 SALIDA=""
 CONSERVAR=0
@@ -63,6 +69,8 @@ while [ $# -gt 0 ]; do
         --espera) ESPERA=$2; shift ;;
         --volcar-ms) VOLCAR_MS=$2; shift ;;
         --faulthandler-s) FH_S=$2; shift ;;
+        --perfil) PERFIL=1 ;;
+        --compilar) COMPILAR=1 ;;
         --tope-suite) TOPE_SUITE=$2; shift ;;
         --salida) SALIDA=$2; shift ;;
         --conservar) CONSERVAR=1 ;;
@@ -110,7 +118,7 @@ if [ "$EN_SECO" = 1 ]; then
     echo "rama: $RAMA ($REF$( [ "$SUCIO" = 1 ] && echo ', con lo no commiteado'))"
     echo "host: $HOST · carpeta: %TEMP%\\cotejo-prueba\\$NOMBRE · salida: $SALIDA"
     [ "$SOLO" != humo ] && echo "suite: tarea interactiva $TAREA_PROGRAMADA: runtime\\bin\\python.exe -m unittest discover -v -s pruebas${PATRON:+ -p $PATRON} (tope ${TOPE_SUITE}s)"
-    [ "$SOLO" != suite ] && echo "humo: tarea interactiva $TAREA_PROGRAMADA: pythonw humo_windows.py vigilar --espera $ESPERA --volcar-ms $VOLCAR_MS --faulthandler-s $FH_S"
+    [ "$SOLO" != suite ] && echo "humo: tarea interactiva $TAREA_PROGRAMADA: pythonw humo_windows.py vigilar --espera $ESPERA --volcar-ms $VOLCAR_MS --faulthandler-s $FH_S --perfil $PERFIL"
     exit 0
 fi
 
@@ -134,6 +142,10 @@ case "$TEMP_WIN" in *FALTA*) echo "$TEMP_WIN: ¿está Cotejo instalado en $HOST?
 BASE_SCP=$(printf '%s' "$TEMP_WIN" | tr '\\' '/')
 scp -q -o LogLevel=ERROR -o BatchMode=yes "$TAR" "$HOST:$BASE_SCP/rama.tar"
 remoto 'tar -xf (Join-Path $base "rama.tar") -C $codigo; Remove-Item (Join-Path $base "rama.tar")'
+if [ "$COMPILAR" = 1 ]; then
+    echo "→ compilando la copia (compileall)"
+    remoto '& $py -m compileall -q $codigo | Out-Null'
+fi
 
 traer() {   # traer <ruta relativa a la base> <destino>: lo que falte no es un error
     scp -q -r -o LogLevel=ERROR -o BatchMode=yes "$HOST:$BASE_SCP/$1" "$2" 2>/dev/null || true
@@ -192,7 +204,7 @@ if [ "$SOLO" != suite ]; then
     TOPE_HUMO=$(python3 -c "print(int(float('$ESPERA')) + 240)")
     echo "→ humo del board en el escritorio de $HOST (hasta ${TOPE_HUMO}s)"
     set +e
-    en_escritorio vigilar '"--carpeta `"" + (Join-Path $base "humo") + "`" --salida `"" + (Join-Path $base "humo.json") + "`" --espera '"$ESPERA"' --volcar-ms '"$VOLCAR_MS"' --faulthandler-s '"$FH_S"'"' humo.json "$TOPE_HUMO"
+    en_escritorio vigilar '"--carpeta `"" + (Join-Path $base "humo") + "`" --salida `"" + (Join-Path $base "humo.json") + "`" --espera '"$ESPERA"' --volcar-ms '"$VOLCAR_MS"' --faulthandler-s '"$FH_S"' --perfil '"$PERFIL"'"' humo.json "$TOPE_HUMO"
     CODIGO_HUMO=$?
     set -e
     rm -rf "$SALIDA/volcados"

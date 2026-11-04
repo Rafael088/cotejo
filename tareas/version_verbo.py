@@ -22,13 +22,14 @@ from pathlib import Path
 from . import almacen, version as versiones
 from .cli import ESQUEMA, ErrorCLI, cargar, imprimir
 from .modelo import HECHA
+from enrutador import subproceso
 
 ESTADOS = ("pendiente", "en-curso", "por-validar", HECHA)
 
 
 def _git(carpeta, *args):
     try:
-        hecho = subprocess.run(versiones.comando_git(carpeta, *args), stdin=subprocess.DEVNULL,
+        hecho = subproceso.run(versiones.comando_git(carpeta, *args), stdin=subprocess.DEVNULL,
                                capture_output=True, text=True, timeout=10)
     except (OSError, subprocess.TimeoutExpired):
         return None

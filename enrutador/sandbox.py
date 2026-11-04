@@ -54,6 +54,7 @@ import subprocess
 import sys
 from pathlib import Path
 from urllib.parse import urlparse
+from . import subproceso
 
 # Lo que necesita el sandbox de Claude Code en Linux (lo dice el propio Claude cuando faltan).
 DEPENDENCIAS_LINUX = ("bwrap", "socat")
@@ -116,7 +117,7 @@ def disponible(sistema=None, which=shutil.which, probar=None):
 def _probar_bwrap(bwrap):
     """¿Arranca bubblewrap con lo que usa el sandbox (usuario, red y pids aparte)?"""
     try:
-        hecho = subprocess.run([bwrap, "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc",
+        hecho = subproceso.run([bwrap, "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc",
                                 "--unshare-all", "--die-with-parent", "true"],
                                stdin=subprocess.DEVNULL, capture_output=True, timeout=10)
     except (OSError, subprocess.SubprocessError):
@@ -203,7 +204,7 @@ def _unicas(lista):
 
 def _git(repo, *args):
     try:
-        hecho = subprocess.run(["git", "-C", str(repo), *args], stdin=subprocess.DEVNULL,
+        hecho = subproceso.run(["git", "-C", str(repo), *args], stdin=subprocess.DEVNULL,
                                capture_output=True, text=True, timeout=10)
     except (OSError, subprocess.SubprocessError):
         return ""

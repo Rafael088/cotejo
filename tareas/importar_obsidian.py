@@ -28,12 +28,12 @@ import hashlib
 import os
 import re
 import shutil
-import subprocess
 import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import almacen, configuracion, rutas, version
+from enrutador import subproceso
 
 SIN_CLASIFICAR = "sin-clasificar"
 
@@ -99,9 +99,9 @@ def git_init(repo):
     # Como en `worktrees._git`: con la raíz cerca del límite, los archivos de `.git/` ya lo pasan.
     previo = ["-c", "core.longpaths=true"] if rutas.sistema() == "windows" else []
     try:
-        subprocess.run(["git", *previo, "init", "-q", str(repo)], check=True,
-                       capture_output=True, stdin=subprocess.DEVNULL, timeout=60)
-    except (OSError, subprocess.SubprocessError) as error:
+        subproceso.run(["git", *previo, "init", "-q", str(repo)], check=True,
+                       capture_output=True, stdin=subproceso.DEVNULL, timeout=60)
+    except (OSError, subproceso.SubprocessError) as error:
         raise NoSeImporta(f"No pude hacer `git init` en {repo}: {error}",
                           "Créalo a mano con `git init` y vuelve a aplicar.") from None
 

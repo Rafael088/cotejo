@@ -45,6 +45,7 @@ from pathlib import Path
 from tareas import rutas
 
 from . import clientes
+from . import subproceso
 
 TOPE = 15                  # segundos como mucho por CLI
 CADUCA = 6 * 3600          # lo guardado vale seis horas
@@ -134,7 +135,7 @@ def estado_del_cli(nombre, tope=TOPE_ESTADO):
     try:
         # Sesión propia: si tarda, se mata con todo lo que haya lanzado (si no, un hijo que se
         # quede con la salida abierta haría esperar más que el tope).
-        proceso = subprocess.Popen([ejecutable, *argumentos], stdout=subprocess.PIPE,
+        proceso = subproceso.Popen([ejecutable, *argumentos], stdout=subprocess.PIPE,
                                    stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
                                    text=True, env={**os.environ, "NO_COLOR": "1"},
                                    start_new_session=True)
@@ -327,7 +328,7 @@ def preguntar(nombre, tope=TOPE):
     if ejecutable is None:
         return None
     try:
-        hecho = subprocess.run([ejecutable, *PREGUNTA[nombre]], capture_output=True, text=True,
+        hecho = subproceso.run([ejecutable, *PREGUNTA[nombre]], capture_output=True, text=True,
                                timeout=tope, stdin=subprocess.DEVNULL,
                                env={**os.environ, "NO_COLOR": "1"})
     except (OSError, subprocess.SubprocessError):

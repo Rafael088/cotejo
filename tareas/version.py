@@ -23,6 +23,7 @@ import subprocess
 from typing import NamedTuple
 
 from . import almacen, rutas
+from enrutador import subproceso
 
 CLAVE = "version"  # la clave del frontmatter de `proyecto.md`
 INICIAL = "0.1.0"  # la que se pone a un proyecto sin ningún tag
@@ -142,7 +143,7 @@ def tags(raiz):
     """Los tags alcanzables desde HEAD en el repo de `raiz`. Lista vacía si no es un repo, no
     hay commits, no hay git o algo falla: no tener versión publicada no es un error."""
     try:
-        hecho = subprocess.run(comando_git(raiz, "tag", "--list", "--merged", "HEAD"),
+        hecho = subproceso.run(comando_git(raiz, "tag", "--list", "--merged", "HEAD"),
                                stdin=subprocess.DEVNULL, capture_output=True, text=True,
                                timeout=10)
     except (OSError, subprocess.TimeoutExpired):

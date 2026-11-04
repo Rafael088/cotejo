@@ -255,8 +255,10 @@ class Columnas:
             # medio pintar.
             hoy = modelo.hoy_local() if clave == modelo.HECHA else None
             for proyecto in proyectos:
+                # Una que se está lanzando se ve ya en Haciendo (cotejo-72a7di).
+                lanzando = getattr(self, "lanzando", None) or {}
                 tareas = [t for t in list(proyecto.tareas) + list(proyecto.hechas)
-                          if t.columna == clave]
+                          if lanzando.get(t.id, t.columna) == clave]
                 if clave == modelo.HECHA:
                     # El filtro de fechas de Finalizada (v1.2.2): una hecha sin fecha de
                     # cierre solo cuenta en "Todas" (ver `en_filtro_finalizada`).

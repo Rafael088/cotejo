@@ -29,6 +29,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from . import rutas
+from enrutador import subproceso
 
 TOPE_SERVIDOR = 60      # segundos que se espera a que la app responda
 TOPE_PROGRAMA = 8       # sin dirección: si no dice ninguna en este tiempo, es una ventana
@@ -115,7 +116,7 @@ def _rematar_grupo(pgid, espera):
 def _parar_arbol_windows(proceso, espera):
     """Para el proceso y sus descendientes en Windows; `terminate()` solo para al padre."""
     try:
-        subprocess.run(["taskkill", "/PID", str(proceso.pid), "/T", "/F"],
+        subproceso.run(["taskkill", "/PID", str(proceso.pid), "/T", "/F"],
                        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                        stderr=subprocess.DEVNULL, timeout=espera, check=False)
     except (OSError, subprocess.TimeoutExpired):
@@ -202,12 +203,11 @@ class Servidores:
             return Resultado(True, _con_que_esperar("Tu app ya estaba abierta.", como), abrir=url)
         self.carpeta_logs.mkdir(parents=True, exist_ok=True)
         log = self.carpeta_logs / f"{_slug(nombre)}.log"
-        extra = ({"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
-                 if sys.platform == "win32" else {"start_new_session": True})
         with open(log, "w", encoding="utf-8") as salida:
             try:
-                proceso = subprocess.Popen(argv, cwd=str(donde), stdin=subprocess.DEVNULL,
-                                           stdout=salida, stderr=subprocess.STDOUT, **extra)
+                proceso = subproceso.Popen(argv, cwd=str(donde), stdin=subprocess.DEVNULL,
+                                           stdout=salida, stderr=subprocess.STDOUT,
+                                           start_new_session=True)
             except OSError as error:
                 return Resultado(False, f"Tu app no arrancó: {error.strerror or error}.",
                                  log=str(log))

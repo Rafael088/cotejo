@@ -20,6 +20,7 @@ from unittest import mock
 import apoyo  # noqa: F401  (pone la raíz del repo en sys.path)
 
 import test_pestana_inicio as base
+from enrutador import procesos
 from test_despacho_board import FALSO, FOTO_CON_HUECO, git
 from test_despacho_board import esperar as esperar_hilo
 from test_tarea_del_maestro import TEXTO as TEXTO_DEL_MAESTRO
@@ -28,6 +29,7 @@ if base.HAY_GTK:
     from gi.repository import Gtk
     from enrutador import bitacora as despachos, capacidad, despacho_board
     from tareas import bitacora, estado, lanzados, preparacion, retomar, worktrees
+    from tareas.app import segundo_plano
     from tareas.app.piezas import TareaArrastrada
 
 HAY_GIT = shutil.which("git") is not None
@@ -95,8 +97,13 @@ class LanzarDesdeElBoard(base.PestanaInicio):
         hecho = self.board.al_soltar(None, TareaArrastrada(fila.proyecto, fila.tarea), 0, 0,
                                      destino, Gtk.Box())
         self.assertTrue(hecho)
-        base.girar(100)
+        self.esperar_despacho()
         return fila
+
+    def esperar_despacho(self):
+        """El despacho corre en segundo plano (cotejo-72a7di): se espera a que vuelva."""
+        self.assertTrue(self.esperar(lambda: segundo_plano.en_marcha() == 0, 15000))
+        base.girar(100)
 
     def linea(self, marca):
         return next(l for l in self.nota.read_text(encoding="utf-8").splitlines() if marca in l)
@@ -136,6 +143,7 @@ class LanzarDesdeElBoard(base.PestanaInicio):
         dialogo.force_close()
         with mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):
             self.board.al_responder_modelo(dialogo, "lanzar", fila.proyecto, fila.tarea)
+            self.esperar_despacho()
         self.assertEqual(self.fila("web ligera", "en-curso").tarea.agente, elegido)
         self.assertIsInstance(lanzados.leer(ident)["pid"], int)
 
@@ -180,7 +188,7 @@ class LanzarDesdeElBoard(base.PestanaInicio):
         # Que siga trabajando mientras se mira: si vuelve sin entregar, vuelve a Pendiente.
         with mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):
             self.board.al_responder_modelo(dialogo, "lanzar", fila.proyecto, fila.tarea)
-        base.girar(100)
+            self.esperar_despacho()
         self.assertIn(f"#en-curso #agente/{elegido}", self.linea("^cotejo-sin"))
         self.assertEqual(lanzados.leer("cotejo-sin")["modelo"], elegido)
         asignaciones = [json.loads(l) for l in bitacora.ARCHIVO.read_text().splitlines()
@@ -349,7 +357,7 @@ class LanzarDesdeElBoard(base.PestanaInicio):
                 self.assertTrue(vivo.vida_retomar.get_visible())
                 self.argv_falso.unlink()
                 vivo.vida_retomar.emit("clicked")
-            base.girar(200)
+            self.esperar_despacho()
             nuevo = lanzados.leer("cotejo-con")
             self.assertNotEqual(nuevo["pid"], primero)
             self.assertIn("#en-curso #agente/sonnet", self.linea("^cotejo-con"))
@@ -496,6 +504,7 @@ class LanzarDesdeElBoard(base.PestanaInicio):
             reintentar = self.buscar_boton(ficha.get_child(), "Reintentar")
             self.assertIsNotNone(reintentar)
             reintentar.emit("clicked")
+            self.esperar_despacho()
         self.assertTrue(self.esperar(lambda: self.argv_falso.exists()))
         self.assertIn("#en-curso", self.linea("^cotejo-con"))
         self.assertEqual(lanzados.leer("cotejo-con")["lanzamientos"], 2)
@@ -540,7 +549,7 @@ class LanzarDesdeElBoard(base.PestanaInicio):
             with mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):
                 self.board.al_responder_motivo(None, "devolver", entrada, fila.proyecto,
                                                fila.tarea, "en-curso")
-            base.girar(100)
+                self.esperar_despacho()
             self.assertTrue(any("la retoma con lo que pediste cambiar" in a for a in avisos),
                             avisos)
         self.assertIn("#en-curso", self.linea("^cotejo-con"))
@@ -579,11 +588,8 @@ class LanzarDesdeElBoard(base.PestanaInicio):
 
 
 def _vive(pid):
-    try:
-        os.kill(pid, 0)
-    except OSError:
-        return False
-    return True
+    # No `os.kill(pid, 0)`: en Windows es CTRL_C_EVENT a toda la consola.
+    return procesos.vivo(pid)
 
 
 if __name__ == "__main__":

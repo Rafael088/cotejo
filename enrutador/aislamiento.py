@@ -32,6 +32,7 @@ import shutil
 import subprocess
 import sys
 import uuid
+from . import subproceso
 
 
 def disponible():
@@ -44,7 +45,7 @@ def disponible():
     if not sys.platform.startswith("linux") or shutil.which("systemd-run") is None:
         return False
     try:
-        resultado = subprocess.run(
+        resultado = subproceso.run(
             ["systemctl", "--user", "--no-pager", "is-system-running"],
             capture_output=True, text=True, timeout=5)
     except (OSError, subprocess.TimeoutExpired):
