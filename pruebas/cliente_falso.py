@@ -109,6 +109,11 @@ def main():
         {"type": "text", "text": "Voy a mirar el repo."},
         {"type": "tool_use", "name": "Bash", "input": {"command": "git status"}}]}})
     esperar()
+    if os.environ.get("FALSO_PERMISO"):
+        print("! permission requested: external_directory "
+              "(/home/rafael/Imágenes/*, /tmp/opencode/*); auto-rejecting", flush=True)
+        print("Error: The user rejected permission to use this specific tool call.", flush=True)
+        return int(os.environ.get("FALSO_CODIGO", "1"))
     if os.environ.get("FALSO_ENTREGAR"):
         entregar(os.environ["FALSO_ENTREGAR"])
         time.sleep(float(os.environ.get("FALSO_ESPERA_FIN", "0")))

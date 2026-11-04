@@ -15,6 +15,8 @@ Las fases que se guardan y el `estado` que se lee de ellas:
 
 - `lanzado` → `trabajando` mientras el proceso vive; `murio` si ya no está y nadie lo vio volver.
 - `terminado` → `terminado`, con su `codigo`.
+- `esperando-permiso` → `esperando-permiso`: el cliente pidió acceso externo y terminó; la
+  tarea sigue en Haciendo hasta que la persona lo acepte desde su ficha.
 - `en-espera` → `en-espera`: se pidió lanzarla y no había hueco (`cotejo capacidad` dijo 0).
   La tarea sigue en Pendiente y nada la lanza sola: se vuelve a arrastrar cuando haya hueco.
   El board lo enseña con un chip «En espera» en la carta y el motivo en su ficha.
@@ -45,6 +47,7 @@ from . import rutas, worktrees
 ESQUEMA = 1
 
 LANZADO, TERMINADO, EN_ESPERA, DETENIDO = "lanzado", "terminado", "en-espera", "detenido"
+ESPERANDO_PERMISO = "esperando-permiso"
 TRABAJANDO, MURIO = "trabajando", "murio"
 # Cómo acabó un lanzamiento (`fin.como`, cotejo-o253bs): entregó, terminó sin entregar (y se
 # devolvió a Pendiente), o la tarea ya estaba en otra parte (la bloqueó o la movió alguien).
@@ -220,7 +223,7 @@ def estado(registro):
     salida = {k: registro.get(k) for k in ("id", "proyecto", "cliente", "modelo", "pid", "log",
                                           "worktree", "directorio", "ts", "codigo",
                                           "terminado_ts", "reanudacion", "fin", "rechazo",
-                                          "murio")}
+                                          "murio", "permiso", "permisos_aprobados")}
     salida["por_que"] = ""
     if fase == EN_ESPERA:
         cual = EN_ESPERA
@@ -234,6 +237,9 @@ def estado(registro):
     elif fase == DETENIDO:
         cual = DETENIDO
         salida["por_que"] = registro.get("motivo") or ""
+    elif fase == ESPERANDO_PERMISO:
+        cual = ESPERANDO_PERMISO
+        salida["por_que"] = (registro.get("permiso") or {}).get("detalle") or ""
     else:
         cual = fase or ""
     salida["estado"] = cual
@@ -383,4 +389,6 @@ def situacion(e, ahora=None):
         return f"Se detuvo a {quien}" + (f": {e['por_que']}" if e.get("por_que") else "")
     if cual == EN_ESPERA:
         return f"En espera: {e['por_que']}"
+    if cual == ESPERANDO_PERMISO:
+        return f"{quien} espera que aceptes el acceso que solicitó"
     return ""

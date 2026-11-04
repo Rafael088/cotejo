@@ -14,6 +14,7 @@ entrega anterior y lo que se pidió cambiar; nunca hay dos vivos y nada se relan
 import json
 import os
 import sys
+import tempfile
 import time
 import unittest
 from pathlib import Path
@@ -181,6 +182,41 @@ class FinYRechazo(ConClienteFalso):
         self.assertIn("no tenía permiso para guardar su trabajo", motivo)
         self.assertNotIn("código 1", motivo)
         self.assertNotIn("Permission denied", motivo)
+
+    def test_un_permiso_solicitado_espera_en_haciendo_y_al_aceptarlo_continua(self):
+        avisos = []
+        primero, terminado = self.lanzar_con(FALSO_PERMISO=1, FALSO_CODIGO=1)
+        self.assertTrue(esperar(lambda: terminado, 20))
+
+        # No se devuelve: la persona puede decidir desde la ficha y el trabajo se conserva.
+        self.assertEqual(self.columna(), "en-curso")
+        registro = lanzados.leer(ID)
+        self.assertEqual(registro["fase"], lanzados.ESPERANDO_PERMISO)
+        self.assertEqual(registro["permiso"]["tipo"], "external_directory")
+        self.assertEqual(registro["permiso"]["rutas"],
+                         ["/home/rafael/Imágenes/*", "/tmp/opencode/*"])
+        self.assertEqual(terminado[0]["estado"], lanzados.ESPERANDO_PERMISO)
+        self.assertIn("espera que aceptes", lanzados.situacion(terminado[0]))
+        self.assertFalse([a for a in self.operaciones() if a.get("operacion") == "soltar"])
+        self.assertFalse(vive(primero["pid"]))
+
+        # Aceptar lanza una continuación en el mismo worktree, sin mover la tarea.
+        self.argv_falso.unlink()
+        with mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):
+            segundo = despacho_board.aceptar_permiso(ID, al_terminar=avisos.append)
+        self.assertEqual(segundo["estado"], lanzados.TRABAJANDO)
+        self.assertNotEqual(segundo["pid"], primero["pid"])
+        self.assertEqual(self.columna(), "en-curso")
+        nuevo = lanzados.leer(ID)
+        self.assertEqual(nuevo["permisos_aprobados"],
+                         ["/home/rafael/Imágenes/*", "/tmp/opencode/*"])
+        self.assertEqual(nuevo["worktree"]["ruta"], registro["worktree"]["ruta"])
+        self.assertIn("La persona aceptó el acceso", nuevo["prompt"])
+        self.assertEqual(nuevo["lanzamientos"], 2)
+
+    def test_aceptar_solo_vale_para_una_peticion_pendiente(self):
+        with self.assertRaises(despacho_board.NoSePuede):
+            despacho_board.aceptar_permiso(ID)
 
     def test_el_que_muere_con_el_board_cerrado_se_recoge_una_vez(self):
         procesos = []
@@ -413,6 +449,16 @@ class CausaEnLlano(unittest.TestCase):
         self.assertEqual(despacho_board.causa_en_llano(
             ["rate limit", "permission denied"]),
             "no tenía permiso para guardar su trabajo")
+
+    def test_una_peticion_del_lanzamiento_anterior_no_se_vuelve_a_pedir(self):
+        with tempfile.NamedTemporaryFile("w+", encoding="utf-8") as log:
+            log.write("! permission requested: external_directory (/fuera/*); auto-rejecting\n")
+            log.flush()
+            desde = log.tell()
+            log.write("La continuación ya tiene acceso.\n")
+            log.flush()
+            self.assertIsNone(despacho_board.permiso_solicitado(
+                {"log": log.name, "log_desde": desde}))
 
 
 class RechazoVigente(unittest.TestCase):
