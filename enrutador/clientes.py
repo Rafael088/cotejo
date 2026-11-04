@@ -14,9 +14,11 @@ Dos formas de nombrar el modelo, igual que en `niveles.Nivel`: Claude Code entie
 proveedor (`opencode-go/kimi-k2.7-code`).
 """
 
+import contextlib
 import json
 import os
 import shutil
+import threading
 import tempfile
 from dataclasses import dataclass
 
@@ -241,7 +243,12 @@ class Cliente:
 
     @property
     def instalado(self):
-        return shutil.which(self.ejecutable) is not None
+        foto = getattr(_foto, "vista", None)
+        if foto is None:
+            return shutil.which(self.ejecutable) is not None
+        if self.ejecutable not in foto:
+            foto[self.ejecutable] = shutil.which(self.ejecutable) is not None
+        return foto[self.ejecutable]
 
 
 def _ruta_de_permiso(ruta):
@@ -583,6 +590,27 @@ def de(nombre):
             f"No sé cómo lanzar el cliente «{nombre}». Los que sé: "
             f"{', '.join(sorted(CLIENTES))}.")
     return cliente
+
+
+_foto = threading.local()
+
+
+@contextlib.contextmanager
+def una_foto():
+    """Dentro, «¿está instalado?» se mira una sola vez por ejecutable (en este hilo).
+
+    Un repintado del board pregunta por los clientes una docena de veces (la banda, el
+    maestro, los menús de cada carta) y cada `shutil.which` recorre el PATH entero: en Windows,
+    con PATHEXT, eran ~250 ms de cada refresco en el hilo de GTK (cotejo-72a7di, perfil del
+    humo). Un refresco es una foto: lo que se instale a mitad sale en el siguiente."""
+    if getattr(_foto, "vista", None) is not None:
+        yield
+        return
+    _foto.vista = {}
+    try:
+        yield
+    finally:
+        _foto.vista = None
 
 
 def instalados():

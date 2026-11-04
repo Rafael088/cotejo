@@ -206,8 +206,8 @@ def resumen_legible(datos):
         + (f", despacho {b['despacho_ms']} ms" if b.get("despacho_ms") is not None else "")
         + ")",
         f"colgada={b.get('colgada')}",
-        *([f"refrescos {r.get('cuantos')} (peor {r.get('peor_ms')} ms)"]
-          for r in [datos.get("refrescos")] if r),
+        *[f"refrescos {r.get('cuantos')} (peor {r.get('peor_ms')} ms)"
+          for r in [datos.get("refrescos")] if r],
         f"quedan al salir {quedan}",
         f"volcados {len(datos.get('volcados', []))}",
     ]
