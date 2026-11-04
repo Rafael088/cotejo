@@ -377,7 +377,9 @@ Claude `--allowedTools Bash(cotejo:*)`, `Edit`/`Write` vedados y `--setting-sour
 queda en solo lectura); OpenCode `edit: deny` y `bash` todo `deny` salvo `cotejo`, sin MCP ni
 plugins del proyecto; Gemini `run_shell_command(cotejo)` y sin lo de su `.gemini/`; Antigravity en
 la jaula de bwrap o no habla. Todos con la config vedada y el mismo `cotejo` del board. El panel
-(`tareas/app/conversacion.py`, `PanelMaestro`) es un `Gtk.Revealer` sobre el pie; «Repartir» va
+(`tareas/app/conversacion.py`, `PanelMaestro`) flota en el overlay del tablero (cotejo-w8vteb):
+no ocupa sitio en la caja, así que abrirlo no empuja ni redimensiona las columnas; se arrastra
+por su título, se minimiza y se cierra sin parar al maestro. «Repartir» va
 por `mover`. La CLI es la misma: `cotejo maestro --proyecto X --pedido "…"` espera la respuesta.
 `pruebas/test_maestro_conversacion.py` (sin GTK) y `pruebas/test_barra_maestro.py` (board de
 verdad) lo prueban de punta a punta con `cliente_falso.py`.

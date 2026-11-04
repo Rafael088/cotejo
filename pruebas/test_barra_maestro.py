@@ -43,7 +43,8 @@ def board_falso(seleccion="Uno"):
     for metodo in ("barra_maestro", "al_ejecutar_maestro", "hablar_al_maestro", "poner_maestro",
                    "menu_maestro", "cliente_del_maestro", "elegir_cliente_maestro",
                    "modelo_del_maestro", "definiciones_maestro", "elegir_modelo_maestro",
-                   "crear_conversacion", "ver_conversacion", "cerrar_conversacion",
+                   "crear_conversacion", "montar_conversacion", "ver_conversacion",
+                   "cerrar_conversacion", "poner_en_su_sitio", "ajustar_conversacion",
                    "pintar_conversacion", "proyecto_del_maestro", "parar_reloj_maestro",
                    "tic_maestro", "maestro_contesto", "parar_maestro", "olvidar_maestro",
                    "repartir_del_maestro"):
@@ -134,7 +135,7 @@ class BarraMaestro(unittest.TestCase):
         self.assertEqual(hablar.call_args.args, ("Uno", "apunta que falta el login", "claude"))
         self.assertIn("al_terminar", hablar.call_args.kwargs)
         self.assertEqual(falso.entrada_maestro.get_text(), "")
-        self.assertTrue(falso.panel_maestro.get_reveal_child())
+        self.assertTrue(falso.panel_maestro.get_visible())
 
     def test_el_boton_dice_que_envia_cuando_hay_texto(self):
         falso = board_falso()
@@ -152,10 +153,53 @@ class BarraMaestro(unittest.TestCase):
         falso = board_falso()
         with mock.patch("enrutador.verbos.hablar_maestro") as hablar:
             falso.al_ejecutar_maestro()
-            self.assertTrue(falso.panel_maestro.get_reveal_child())
+            self.assertTrue(falso.panel_maestro.get_visible())
             falso.al_ejecutar_maestro()
-            self.assertFalse(falso.panel_maestro.get_reveal_child())
+            self.assertFalse(falso.panel_maestro.get_visible())
         hablar.assert_not_called()
+
+    def test_cerrar_la_conversacion_no_para_al_maestro(self):
+        """Cerrar solo oculta el panel: el turno sigue y su respuesta se guarda."""
+        falso = board_falso()
+        falso.ver_conversacion()
+        with mock.patch("enrutador.conversacion.parar") as parar:
+            falso.cerrar_conversacion()
+        parar.assert_not_called()
+        self.assertFalse(falso.panel_maestro.get_visible())
+
+    def test_minimizar_deja_la_cabecera_y_no_corta_al_maestro(self):
+        falso = board_falso()
+        falso.ver_conversacion()
+        panel = falso.panel_maestro
+        with mock.patch("enrutador.conversacion.parar") as parar:
+            panel.boton_minimizar.emit("clicked")
+        parar.assert_not_called()
+        self.assertTrue(panel.minimizado)
+        self.assertFalse(panel.scroll.get_visible())      # los mensajes se esconden
+        self.assertTrue(panel.titulo.get_visible())       # la cabecera se queda
+        panel.boton_minimizar.emit("clicked")
+        self.assertFalse(panel.minimizado)
+        self.assertTrue(panel.scroll.get_visible())
+
+    def test_el_boton_restaura_la_conversacion_minimizada_antes_de_cerrarla(self):
+        falso = board_falso()
+        falso.ver_conversacion()
+        falso.panel_maestro.minimizar()
+        falso.al_ejecutar_maestro()                       # sin texto: no cierra a la primera
+        self.assertTrue(falso.panel_maestro.get_visible())
+        self.assertFalse(falso.panel_maestro.minimizado)
+        falso.al_ejecutar_maestro()                       # ya entera: ahora sí la cierra
+        self.assertFalse(falso.panel_maestro.get_visible())
+
+    def test_el_panel_se_mueve_y_no_se_sale_del_tablero(self):
+        falso = board_falso()
+        panel = falso.panel_maestro
+        self.assertFalse(panel.movido)
+        panel.mover_a(40, 30)
+        self.assertEqual((panel.get_margin_start(), panel.get_margin_top()), (40, 30))
+        self.assertTrue(panel.movido)                     # movido a mano: deja de recentrarse
+        panel.mover_a(-100, -100)
+        self.assertEqual((panel.get_margin_start(), panel.get_margin_top()), (0, 0))
 
     def test_si_el_maestro_se_niega_lo_escrito_se_queda(self):
         from tareas.cli import ErrorCLI
@@ -272,7 +316,7 @@ class ConversacionEnElBoard(base.PestanaInicio):
         with mock.patch.dict(os.environ, entorno):
             self.board.entrada_maestro.set_text(texto)
             self.board.entrada_maestro.emit("activate")
-            self.assertTrue(self.board.panel_maestro.get_reveal_child())
+            self.assertTrue(self.board.panel_maestro.get_visible())
             ok = base.girar_hasta(lambda: len(self.turnos()) >= 2
                                   and self.board.panel_maestro.boton_parar is None, tope=15)
         self.assertTrue(ok, self.turnos())
@@ -308,6 +352,95 @@ class ConversacionEnElBoard(base.PestanaInicio):
         # El botón no vuelve a salir para repartirlas otra vez.
         self.assertTrue(self.turnos()[-1].get("repartido"))
         self.assertFalse(self.board.panel_maestro.botones_repartir[0].get_sensitive())
+
+    # --- el panel flotante (cotejo-w8vteb) ----------------------------------------------------
+
+    def abrir_conversacion(self):
+        self.elegir_faro()
+        self.board.ver_conversacion()
+        base.girar(120)
+        return self.board.panel_maestro
+
+    @staticmethod
+    def caja(widget, dentro):
+        ok, r = widget.compute_bounds(dentro)
+        return (r.get_x(), r.get_y(), r.get_width(), r.get_height()) if ok else None
+
+    def test_el_panel_flota_en_el_overlay_y_no_mueve_las_columnas(self):
+        self.elegir_faro()
+        columna = self.board.columnas["pendiente"][0]
+        antes = self.caja(columna, self.board.encima)
+        panel = self.abrir_conversacion()
+        self.assertIs(panel.get_parent(), self.board.encima)
+        self.assertTrue(panel.get_visible())
+        # Enseñarlo no empuja ni redimensiona: la columna está exactamente donde estaba.
+        self.assertEqual(self.caja(columna, self.board.encima), antes)
+        caja = self.caja(panel, self.board.encima)
+        self.assertIsNotNone(caja)
+        self.assertGreaterEqual(caja[0], 0)
+        self.assertGreaterEqual(caja[1], 0)
+        self.assertLessEqual(caja[0] + caja[2], self.board.encima.get_width())
+        self.assertLessEqual(caja[1] + caja[3], self.board.encima.get_height())
+
+    def test_el_panel_se_arrastra_dentro_del_tablero(self):
+        panel = self.abrir_conversacion()
+        panel.mover_a(20, 30)
+        base.girar(60)
+        caja = self.caja(panel, self.board.encima)
+        self.assertEqual((round(caja[0]), round(caja[1])), (20, 30))
+        self.assertTrue(panel.movido)
+        # Fuera del tablero no: se queda pegado al borde.
+        panel.mover_a(-500, -500)
+        base.girar(60)
+        caja = self.caja(panel, self.board.encima)
+        self.assertEqual((round(caja[0]), round(caja[1])), (0, 0))
+
+    def test_minimizar_deja_solo_la_cabecera(self):
+        panel = self.abrir_conversacion()
+        panel.boton_minimizar.emit("clicked")
+        base.girar(60)
+        self.assertTrue(panel.minimizado)
+        self.assertFalse(panel.scroll.get_visible())
+        self.assertTrue(panel.titulo.get_visible())
+        # El maestro sigue disponible: la barra del pie no se toca.
+        self.assertTrue(self.board.barra_del_maestro.get_visible())
+        panel.boton_minimizar.emit("clicked")
+        self.assertTrue(panel.scroll.get_visible())
+
+    def test_cerrar_y_volver_a_abrir_el_panel_no_pierde_la_conversacion(self):
+        self.elegir_faro()
+        self.hablar("¿cómo va?", FALSO_RESPUESTA="Todo en orden.")
+        self.board.cerrar_conversacion()
+        self.assertFalse(self.board.panel_maestro.get_visible())
+        self.board.ver_conversacion()
+        base.girar(60)
+        self.assertTrue(self.board.panel_maestro.get_visible())
+        todo = base.textos(self.board.panel_maestro)
+        self.assertIn("¿cómo va?", todo)
+        self.assertIn("Todo en orden.", todo)
+
+    def test_cerrar_mientras_contesta_no_corta_el_turno(self):
+        self.elegir_faro()
+        freno = self.nota.with_name("freno-maestro")
+        with mock.patch.dict(os.environ, {"FALSO_ESPERA_HASTA": str(freno),
+                                          "FALSO_RESPUESTA": "Sigo aquí."}):
+            self.board.entrada_maestro.set_text("¿cómo va?")
+            self.board.entrada_maestro.emit("activate")
+            self.assertTrue(self.board.panel_maestro.get_visible())
+            with mock.patch("enrutador.conversacion.parar") as parar:
+                self.board.cerrar_conversacion()
+            parar.assert_not_called()
+            self.assertFalse(self.board.panel_maestro.get_visible())
+            # El maestro sigue trabajando aunque su panel esté cerrado.
+            from enrutador import conversacion
+            self.assertTrue(conversacion.leer("Faro").get("en_curso"))
+            freno.write_text("", encoding="utf-8")
+            ok = base.girar_hasta(lambda: len(self.turnos()) >= 2, tope=15)
+        self.assertTrue(ok, self.turnos())
+        # Al volver a abrirlo, la respuesta está esperando.
+        self.board.ver_conversacion()
+        base.girar(60)
+        self.assertIn("Sigo aquí.", base.textos(self.board.panel_maestro))
 
 
 if __name__ == "__main__":
