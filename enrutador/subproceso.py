@@ -28,6 +28,7 @@ importa.
 """
 
 import functools
+import ntpath
 import os
 import shutil
 import subprocess
@@ -47,7 +48,53 @@ def en_windows():
     return sys.platform == "win32"
 
 
-def sin_consola(argv):
+def _variable(entorno, nombre, defecto=""):
+    """Lee una variable como Windows: sus nombres no distinguen mayúsculas."""
+    if entorno is None:
+        entorno = os.environ
+    for clave, valor in entorno.items():
+        if str(clave).upper() == nombre:
+            return str(valor)
+    return defecto
+
+
+def _camino(entorno=None):
+    return (_variable(entorno, "PATH", os.defpath),
+            _variable(entorno, "PATHEXT", ".COM;.EXE;.BAT;.CMD"))
+
+
+@functools.lru_cache(maxsize=32)
+def _which(programa, path, pathext):
+    """`which`, cacheado por el entorno que de verdad recibirá el hijo.
+
+    Al simular Windows en las pruebas, `os.pathsep` sigue siendo el de Linux. El segundo
+    intento explícito también hace que el `.cmd` falso del PATH se encuentre en ese caso y
+    respeta un PATHEXT propio del `env`, no solo el del proceso padre.
+    """
+    try:
+        ruta = shutil.which(programa, path=path)
+    except (OSError, ValueError, AttributeError, TypeError, NameError):
+        # `NameError` solo aparece al simular win32 sobre Linux: allí no existe `_winapi`.
+        ruta = None
+    if ruta:
+        return ruta
+    try:
+        extensiones = pathext.replace(";", os.pathsep).split(os.pathsep)
+        for extension in extensiones:
+            extension = extension.strip()
+            if extension:
+                # En Windows el disco no distingue `.CMD` de `.cmd`; el Linux de la prueba
+                # sí, aunque `sys.platform` esté simulado.
+                for candidata in dict.fromkeys((extension, extension.lower())):
+                    ruta = shutil.which(programa + candidata, mode=os.F_OK, path=path)
+                    if ruta:
+                        return ruta
+    except (OSError, ValueError, AttributeError, TypeError, NameError):
+        pass
+    return None
+
+
+def sin_consola(argv, entorno=None):
     """¿Puede ir `argv` con `DETACHED_PROCESS`? Solo si es uno de `SIN_CONSOLA` y lo que se va a
     ejecutar es su `.exe`: un `git.cmd` lo correría un `cmd.exe` sin consola, y el `git.exe` que
     él lanzara abriría la suya."""
@@ -59,18 +106,40 @@ def sin_consola(argv):
         return nombre[:-4] in SIN_CONSOLA
     if nombre not in SIN_CONSOLA:
         return False
-    return _es_exe(programa, os.environ.get("PATH", ""), os.environ.get("PATHEXT", ""))
+    return _es_exe(programa, *_camino(entorno))
 
 
 @functools.lru_cache(maxsize=32)
 def _es_exe(programa, _path, _pathext):
     # Con caché por PATH: en Windows `which` prueba cada extensión en cada carpeta, y el board
     # lanza ocho git seguidos al soltar una carta.
-    try:
-        ruta = shutil.which(programa)
-    except (OSError, ValueError, AttributeError):
-        return False  # sin saber qué es: la consola invisible, que vale para todo
+    ruta = _which(programa, _path, _pathext)
     return bool(ruta) and ruta.lower().endswith(".exe")
+
+
+def _resolver(argv, entorno=None):
+    """Resuelve el primer elemento de un argv como lo haría el PATH del hijo en Windows.
+
+    `CreateProcess` no aplica PATHEXT al nombre que recibe. Además, un `.cmd`/`.bat` necesita
+    el intérprete de comandos; `shell=True` es el camino de `subprocess` que lo prepara y cita.
+    Devuelve `(argv, shell)`; fuera de los argv de lista no cambia nada.
+    """
+    if not en_windows() or isinstance(argv, (str, bytes)) or not argv:
+        return argv, False
+    try:
+        programa = os.fspath(argv[0])
+    except TypeError:
+        return argv, False
+    if not isinstance(programa, str):
+        return argv, False
+    # Una ruta o una extensión expresa ya dicen exactamente qué quiso lanzar quien llamó.
+    if ntpath.dirname(programa) or ntpath.splitext(programa)[1]:
+        return argv, False
+    ruta = _which(programa, *_camino(entorno))
+    if not ruta:
+        return argv, False
+    resuelto = [ruta, *argv[1:]]
+    return resuelto, ruta.lower().endswith((".cmd", ".bat"))
 
 
 def opciones(kwargs, argv=None):
@@ -79,7 +148,7 @@ def opciones(kwargs, argv=None):
     if not en_windows():
         return kwargs
     flags = kwargs.pop("creationflags", 0) or 0
-    flags |= DETACHED_PROCESS if sin_consola(argv) else CREATE_NO_WINDOW
+    flags |= DETACHED_PROCESS if sin_consola(argv, kwargs.get("env")) else CREATE_NO_WINDOW
     if kwargs.pop("start_new_session", False):
         flags |= CREATE_NEW_PROCESS_GROUP
     kwargs["creationflags"] = flags
@@ -90,24 +159,42 @@ def _argv(args, kwargs):
     return args[0] if args else kwargs.get("args")
 
 
+def _preparar(args, kwargs):
+    """Copia la llamada y sustituye su argv sin mutar la lista ni el dict de quien llama."""
+    kwargs = dict(kwargs)
+    argv, shell = _resolver(_argv(args, kwargs), kwargs.get("env"))
+    if args:
+        args = (argv, *args[1:])
+    elif "args" in kwargs:
+        kwargs["args"] = argv
+    if shell:
+        kwargs["shell"] = True
+    return args, opciones(kwargs, argv)
+
+
 # Se busca `subprocess.X` al llamar, no al importar: así un `mock.patch("subprocess.run")` de
 # las pruebas sigue valiendo para todo el paquete.
 
 def run(*args, **kwargs):
-    return subprocess.run(*args, **opciones(kwargs, _argv(args, kwargs)))
+    args, kwargs = _preparar(args, kwargs)
+    return subprocess.run(*args, **kwargs)
 
 
 def Popen(*args, **kwargs):
-    return subprocess.Popen(*args, **opciones(kwargs, _argv(args, kwargs)))
+    args, kwargs = _preparar(args, kwargs)
+    return subprocess.Popen(*args, **kwargs)
 
 
 def call(*args, **kwargs):
-    return subprocess.call(*args, **opciones(kwargs, _argv(args, kwargs)))
+    args, kwargs = _preparar(args, kwargs)
+    return subprocess.call(*args, **kwargs)
 
 
 def check_call(*args, **kwargs):
-    return subprocess.check_call(*args, **opciones(kwargs, _argv(args, kwargs)))
+    args, kwargs = _preparar(args, kwargs)
+    return subprocess.check_call(*args, **kwargs)
 
 
 def check_output(*args, **kwargs):
-    return subprocess.check_output(*args, **opciones(kwargs, _argv(args, kwargs)))
+    args, kwargs = _preparar(args, kwargs)
+    return subprocess.check_output(*args, **kwargs)
