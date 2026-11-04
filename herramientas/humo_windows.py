@@ -67,6 +67,10 @@ MAX_VOLCADOS = 30
 HUECO_APUNTADO_MS = 100   # los huecos del bucle de más de esto se apuntan uno a uno
 ESCRITO_POR_EL_AGENTE = "agente-falso.log"
 TOPE_DESPACHO_S = 120   # lo más que se espera a que vuelva el despacho en segundo plano
+# Lo que se espera, con el board ya fuera, a que se vaya lo que colgaba de él (cotejo-cz80zj):
+# `gdbus.exe`, el bus de sesión que GLib arranca solo en Windows, sale sin nadie conectado tras
+# su espera de inactividad (3 s en GLib). Lo que siga vivo pasado esto, se quedó.
+GRACIA_S = 10
 
 
 # --- lo que no depende de Windows (lo prueba test_probar_windows.py en Linux) -------------------
@@ -231,6 +235,9 @@ def resumen_legible(datos):
           f"→{len(agente.get('vivos', []))} vivos, pregunta={agente.get('pregunto')}"
           for _ in [0] if agente.get("respuesta")],
         f"quedan al salir {quedan}",
+        *[("se fueron solos tras salir: "
+           + ", ".join(f"{n} {s} s" for n, s in sorted(tardaron.items())))
+          for tardaron in [datos.get("al_salir", {}).get("tardaron_s")] if tardaron],
         f".tmp en lanzados {len(datos.get('temporales', []))}",
         f"volcados {len(datos.get('volcados', []))}",
     ]
@@ -446,6 +453,34 @@ def esperar_a(condicion, tope_s, paso=0.2):
     return condicion()
 
 
+def seguir_hasta_que_se_vayan(foto, vistos, gracia_s=GRACIA_S, paso=0.25, reloj=time.monotonic,
+                              dormir=time.sleep):
+    """Con el board ya fuera: lo que colgaba de él y seguía vivo, y cuánto tardó en irse.
+
+    `foto()` es la lista de procesos de ahora; `vistos`, {pid: nombre} de todo lo que colgó del
+    board. Devuelve `al_instante` (lo vivo al empezar), `procesos` (lo vivo tras `gracia_s`),
+    `tardaron_s` ({nombre: segundos} de lo que se fue mientras tanto) y `vivos` (la última
+    foto, {pid: nombre})."""
+    def vivos_ahora():
+        return {p["pid"]: p["nombre"] for p in foto()}
+
+    inicio = reloj()
+    vivos = vivos_ahora()
+    pendientes = {pid: n for pid, n in vistos.items() if vivos.get(pid) == n}
+    al_instante = [{"pid": pid, "nombre": n} for pid, n in pendientes.items()]
+    tardaron = {}
+    while pendientes and reloj() - inicio < gracia_s:
+        dormir(paso)
+        vivos = vivos_ahora()
+        for pid, nombre in list(pendientes.items()):
+            if vivos.get(pid) != nombre:
+                tardaron[nombre] = round(reloj() - inicio, 2)
+                del pendientes[pid]
+    return {"al_instante": al_instante,
+            "procesos": [{"pid": pid, "nombre": n} for pid, n in pendientes.items()],
+            "tardaron_s": tardaron, "vivos": vivos}
+
+
 def arbol_del_agente(procesos, vistos):
     """Lo del agente que colgaba del board y sigue vivo: su `cmd.exe`, su `python.exe` y lo
     que ellos lanzaron (sin los `git`, que vienen y van, ni los `conhost`)."""
@@ -503,12 +538,21 @@ def vigilar(args):
         agente_antes = arbol_del_agente(win.procesos(), muestreo.vistos)
         win.cerrar(ventana["hwnd"])
         esperar_a(lambda: board.poll() is not None, 10)
-        time.sleep(3)
-        vivos = {p["pid"]: p["nombre"] for p in win.procesos()}
-        datos["al_cerrar"] = {
-            "board_vivo": board.poll() is None,
-            "procesos": [{"pid": pid, "nombre": nombre} for pid, nombre in muestreo.vistos.items()
-                         if vivos.get(pid) == nombre]}
+        if board.poll() is None:
+            # Cerrar solo ocultó la ventana (Linux, o una rama de antes): lo que cuelga sigue.
+            time.sleep(3)
+            vivos = {p["pid"]: p["nombre"] for p in win.procesos()}
+            datos["al_cerrar"] = {
+                "board_vivo": True,
+                "procesos": [{"pid": pid, "nombre": nombre}
+                             for pid, nombre in muestreo.vistos.items()
+                             if vivos.get(pid) == nombre]}
+        else:
+            muestreo.parar.set()
+            muestreo.join(2)
+            seguido = seguir_hasta_que_se_vayan(win.procesos, dict(muestreo.vistos))
+            vivos = seguido.pop("vivos")
+            datos["al_cerrar"] = {"board_vivo": False, **seguido}
         if cerrar_trabajando:
             datos["al_cerrar"]["agente"] = {
                 "respuesta": cerrar_trabajando,
@@ -520,16 +564,30 @@ def vigilar(args):
             board.wait(20)
         except subprocess.TimeoutExpired:
             pass
-        muestreo.parar.set()
-        muestreo.join(2)
-        muestreo.una()
-        despues = win.procesos()
-        vivos = {p["pid"]: p["nombre"] for p in despues}
-        quedan = [{"pid": pid, "nombre": nombre} for pid, nombre in muestreo.vistos.items()
-                  if vivos.get(pid) == nombre]
+        if muestreo.is_alive():
+            muestreo.parar.set()
+            muestreo.join(2)
+            muestreo.una()
         if board.poll() is None:
+            seguido = {"al_instante": [], "procesos": [], "tardaron_s": {}}
+        elif datos["al_cerrar"].get("board_vivo") is False:
+            seguido = {k: v for k, v in datos["al_cerrar"].items()
+                       if k in ("al_instante", "tardaron_s")}
+            vivos = {p["pid"]: p["nombre"] for p in win.procesos()}
+            seguido["procesos"] = [{"pid": pid, "nombre": n} for pid, n in muestreo.vistos.items()
+                                   if vivos.get(pid) == n]
+        else:
+            seguido = seguir_hasta_que_se_vayan(win.procesos, dict(muestreo.vistos))
+            seguido.pop("vivos")
+        despues = win.procesos()
+        quedan = seguido["procesos"]
+        if board.poll() is None:
+            vivos = {p["pid"]: p["nombre"] for p in despues}
+            quedan = [{"pid": pid, "nombre": nombre} for pid, nombre in muestreo.vistos.items()
+                      if vivos.get(pid) == nombre]
             quedan.insert(0, {"pid": board.pid, "nombre": "pythonw.exe (el board)"})
-        datos["al_salir"] = {"board_salio": board.poll() is not None, "procesos": quedan}
+        datos["al_salir"] = {"board_salio": board.poll() is not None, **seguido,
+                             "procesos": quedan}
         datos["conhost"].update({
             "despues": contar(despues, "conhost.exe"), "max_durante": muestreo.max_conhost,
             "nuevos": len(muestreo.conhost_nuevos),

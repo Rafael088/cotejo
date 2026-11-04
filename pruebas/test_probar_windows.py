@@ -110,6 +110,34 @@ class Entorno(unittest.TestCase):
         self.assertEqual(humo.arbol_del_agente(procesos, vistos),
                          [{"pid": 2, "nombre": "cmd.exe"}, {"pid": 3, "nombre": "python.exe"}])
 
+    def test_seguir_lo_que_queda_dice_cuanto_tardo_cada_uno(self):
+        reloj = [0.0]
+        fotos = [  # gdbus se va a los 3 s; el python, nunca
+            [{"pid": 7, "nombre": "gdbus.exe"}, {"pid": 8, "nombre": "python.exe"}],
+            [{"pid": 7, "nombre": "gdbus.exe"}, {"pid": 8, "nombre": "python.exe"}],
+            [{"pid": 8, "nombre": "python.exe"}]]
+
+        def foto():
+            return fotos[min(int(reloj[0] // 1.5), len(fotos) - 1)]
+
+        def dormir(s):
+            reloj[0] += s
+
+        hecho = humo.seguir_hasta_que_se_vayan(foto, {7: "gdbus.exe", 8: "python.exe",
+                                                      9: "git.exe"},
+                                               gracia_s=10, paso=1.5, reloj=lambda: reloj[0],
+                                               dormir=dormir)
+        self.assertEqual(hecho["al_instante"], [{"pid": 7, "nombre": "gdbus.exe"},
+                                                {"pid": 8, "nombre": "python.exe"}])
+        self.assertEqual(hecho["procesos"], [{"pid": 8, "nombre": "python.exe"}])
+        self.assertEqual(hecho["tardaron_s"], {"gdbus.exe": 3.0})
+
+    def test_sin_nada_vivo_no_espera(self):
+        dormido = []
+        hecho = humo.seguir_hasta_que_se_vayan(lambda: [], {7: "gdbus.exe"},
+                                               dormir=dormido.append)
+        self.assertEqual((hecho["procesos"], dormido), ([], []))
+
     def test_la_nota_trae_una_tarea_con_modelo_y_su_id(self):
         nota = humo.nota_humo()
         linea = next(l for l in nota.splitlines() if l.startswith("- [ ]"))
@@ -209,6 +237,8 @@ class Resumen(unittest.TestCase):
                                  {"pid": 3, "nombre": "python.exe"}], "vivos": []}},
             temporales=[])
         linea = humo.resumen_legible(datos)
+        datos["al_salir"] = {"procesos": [], "tardaron_s": {"gdbus.exe": 3.1}}
+        self.assertIn("se fueron solos tras salir: gdbus.exe 3.1 s", humo.resumen_legible(datos))
         for trozo in ("al cerrar: board vivo=False, quedan 0",
                       "cerrar trabajando (parar): agente 2→0 vivos", ".tmp en lanzados 0"):
             self.assertIn(trozo, linea)
