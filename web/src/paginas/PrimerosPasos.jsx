@@ -88,6 +88,19 @@ export default function PrimerosPasos() {
         </div>
       </section>
 
+      <section className="seccion" aria-labelledby="t-seguridad-windows">
+        <div className="seccion__cabeza">
+          <h2 id="t-seguridad-windows" className="titulo-2">Seguridad en Windows.</h2>
+          <p className="parrafo">
+            En Windows, el agente que lanza Cotejo no queda encerrado dentro de la carpeta del
+            proyecto. Puede acceder a otros archivos con los permisos de tu cuenta. Cotejo limita
+            los permisos que concede OpenCode y bloquea desde el PATH algunos comandos peligrosos,
+            pero esas barreras no son un encierro. El board te lo recuerda la primera vez que
+            lanza un agente.
+          </p>
+        </div>
+      </section>
+
       <section className="seccion" aria-labelledby="t-cada">
         <div className="seccion__cabeza">
           <h2 id="t-cada" className="titulo-2">Cada día.</h2>
