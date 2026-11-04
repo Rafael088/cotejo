@@ -172,7 +172,7 @@ se renombre. `cotejo init` crea el esqueleto entero; qué carpeta le toca a cada
 
 | Verbo | Qué devuelve |
 | --- | --- |
-| `cotejo contexto [--tope N]` | Objetivo, stack y siguiente paso de `proyecto.md`; tareas por estado; las `--tope` decisiones y problemas vigentes más recientes (10 por defecto, con el total real); y los temas que existen. Pensado para costar menos de 1k tokens |
+| `cotejo contexto [--tope N]` | Objetivo, stack y siguiente paso de `proyecto.md`; si ese paso es anterior a la última versión publicada, lo omite y lo marca como desactualizado. También trae tareas por estado; las `--tope` decisiones y problemas vigentes más recientes (10 por defecto, con el total real); y los temas que existen. Pensado para costar menos de 1k tokens |
 | `cotejo buscar [--tipo] [--temas] [--estado] [--desde] [--texto] [--limite]` | Una línea por entrada (id, tipo, título, resumen): el camino barato para decidir qué vale la pena leer entero |
 | `cotejo leer <id>` | La entrada completa, con su cuerpo y su `version` (hash); de un recurso, la ruta de su archivo y si existe, nunca el contenido |
 

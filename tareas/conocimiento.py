@@ -355,13 +355,16 @@ def frescura_proyecto(raiz, campos, entrada=None, hoy=None, limite=None):
     esa fecha tiene más de `limite` días (`contexto.dias_viejo`, 14 por defecto) y, cuando el
     repo tiene tags, además es anterior al último tag: lo que se ha editado después de la
     última versión no se acusa. Devuelve `{"actualizado": fecha|"", "dias": n|None, "tag":
-    nombre|"", "viejos": [campos], "pistas": [texto]}`. Nunca levanta y nunca frena nada.
+    nombre|"", "anterior_al_tag": bool, "viejos": [campos], "pistas": [texto]}`. Nunca
+    levanta y nunca frena nada. `anterior_al_tag` no depende del umbral de días: permite que
+    `contexto` no presente como vigente un siguiente paso de antes de la última publicación.
     """
     limite = dias_viejo() if limite is None else limite
     hoy = hoy or _hoy()
     ruta = Path(raiz) / almacen.CARPETA / almacen.ARCHIVO_PROYECTO
     fecha = _git_fecha(raiz, "--", str(ruta)) or (_fecha_de(entrada)[:10] if entrada else "")
-    resultado = {"actualizado": fecha or "", "dias": None, "tag": "", "viejos": [], "pistas": []}
+    resultado = {"actualizado": fecha or "", "dias": None, "tag": "",
+                 "anterior_al_tag": False, "viejos": [], "pistas": []}
     try:
         dias = (hoy - datetime.date.fromisoformat(fecha)).days
     except ValueError:
@@ -370,6 +373,7 @@ def frescura_proyecto(raiz, campos, entrada=None, hoy=None, limite=None):
     tag = _ultimo_tag(raiz)
     if tag:
         resultado["tag"] = tag[0]
+        resultado["anterior_al_tag"] = fecha < tag[1]
     if dias <= limite or (tag and tag[1] <= fecha):
         return resultado
     resultado["viejos"] = [c for c in ("objetivo", "stack", "siguiente_paso") if campos.get(c)]
@@ -425,6 +429,15 @@ def cmd_contexto(args):
     frescura = frescura_proyecto(alm.raiz, proyecto, entrada_proyecto)
     if frescura["actualizado"]:
         proyecto["actualizado"] = frescura["actualizado"]
+    if proyecto["siguiente_paso"] and frescura["anterior_al_tag"]:
+        # Un paso anterior a lo ya publicado describe trabajo que dejó de ser el siguiente.
+        # Se conserva la clave vacía por compatibilidad y se explica por qué se omitió, sin
+        # volver a propagar el texto obsoleto a agentes o interfaces.
+        proyecto["siguiente_paso"] = ""
+        proyecto["siguiente_paso_desactualizado"] = {
+            "actualizado": frescura["actualizado"],
+            "ultima_version_publicada": frescura["tag"],
+        }
 
     temas = {}
     for entrada in entradas:

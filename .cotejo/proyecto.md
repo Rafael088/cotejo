@@ -49,8 +49,8 @@ Decidida el 2026-10-02: Cotejo pasa a ser la herramienta para gestionar de punta
 - Planning v1.2 (almacén .cotejo/ en cada repo, verbos de contexto, importadores de Obsidian y Notion) y hoja de ruta hasta la 2.0: [[cotejo-planning-v1-2|Cotejo - Planning v1.2]]
 
 ## ⏭️ Siguiente paso
-> [!tip] Dónde retomar — 2026-10-08
-> **La 1.2.0, 1.2.1 y 1.2.2 están publicadas** (la 1.2.2: filtro de fechas en Finalizada y `cotejo limpiar`). Ahora: **1.2.3 «Memoria que no miente y arranque barato»**. Ya mergeado: frescura en `contexto`, decisiones importadas aparte, aviso en `entregar`. Faltan: perfil MCP núcleo, descripciones de tool más cortas, skill corta y README. Después: decidir si el dot del laboratorio entra al board GTK; las interfaces nuevas del board (CotejoBoard 7.3.2: home con grafo, banda de proyectos, barra del Maestro); y en paralelo la 1.2.4 (`cotejo version`, `cotejo release`) y la 1.2.5 (buscar por relevancia). Planning: la nota «Cotejo - Arreglos v1.2» del vault.
+> [!tip] Dónde retomar — 2026-11-04
+> **La 1.3.0 está publicada.** Ahora: cerrar la **1.3.1**, centrada en que Windows funcione de punta a punta sin terminales, bloqueos ni procesos huérfanos, y en bajar el contexto que pagan los agentes en cada tarea. Después de integrar los arreglos, repetir la prueba completa en Windows real y publicar la 1.3.1. Las tareas de la 1.3.2 y la 1.4.0 ya están separadas en el tablero.
 
 **Lo que no se toca sin decisión consciente:**
 
