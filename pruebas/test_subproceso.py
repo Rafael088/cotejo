@@ -99,6 +99,10 @@ class TodoPasaPorElHelper(unittest.TestCase):
 
 class ElHelper(unittest.TestCase):
 
+    def setUp(self):
+        subproceso._es_exe.cache_clear()
+        self.addCleanup(subproceso._es_exe.cache_clear)
+
     def en(self, plataforma):
         return mock.patch.object(subproceso.sys, "platform", plataforma)
 

@@ -27,6 +27,8 @@ flag: el `cmd` intermedio no se ve, y `start` abre la ventana del programa, que 
 importa.
 """
 
+import functools
+import os
 import shutil
 import subprocess
 import sys
@@ -57,6 +59,13 @@ def sin_consola(argv):
         return nombre[:-4] in SIN_CONSOLA
     if nombre not in SIN_CONSOLA:
         return False
+    return _es_exe(programa, os.environ.get("PATH", ""), os.environ.get("PATHEXT", ""))
+
+
+@functools.lru_cache(maxsize=32)
+def _es_exe(programa, _path, _pathext):
+    # Con caché por PATH: en Windows `which` prueba cada extensión en cada carpeta, y el board
+    # lanza ocho git seguidos al soltar una carta.
     ruta = shutil.which(programa)
     return bool(ruta) and ruta.lower().endswith(".exe")
 
