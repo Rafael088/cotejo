@@ -80,6 +80,9 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
         self.comprobaciones = {}
         # Las tareas que se están integrando en segundo plano (proyectos del Inicio).
         self.integrando = set()
+        # Las que se están lanzando en segundo plano (`lanzar.py`, cotejo-72a7di): {id: la
+        # columna en la que se ven mientras tanto}.
+        self.lanzando = {}
 
         # Alias de personas (nombres adicionales que cuentan como humanos)
         config_enrutador = enrutador_config.cargar()

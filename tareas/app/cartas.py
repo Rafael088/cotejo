@@ -52,6 +52,10 @@ class Cartas:
         if espera:
             # Se pidió lanzarla y no había hueco (`lanzar.py`): sigue aquí hasta que se mueva otra vez.
             arriba.append(chip("En espera", "aviso", "chip-espera", tooltip=espera))
+        if tarea.id in (getattr(self, "lanzando", None) or {}):
+            # Pasada a Haciendo: su despacho corre en segundo plano (`lanzar.py`).
+            arriba.append(chip("Lanzando…", "agente", "chip-integrando",
+                               tooltip="Preparando su worktree y arrancando el agente"))
         if tarea.id in getattr(self, "integrando", ()):
             # Aprobada en un proyecto del Inicio: su merge corre en segundo plano.
             arriba.append(chip("Integrando…", "recargar", "chip-integrando",

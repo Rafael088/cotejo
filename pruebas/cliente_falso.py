@@ -15,6 +15,10 @@ Para el maestro (cotejo-9ybn1a): con `FALSO_CREAR=<texto>` y `FALSO_PROYECTO=<no
 `cotejo crear` como lo haría el maestro al apuntar una tarea; `FALSO_RESPUESTA` es el texto de su
 `result` (por defecto «Listo.»), y con `FALSO_PLANO=1` escribe solo ese texto, sin JSON, como
 `codex exec` u `opencode run` en su salida.
+
+Con `FALSO_ESCRIBIR=<archivo>`, mientras espera añade una línea a ese archivo cada
+`FALSO_ESCRIBIR_CADA` segundos (0,5 por defecto): un agente que va tocando `.cotejo/` (o el
+vault) mientras trabaja, para medir que el board no se traba al refrescar (cotejo-72a7di).
 """
 
 import json
@@ -34,9 +38,29 @@ def esperar():
     hasta = os.environ.get("FALSO_ESPERA_HASTA")
     if hasta:
         while not os.path.exists(hasta):
+            escribir()
             time.sleep(0.01)
         return
-    time.sleep(float(os.environ.get("FALSO_ESPERA", "0")))
+    fin = time.monotonic() + float(os.environ.get("FALSO_ESPERA", "0"))
+    while time.monotonic() < fin:
+        escribir()
+        time.sleep(max(0.0, min(0.05, fin - time.monotonic())))
+
+
+_ultima_escritura = [0.0]
+
+
+def escribir():
+    """Con `FALSO_ESCRIBIR`, una línea más en ese archivo cada `FALSO_ESCRIBIR_CADA` segundos."""
+    destino = os.environ.get("FALSO_ESCRIBIR")
+    if not destino:
+        return
+    ahora = time.monotonic()
+    if ahora - _ultima_escritura[0] < float(os.environ.get("FALSO_ESCRIBIR_CADA", "0.5")):
+        return
+    _ultima_escritura[0] = ahora
+    with open(destino, "a", encoding="utf-8") as archivo:
+        archivo.write(f"{time.time():.3f} el agente falso sigue trabajando\n")
 
 
 def entregar(tarea_id):

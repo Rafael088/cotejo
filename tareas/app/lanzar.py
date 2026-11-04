@@ -32,9 +32,12 @@ motivo. Devolver de Para comprobar a Haciendo con motivo (`relanzar_al_rechazar`
 agente nuevo en el mismo worktree con lo que se pidió cambiar.
 """
 
+import traceback
+
 from gi.repository import Adw, GLib, Gtk, Pango
 
 from .. import bitacora, lanzados, modelo, retomar, senal_vida
+from . import segundo_plano
 from .comun import ESPACIADO_SM, ESPACIADO_XS, animaciones_activas, id_corto
 from .escala import px
 from .piezas import icono
@@ -183,35 +186,80 @@ class EnVivo(Gtk.Box):
 class Lanzar:
     """Los métodos de `Board` que lanzan una tarea al moverla y la siguen en su ficha."""
 
-    def lanzar_al_mover(self, proyecto, tarea, forzar=False):
-        """Pendiente → Haciendo, a mano. True si ya se encargó (lanzó, preguntó o quedó en
-        espera); False si toca moverla como siempre (una tarea de persona). Con `forzar`, sin
-        mirar la capacidad (solo esa vez: «Lanzar de todos modos»)."""
+    def lanzar_al_mover(self, proyecto, tarea, forzar=False, si_es_de_persona=None):
+        """Pendiente → Haciendo, a mano. Con `forzar`, sin mirar la capacidad (solo esa vez:
+        «Lanzar de todos modos»).
+
+        Lo lento (leer la tarea con `cotejo`, el worktree con `git`, arrancar el cliente) corre
+        fuera del hilo de GTK (`segundo_plano.py`, cotejo-72a7di): la carta pasa a Haciendo al
+        instante con «Lanzando…» y la respuesta (lanzó, pregunta el modelo, quedó en espera o
+        no se pudo) llega cuando vuelve. Mientras, esa carta no se vuelve a mover. Si resulta
+        ser de una persona se llama `si_es_de_persona()`; sin él, se mueve como siempre."""
+        if self.esta_lanzando(tarea):
+            return True
         from enrutador import despacho_board as db
-        try:
-            estado = db.lanzar(
-                tarea.id, al_terminar=lambda e: GLib.idle_add(self.agente_terminado, e),
-                forzar=forzar)
-        except db.EsDeUnaPersona:
+        tablero = self
+
+        def trabajo():
+            return db.lanzar(tarea.id, al_terminar=lambda e: GLib.idle_add(
+                tablero.vigente().agente_terminado, e), forzar=forzar)
+
+        def al_volver(estado, error):
+            self.lanzando.pop(tarea.id, None)
+            self.vigente().respuesta_al_lanzar(proyecto, tarea, estado, error,
+                                               si_es_de_persona)
+
+        self.empezar_a_lanzar(tarea)
+        segundo_plano.en_segundo_plano(trabajo, al_volver)
+        return True
+
+    def esta_lanzando(self, tarea):
+        """¿Su despacho sigue en marcha? Entonces se dice y no se hace nada más."""
+        if tarea.id not in self.lanzando:
+            return False
+        self.aviso("Todavía la estoy lanzando: espera un momento.")
+        return True
+
+    def empezar_a_lanzar(self, tarea):
+        """La carta se ve en Haciendo con «Lanzando…» mientras su despacho corre."""
+        self.lanzando[tarea.id] = EN_CURSO
+        self.pintar_columnas()
+
+    def vigente(self):
+        """El board abierto: si se rehízo (tema, tamaño) a mitad de un despacho, la respuesta
+        va al nuevo."""
+        actual = getattr(self.app, "board", None)
+        return actual if actual is not None else self
+
+    def respuesta_al_lanzar(self, proyecto, tarea, estado, error, si_es_de_persona=None):
+        """Lo que se le dice a la persona cuando vuelve el despacho (ya en el hilo de GTK)."""
+        from enrutador import despacho_board as db
+        if isinstance(error, db.EsDeUnaPersona):
             self.aviso("Es una tarea para una persona: la paso a Haciendo sin lanzar ningún "
                        "agente.")
-            return False
-        except db.FaltaModelo as falta:
-            self.preguntar_modelo(proyecto, tarea, falta.propuesta, falta.razon)
-            return True
-        except db.SinHueco as sin_hueco:
-            self.aviso(str(sin_hueco))
-            self.app.refrescar()
-            return True
-        except db.NoSePuede as error:
+            if si_es_de_persona is not None:
+                si_es_de_persona()
+            else:
+                self.escribir_movimiento(proyecto, tarea, EN_CURSO)
+            return
+        if isinstance(error, db.FaltaModelo):
+            self.pintar_columnas()          # la carta vuelve a Pendiente mientras se pregunta
+            self.preguntar_modelo(proyecto, tarea, error.propuesta, error.razon)
+            return
+        if isinstance(error, db.SinHueco):
+            self.aviso(str(error))
+        elif isinstance(error, db.NoSePuede):
             self.aviso(f"No la lancé: {error}")
-            self.app.refrescar()
-            return True
-        self.foco_tras_pintar = estado.get("id") or tarea.id
-        self.aviso(f"{estado.get('modelo') or 'El agente'} empezó a trabajar en "
-                   f"{id_corto(estado.get('id') or tarea.id)}")
+        elif error is not None:
+            # Lo que nadie esperaba: antes salía por la consola como una excepción de GTK; ahora
+            # también se le dice a la persona, y la carta vuelve a donde estaba.
+            traceback.print_exception(type(error), error, error.__traceback__)
+            self.aviso(f"No la lancé: {error}")
+        else:
+            self.foco_tras_pintar = estado.get("id") or tarea.id
+            self.aviso(f"{estado.get('modelo') or 'El agente'} empezó a trabajar en "
+                       f"{id_corto(estado.get('id') or tarea.id)}")
         self.app.refrescar()
-        return True
 
     # --- pausar: Haciendo → Pendiente a mano (cotejo-z7ma7r) --------------------------------
 
@@ -247,8 +295,7 @@ class Lanzar:
             self.app.refrescar()
             return
         bitacora.anotar("mover", proyecto, actual, de=tarea.columna, a=modelo.PENDIENTE)
-        if not self.lanzar_al_mover(proyecto, actual):
-            self.app.refrescar()
+        self.lanzar_al_mover(proyecto, actual, si_es_de_persona=self.app.refrescar)
 
     def seccion_pausada(self, tarea):
         """En la ficha de una tarea pausada (en Pendiente, con un agente anterior): qué queda y
@@ -375,25 +422,47 @@ class Lanzar:
         """Devuelta a Haciendo con motivo: se mueve (con el «rechazar» de siempre) y se lanza
         un agente nuevo en su worktree con el encargo, la entrega anterior y lo que se pidió
         cambiar. Vale también si la entregó otro camino (`despachar`, un agente a mano) con tal
-        de que esté asignada a un agente (cotejo-2sxw7p). False si es de una persona o no tiene
-        agente (y se mueve como siempre)."""
+        de que esté asignada a un agente (cotejo-2sxw7p); si es de una persona o no tiene
+        agente, se mueve como siempre.
+
+        Como al lanzar, corre fuera del hilo de GTK (cotejo-72a7di); solo escribir el
+        movimiento vuelve un momento a él (`segundo_plano.en_hilo_principal`)."""
+        if self.esta_lanzando(tarea):
+            return True
         from enrutador import despacho_board as db
-        try:
-            estado = db.rechazar(
-                tarea.id, motivo,
-                lambda: self.escribir_movimiento(proyecto, tarea, EN_CURSO, motivo),
-                al_terminar=lambda e: GLib.idle_add(self.agente_terminado, e))
-        except db.NoSePuede as error:
+        tablero = self
+
+        def mover():
+            return segundo_plano.en_hilo_principal(
+                lambda: tablero.vigente().escribir_movimiento(proyecto, tarea, EN_CURSO, motivo))
+
+        def trabajo():
+            return db.rechazar(tarea.id, motivo, mover, al_terminar=lambda e: GLib.idle_add(
+                tablero.vigente().agente_terminado, e))
+
+        def al_volver(estado, error):
+            self.lanzando.pop(tarea.id, None)
+            self.vigente().respuesta_al_rechazar(proyecto, tarea, motivo, estado, error)
+
+        self.empezar_a_lanzar(tarea)
+        segundo_plano.en_segundo_plano(trabajo, al_volver)
+        return True
+
+    def respuesta_al_rechazar(self, proyecto, tarea, motivo, estado, error):
+        from enrutador import despacho_board as db
+        if error is not None:
+            if not isinstance(error, db.NoSePuede):
+                traceback.print_exception(type(error), error, error.__traceback__)
             self.aviso(f"No lancé otro agente: {error}")
             self.app.refrescar()
-            return True
+            return
         if estado is None:
-            return False
+            self.escribir_movimiento(proyecto, tarea, EN_CURSO, motivo)
+            return
         self.foco_tras_pintar = tarea.id
         self.aviso(f"{estado.get('modelo') or 'Otro agente'} la retoma con lo que pediste "
                    f"cambiar, en el mismo worktree")
         self.app.refrescar()
-        return True
 
     def agente_terminado(self, estado):
         """El agente volvió (ya en el hilo de la interfaz): se avisa y se repinta."""
@@ -460,8 +529,10 @@ class Lanzar:
             self.aviso(f"No pude asignarla: cambió en {error}")
             self.app.refrescar()
             return
-        if respuesta == "yo" or not self.lanzar_al_mover(proyecto, actual):
+        if respuesta == "yo":
             self.escribir_movimiento(proyecto, actual, EN_CURSO)
+        else:
+            self.lanzar_al_mover(proyecto, actual)
 
     # --- lo que se ve -----------------------------------------------------------------------
 
@@ -497,8 +568,7 @@ class Lanzar:
         se borra sola al lanzarse (el registro nuevo pisa al de espera)."""
         if popover is not None:
             popover.popdown()
-        if not self.lanzar_al_mover(proyecto, tarea, forzar=True):
-            self.app.refrescar()
+        self.lanzar_al_mover(proyecto, tarea, forzar=True, si_es_de_persona=self.app.refrescar)
 
     def seccion_en_espera(self, motivo, al_quitar=None, al_lanzar_igual=None):
         """En la ficha de una tarea en espera: por qué no se lanzó, y qué hacer (lanzarla igual

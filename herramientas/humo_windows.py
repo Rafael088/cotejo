@@ -58,6 +58,8 @@ TOPE_MS = 5000          # lo más que se espera a que la ventana atienda un WM_N
 MUESTREO_S = 0.1
 UMBRALES_MS = (100, 250, 1000)
 MAX_VOLCADOS = 30
+ESCRITO_POR_EL_AGENTE = "agente-falso.log"
+TOPE_DESPACHO_S = 120   # lo más que se espera a que vuelva el despacho en segundo plano
 
 
 # --- lo que no depende de Windows (lo prueba test_probar_windows.py en Linux) -------------------
@@ -105,7 +107,11 @@ def entorno_del_humo(carpeta, espera_s, volcar_ms=0, faulthandler_s=0):
                "COTEJO_WORKTREES": str(carpeta / "wt"),
                "COTEJO_MOTOR": "agente",
                "COTEJO_NO_PREGUNTAR_CLI": "1",
-               "FALSO_ESPERA": str(espera_s)}
+               "FALSO_ESPERA": str(espera_s),
+               # Mientras trabaja, el agente falso escribe en la carpeta que vigila el board:
+               # así el humo mide también los refrescos (cotejo-72a7di).
+               "FALSO_ESCRIBIR": str(carpeta / "vault" / "01-Proyectos" / ESCRITO_POR_EL_AGENTE),
+               "FALSO_ESCRIBIR_CADA": "0.5"}
     if volcar_ms:
         entorno["COTEJO_HUMO_VOLCAR_MS"] = str(int(volcar_ms))
     if faulthandler_s:
@@ -172,6 +178,7 @@ def resumen_bloqueo(muestras, colgada_vista, bucle=None, soltar_en=None):
     resumen["bucle_peor_hueco_ms"] = bucle.get("peor_hueco_ms")
     resumen["bucle_peor_hueco_desde_soltar_ms"] = bucle.get("peor_hueco_desde_soltar_ms")
     resumen["soltar_ms"] = bucle.get("soltar_ms")
+    resumen["despacho_ms"] = bucle.get("despacho_ms")
     return resumen
 
 
@@ -193,7 +200,9 @@ def resumen_legible(datos):
         f"del board {c.get('nuevos_del_board')})",
         f"terminales nuevas {t.get('ventanas_nuevas')}",
         f"peor bloqueo {b.get('peor_ms')} ms (bucle {b.get('bucle_peor_hueco_ms')} ms, "
-        f"soltar la carta {b.get('soltar_ms')} ms)",
+        f"soltar la carta {b.get('soltar_ms')} ms"
+        + (f", despacho {b['despacho_ms']} ms" if b.get("despacho_ms") is not None else "")
+        + ")",
         f"colgada={b.get('colgada')}",
         f"quedan al salir {quedan}",
         f"volcados {len(datos.get('volcados', []))}",
@@ -584,9 +593,26 @@ def board(args):
             hecho = b.al_soltar(None, TareaArrastrada(fila.proyecto, fila.tarea), 0, 0,
                                 "en-curso", Gtk.Box())
             estado["bucle"]["soltar_ms"] = round((time.monotonic() - antes) * 1000, 1)
+            estado["agente"]["soltar_ok"] = bool(hecho)
+        except Exception:
+            guardar(fase="fallo", error=traceback.format_exc())
+            return False
+        # El despacho corre en segundo plano desde cotejo-72a7di: se espera a que vuelva (o, en
+        # una rama de antes, ya volvió y esto ve el registro a la primera).
+        GLib.timeout_add(100, lanzado, time.monotonic())
+        return False
+
+    def lanzado(desde):
+        try:
             registro = lanzados.leer(TAREA) or {}
+            en_marcha = bool(getattr(app.board, "lanzando", None))
+            if en_marcha and time.monotonic() - desde < TOPE_DESPACHO_S:
+                return True
+            estado["bucle"]["despacho_ms"] = round((time.monotonic() - estado["soltar_en"])
+                                                   * 1000, 1)
             guardar(fase="trabajando", agente={
-                "lanzado": isinstance(registro.get("pid"), int), "soltar_ok": bool(hecho),
+                "lanzado": isinstance(registro.get("pid"), int),
+                "soltar_ok": estado["agente"].get("soltar_ok"),
                 "pid": registro.get("pid"), "fase": registro.get("fase"),
                 "motivo": registro.get("motivo")})
             if not estado["agente"]["lanzado"]:

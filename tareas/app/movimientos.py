@@ -86,6 +86,11 @@ class Movimientos:
         """
         # A Para comprobar solo se llega entregando (cotejo-2sxw7p): una tarea de un agente no
         # se pasa a mano, y se le dice a la persona por qué en vez de no hacer nada.
+        # Mientras se lanza en segundo plano (cotejo-72a7di) la carta ya se ve en Haciendo, pero
+        # en la nota todavía no lo está: no se mueve hasta que vuelva su despacho.
+        if tarea.id in (getattr(self, "lanzando", None) or {}):
+            self.aviso("Todavía la estoy lanzando: espera un momento.")
+            return
         bloqueo = modelo.aviso_comprobar_a_mano(tarea, destino, self.alias_persona)
         if bloqueo:
             self.aviso(bloqueo, segundos=8, boton="La hago yo",
