@@ -192,7 +192,9 @@ class EjecutarConGuardas(Entorno):
                           TimeoutExpired=subprocess.TimeoutExpired)
         falso.Popen.return_value = proceso
         popen = falso.Popen
+        # El Popen de verdad lo hace `enrutador/subproceso.py`: se le cambia también allí.
         with mock.patch.object(claude_cli, "subprocess", falso), \
+                mock.patch.object(claude_cli.subproceso, "subprocess", falso), \
                 mock.patch("shutil.which", side_effect=lambda p, **k: real(p, **k)
                            or "/usr/bin/" + p):
             resultado = self.motor().ejecutar(self.encargo(cliente))

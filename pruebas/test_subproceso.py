@@ -94,8 +94,7 @@ class TodoPasaPorElHelper(unittest.TestCase):
 
     def test_el_suelto_lleva_el_flag_a_mano(self):
         texto = (RAIZ / SUELTO).read_text(encoding="utf-8")
-        self.assertIn("CREATE_NO_WINDOW = 0x08000000", texto)
-        self.assertEqual(subproceso.CREATE_NO_WINDOW, 0x08000000)
+        self.assertIn(f"DETACHED_PROCESS = 0x{subproceso.DETACHED_PROCESS:08x}", texto)
 
 
 class ElHelper(unittest.TestCase):
@@ -122,6 +121,35 @@ class ElHelper(unittest.TestCase):
         self.assertEqual(kwargs["creationflags"], 0x10 | subproceso.CREATE_NO_WINDOW)
         self.assertNotIn("start_new_session", kwargs)
 
+    def test_git_va_sin_consola(self):
+        # Sin conhost.exe por llamada: un agente lanzado desde el board hacía ocho.
+        with self.en("win32"), mock.patch.object(subproceso.shutil, "which",
+                                                 return_value=r"C:\Git\cmd\git.EXE"):
+            for argv in (["git", "status"], [r"C:\Git\cmd\git.exe", "status"], ["taskkill"]):
+                with self.subTest(argv):
+                    kwargs = subproceso.opciones({}, argv)
+                    self.assertEqual(kwargs["creationflags"], subproceso.DETACHED_PROCESS)
+            kwargs = subproceso.opciones({"start_new_session": True}, ["git", "difftool"])
+        self.assertEqual(kwargs["creationflags"],
+                         subproceso.DETACHED_PROCESS | subproceso.CREATE_NEW_PROCESS_GROUP)
+
+    def test_un_git_cmd_o_cualquier_otro_lleva_consola_invisible(self):
+        # Un .cmd lo corre cmd.exe: sin consola, el git.exe que lanza abriría la suya. Y los
+        # demás (clientes, python, cmd) lanzan hijos de consola que heredan la invisible.
+        with self.en("win32"), mock.patch.object(subproceso.shutil, "which",
+                                                 return_value=r"C:\x\git.cmd"):
+            for argv in (["git", "status"], ["claude", "-p"], ["cmd", "/c", "start", ""],
+                         [sys.executable, "-c", ""], "git status", None):
+                with self.subTest(argv):
+                    kwargs = subproceso.opciones({}, argv)
+                    self.assertEqual(kwargs["creationflags"], subproceso.CREATE_NO_WINDOW)
+
+    def test_el_programa_se_lee_de_args_o_de_la_palabra_args(self):
+        with self.en("win32"), mock.patch.object(subprocess, "run") as real, \
+                mock.patch.object(subproceso.shutil, "which", return_value="git.exe"):
+            subproceso.run(args=["git", "status"])
+        self.assertEqual(real.call_args.kwargs["creationflags"], subproceso.DETACHED_PROCESS)
+
     def test_fuera_de_windows_no_toca_nada(self):
         for plataforma in ("linux", "darwin"):
             with self.en(plataforma):
@@ -139,9 +167,9 @@ class ElHelper(unittest.TestCase):
         for nombre in ("run", "Popen", "call", "check_call", "check_output"):
             with self.subTest(nombre), self.en("win32"), \
                     mock.patch.object(subprocess, nombre) as real:
-                getattr(subproceso, nombre)(["git", "status"], cwd="x", start_new_session=True)
+                getattr(subproceso, nombre)(["claude", "-p"], cwd="x", start_new_session=True)
             real.assert_called_once_with(
-                ["git", "status"], cwd="x",
+                ["claude", "-p"], cwd="x",
                 creationflags=subproceso.CREATE_NO_WINDOW | subproceso.CREATE_NEW_PROCESS_GROUP)
 
     def test_un_patch_de_subprocess_sigue_valiendo(self):
@@ -175,6 +203,16 @@ class EnWindows(unittest.TestCase):
         ventana, pagina = self.consola(hecho.stdout)
         self.assertEqual(ventana, 0)
         self.assertNotEqual(pagina, 0)
+
+    def test_lo_que_lanza_un_git_sin_consola_tampoco(self):
+        # git va con DETACHED_PROCESS; lo que él lanza (aquí, un alias `!`) no debe abrir ventana.
+        programa = sys.executable.replace("\\", "/")
+        alias = f'alias.consola=!"{programa}" -c "{CONSOLA}"'
+        hecho = subproceso.run(["git", "-c", alias, "consola"], capture_output=True, text=True,
+                               stdin=subprocess.DEVNULL, timeout=60)
+        self.assertEqual(hecho.returncode, 0, hecho.stderr)
+        ventana, _ = self.consola(hecho.stdout)
+        self.assertEqual(ventana, 0)
 
     def test_un_cmd_tampoco(self):
         # Los clientes de npm son `.cmd`: los corre un cmd.exe, y lo que él lanza es el nieto.

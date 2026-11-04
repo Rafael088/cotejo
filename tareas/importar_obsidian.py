@@ -28,7 +28,6 @@ import hashlib
 import os
 import re
 import shutil
-import subprocess
 import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -101,8 +100,8 @@ def git_init(repo):
     previo = ["-c", "core.longpaths=true"] if rutas.sistema() == "windows" else []
     try:
         subproceso.run(["git", *previo, "init", "-q", str(repo)], check=True,
-                       capture_output=True, stdin=subprocess.DEVNULL, timeout=60)
-    except (OSError, subprocess.SubprocessError) as error:
+                       capture_output=True, stdin=subproceso.DEVNULL, timeout=60)
+    except (OSError, subproceso.SubprocessError) as error:
         raise NoSeImporta(f"No pude hacer `git init` en {repo}: {error}",
                           "Créalo a mano con `git init` y vuelve a aplicar.") from None
 

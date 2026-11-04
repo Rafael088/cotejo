@@ -24,7 +24,7 @@ import os
 import subprocess
 import sys
 
-CREATE_NO_WINDOW = 0x08000000  # el de `enrutador/subproceso.py`
+DETACHED_PROCESS = 0x00000008  # el de `enrutador/subproceso.py` para git
 
 # Opciones de `git` antes del subcomando que llevan su valor aparte (`git -C dir push`).
 GLOBALES_CON_VALOR = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env",
@@ -141,10 +141,10 @@ def sin_upstream(args):
 def _git(real, globales, *args):
     try:
         # Sin `enrutador/subproceso.py` (este script corre suelto, con `python -I -S`): el flag
-        # de Windows va a mano. Sin él, cada consulta abriría su consola si el agente no tiene.
+        # de Windows va a mano. `real` es el git.exe; sin consola, como en el helper.
         hecho = subprocess.run([real, *globales, *args], capture_output=True, text=True,
                                stdin=subprocess.DEVNULL, timeout=20,
-                               creationflags=CREATE_NO_WINDOW if os.name == "nt" else 0)
+                               creationflags=DETACHED_PROCESS if os.name == "nt" else 0)
     except (OSError, subprocess.SubprocessError):
         return ""
     return hecho.stdout.strip() if hecho.returncode == 0 else ""
