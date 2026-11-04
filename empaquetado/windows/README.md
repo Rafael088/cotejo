@@ -162,3 +162,35 @@ init` no puede con ella, ni con `LongPathsEnabled=1` ni con `core.longpaths=true
 carpeta, pero no entra). Por eso `probar_almacen.py` deja la raíz en 240 y lo que pasa de los
 260 son los archivos de `recursos/` y de la bitácora, y `importar obsidian --aplicar` sobre un
 destino más largo se niega con un mensaje que lo dice.
+
+## Probar una rama en un Windows de verdad, desde Linux
+
+Con un Windows a mano por ssh (PowerShell de shell, Cotejo instalado con el `.exe`), una rama
+se prueba sin tocar la instalación ni gastar minutos de Actions:
+
+```sh
+herramientas/probar_windows.sh                       # suite y humo de la rama actual contra `ssh win`
+herramientas/probar_windows.sh --solo humo --volcar-ms 1000
+herramientas/probar_windows.sh --solo suite --patron 'test_escala*.py'
+herramientas/probar_windows.sh --en-seco             # qué haría, sin conectarse
+```
+
+Copia lo commiteado (`git archive`) a `%TEMP%\cotejo-prueba\<rama>\codigo` y corre, con el
+Python del runtime instalado y el entorno del lanzador, **en la sesión de escritorio** (una tarea
+programada interactiva, como `schtasks /it`; en la de ssh las pruebas del board no pueden crear
+su ventana y el proceso muere):
+
+- la suite (`suite.log`, y su código en `suite.json`);
+- el humo del board (`herramientas/humo_windows.py`): abre el board de la rama con config,
+  estado y vault propios, suelta una tarea en Haciendo (lanza `pruebas/cliente_falso.py` con el
+  `python.exe` de consola, como un CLI de verdad), y deja en `humo.json` los `conhost.exe` de
+  antes, durante y después (y quién los abrió), las ventanas de terminal nuevas, la peor
+  latencia de la ventana (`SendMessageTimeout`) y si Windows la dio por colgada
+  (`IsHungAppWindow`), el hueco más largo del bucle de GLib, lo que tardó soltar la carta, y
+  qué procesos del board quedan al cerrar la ventana y al salir. Con `--volcar-ms N` el board
+  vuelca sus hilos (`faulthandler`) cada N ms que su bucle pase sin latir, a `volcados/`.
+
+Todo vuelve a `/tmp/probar-windows/<rama>/`. Al acabar se cierra lo que quede vivo (por su
+línea de comandos) y se borra la carpeta del Windows (`--conservar` la deja). Que el humo salga
+con terminales o bloqueos es lo que mide, no un fallo del script: sale con 0 si midió y la suite
+pasó, 1 si la suite falló y 2 si algo no llegó a correr. `--help` tiene todas las opciones.
