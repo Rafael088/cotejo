@@ -5,7 +5,7 @@ import sys
 from gi.repository import Adw, GLib, Gdk, Gio, Gtk
 
 from .. import bitacora, configuracion, estado, fuente as f, rutas, temas, usuario
-from . import escala
+from . import al_cerrar, escala
 from .comun import APP_ID, DATOS, animaciones_activas, aplicar_clase_animaciones
 from .piezas import pintar_logo
 from .estilo import CSS
@@ -109,8 +109,20 @@ class App(Adw.Application):
         if opciones.contains("board"):
             self.abrir_board()
             return 0
-        self.alternar_board()
+        self.abrir_sin_opciones()
         return 0
+
+    def abrir_sin_opciones(self):
+        """Abrir Cotejo sin opciones (el `.desktop`, el widget de la barra, el menú Inicio).
+
+        En Linux abre o cierra el board: lo usa el widget de la barra. En Windows solo lo abre
+        (o lo trae al frente): allí cerrar la ventana sale de la app (`al_cerrar`), y abrir
+        Cotejo otra vez desde el menú Inicio con el board abierto lo cerraría (cotejo-qtegjk).
+        """
+        if al_cerrar.sale_al_cerrar():
+            self.abrir_board()
+        else:
+            self.alternar_board()
 
     def aplicar_tema(self, ident):
         """Pinta la app con un tema. Si no se puede usar, con el de defecto, y lo dice.
@@ -383,7 +395,8 @@ class App(Adw.Application):
             except Exception:
                 self.no_abrio()
                 return
-            # Cerrar solo lo oculta: el proceso sigue vivo para el widget de la barra.
+            # Cerrar solo lo oculta: el proceso sigue vivo para el widget de la barra. En Windows,
+            # además, la app sale (`al_cerrar.sale_al_cerrar`).
             self.board.set_hide_on_close(True)
             if self.desde_cero and animaciones_activas():
                 self.board.mostrar_arranque()  # el dot entra cuando acabe

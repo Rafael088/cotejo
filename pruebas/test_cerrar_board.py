@@ -115,6 +115,18 @@ class CerrarConAgentes(base.PestanaInicio):
             base.girar(200)
         salir.assert_not_called()
 
+    def test_abrir_otra_vez_en_windows_no_lo_cierra(self):
+        self.board.present()
+        base.girar()
+        with mock.patch.object(al_cerrar, "sale_al_cerrar", return_value=True):
+            self.app.abrir_sin_opciones()
+            base.girar()
+        self.assertTrue(self.board.get_visible())
+        with mock.patch.object(al_cerrar, "sale_al_cerrar", return_value=False):
+            self.app.abrir_sin_opciones()   # en Linux abre o cierra (el widget de la barra)
+            base.girar()
+        self.assertFalse(self.board.get_visible())
+
     def test_el_dialogo_de_verdad_pregunta_y_al_contestar_cierra(self):
         registro = self.lanzar_uno()
         self.board.close()
