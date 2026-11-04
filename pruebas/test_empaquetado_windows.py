@@ -471,6 +471,14 @@ class ElInstalador(unittest.TestCase):
         for nombre in re.findall(r"app\\data\\fonts\\([^\"]+)\"", self.iss):
             self.assertTrue((RAIZ / "data" / "fonts" / nombre).is_file(), nombre)
 
+    def test_antes_de_instalar_cierra_tambien_el_bus_de_sesion_del_runtime(self):
+        # gdbus.exe sale solo ~3 s después del último board, pero el instalador va a reemplazarlo
+        # en ese momento (cotejo-cz80zj). Solo el del runtime, no el de otra app de GLib.
+        cerrar = self.iss[self.iss.index("procedure CerrarCotejo;"):]
+        cerrar = cerrar[:cerrar.index("end;")]
+        self.assertIn(r"\\runtime\\bin\\gdbus\.exe$", cerrar)
+        self.assertNotIn("-Name gdbus", cerrar)
+
     def test_el_nombre_del_exe_es_el_que_construir_espera(self):
         self.assertIn("OutputBaseFilename=Cotejo-{#Version}-windows-x64-instalador", self.iss)
 

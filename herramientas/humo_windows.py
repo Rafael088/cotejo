@@ -139,18 +139,33 @@ def entorno_del_humo(carpeta, espera_s, volcar_ms=0, faulthandler_s=0, perfil=Fa
     return entorno
 
 
-def descendientes(procesos, raiz):
-    """Los pids que cuelgan de `raiz` (sin contarla), a partir de una foto (pid, ppid)."""
+def descendientes(procesos, raiz, creado=None):
+    """Los pids que cuelgan de `raiz` (sin contarla), a partir de una foto (pid, ppid).
+
+    En Windows el ppid de un proceso no cambia cuando su padre muere, y ese pid se recicla: si
+    el board (o uno de sus hijos que ya salió) recibe el pid del padre muerto de otro programa,
+    ese programa entero parecía colgar del board. Pasó con el Chrome de la persona: 35
+    `chrome.exe` contados como del board y cerrados al limpiar (cotejo-cz80zj). Con `creado`
+    (pid → instante de creación, o None si no se sabe), un hijo solo cuenta si nació después
+    que su padre, que es lo que dice Windows para fiarse de un ppid. Si una de las dos fechas
+    no se sabe (ya salió: un `git` de un instante), cuenta como hasta ahora.
+    """
     hijos = {}
     for p in procesos:
         if p["pid"] != p["ppid"]:
             hijos.setdefault(p["ppid"], []).append(p["pid"])
     vistos, pendientes = set(), [raiz]
     while pendientes:
-        for hijo in hijos.get(pendientes.pop(), ()):
-            if hijo not in vistos and hijo != raiz:
-                vistos.add(hijo)
-                pendientes.append(hijo)
+        padre = pendientes.pop()
+        for hijo in hijos.get(padre, ()):
+            if hijo in vistos or hijo == raiz:
+                continue
+            if creado is not None:
+                nacio, nacio_padre = creado(hijo), creado(padre)
+                if nacio is not None and nacio_padre is not None and nacio < nacio_padre:
+                    continue   # nació antes que su «padre»: es de otro que tuvo ese pid
+            vistos.add(hijo)
+            pendientes.append(hijo)
     return vistos
 
 
@@ -271,6 +286,7 @@ class Win32:
         k32.OpenProcess.argtypes = [w.DWORD, w.BOOL, w.DWORD]
         k32.OpenProcess.restype = w.HANDLE
         k32.TerminateProcess.argtypes = [w.HANDLE, w.UINT]
+        k32.GetProcessTimes.argtypes = [w.HANDLE] + [ctypes.POINTER(w.FILETIME)] * 4
         self.ENUM = ctypes.WINFUNCTYPE(w.BOOL, w.HWND, w.LPARAM)
         u32.EnumWindows.argtypes = [self.ENUM, w.LPARAM]
         u32.GetClassNameW.argtypes = [w.HWND, w.LPWSTR, ctypes.c_int]
@@ -282,6 +298,19 @@ class Win32:
                                             ctypes.POINTER(ctypes.c_size_t)]
         u32.SendMessageTimeoutW.restype = w.LPARAM
         u32.PostMessageW.argtypes = [w.HWND, w.UINT, w.WPARAM, w.LPARAM]
+
+    def creado(self, pid):
+        """Cuándo nació `pid` (en unidades de FILETIME), o None si no se puede abrir."""
+        h = self.k32.OpenProcess(0x1000, False, pid)   # PROCESS_QUERY_LIMITED_INFORMATION
+        if not h:
+            return None
+        try:
+            tiempos = [self.w.FILETIME() for _ in range(4)]
+            if not self.k32.GetProcessTimes(h, *[self.ctypes.byref(t) for t in tiempos]):
+                return None
+            return (tiempos[0].dwHighDateTime << 32) | tiempos[0].dwLowDateTime
+        finally:
+            self.k32.CloseHandle(h)
 
     def procesos(self):
         foto = self.k32.CreateToolhelp32Snapshot(0x2, 0)   # TH32CS_SNAPPROCESS
@@ -354,15 +383,25 @@ class Muestreo(threading.Thread):
         self.base_hwnd = {v["hwnd"] for v in base_ventanas}
         self.parar = threading.Event()
         self.vistos = {}            # pid → nombre de todo lo que colgó del board
+        self.nacimientos = {}       # pid → cuándo nació (ver `descendientes`)
         self.conhost_nuevos = {}    # pid → nombre de quien lo abrió
         self.terminales = {}        # hwnd → ventana de terminal que no estaba
         self.max_conhost = 0
         self.wt_max = 0
 
+    def creado(self, pid, nombre):
+        # Por pid y nombre: lo de un proceso vivo no cambia, y el del board se guarda mientras
+        # vive (después ya no se podría abrir). Un pid reciclado por otro programa es otra clave.
+        clave = (pid, "el board" if pid == self.pid else nombre)
+        if self.nacimientos.get(clave) is None:
+            self.nacimientos[clave] = self.win.creado(pid)
+        return self.nacimientos[clave]
+
     def una(self):
         procesos = self.win.procesos()
         nombres = {p["pid"]: p["nombre"] for p in procesos}
-        for pid in descendientes(procesos, self.pid):
+        for pid in descendientes(procesos, self.pid,
+                                 lambda pid: self.creado(pid, nombres.get(pid))):
             self.vistos.setdefault(pid, nombres.get(pid, "?"))
         for p in procesos:
             if (p["nombre"].lower() == "conhost.exe" and p["pid"] not in self.base_pids

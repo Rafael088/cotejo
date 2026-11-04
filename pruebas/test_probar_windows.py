@@ -160,6 +160,17 @@ class Procesos(unittest.TestCase):
         self.assertEqual(humo.descendientes(self.FOTO, 103), {104})
         self.assertEqual(humo.descendientes(self.FOTO, 999), set())
 
+    def test_un_pid_reciclado_no_mete_a_otro_programa_en_el_arbol(self):
+        # El board (10) recibió el pid del padre muerto de Chrome: los chrome.exe tienen ppid 10
+        # pero nacieron antes que él. Su git (11) nació después: ese sí es suyo.
+        procesos = [{"pid": 11, "ppid": 10}, {"pid": 20, "ppid": 10}, {"pid": 21, "ppid": 20}]
+        nacio = {10: 500, 11: 600, 20: 100, 21: 120}
+        self.assertEqual(humo.descendientes(procesos, 10, nacio.get), {11})
+        self.assertEqual(humo.descendientes(procesos, 10), {11, 20, 21})   # sin fechas, todos
+        # Uno que ya salió (sin fecha) cuenta: era suyo, y ya no se puede cerrar.
+        self.assertEqual(humo.descendientes(procesos + [{"pid": 12, "ppid": 10}], 10, nacio.get),
+                         {11, 12})
+
     def test_un_ciclo_de_pids_reusados_no_cuelga(self):
         foto = [{"pid": 1, "ppid": 2, "nombre": "a"}, {"pid": 2, "ppid": 1, "nombre": "b"}]
         self.assertEqual(humo.descendientes(foto, 1), {2})
