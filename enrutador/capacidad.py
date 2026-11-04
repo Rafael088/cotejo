@@ -26,6 +26,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from . import subproceso
 
 # Lo que se supone que ocupa un agente cuando no hay ninguno de Cotejo corriendo que medir.
 # Medido en una máquina de 7,6 GB (octubre de 2026): un Claude Code lanzado por Cotejo, con
@@ -94,12 +95,12 @@ def _memoria_linux():
 
 def _memoria_mac():
     def sysctl(nombre):
-        hecho = subprocess.run(["sysctl", "-n", nombre], capture_output=True, text=True)
+        hecho = subproceso.run(["sysctl", "-n", nombre], capture_output=True, text=True)
         return int(hecho.stdout.strip())
     try:
         total = sysctl("hw.memsize") // 2**20
         pagina = sysctl("hw.pagesize")
-        vm = subprocess.run(["vm_stat"], capture_output=True, text=True).stdout
+        vm = subproceso.run(["vm_stat"], capture_output=True, text=True).stdout
         paginas = {}
         for linea in vm.splitlines()[1:]:
             clave, _, valor = linea.partition(":")

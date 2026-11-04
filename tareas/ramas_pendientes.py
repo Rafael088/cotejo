@@ -11,6 +11,7 @@ import subprocess
 from pathlib import Path
 
 from . import worktrees
+from enrutador import subproceso
 
 
 TIEMPO_GIT = 60
@@ -18,7 +19,7 @@ TIEMPO_GIT = 60
 
 def _git(carpeta, *args):
     try:
-        hecho = subprocess.run(
+        hecho = subproceso.run(
             ["git", "-C", str(carpeta), *args], stdin=subprocess.DEVNULL,
             capture_output=True, text=True, timeout=TIEMPO_GIT,
             env={**os.environ, "LC_ALL": "C"})

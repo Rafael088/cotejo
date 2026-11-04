@@ -19,6 +19,7 @@ import subprocess
 from pathlib import Path
 
 from . import evidencia, juntar, origen, worktrees
+from enrutador import subproceso
 
 TIEMPO_GIT = 60
 
@@ -30,7 +31,7 @@ LINEAS_MAX = 400
 def _git(carpeta, *args, tiempo=TIEMPO_GIT, entorno=None):
     """(código, salida, error) de un git sin shell ni entrada. Código None si no llegó a correr."""
     try:
-        hecho = subprocess.run(["git", "-C", str(carpeta), *args], stdin=subprocess.DEVNULL,
+        hecho = subproceso.run(["git", "-C", str(carpeta), *args], stdin=subprocess.DEVNULL,
                                capture_output=True, timeout=tiempo,
                                env={**os.environ, **entorno} if entorno else None)
     except (OSError, subprocess.TimeoutExpired) as error:
@@ -267,9 +268,8 @@ def argv_difftool(carpeta, desde, hasta):
 
 def _lanzar(argv):
     """Lanza sin esperar y sin atarlo al board: cerrar la ventana no cierra la herramienta."""
-    subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                     stderr=subprocess.DEVNULL,
-                     **({"start_new_session": True} if os.name != "nt" else {}))
+    subproceso.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                     stderr=subprocess.DEVNULL, start_new_session=True)
 
 
 def abrir_en_herramienta(carpeta, desde, hasta):

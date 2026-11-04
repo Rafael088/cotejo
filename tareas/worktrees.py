@@ -39,6 +39,7 @@ import time
 from pathlib import Path
 
 from . import rutas
+from enrutador import subproceso
 
 ESQUEMA = 1
 
@@ -111,7 +112,7 @@ def _git(carpeta, *args, longpaths=True):
     """
     previo = ["-c", "core.longpaths=true"] if longpaths and rutas.sistema() == "windows" else []
     try:
-        hecho = subprocess.run(["git", *previo, "-C", str(carpeta), *args],
+        hecho = subproceso.run(["git", *previo, "-C", str(carpeta), *args],
                                stdin=subprocess.DEVNULL, capture_output=True,
                                timeout=TIEMPO_GIT)
     except (OSError, subprocess.TimeoutExpired) as error:

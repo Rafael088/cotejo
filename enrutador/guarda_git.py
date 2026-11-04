@@ -24,6 +24,8 @@ import os
 import subprocess
 import sys
 
+CREATE_NO_WINDOW = 0x08000000  # el de `enrutador/subproceso.py`
+
 # Opciones de `git` antes del subcomando que llevan su valor aparte (`git -C dir push`).
 GLOBALES_CON_VALOR = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env",
                       "--super-prefix"}
@@ -138,8 +140,11 @@ def sin_upstream(args):
 
 def _git(real, globales, *args):
     try:
+        # Sin `enrutador/subproceso.py` (este script corre suelto, con `python -I -S`): el flag
+        # de Windows va a mano. Sin él, cada consulta abriría su consola si el agente no tiene.
         hecho = subprocess.run([real, *globales, *args], capture_output=True, text=True,
-                               stdin=subprocess.DEVNULL, timeout=20)
+                               stdin=subprocess.DEVNULL, timeout=20,
+                               creationflags=CREATE_NO_WINDOW if os.name == "nt" else 0)
     except (OSError, subprocess.SubprocessError):
         return ""
     return hecho.stdout.strip() if hecho.returncode == 0 else ""
@@ -216,6 +221,9 @@ def main(args):
         if quitado:
             sys.stderr.write(SIN_UPSTREAM + "\n")
     if os.name == "nt":
+        # Este sí, sin CREATE_NO_WINDOW: es el `git` que pidió el agente y escribe en su consola
+        # (o en sus tuberías), que hereda tal cual. Una consola nueva, aunque invisible, se
+        # quedaría con su salida.
         return subprocess.call([real, *args])
     os.execv(real, [real, *args])
 

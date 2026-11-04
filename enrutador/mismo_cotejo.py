@@ -28,6 +28,7 @@ from pathlib import Path
 
 import tareas
 from tareas import __version__
+from . import subproceso
 
 NOMBRE = "cotejo"
 
@@ -94,7 +95,7 @@ def entorno(extra=None, base=None, destino=None):
 
 def _version(ruta):
     try:
-        salida = subprocess.run([ruta, "--version"], capture_output=True, text=True, timeout=10,
+        salida = subproceso.run([ruta, "--version"], capture_output=True, text=True, timeout=10,
                                 stdin=subprocess.DEVNULL)
     except (OSError, subprocess.SubprocessError):
         return ""

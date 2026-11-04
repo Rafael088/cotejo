@@ -66,6 +66,7 @@ from .. import version as versiones
 from ..fuente import Fuente
 from ..modelo import (HECHA, PENDIENTE, FuenteNoResponde, NoSeCreaAqui, Proyecto, Tarea,
                       TareaCambiada)
+from enrutador import subproceso
 
 ESQUEMA = 1
 ESTADOS = (PENDIENTE, "en-curso", "por-validar", "por-integrar")
@@ -126,7 +127,7 @@ class Externa(Fuente):
         entorno = {**os.environ, "COTEJO_FUENTE_CONFIG": parametros,
                    "FOCO_FUENTE_CONFIG": parametros}
         try:
-            hecho = subprocess.run([*self.comando, *argumentos], capture_output=True,
+            hecho = subproceso.run([*self.comando, *argumentos], capture_output=True,
                                    text=True, encoding="utf-8", timeout=self.timeout,
                                    env=entorno, stdin=subprocess.DEVNULL)
         except FileNotFoundError as error:

@@ -11,6 +11,7 @@ import shutil
 import subprocess
 
 from tareas import rutas
+from .. import subproceso
 
 # El ejemplo del mensaje de error es de la plataforma en la que se lee: sugerir `alacritty -e`
 # en Windows (o `cmd /c start` en Linux) manda a instalar algo que no hace falta.
@@ -32,6 +33,6 @@ def abrir(comando, directorio=None, entorno=None):
             f"No encontré la terminal «{comando[0] if comando else ''}». Pon la tuya en "
             f"enrutador.maestro.terminal de la config, por ejemplo {ejemplo}.")
     env = {**os.environ, **entorno} if entorno else None
-    subprocess.Popen(comando, cwd=str(directorio) if directorio else None, env=env,
+    subproceso.Popen(comando, cwd=str(directorio) if directorio else None, env=env,
                      stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                      stderr=subprocess.DEVNULL, start_new_session=True)

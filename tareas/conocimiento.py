@@ -23,6 +23,7 @@ from . import bitacora as historial
 from . import (almacen, arquitectura, como_se_abre, configuracion, importar_obsidian, modelo,
                reintento, version as version_proyecto)
 from .cli import ESQUEMA, ErrorCLI, imprimir, nucleo
+from enrutador import subproceso
 
 
 # --- lo que comparten `buscar`, `leer` y `contexto` --------------------------------------------
@@ -306,7 +307,7 @@ def _git_fecha(raiz, *args):
     """Fecha (AAAA-MM-DD) que imprime `git log -1 --format=%cs <args>`, o None si no hay git,
     el archivo no está en un commit o algo falla. Nunca levanta: la frescura es una pista."""
     try:
-        hecho = subprocess.run(["git", "-C", str(raiz), "log", "-1", "--format=%cs", *args],
+        hecho = subproceso.run(["git", "-C", str(raiz), "log", "-1", "--format=%cs", *args],
                                stdin=subprocess.DEVNULL, capture_output=True, text=True,
                                timeout=10)
     except (OSError, subprocess.TimeoutExpired):
@@ -318,7 +319,7 @@ def _git_fecha(raiz, *args):
 def _ultimo_tag(raiz):
     """(nombre, fecha) del tag más reciente alcanzable desde HEAD, o None si no hay."""
     try:
-        hecho = subprocess.run(["git", "-C", str(raiz), "describe", "--tags", "--abbrev=0"],
+        hecho = subproceso.run(["git", "-C", str(raiz), "describe", "--tags", "--abbrev=0"],
                                stdin=subprocess.DEVNULL, capture_output=True, text=True,
                                timeout=10)
     except (OSError, subprocess.TimeoutExpired):

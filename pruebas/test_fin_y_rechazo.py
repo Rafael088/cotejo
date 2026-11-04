@@ -13,7 +13,7 @@ entrega anterior y lo que se pidió cambiar; nunca hay dos vivos y nada se relan
 
 import json
 import os
-import signal
+import sys
 import time
 import unittest
 from pathlib import Path
@@ -21,13 +21,17 @@ from unittest import mock
 
 from test_despacho_board import HAY_GIT, ConClienteFalso, esperar
 
-from enrutador import cotejo as f, despacho_board
+from enrutador import cotejo as f, despacho_board, procesos
 from tareas import ahorro, bitacora, estado, lanzados, retomar, worktrees
 
 ID = "cotejo-asig"
 
 
 def vive(pid):
+    # En Windows `os.kill(pid, 0)` manda CTRL_C_EVENT a toda la consola: allí se pregunta como
+    # en `revisar`.
+    if sys.platform == "win32":
+        return procesos.vivo(pid)
     try:
         os.kill(pid, 0)
     except OSError:
@@ -189,7 +193,7 @@ class FinYRechazo(ConClienteFalso):
         # Mientras vive, recoger no lo toca.
         self.assertEqual(despacho_board.recoger(), [])
         self.assertEqual(self.columna(), "en-curso")
-        os.kill(proceso.pid, signal.SIGKILL)
+        proceso.kill()
         proceso.wait()
         self.assertEqual(despacho_board.estado(ID)["estado"], lanzados.MURIO)
 

@@ -73,6 +73,7 @@ from pathlib import Path
 from shlex import join as unir
 
 from . import rutas
+from enrutador import subproceso
 
 TOPE_INSTALAR = 600        # segundos como mucho por instalador
 TOPE_SESION = 900          # lo que se espera a que la persona termine en el navegador
@@ -254,7 +255,7 @@ class Trabajo:
                 self.estado = "cancelado"
                 return
             try:
-                self.proceso = subprocess.Popen(
+                self.proceso = subproceso.Popen(
                     argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT, text=True, errors="replace", env=entorno,
                     start_new_session=True)

@@ -14,6 +14,7 @@ import re
 import subprocess
 
 from . import rutas
+from enrutador import subproceso
 
 CARPETA = rutas.estado() / "juntar"
 
@@ -52,7 +53,7 @@ def borrar_original(tarea_id):
         return None
     rama, repo = datos["rama"], datos["repo"]
     try:
-        hecho = subprocess.run(["git", "-C", repo, "branch", "-d", rama], capture_output=True,
+        hecho = subproceso.run(["git", "-C", repo, "branch", "-d", rama], capture_output=True,
                                text=True, stdin=subprocess.DEVNULL, timeout=60,
                                env={**os.environ, "LC_ALL": "C"})
         codigo, error = hecho.returncode, hecho.stderr.strip()

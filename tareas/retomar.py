@@ -31,6 +31,7 @@ import time
 from pathlib import Path
 
 from . import lanzados, worktrees
+from enrutador import subproceso
 
 ULTIMAS = 8          # líneas del agente anterior
 MAX_COMMITS = 15
@@ -48,7 +49,7 @@ def _git(carpeta, *args):
     """Las líneas de un git sin shell, o None si no se pudo. Sin `strip` del principio: en
     `status --porcelain` el espacio de delante es parte del código."""
     try:
-        hecho = subprocess.run(["git", "-C", str(carpeta), *args], stdin=subprocess.DEVNULL,
+        hecho = subproceso.run(["git", "-C", str(carpeta), *args], stdin=subprocess.DEVNULL,
                                capture_output=True, timeout=TIEMPO_GIT)
     except (OSError, subprocess.TimeoutExpired):
         return None

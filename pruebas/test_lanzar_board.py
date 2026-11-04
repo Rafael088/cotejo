@@ -20,6 +20,7 @@ from unittest import mock
 import apoyo  # noqa: F401  (pone la raíz del repo en sys.path)
 
 import test_pestana_inicio as base
+from enrutador import procesos
 from test_despacho_board import FALSO, FOTO_CON_HUECO, git
 from test_despacho_board import esperar as esperar_hilo
 from test_tarea_del_maestro import TEXTO as TEXTO_DEL_MAESTRO
@@ -587,11 +588,8 @@ class LanzarDesdeElBoard(base.PestanaInicio):
 
 
 def _vive(pid):
-    try:
-        os.kill(pid, 0)
-    except OSError:
-        return False
-    return True
+    # No `os.kill(pid, 0)`: en Windows es CTRL_C_EVENT a toda la consola.
+    return procesos.vivo(pid)
 
 
 if __name__ == "__main__":
