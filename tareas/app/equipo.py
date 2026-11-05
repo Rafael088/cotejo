@@ -30,7 +30,8 @@ instalado**, **falta iniciar sesión**, **falta elegir modelo** o **listo** (cot
 Se llega aquí el primer arranque y, después, con «Agentes» en el Inicio o con «¿Falta un
 agente?» en el diálogo «Añadir modelo» (`ver_equipo`).
 
-«Revisar otra vez» vuelve a detectar y «Empezar» pasa a Inicio solo en el primer arranque. Es una página
+«Revisar otra vez» vuelve a detectar y reparte las skills de Cotejo a cualquier agente que haya
+aparecido desde la instalación; «Empezar» pasa a Inicio solo en el primer arranque. Es una página
 más de la pila (`"equipo"`, sin botón en el selector). Qué se detecta lo decide
 `tareas/equipo.py`, y qué se corre `tareas/instalar_agentes.py`, los dos sin GTK; aquí solo se
 pinta. Los hilos nunca tocan GTK: avisan con `GLib.idle_add`.
@@ -80,7 +81,7 @@ class PestanaEquipo:
         contenido_revisar.append(Gtk.Label(label="Revisar otra vez"))
         self.equipo_revisar = con_mano(Gtk.Button(child=contenido_revisar, valign=Gtk.Align.START,
                                                   css_classes=["flat", "equipo-revisar"]))
-        self.equipo_revisar.connect("clicked", lambda *_: self.revisar_equipo())
+        self.equipo_revisar.connect("clicked", lambda *_: self.revisar_equipo_y_skills())
         cabeza.append(self.equipo_revisar)
         cuerpo.append(cabeza)
         self.equipo_filas = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_LG))
@@ -95,6 +96,10 @@ class PestanaEquipo:
                                   hscrollbar_policy=Gtk.PolicyType.NEVER, css_classes=["inicio"])
 
     # --- pintar -----------------------------------------------------------------------------
+
+    def revisar_equipo_y_skills(self):
+        """Redetecta y avisa a cualquier agente que haya aparecido desde la instalación."""
+        return self.revisar_equipo(equipo.revisar_y_poner_skills())
 
     def revisar_equipo(self, visto=None):
         """Vuelve a detectar (o usa `visto`) y repinta. Devuelve el `Equipo` que vio."""

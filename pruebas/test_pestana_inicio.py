@@ -558,12 +558,14 @@ class SinFuente(PestanaInicio):
         b = self.board
         self.revisar([], git=True)
         self.assertEqual(self.filas()["Claude Code"], "No instalado")
-        with mock.patch("enrutador.clientes.instalados", return_value=["claude"]), \
+        with mock.patch("tareas.skill.instalar") as poner_skills, \
+                mock.patch("enrutador.clientes.instalados", return_value=["claude"]), \
                 mock.patch("enrutador.modelos_vivos.sesion", return_value=True), \
                 mock.patch("enrutador.modelos_vivos.en_cache", return_value=["sonnet"]), \
                 mock.patch("tareas.equipo.hay_git", return_value=True), \
                 mock.patch("tareas.equipo.puede_empujar", return_value="ssh"):
             b.equipo_revisar.emit("clicked")
+        poner_skills.assert_called_once_with()
         self.assertEqual(self.filas()["Claude Code"], "Listo")
         self.assertEqual(b.equipo_titular.get_label(),
                          "Antes de empezar, Cotejo revisa tu equipo")

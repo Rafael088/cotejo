@@ -467,6 +467,12 @@ class ElInstalador(unittest.TestCase):
             self.assertIn(ruta, nombres)
         self.assertIn("{app}\\bin", self.iss)
 
+    def test_el_aviso_a_agentes_usa_el_repartidor_compartido(self):
+        self.assertIn('Filename: "{app}\\interno\\cotejo-agentes.exe"; Flags: runhidden; '
+                      'Tasks: agentes', self.iss)
+        self.assertEqual(construir.LANZADORES["interno/cotejo-agentes"],
+                         ("-m tareas.skill", False))
+
     def test_las_tipografias_que_instala_estan_en_el_repo(self):
         for nombre in re.findall(r"app\\data\\fonts\\([^\"]+)\"", self.iss):
             self.assertTrue((RAIZ / "data" / "fonts" / nombre).is_file(), nombre)
