@@ -379,7 +379,11 @@ plugins del proyecto; Gemini `run_shell_command(cotejo)` y sin lo de su `.gemini
 la jaula de bwrap o no habla. Todos con la config vedada y el mismo `cotejo` del board. El panel
 (`tareas/app/conversacion.py`, `PanelMaestro`) flota en el overlay del tablero (cotejo-w8vteb):
 no ocupa sitio en la caja, así que abrirlo no empuja ni redimensiona las columnas; se arrastra
-por su título, se minimiza y se cierra sin parar al maestro. «Repartir» va
+por su título, se minimiza y se cierra sin parar al maestro. Sin arrastrarlo va anclado abajo
+al centro con `valign=END` y `margin_bottom` = alto del pie + margen (`anclar_abajo`, cotejo-5ejs0y):
+crece y, minimizado, mengua hacia el pie; arrastrado pasa a `START` con márgenes y se queda ahí.
+Las pruebas de posición maquetan el board a mano (`maquetar`, 1920×1080): en el espacio 6 sin
+pantalla no llegan fotogramas. «Repartir» va
 por `mover`. La CLI es la misma: `cotejo maestro --proyecto X --pedido "…"` espera la respuesta.
 `pruebas/test_maestro_conversacion.py` (sin GTK) y `pruebas/test_barra_maestro.py` (board de
 verdad) lo prueban de punta a punta con `cliente_falso.py`.

@@ -359,7 +359,17 @@ class ConversacionEnElBoard(base.PestanaInicio):
         self.elegir_faro()
         self.board.ver_conversacion()
         base.girar(120)
+        self.maquetar()
         return self.board.panel_maestro
+
+    def maquetar(self, ancho=1920, alto=1080):
+        """Maqueta el board a mano, como una ventana maximizada. Sin esto las cajas dependen
+        de que el compositor mande fotogramas, y a una ventana en un espacio que no se ve
+        (el 6 de las pruebas) no se los manda: el panel se quedaba sin colocar."""
+        for _vuelta in range(3):
+            self.board.measure(Gtk.Orientation.HORIZONTAL, -1)
+            self.board.allocate(ancho, alto, -1, None)
+            base.girar(30)
 
     @staticmethod
     def caja(widget, dentro):
@@ -369,6 +379,7 @@ class ConversacionEnElBoard(base.PestanaInicio):
     def test_el_panel_flota_en_el_overlay_y_no_mueve_las_columnas(self):
         self.elegir_faro()
         columna = self.board.columnas["pendiente"][0]
+        self.maquetar()
         antes = self.caja(columna, self.board.encima)
         panel = self.abrir_conversacion()
         self.assertIs(panel.get_parent(), self.board.encima)
@@ -385,13 +396,13 @@ class ConversacionEnElBoard(base.PestanaInicio):
     def test_el_panel_se_arrastra_dentro_del_tablero(self):
         panel = self.abrir_conversacion()
         panel.mover_a(20, 30)
-        base.girar(60)
+        self.maquetar()
         caja = self.caja(panel, self.board.encima)
         self.assertEqual((round(caja[0]), round(caja[1])), (20, 30))
         self.assertTrue(panel.movido)
         # Fuera del tablero no: se queda pegado al borde.
         panel.mover_a(-500, -500)
-        base.girar(60)
+        self.maquetar()
         caja = self.caja(panel, self.board.encima)
         self.assertEqual((round(caja[0]), round(caja[1])), (0, 0))
 
@@ -406,6 +417,69 @@ class ConversacionEnElBoard(base.PestanaInicio):
         self.assertTrue(self.board.barra_del_maestro.get_visible())
         panel.boton_minimizar.emit("clicked")
         self.assertTrue(panel.scroll.get_visible())
+
+    # --- dónde cae (cotejo-5ejs0y) -------------------------------------------------------------
+
+    def hueco_sobre_el_pie(self, panel):
+        """Píxeles entre el borde de abajo del panel y el de arriba del pie (negativo: lo tapa)."""
+        caja, pie = self.caja(panel, self.board.encima), self.caja(self.board.pie,
+                                                                   self.board.encima)
+        return pie[1] - (caja[1] + caja[3])
+
+    def test_al_abrir_queda_encima_del_pie_y_no_en_el_centro(self):
+        from tareas.app.comun import ESPACIADO_LG
+        from tareas.app.escala import px
+        panel = self.abrir_conversacion()
+        hueco = self.hueco_sobre_el_pie(panel)
+        self.assertGreaterEqual(hueco, 0)                 # no tapa el campo del maestro
+        self.assertLessEqual(hueco, px(ESPACIADO_LG) + 2)  # pero está pegado a él
+        caja = self.caja(panel, self.board.encima)
+        centro_x = caja[0] + caja[2] / 2
+        self.assertAlmostEqual(centro_x, self.board.encima.get_width() / 2, delta=2)
+        # Con mensajes crece hacia arriba, sin despegarse del pie.
+        self.hablar("¿cómo va?", FALSO_RESPUESTA="Todo en orden.\n" * 6)
+        self.maquetar()
+        self.assertGreater(self.caja(panel, self.board.encima)[3], caja[3])
+        self.assertLessEqual(self.hueco_sobre_el_pie(panel), px(ESPACIADO_LG) + 2)
+        self.assertGreaterEqual(self.hueco_sobre_el_pie(panel), 0)
+
+    def test_minimizado_la_cabecera_queda_junto_al_pie(self):
+        from tareas.app.comun import ESPACIADO_LG
+        from tareas.app.escala import px
+        self.elegir_faro()
+        self.hablar("¿cómo va?", FALSO_RESPUESTA="Todo en orden.\n" * 6)
+        panel = self.board.panel_maestro
+        self.maquetar()
+        entero = self.caja(panel, self.board.encima)
+        panel.boton_minimizar.emit("clicked")
+        self.maquetar()
+        chico = self.caja(panel, self.board.encima)
+        self.assertLess(chico[3], entero[3])              # solo la cabecera
+        self.assertGreater(chico[1], entero[1])           # bajó: no se queda a media altura
+        hueco = self.hueco_sobre_el_pie(panel)
+        self.assertGreaterEqual(hueco, 0)
+        self.assertLessEqual(hueco, px(ESPACIADO_LG) + 2)
+        panel.boton_minimizar.emit("clicked")             # restaurar: vuelve a crecer hacia arriba
+        self.maquetar()
+        self.assertEqual(self.caja(panel, self.board.encima), entero)
+
+    def test_arrastrado_se_queda_donde_lo_dejaron_aunque_se_minimice(self):
+        panel = self.abrir_conversacion()
+        x, y = panel.posicion()
+        panel.mover_a(x - 30, y - 200)
+        self.maquetar()
+        donde = self.caja(panel, self.board.encima)[:2]
+        panel.boton_minimizar.emit("clicked")
+        self.maquetar()
+        self.assertEqual(self.caja(panel, self.board.encima)[:2], donde)
+        panel.boton_minimizar.emit("clicked")
+        self.maquetar()
+        self.assertEqual(self.caja(panel, self.board.encima)[:2], donde)
+        # Cerrar y volver a abrir respeta el sitio elegido.
+        self.board.cerrar_conversacion()
+        self.board.ver_conversacion()
+        self.maquetar()
+        self.assertEqual(self.caja(panel, self.board.encima)[:2], donde)
 
     def test_cerrar_y_volver_a_abrir_el_panel_no_pierde_la_conversacion(self):
         self.elegir_faro()

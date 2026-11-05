@@ -12,7 +12,7 @@ cabecera) o cerrar; ni minimizar ni cerrar paran al maestro: su turno sigue y la
 guarda para cuando se vuelva a abrir.
 """
 
-from gi.repository import Gtk, Pango
+from gi.repository import GLib, Gtk, Pango
 
 from .comun import ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XS, texto_a_markup
 from .escala import px
@@ -38,7 +38,7 @@ class PanelMaestro(Gtk.Box):
                          css_classes=["maestro-panel"])
         self.al_repartir, self.al_parar = al_repartir, al_parar
         self.minimizado = False
-        # Si la persona lo movió, deja de recentrarse al redimensionar la ventana.
+        # Si la persona lo movió, deja de anclarse abajo al redimensionar la ventana.
         self.movido = False
         self._desde_arrastre = None
         self.set_size_request(px(720), -1)
@@ -82,9 +82,25 @@ class PanelMaestro(Gtk.Box):
 
     # --- flotar ---------------------------------------------------------------------------------
 
+    def anclar_abajo(self, margen_inferior):
+        """Abajo al centro, con su borde de abajo a `margen_inferior` del fondo del overlay
+        (encima del pie). Lo ancla GTK con `valign=END`, no un `margin_top` calculado: así,
+        entero o minimizado, la parte de abajo se queda junto al pie aunque cambie su alto,
+        y nunca acaba en mitad de las columnas (cotejo-5ejs0y)."""
+        self.movido = False
+        self.set_halign(Gtk.Align.CENTER)
+        self.set_valign(Gtk.Align.END)
+        self.set_margin_start(0)
+        self.set_margin_top(0)
+        self.set_margin_bottom(max(0, round(margen_inferior)))
+
+    @property
+    def anclado(self):
+        return self.get_valign() == Gtk.Align.END
+
     def mover_a(self, x, y, movido=True):
         """Lo deja en (x, y) dentro del overlay, sin salirse. `movido=False` es colocarlo, no
-        que la persona lo haya movido (así se sigue recentrando al cambiar el tamaño)."""
+        que la persona lo haya movido (así se sigue recolocando al cambiar el tamaño)."""
         padre = self.get_parent()
         if padre is not None:
             ancho, alto = padre.get_width(), padre.get_height()
@@ -94,19 +110,32 @@ class PanelMaestro(Gtk.Box):
                 y = min(y, max(0, alto - self.get_height()))
         x, y = max(0, round(x)), max(0, round(y))
         self.movido = self.movido or movido
+        self.set_halign(Gtk.Align.START)
+        self.set_valign(Gtk.Align.START)
+        self.set_margin_bottom(0)
         self.set_margin_start(x)
         self.set_margin_top(y)
 
+    def posicion(self):
+        """Dónde está ahora dentro del overlay, esté anclado abajo o puesto a mano."""
+        padre = self.get_parent()
+        if self.anclado and padre is not None:
+            ok, caja = self.compute_bounds(padre)
+            if ok:
+                return caja.get_x(), caja.get_y()
+        return self.get_margin_start(), self.get_margin_top()
+
     def reencajar(self):
         """Después de cambiar el tamaño de la ventana: que siga dentro del tablero."""
-        self.mover_a(self.get_margin_start(), self.get_margin_top(), movido=False)
+        if not self.anclado:
+            self.mover_a(self.get_margin_start(), self.get_margin_top(), movido=False)
 
     def _al_empezar_arrastre(self, _gesto, _x, _y):
-        self._desde_arrastre = (self.get_margin_start(), self.get_margin_top())
+        self._desde_arrastre = self.posicion()
 
     def _al_arrastrar(self, _gesto, desplazado_x, desplazado_y):
         if self._desde_arrastre is None:
-            self._desde_arrastre = (self.get_margin_start(), self.get_margin_top())
+            self._desde_arrastre = self.posicion()
         self.mover_a(self._desde_arrastre[0] + desplazado_x,
                      self._desde_arrastre[1] + desplazado_y)
 
@@ -119,6 +148,10 @@ class PanelMaestro(Gtk.Box):
     def minimizar(self, si=True):
         self.minimizado = bool(si)
         self.scroll.set_visible(not self.minimizado)
+        if self.movido and not self.minimizado:
+            # Puesto a mano: la cabecera se queda donde la dejó la persona; al crecer de
+            # nuevo, que no se salga por abajo (el alto nuevo llega en la próxima vuelta).
+            GLib.idle_add(lambda: self.reencajar() and False)
         self.boton_minimizar.set_icon_name(
             "window-restore-symbolic" if self.minimizado else "window-minimize-symbolic")
         etiquetar(self.boton_minimizar,
