@@ -96,8 +96,9 @@ def todas():
 def anotar_lanzado(registro, pid, programa):
     """Lo que se anota en cuanto el proceso existe, como `al_lanzar` en `despachar`."""
     with _CANDADO:
+        from enrutador import procesos  # aquí y no arriba, como en `_muerto`
         registro.update(fase="lanzado", pid=pid, programa=programa, host=socket.gethostname(),
-                        ts=int(time.time()))
+                        nacio=procesos.nacimiento(pid), ts=int(time.time()))
         for clave in ("codigo", "terminado_ts"):
             registro.pop(clave, None)
         return guardar(registro)

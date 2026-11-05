@@ -364,7 +364,7 @@ def cmd_despachar(args):
 
     def al_lanzar(pid, comando):
         lanzado.update(pid=pid, programa=comando[0] if comando else "",
-                       host=socket.gethostname())
+                       nacio=procesos.nacimiento(pid), host=socket.gethostname())
         aviso = anotar_despacho(tarea, elegida, motor=motor_elegido.nombre, tomada=tomada,
                                 fase="lanzado", comando=comando, **lanzado, **donde)
         if aviso:

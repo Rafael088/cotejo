@@ -100,7 +100,8 @@ def leer(proyecto):
         datos = _crudo(proyecto)
         curso = datos.get("en_curso")
         if (curso and proyecto not in _hilos
-                and not procesos.vivo(curso.get("pid"), curso.get("programa", ""))):
+                and not procesos.vivo(curso.get("pid"), curso.get("programa", ""),
+                                   curso.get("nacio"))):
             _cerrar(datos, _respuesta_de(curso))
     return datos
 
@@ -267,7 +268,8 @@ def empezar(proyecto, pedido, armado, al_terminar=None, timeout=TIMEOUT_SEG, aju
     with _cerrojo:
         datos = _crudo(proyecto)
         curso = datos.get("en_curso")
-        if curso and procesos.vivo(curso.get("pid"), curso.get("programa", "")):
+        if curso and procesos.vivo(curso.get("pid"), curso.get("programa", ""),
+                                   curso.get("nacio")):
             raise NoSePuede("El maestro todavía está contestando lo anterior: espera a que "
                             "termine o páralo.")
         datos.pop("en_curso", None)
@@ -287,7 +289,8 @@ def empezar(proyecto, pedido, armado, al_terminar=None, timeout=TIMEOUT_SEG, aju
                                           etiqueta="maestro-" + _nombre(proyecto))
         except OSError as error:
             raise NoSePuede(f"No pude lanzar «{armado['argv'][0]}»: {error}") from error
-        curso.update(pid=proceso.pid, programa=os.path.basename(armado["argv"][0]))
+        curso.update(pid=proceso.pid, programa=os.path.basename(armado["argv"][0]),
+                     nacio=procesos.nacimiento(proceso.pid))
         datos["turnos"].append({"quien": QUIEN_PERSONA, "texto": pedido, "ts": time.time()})
         datos["en_curso"] = curso
         _guardar(datos)
@@ -331,7 +334,7 @@ def parar(proyecto, anotar=True):
         curso = datos.get("en_curso")
         if not curso:
             return False
-        procesos.terminar(curso.get("pid"), curso.get("programa", ""))
+        procesos.terminar(curso.get("pid"), curso.get("programa", ""), curso.get("nacio"))
         if anotar:
             _cerrar(datos, ("Lo paraste antes de que contestara.", False))
         else:
