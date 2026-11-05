@@ -20,9 +20,58 @@ lanzar el proceso a mano. La nota va al final y aparte, para que se lea como lo 
 contexto de hoy, no el enunciado.
 """
 
+import re
+
+from tareas import almacen, conocimiento
 from tareas.como_se_abre import FORMATO as COMO_SE_ABRE
 
 from . import navegador
+
+HABITOS = (
+    "Ya estás en el worktree: no hagas `cd` antes de cada comando.",
+    "Usa `grep -n` + `sed -n` en vez de `cat` para mirar fragmentos de un archivo.",
+    "Junta las lecturas relacionadas en un solo comando.",
+)
+
+
+def _palabras(texto):
+    """Palabras comparables con un tema, con los mismos acentos/caja que `buscar`."""
+    return re.findall(r"\w+", conocimiento._normalizar(texto or ""))
+
+
+def _coincidencias(entrada, palabras):
+    """Cuántos temas de una entrada aparecen, completos y contiguos, en la tarea."""
+    return sum(
+        any(palabras[i:i + len(tema)] == tema for i in range(len(palabras) - len(tema) + 1))
+        for tema in (_palabras(t) for t in entrada.temas) if tema)
+
+
+def _donde_mirar(texto, directorio):
+    """Hasta tres entradas de arquitectura/decisiones relacionadas por tema.
+
+    El almacén es una ayuda, no una condición para despachar: un proyecto sin `.cotejo/` o una
+    entrada ilegible no puede dejar al agente sin encargo.
+    """
+    if not directorio:
+        return []
+    alm = almacen.Almacen(directorio)
+    if not alm.existe():
+        return []
+    palabras = _palabras(texto)
+    entradas = alm.entradas("arquitectura") + alm.entradas("decision")
+    relacionadas = [(e, _coincidencias(e, palabras)) for e in entradas]
+    relacionadas = [(e, puntos) for e, puntos in relacionadas if puntos]
+    relacionadas.sort(key=lambda par: (-par[1], par[0].ruta))
+    return [e.id for e, _ in relacionadas[:3]]
+
+
+def _orientacion(tarea, directorio):
+    ids = _donde_mirar(tarea.get("texto", ""), directorio)
+    partes = []
+    if ids:
+        partes += ["## Dónde mirar", "", *(f"- `cotejo leer {id_}`" for id_ in ids), ""]
+    partes += ["## Hábitos", "", *(f"- {habito}" for habito in HABITOS)]
+    return "\n".join(partes)
 
 MANTENER_COMO_SE_ABRE = """Si tu trabajo cambia cómo se abre la app (el comando, la dirección o lo que se ve al
 abrirla), actualiza la sección «## Cómo se abre» de la arquitectura del proyecto: el botón «Ver
@@ -105,5 +154,6 @@ def armar(tarea, decision, directorio=None, nota="", worktree=None):
     if nota:
         partes += ["", "Lo que añade quien te reparte la tarea, y que no está en su enunciado:",
                    "", nota.strip()]
-    partes += ["", MANTENER_COMO_SE_ABRE, "", cierre(tarea.get("id", "<id>"))]
+    partes += ["", _orientacion(tarea, directorio), "", MANTENER_COMO_SE_ABRE, "",
+               cierre(tarea.get("id", "<id>"))]
     return "\n".join(partes)
