@@ -560,7 +560,39 @@ class LanzarDesdeElBoard(base.PestanaInicio):
         self.assertEqual(self.fila("parseo").tarea.columna, "pendiente")
         self.assertEqual(self.fin_de("cotejo-con"), lanzados.FIN_SIN_ENTREGAR)
 
-    def test_devolver_de_para_comprobar_a_haciendo_lanza_otro_con_lo_que_se_pidio(self):
+    def test_rechazar_de_para_comprobar_la_deja_pendiente_sin_lanzar(self):
+        self.board.ver_pestana("tablero")
+        avisos = []
+        with mock.patch.object(type(self.board), "aviso", lambda _b, t: avisos.append(t)):
+            fila = self.entregada(avisos)
+            primero = lanzados.leer("cotejo-con")
+            self.argv_falso.unlink()
+            entrada = Gtk.Entry(text="Falta el caso del archivo vacío.")
+            self.board.al_responder_motivo(None, "devolver", entrada, fila.proyecto,
+                                           fila.tarea, "en-curso")
+        self.assertIn("#pendiente", self.linea("^cotejo-con"))
+        self.assertIn("#agente/sonnet", self.linea("^cotejo-con"))
+        self.assertFalse(self.argv_falso.exists())
+        rechazo = [json.loads(l) for l in bitacora.ARCHIVO.read_text().splitlines()
+                   if '"rechazar"' in l][-1]
+        self.assertEqual(rechazo["motivo"], "Falta el caso del archivo vacío.")
+        registro = lanzados.leer("cotejo-con")
+        self.assertEqual(registro["pid"], primero["pid"])
+        self.assertEqual(registro["rechazo"]["motivo"], "Falta el caso del archivo vacío.")
+
+    def test_el_dialogo_distingue_rechazar_de_volver_a_lanzar(self):
+        self.board.ver_pestana("tablero")
+        avisos = []
+        with mock.patch.object(type(self.board), "aviso", lambda _b, t: avisos.append(t)):
+            fila = self.entregada(avisos)
+        dialogo = mock.Mock()
+        with mock.patch("tareas.app.movimientos.Adw.AlertDialog", return_value=dialogo):
+            self.board.preguntar_motivo(fila.proyecto, fila.tarea, "en-curso")
+        respuestas = {llamada.args for llamada in dialogo.add_response.call_args_list}
+        self.assertIn(("devolver", "Rechazar y dejar pendiente"), respuestas)
+        self.assertIn(("relanzar", "Volver a lanzar ahora"), respuestas)
+
+    def test_volver_a_lanzar_ahora_lanza_otro_con_lo_que_se_pidio(self):
         self.board.ver_pestana("tablero")
         avisos = []
         with mock.patch.object(type(self.board), "aviso", lambda _b, t: avisos.append(t)):
@@ -569,7 +601,7 @@ class LanzarDesdeElBoard(base.PestanaInicio):
             self.argv_falso.unlink()
             entrada = Gtk.Entry(text="Falta el caso del archivo vacío.")
             with mock.patch.dict(os.environ, {"FALSO_ESPERA": "30"}):
-                self.board.al_responder_motivo(None, "devolver", entrada, fila.proyecto,
+                self.board.al_responder_motivo(None, "relanzar", entrada, fila.proyecto,
                                                fila.tarea, "en-curso")
                 self.esperar_despacho()
             self.assertTrue(any("la retoma con lo que pediste cambiar" in a for a in avisos),

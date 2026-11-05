@@ -80,7 +80,7 @@ class LaVista(unittest.TestCase):
                 etiqueta = next((h.get_label() for h in hijos(b) if isinstance(h, Gtk.Label)), None)
                 if etiqueta:
                     botones.setdefault(etiqueta, b)    # el de la cabecera es el mismo verbo
-        botones["Devolver y decir por qué"].emit("clicked")
+        botones["Rechazar y decir por qué"].emit("clicked")
         botones["Aprobar"].emit("clicked")
         self.assertEqual(falso.movidas, ["en-curso", modelo.HECHA])
 

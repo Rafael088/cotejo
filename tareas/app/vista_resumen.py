@@ -37,7 +37,7 @@ class Resumen:
             self.mover(proyecto, tarea, "en-curso")   # pregunta el motivo antes de escribir
 
         for texto_boton, clase, accion in (("Aprobar", "suggested-action", aprobar),
-                                           ("Devolver y decir por qué", "flat", devolver)):
+                                           ("Rechazar y decir por qué", "flat", devolver)):
             boton = Gtk.Button(child=self.con_icono(
                 "estado-hecha" if clase != "flat" else "flecha-izquierda", texto_boton),
                 css_classes=[clase])

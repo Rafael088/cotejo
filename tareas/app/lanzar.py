@@ -28,8 +28,9 @@ vuelve por `lanzar_al_mover`, que lanza un agente nuevo con la nota de retomar
 **El fin y el rechazo** (cotejo-o253bs). Cuando el agente vuelve, `despacho_board` le hace el
 fin y aquí solo se avisa (`agente_terminado`): entregó y está en Para comprobar, donde su ficha
 y su revisión guardan sus mensajes; o terminó sin entregar y volvió a Pendiente, pausada, con el
-motivo. Devolver de Para comprobar a Haciendo con motivo (`relanzar_al_rechazar`) lanza un
-agente nuevo en el mismo worktree con lo que se pidió cambiar.
+motivo. Rechazar desde Para comprobar la devuelve a Pendiente sin lanzar nada. El diálogo ofrece
+aparte «Volver a lanzar ahora»; solo esa opción llama a `relanzar_al_rechazar` y lanza un agente
+nuevo en el mismo worktree con lo que se pidió cambiar.
 
 **Una petición de acceso** (cotejo-0xpu71) aparece dentro de «Lo que hace el agente» con las
 rutas exactas y «Aceptar acceso». Al pulsarlo se relanza la continuación fuera del hilo de GTK;

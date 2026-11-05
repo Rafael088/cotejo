@@ -88,6 +88,31 @@ class EnElBoard(unittest.TestCase):
         board.escribir_movimiento.assert_called_once_with("P", asignada, "por-validar")
         board.es_pausable.assert_not_called()
 
+    def test_rechazar_la_deja_pendiente_y_no_relanzar_es_la_accion_por_defecto(self):
+        board = self.board()
+        board.relanzar_al_rechazar = mock.Mock(return_value=True)
+        entrada = SimpleNamespace(get_text=lambda: "Falta la prueba")
+        t = tarea("por-validar", "sonnet")
+        with mock.patch("enrutador.despacho_board.anotar_rechazo") as anotar:
+            Movimientos.al_responder_motivo(
+                board, None, "devolver", entrada, "P", t, "en-curso")
+        anotar.assert_called_once_with(t.id, "Falta la prueba")
+        board.escribir_movimiento.assert_called_once_with(
+            "P", t, modelo.PENDIENTE, "Falta la prueba")
+        board.relanzar_al_rechazar.assert_not_called()
+
+    def test_volver_a_lanzar_ahora_es_una_accion_distinta_y_explicita(self):
+        board = self.board()
+        board.relanzar_al_rechazar = mock.Mock(return_value=True)
+        entrada = SimpleNamespace(get_text=lambda: "Falta la prueba")
+        t = tarea("por-validar", "sonnet")
+        with mock.patch("enrutador.despacho_board.anotar_rechazo") as anotar:
+            Movimientos.al_responder_motivo(
+                board, None, "relanzar", entrada, "P", t, "en-curso")
+        board.relanzar_al_rechazar.assert_called_once_with("P", t, "Falta la prueba")
+        anotar.assert_not_called()
+        board.escribir_movimiento.assert_not_called()
+
     def test_la_hago_yo_en_haciendo_para_al_agente_del_board(self):
         board = self.board()
         t = tarea("en-curso", "sonnet")
