@@ -346,9 +346,11 @@ sin entregar…», con lo último que dijo) y el registro queda `detenido` con
 `motivo: "el agente terminó sin entregar"`, así que sale «Pausada» y conserva el worktree. Si la
 bloqueó o la movió alguien, no se toca. Los que murieron con el board cerrado los recoge
 `despacho_board.recoger()`, que `App.refrescar` llama antes de leer (salta los pids que espera
-un hilo de este proceso). Nada de esto relanza: lanzar es siempre de una persona. **Devolver de
-Para comprobar a Haciendo con motivo** una tarea que lanzó el board (`Lanzar.relanzar_al_rechazar`,
-desde `al_responder_motivo`) llama a `despacho_board.rechazar(id, motivo, mover)`: para al
+un hilo de este proceso). Nada de esto relanza: lanzar es siempre de una persona. **Rechazar
+desde Para comprobar** la devuelve a Pendiente con el motivo y no lanza nada;
+`despacho_board.anotar_rechazo` conserva lo que se pidió cambiar. El diálogo ofrece aparte
+**«Volver a lanzar ahora»**: solo esa opción (`Lanzar.relanzar_al_rechazar`, desde
+`al_responder_motivo`) llama a `despacho_board.rechazar(id, motivo, mover)`, que para al
 anterior si sigue vivo y guarda `rechazo` en el registro (motivo, la entrega anterior en llano de
 `retomar.rechazo` y `de_pid`, que impide que el fin del anterior la suelte) **antes** de que
 `mover()` escriba la línea y el «rechazar» de siempre; luego lanza uno nuevo en el mismo worktree

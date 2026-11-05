@@ -219,26 +219,51 @@ class Movimientos:
         entrada = Gtk.Entry(placeholder_text="Qué falta o qué está mal", activates_default=True)
         dialogo.set_extra_child(entrada)
         dialogo.add_response("cancelar", "Cancelar")
-        dialogo.add_response("devolver", f"Devolver a {dict(modelo.COLUMNAS)[destino]}")
+        es_rechazo = tarea.columna == "por-validar"
+        texto_devolver = ("Rechazar y dejar pendiente" if es_rechazo
+                          else f"Devolver a {dict(modelo.COLUMNAS)[destino]}")
+        dialogo.add_response("devolver", texto_devolver)
+        puede_relanzar = (es_rechazo and tarea.agente
+                          and tarea.agente not in (self.alias_persona or ()))
+        if puede_relanzar:
+            dialogo.add_response("relanzar", "Volver a lanzar ahora")
         dialogo.set_response_appearance("devolver", Adw.ResponseAppearance.DESTRUCTIVE)
         dialogo.set_default_response("devolver")
         dialogo.set_close_response("cancelar")
         # Sin motivo no hay devolución: el botón no se enciende hasta que haya algo escrito.
         dialogo.set_response_enabled("devolver", False)
-        entrada.connect("changed", lambda e: dialogo.set_response_enabled(
-            "devolver", bool(e.get_text().strip())))
+        if puede_relanzar:
+            dialogo.set_response_enabled("relanzar", False)
+
+        def al_escribir(e):
+            habilitado = bool(e.get_text().strip())
+            dialogo.set_response_enabled("devolver", habilitado)
+            if puede_relanzar:
+                dialogo.set_response_enabled("relanzar", habilitado)
+
+        entrada.connect("changed", al_escribir)
         dialogo.connect("response", self.al_responder_motivo, entrada, proyecto, tarea, destino)
         dialogo.present(self)
         entrada.grab_focus()
 
     def al_responder_motivo(self, _dialogo, respuesta, entrada, proyecto, tarea, destino):
         motivo = entrada.get_text().strip()
-        if respuesta != "devolver" or not motivo:
+        if respuesta not in ("devolver", "relanzar") or not motivo:
             return
-        # De Para comprobar a Haciendo, si la lanzó el board, va otro agente con lo que se
-        # pidió cambiar (cotejo-o253bs, `lanzar.py`); si no, se mueve como siempre.
-        if destino == "en-curso" and self.relanzar_al_rechazar(proyecto, tarea, motivo):
-            return
+        if tarea.columna == "por-validar":
+            # Rechazar no vuelve a lanzar por sorpresa: la deja en Pendiente con el motivo.
+            # Relanzar conserva la ruta anterior, pero solo tras elegirla expresamente.
+            if respuesta == "relanzar" and self.relanzar_al_rechazar(
+                    proyecto, tarea, motivo):
+                return
+            from enrutador import despacho_board as db
+            try:
+                db.anotar_rechazo(tarea.id, motivo)
+            except db.NoSePuede as error:
+                self.aviso(f"No pude rechazarla: {error}")
+                self.app.refrescar()
+                return
+            destino = modelo.PENDIENTE
         self.escribir_movimiento(proyecto, tarea, destino, motivo)
 
     def al_mover(self, proyecto, tarea, destino, popover):

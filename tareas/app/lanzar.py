@@ -28,8 +28,9 @@ vuelve por `lanzar_al_mover`, que lanza un agente nuevo con la nota de retomar
 **El fin y el rechazo** (cotejo-o253bs). Cuando el agente vuelve, `despacho_board` le hace el
 fin y aquí solo se avisa (`agente_terminado`): entregó y está en Para comprobar, donde su ficha
 y su revisión guardan sus mensajes; o terminó sin entregar y volvió a Pendiente, pausada, con el
-motivo. Devolver de Para comprobar a Haciendo con motivo (`relanzar_al_rechazar`) lanza un
-agente nuevo en el mismo worktree con lo que se pidió cambiar.
+motivo. Rechazar desde Para comprobar la devuelve a Pendiente sin lanzar nada. El diálogo ofrece
+aparte «Volver a lanzar ahora»; solo esa opción llama a `relanzar_al_rechazar` y lanza un agente
+nuevo en el mismo worktree con lo que se pidió cambiar.
 
 **Una petición de acceso** (cotejo-0xpu71) aparece dentro de «Lo que hace el agente» con las
 rutas exactas y «Aceptar acceso». Al pulsarlo se relanza la continuación fuera del hilo de GTK;
@@ -41,7 +42,7 @@ import traceback
 from gi.repository import Adw, GLib, Gtk, Pango
 
 from .. import bitacora, lanzados, modelo, retomar, senal_vida
-from . import segundo_plano
+from . import comun, segundo_plano
 from .comun import ESPACIADO_SM, ESPACIADO_XS, animaciones_activas, id_corto
 from .escala import px
 from .piezas import icono
@@ -296,9 +297,25 @@ class Lanzar:
             self.aviso(f"No la lancé: {error}")
         else:
             self.foco_tras_pintar = estado.get("id") or tarea.id
+            self.avisar_encierro_windows()
             self.aviso(f"{estado.get('modelo') or 'El agente'} empezó a trabajar en "
                        f"{id_corto(estado.get('id') or tarea.id)}")
         self.app.refrescar()
+
+    def avisar_encierro_windows(self):
+        """Cuenta con claridad el límite de Windows, solo tras el primer lanzamiento real."""
+        if not comun.tomar_aviso_encierro_windows():
+            return None
+        dialogo = Adw.AlertDialog(
+            heading="En Windows, el agente no queda encerrado",
+            body=("Puede abrir y cambiar otros archivos de tu cuenta, igual que tú. Cotejo le "
+                  "pone algunos frenos, como negarle los comandos más peligrosos, pero todavía "
+                  "no puede encerrarlo dentro de la carpeta del proyecto."))
+        dialogo.add_response("entendido", "Entendido")
+        dialogo.set_default_response("entendido")
+        dialogo.set_close_response("entendido")
+        dialogo.present(self)
+        return dialogo
 
     # --- pausar: Haciendo → Pendiente a mano (cotejo-z7ma7r) --------------------------------
 

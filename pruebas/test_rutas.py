@@ -134,6 +134,38 @@ class BoardJsonSigueAlEstado(unittest.TestCase):
             self.assertEqual(comun.ruta_board(), Path(temporal) / "board.json")
             self.assertEqual(comun.cargar_board()["proyecto"], "Prueba")
 
+    def test_el_aviso_de_encierro_sale_una_sola_vez_en_windows(self):
+        try:
+            from tareas.app import comun
+            from tareas.app import lanzar
+        except (ImportError, ValueError):
+            self.skipTest("sin GTK")
+        with tempfile.TemporaryDirectory() as temporal, \
+                mock.patch.dict(os.environ, {"COTEJO_ESTADO": temporal}), \
+                mock.patch.object(rutas, "sistema", return_value="windows"), \
+                mock.patch.object(lanzar.Adw, "AlertDialog") as crear_dialogo:
+            ventana = object()
+            primero = lanzar.Lanzar.avisar_encierro_windows(ventana)
+            segundo = lanzar.Lanzar.avisar_encierro_windows(ventana)
+            self.assertIs(primero, crear_dialogo.return_value)
+            self.assertIsNone(segundo)
+            crear_dialogo.assert_called_once()
+            self.assertIn("no queda encerrado", crear_dialogo.call_args.kwargs["heading"])
+            crear_dialogo.return_value.present.assert_called_once_with(ventana)
+            guardado = comun.cargar_board()
+            self.assertEqual(guardado, {comun.AVISO_ENCIERRO_WINDOWS: True})
+
+    def test_el_aviso_de_windows_no_se_consume_en_otro_sistema(self):
+        try:
+            from tareas.app import comun
+        except (ImportError, ValueError):
+            self.skipTest("sin GTK")
+        with tempfile.TemporaryDirectory() as temporal, \
+                mock.patch.dict(os.environ, {"COTEJO_ESTADO": temporal}), \
+                mock.patch.object(rutas, "sistema", return_value="otro"):
+            self.assertFalse(comun.tomar_aviso_encierro_windows())
+            self.assertFalse(comun.ruta_board().exists())
+
 
 if __name__ == "__main__":
     unittest.main()

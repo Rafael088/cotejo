@@ -646,7 +646,27 @@ def aceptar_permiso(tarea_id, al_terminar=None, config=None):
 
 # --- el rechazo (cotejo-o253bs) -----------------------------------------------------------------
 
-RECHAZO = "lo devolvieron desde Para comprobar para lanzar otro"
+RECHAZO = "lo devolvieron desde Para comprobar"
+
+
+def anotar_rechazo(tarea_id, motivo):
+    """Guarda lo que pidieron cambiar sin lanzar a nadie.
+
+    Se hace antes de mover la tarea a Pendiente para que, si el proceso que entregó aún sigue
+    vivo, su fin no la suelte ni borre el rechazo. El siguiente lanzamiento recogerá el motivo
+    del registro; si la tarea no la lanzó el board, el motivo queda igualmente en la tarea por
+    el movimiento que escribe la interfaz.
+    """
+    if not (motivo or "").strip():
+        raise NoSePuede("Para devolverla hace falta un motivo.")
+    anterior = lanzados.leer(tarea_id)
+    dado = {**retomar.rechazo(motivo, bitacora_cotejo.ultima_entrega(tarea_id)),
+            "de_pid": (anterior or {}).get("pid")}
+    if anterior:
+        if anterior.get("fase") == lanzados.LANZADO:
+            detener(tarea_id, RECHAZO)
+        lanzados.actualizar(tarea_id, rechazo=dado)
+    return dado
 
 
 def rechazar(tarea_id, motivo, mover, al_terminar=None, config=None):
@@ -676,14 +696,7 @@ def rechazar(tarea_id, motivo, mover, al_terminar=None, config=None):
         anterior = None
     else:
         modelo = anterior.get("modelo")
-    if not (motivo or "").strip():
-        raise NoSePuede("Para devolverla hace falta un motivo.")
-    dado = {**retomar.rechazo(motivo, bitacora_cotejo.ultima_entrega(tarea_id)),
-            "de_pid": (anterior or {}).get("pid")}
-    if propia:
-        if anterior.get("fase") == lanzados.LANZADO:
-            detener(tarea_id, RECHAZO)
-        lanzados.actualizar(tarea_id, rechazo=dado)
+    dado = anotar_rechazo(tarea_id, motivo)
     if not mover():
         raise NoSePuede("No pude pasarla a Haciendo: cambió mientras tanto.")
     try:

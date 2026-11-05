@@ -5,7 +5,7 @@ import sys
 from gi.repository import Adw, GLib, Gdk, Gio, Gtk
 
 from .. import bitacora, configuracion, estado, fuente as f, rutas, temas, usuario
-from . import escala
+from . import al_cerrar, escala
 from .comun import APP_ID, DATOS, animaciones_activas, aplicar_clase_animaciones
 from .piezas import pintar_logo
 from .estilo import CSS
@@ -109,8 +109,20 @@ class App(Adw.Application):
         if opciones.contains("board"):
             self.abrir_board()
             return 0
-        self.alternar_board()
+        self.abrir_sin_opciones()
         return 0
+
+    def abrir_sin_opciones(self):
+        """Abrir Cotejo sin opciones (el `.desktop`, el widget de la barra, el menú Inicio).
+
+        En Linux abre o cierra el board: lo usa el widget de la barra. En Windows solo lo abre
+        (o lo trae al frente): allí cerrar la ventana sale de la app (`al_cerrar`), y abrir
+        Cotejo otra vez desde el menú Inicio con el board abierto lo cerraría (cotejo-qtegjk).
+        """
+        if al_cerrar.sale_al_cerrar():
+            self.abrir_board()
+        else:
+            self.alternar_board()
 
     def aplicar_tema(self, ident):
         """Pinta la app con un tema. Si no se puede usar, con el de defecto, y lo dice.
@@ -383,13 +395,20 @@ class App(Adw.Application):
             except Exception:
                 self.no_abrio()
                 return
-            # Cerrar solo lo oculta: el proceso sigue vivo para el widget de la barra.
+            # Cerrar solo lo oculta: el proceso sigue vivo para el widget de la barra. En Windows,
+            # además, la app sale (`al_cerrar.sale_al_cerrar`).
             self.board.set_hide_on_close(True)
             if self.desde_cero and animaciones_activas():
                 self.board.mostrar_arranque()  # el dot entra cuando acabe
             else:
                 GLib.idle_add(lambda: self.board.entrar_dot() and False)
         self.desde_cero = False
+        # En Windows la ventana nueva suele salir maximizada porque sus 1280 × 820 no caben
+        # en el área útil. Ese maximizado implícito no sobrevive a cerrar (ocultar) y volver
+        # a abrir desde el menú Inicio: GTK la presenta con su tamaño natural. Pedirlo en cada
+        # apertura hace que tanto la ventana nueva como la reutilizada tengan el mismo estado.
+        if sys.platform == "win32":
+            self.board.maximize()
         self.board.present()
         if sys.platform == "win32" and not escala.forzado() and not self.vigilando_escala:
             self.vigilando_escala = True

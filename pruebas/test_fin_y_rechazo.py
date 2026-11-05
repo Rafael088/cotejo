@@ -401,6 +401,19 @@ class FinYRechazo(ConClienteFalso):
 class CausaEnLlano(unittest.TestCase):
     """`despacho_board.causa_en_llano`: la causa frecuente, en llano, o nada si no se reconoce."""
 
+    def test_anotar_un_rechazo_guarda_el_motivo_sin_lanzar(self):
+        with tempfile.TemporaryDirectory() as carpeta, \
+                mock.patch.dict(os.environ, {"COTEJO_ESTADO": carpeta}), \
+                mock.patch.object(bitacora, "ultima_entrega", return_value={
+                    "resumen": "La entrega anterior", "cuando": 10}), \
+                mock.patch.object(despacho_board, "_lanzar") as lanzar:
+            lanzados.guardar({"id": ID, "fase": lanzados.TERMINADO, "pid": 7,
+                              "log": str(Path(carpeta) / "agente.log")})
+            rechazo = despacho_board.anotar_rechazo(ID, "Falta el caso vacío.")
+        lanzar.assert_not_called()
+        self.assertEqual(rechazo["motivo"], "Falta el caso vacío.")
+        self.assertEqual(rechazo["entrega"], ["Resumen: La entrega anterior"])
+
     def test_sin_causa_reconocible_devuelve_vacio(self):
         self.assertEqual(despacho_board.causa_en_llano(
             ["Voy a mirar el repo.", "→ Bash: git status", "— Terminó: Listo."]), "")
