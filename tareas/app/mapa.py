@@ -15,9 +15,11 @@ La carpeta sale de la fuente activa (`carpeta_de`); un proyecto recién preparad
 fuente repo y no en la activa, y por eso el plan la pasa explícita.
 """
 
-from gi.repository import Adw, Gtk, Pango
+from pathlib import Path
 
-from .. import mapa as m
+from gi.repository import Adw, Gio, Gtk, Pango
+
+from .. import configuracion, mapa as m, proyectos
 from .comun import ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XL, ESPACIADO_XS
 from .escala import px
 from .constelacion import dibujar_punto, leyenda
@@ -59,8 +61,9 @@ class PantallaMapa(Gtk.ScrolledWindow):
         self.boton_parar = con_mano(Gtk.Button(label="Parar", visible=False))
         self.boton_ver_app = con_mano(Gtk.Button(label="Ver mi app"))
         self.boton_tablero = con_mano(Gtk.Button(label="Ver el tablero"))
+        self.boton_quitar = con_mano(Gtk.Button(label="Quitar proyecto"))
         for b in (self.boton_carpeta, self.boton_parar, self.boton_ver_app,
-                  self.boton_tablero):
+                  self.boton_tablero, self.boton_quitar):
             barra.append(b)
         cuerpo.append(barra)
 
@@ -204,6 +207,8 @@ class PestanaMapa:
         p = self.pantalla_mapa
         p.boton_tablero.connect("clicked", lambda *_: self.abrir_tablero(
             self.mapa_proyecto[0] if self.mapa_proyecto else ""))
+        p.boton_quitar.connect("clicked", lambda *_: self.mapa_proyecto and
+                               self.confirmar_quitar_proyecto(*self.mapa_proyecto))
         # cotejo-vn4qd2: siempre la carpeta principal del proyecto, nunca un worktree.
         for boton, accion in ((p.boton_ver_app, self.ver_mi_app),
                               (p.boton_carpeta, self.abrir_carpeta),
@@ -250,3 +255,49 @@ class PestanaMapa:
         self.al_elegir_chip(chip_proyecto)
         self.tablero_desde_mapa = True
         self.ver_pestana("tablero")
+
+    # --- quitar un proyecto -------------------------------------------------------------------
+
+    def confirmar_quitar_proyecto(self, nombre, carpeta="", ausente=False):
+        """Confirma quitar el registro; la carpeta solo se ofrece con confirmacion propia."""
+        existe = bool(carpeta and Path(carpeta).is_dir())
+        cuerpo = (f"{nombre or carpeta} dejará de aparecer en Cotejo. "
+                  "Sus archivos se conservarán."
+                  if not ausente else
+                  f"Se quitará {carpeta} de la lista de Cotejo.")
+        dialogo = Adw.AlertDialog(heading="¿Quitar este proyecto de Cotejo?", body=cuerpo)
+        dialogo.add_response("cancelar", "Cancelar")
+        dialogo.add_response("quitar", "Quitar de Cotejo")
+        dialogo.set_response_appearance("quitar", Adw.ResponseAppearance.DESTRUCTIVE)
+        if existe and not ausente:
+            dialogo.add_response("papelera", "Quitar y mover la carpeta a la papelera")
+            dialogo.set_response_appearance("papelera", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialogo.set_default_response("cancelar")
+        dialogo.set_close_response("cancelar")
+        dialogo.connect("response", self.al_responder_quitar_proyecto, nombre, carpeta)
+        dialogo.present(self)
+        return dialogo
+
+    def al_responder_quitar_proyecto(self, _dialogo, respuesta, nombre, carpeta):
+        if respuesta not in ("quitar", "papelera"):
+            return
+        donde = proyectos.ubicacion(nombre, carpeta)
+        try:
+            if respuesta == "papelera":
+                # Gio usa la papelera del escritorio. No hay alternativa con borrado directo.
+                proyectos.mover_a_papelera(
+                    carpeta, lambda ruta: Gio.File.new_for_path(ruta).trash(None))
+            proyectos.quitar(nombre, carpeta)
+        except Exception as error:  # noqa: BLE001 — se lo explicamos sin cerrar el board
+            self.aviso(f"No pude quitar {nombre or carpeta}: {error}")
+            return
+        self.mapa_proyecto = None
+        nueva = configuracion.cargar()
+        activa = configuracion.fuente_activa(nueva)
+        nueva_fuente = {**configuracion.parametros(nueva, activa), "fuente": activa}
+        if nueva_fuente == self.app.config_fuente:
+            self.app.refrescar()
+            self.app.vigilar()
+        else:
+            self.app.cambiar_de_fuente()
+        self.ver_pestana("inicio")

@@ -6,6 +6,7 @@ proceso: `Servidores` es uno de mentira y el hilo corre en línea. Lo de verdad 
 puertos, deducción— se prueba sin GTK en `test_ver_app.py`.
 """
 
+import json
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -51,7 +52,10 @@ class VerMiApp(base.PestanaInicio):
 
     def entorno_extra(self, raiz):
         self.carpeta = proyecto_de_prueba(raiz / "repos")
-        return {"COTEJO_REPOS": str(self.carpeta)}
+        (raiz / "config.json").write_text(json.dumps({
+            "fuente": "repo", "fuentes": {"repo": {"repos": [str(self.carpeta)]}}}),
+            encoding="utf-8")
+        return {"COTEJO_FUENTE": "repo"}
 
     def setUp(self):
         super().setUp()
@@ -80,6 +84,10 @@ class VerMiApp(base.PestanaInicio):
         p = b.pantalla_mapa
         self.assertEqual([p.boton_ver_app.get_label(), p.boton_carpeta.get_label()],
                          ["Ver mi app", "Abrir la carpeta"])
+        self.assertEqual(p.boton_quitar.get_label(), "Quitar proyecto")
+        with mock.patch.object(type(b), "confirmar_quitar_proyecto") as confirmar:
+            p.boton_quitar.emit("clicked")
+        confirmar.assert_called_once_with("barberia", str(self.carpeta))
         self.assertFalse(p.boton_parar.get_visible())
 
         (self.carpeta / "index.html").write_text("<h1>hola</h1>", encoding="utf-8")
