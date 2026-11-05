@@ -2,9 +2,10 @@
 id: dec-cxjs
 fecha: 2026-11-04
 temas: [windows, sandbox]
-estado: propuesta
+estado: aceptada
 autor: agente
 reemplaza: dec-dik7
+aceptada_el: 2026-11-04
 ---
 # Cómo encerrar a los agentes que Cotejo lanza en Windows
 
