@@ -3,7 +3,7 @@
 from gi.repository import Adw, GLib, Gdk, Gtk
 from enrutador import config as enrutador_config
 
-from .. import almacen, decision, estado, fuente as f, marca, modelo, temas
+from .. import almacen, decision, estado, fuente as f, marca, modelo, temas, texto_board
 from . import comun, escala
 from .comun import (
     ATAJOS, ENTRADA_MS, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XL, MARGEN_TABLERO_LADOS,
@@ -526,7 +526,8 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
     def aviso(self, texto, segundos=4, boton="", al_pulsar=None):
         """Un aviso que no se sale de la ventana: el texto largo se parte en líneas. Con `boton`,
         lleva un botón que llama a `al_pulsar`."""
-        etiqueta = Gtk.Label(label=texto, wrap=True, max_width_chars=48, xalign=0,
+        etiqueta = Gtk.Label(label=texto_board.para_mostrar(texto), wrap=True,
+                             max_width_chars=48, xalign=0,
                              natural_wrap_mode=Gtk.NaturalWrapMode.WORD)
         toast = Adw.Toast(custom_title=etiqueta, timeout=segundos)
         if boton and al_pulsar is not None:

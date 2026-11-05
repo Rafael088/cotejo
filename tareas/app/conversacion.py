@@ -14,6 +14,7 @@ guarda para cuando se vuelva a abrir.
 
 from gi.repository import Gtk, Pango
 
+from .. import texto_board
 from .comun import ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XS, texto_a_markup
 from .escala import px
 from .piezas import con_mano, etiquetar
@@ -22,6 +23,7 @@ ALTO_MAXIMO = 340
 
 
 def _etiqueta(texto, clases, xalign=0, markup=False):
+    texto = texto_board.para_mostrar(texto)
     return Gtk.Label(label=texto_a_markup(texto) if markup else texto, use_markup=markup,
                      wrap=True, xalign=xalign, selectable=True,
                      wrap_mode=Pango.WrapMode.WORD_CHAR, max_width_chars=72,
@@ -189,6 +191,7 @@ class PanelMaestro(Gtk.Box):
         fila.append(self.boton_parar)
         caja.append(fila)
         for linea in en_vivo:
-            caja.append(Gtk.Label(label=linea, xalign=0, css_classes=["maestro-vivo"],
+            caja.append(Gtk.Label(label=texto_board.para_mostrar(linea), xalign=0,
+                                  css_classes=["maestro-vivo"],
                                   ellipsize=Pango.EllipsizeMode.END, max_width_chars=80))
         return caja

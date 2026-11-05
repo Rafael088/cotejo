@@ -44,7 +44,7 @@ import threading
 import time
 from pathlib import Path
 
-from . import rutas, worktrees
+from . import rutas, texto_board, worktrees
 
 ESQUEMA = 1
 
@@ -339,17 +339,17 @@ def legible(linea):
     el agente, cada herramienta que usa (`→ Bash: pytest`) y cómo terminó. Lo que no es JSON va
     tal cual, recortado.
     """
-    texto = linea.strip()
+    texto = texto_board.sin_ansi(linea).strip()
     if not texto:
         return None
     if not texto.startswith("{"):
-        return texto[:LINEA_MAX]
+        return texto_board.para_mostrar(texto[:LINEA_MAX])
     try:
         datos = json.loads(texto)
     except ValueError:
-        return texto[:LINEA_MAX]
+        return texto_board.para_mostrar(texto[:LINEA_MAX])
     if not isinstance(datos, dict):
-        return texto[:LINEA_MAX]
+        return texto_board.para_mostrar(texto[:LINEA_MAX])
     tipo = datos.get("type")
     if tipo == "assistant":
         partes = []
@@ -361,13 +361,14 @@ def legible(linea):
             elif parte.get("type") == "tool_use":
                 dice = _resumen_entrada(parte.get("input"))
                 partes.append(f"→ {parte.get('name', '?')}" + (f": {dice}" if dice else ""))
-        return "\n".join(partes) or None
+        return texto_board.para_mostrar("\n".join(partes)) if partes else None
     if tipo == "result":
         final = " ".join(str(datos.get("result") or "").split())[:400]
         cabeza = "— Terminó con un error" if datos.get("is_error") else "— Terminó"
-        return cabeza + (f": {final}" if final else "")
+        return texto_board.para_mostrar(cabeza + (f": {final}" if final else ""))
     if tipo == "system" and datos.get("subtype") == "init":
-        return "— Empezó" + (f" con {datos['model']}" if datos.get("model") else "")
+        return texto_board.para_mostrar(
+            "— Empezó" + (f" con {datos['model']}" if datos.get("model") else ""))
     return None
 
 

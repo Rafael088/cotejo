@@ -42,7 +42,7 @@ from gi.repository import Adw, Gio, GLib, Gtk
 
 from enrutador import modelos_vivos
 
-from .. import equipo, instalar_agentes
+from .. import equipo, instalar_agentes, texto_board
 from .comun import ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XL, ESPACIADO_XS
 from .escala import px
 from .piezas import con_mano, etiquetar, vaciar
@@ -231,7 +231,7 @@ class PestanaEquipo:
         nota = self.equipo_notas.get(clave)
         if nota:
             partes.append(nota)
-        etiqueta.set_label("\n".join(partes))
+        etiqueta.set_label(texto_board.para_mostrar("\n".join(partes)))
         etiqueta.set_visible(bool(partes))
 
     # --- instalar e iniciar sesión ----------------------------------------------------------------

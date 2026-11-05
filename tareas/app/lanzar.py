@@ -40,7 +40,7 @@ import traceback
 
 from gi.repository import Adw, GLib, Gtk, Pango
 
-from .. import bitacora, lanzados, modelo, retomar, senal_vida
+from .. import bitacora, lanzados, modelo, retomar, senal_vida, texto_board
 from . import comun, segundo_plano
 from .comun import ESPACIADO_SM, ESPACIADO_XS, animaciones_activas, id_corto
 from .escala import px
@@ -136,8 +136,9 @@ class EnVivo(Gtk.Box):
     def refrescar(self):
         """Pone la situación y añade al final lo que el agente escribió desde la última vez."""
         registro = lanzados.leer(self.id)
-        self.situacion.set_label(lanzados.situacion(lanzados.estado(registro)))
-        dice = retomar.resumen((registro or {}).get("reanudacion"))
+        self.situacion.set_label(
+            texto_board.para_mostrar(lanzados.situacion(lanzados.estado(registro))))
+        dice = texto_board.para_mostrar(retomar.resumen((registro or {}).get("reanudacion")))
         self.reanudacion.set_label(dice)
         self.reanudacion.set_visible(bool(dice))
         solicitud = ((registro or {}).get("permiso") or {}
@@ -365,8 +366,8 @@ class Lanzar:
             return None
         quien = registro.get("modelo") or "su agente"
         rama = (registro.get("worktree") or {}).get("rama")
-        texto = (f"Se paró a {quien}" + (f" ({retomar.motivo_de(registro)})"
-                                          if retomar.motivo_de(registro) else "") + ". "
+        motivo = texto_board.para_mostrar(retomar.motivo_de(registro))
+        texto = (f"Se paró a {quien}" + (f" ({motivo})" if motivo else "") + ". "
                  + (f"Su worktree y la rama {rama} siguen ahí. " if rama else "")
                  + "Al pasarla a Haciendo se lanza un agente nuevo que retoma donde quedó, con "
                    "una nota de sus commits, lo que dejó sin commitear y lo último que dijo.")
@@ -411,7 +412,7 @@ class Lanzar:
         if not lanzados.termino_sin_entregar(registro):
             return None
         from enrutador import despacho_board as db
-        motivo = db.motivo_sin_entregar(registro)
+        motivo = texto_board.para_mostrar(db.motivo_sin_entregar(registro))
         dicho = retomar.ultimas_lineas(registro, 3)
 
         caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS),
@@ -657,7 +658,8 @@ class Lanzar:
         cabeza.append(icono("aviso", 12))
         cabeza.append(Gtk.Label(label="EN ESPERA", xalign=0, css_classes=["anotacion-titulo"]))
         caja.append(cabeza)
-        caja.append(Gtk.Label(label=motivo, xalign=0, wrap=True, selectable=True,
+        caja.append(Gtk.Label(label=texto_board.para_mostrar(motivo), xalign=0, wrap=True,
+                              selectable=True,
                               focusable=False, wrap_mode=Pango.WrapMode.WORD_CHAR,
                               css_classes=["anotacion-texto"]))
         if al_lanzar_igual is not None:

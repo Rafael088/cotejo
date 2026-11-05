@@ -5,7 +5,7 @@ import sys
 
 from gi.repository import Adw, GLib, GObject, Gdk, Gtk, Pango
 
-from .. import estado, logo_dibujo, marca, temas
+from .. import estado, logo_dibujo, marca, temas, texto_board
 from . import escala
 from .comun import (
     DATOS, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XS, LADO_ARRANQUE, REVELAR_MS, SALIDA_CARTA_MS,
@@ -40,9 +40,11 @@ def poner_avisos(banda, avisos):
         banda.set_title(f"No pude leer {len(notas)} nota{'s' if len(notas) > 1 else ''}: "
                         "sus tareas no salen aquí")
     else:
-        banda.set_title(avisos[0]["motivo"])
+        banda.set_title(texto_board.para_mostrar(avisos[0]["motivo"]))
     banda.set_tooltip_text("\n".join(
-        f"{a['nota']}: {a['motivo']}" if a.get("nota") else a["motivo"] for a in avisos))
+        texto_board.para_mostrar(
+            f"{a['nota']}: {a['motivo']}" if a.get("nota") else a["motivo"])
+        for a in avisos))
     banda.set_revealed(True)
 
 

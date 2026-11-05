@@ -18,7 +18,7 @@ Nada de esto escribe.
 import time
 from dataclasses import dataclass, field
 
-from . import preparacion, progreso
+from . import preparacion, progreso, texto_board
 
 SUELE_TARDAR = "suele tardar 2 a 4 minutos"
 SIMBOLOS = {progreso.PENDIENTE: "○", progreso.EN_CURSO: "◐", progreso.HECHO: "✓",
@@ -95,9 +95,10 @@ def _linea_de_bitacora(texto):
 
 def texto_del_registro(crudo):
     """El registro desplegable: lo que Cotejo vio hacer al agente y el final de su salida."""
-    lineas = [_linea_de_bitacora(t) for t in crudo.get("bitacora", [])]
+    lineas = [texto_board.sin_ansi(_linea_de_bitacora(t))
+              for t in crudo.get("bitacora", [])]
     if crudo.get("log"):
-        lineas += ["", "--- salida del agente ---", crudo["log"]]
+        lineas += ["", "--- salida del agente ---", texto_board.para_mostrar(crudo["log"])]
     return "\n".join(lineas) if lineas else "Todavía no hay nada que enseñar."
 
 

@@ -4,7 +4,7 @@ import time
 
 from gi.repository import Adw, GObject, Gdk, Gtk
 
-from .. import bitacora, modelo, revision, worktrees
+from .. import bitacora, modelo, revision, texto_board, worktrees
 from .comun import texto_a_markup
 from .escala import px
 from .piezas import TareaArrastrada, icono
@@ -265,7 +265,8 @@ class Movimientos:
         popover.popdown()
         titulo, texto = datos
         dialogo = Adw.AlertDialog(heading=titulo)
-        etiqueta = Gtk.Label(label=texto, xalign=0, yalign=0, wrap=True, selectable=True,
+        etiqueta = Gtk.Label(label=texto_board.para_mostrar(texto), xalign=0, yalign=0,
+                             wrap=True, selectable=True,
                              css_classes=["anotacion-texto"])
         dialogo.set_extra_child(Gtk.ScrolledWindow(
             child=etiqueta, propagate_natural_height=True, max_content_height=px(420),

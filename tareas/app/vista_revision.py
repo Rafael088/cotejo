@@ -4,7 +4,7 @@ import threading
 
 from gi.repository import Adw, GLib, Gtk, Pango
 
-from .. import bitacora, capturas, juntar, modelo, revision, worktrees
+from .. import bitacora, capturas, juntar, modelo, revision, texto_board, worktrees
 from .comun import ESPACIADO_LG, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XS
 from .escala import px
 from .piezas import chip, con_mano, icono
@@ -242,7 +242,7 @@ class Revision:
                                 selectable=True, wrap=True, css_classes=["salida-prueba"]))
         caja = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=px(ESPACIADO_XS))
         caja.append(cabeza)
-        salida = (prueba.get("salida") or "").strip()
+        salida = texto_board.para_mostrar(prueba.get("salida") or "").strip()
         if salida:
             # Lo último de la salida, que es donde las herramientas ponen el resumen y el fallo.
             plegable = Gtk.Expander(label="Salida", expanded=estado_ != "verde")
