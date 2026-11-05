@@ -39,10 +39,12 @@ es JSON (Codex, OpenCode, Gemini) va tal cual.
 import json
 import os
 import socket
+import tempfile
 import threading
 import time
+from pathlib import Path
 
-from . import rutas, worktrees
+from . import rutas, texto_board, worktrees
 
 ESQUEMA = 1
 
@@ -73,15 +75,66 @@ def ruta_log(tarea_id):
     return carpeta() / f"{worktrees.seguro(tarea_id)}.log"
 
 
+# Cuántas veces y cada cuánto se reintenta el reemplazo en Windows (ver `guardar`).
+REINTENTOS, PAUSA_REINTENTO_S = 20, 0.05
+# Un temporal más viejo que esto ya no es de una escritura en curso: lo dejó un proceso que
+# murió a mitad (`limpiar_temporales`).
+TEMPORAL_VIEJO_S = 60
+
+
 def guardar(registro):
-    """Reemplazo atómico: quien lo lee (el board, la barra) nunca lo ve a medias."""
+    """Reemplazo atómico: quien lo lee (el board, la barra) nunca lo ve a medias, y no queda
+    ningún `.tmp` detrás (cotejo-qtegjk).
+
+    Cada escritura usa su propio temporal (dos hilos que guardan a la vez no se pisan el mismo).
+    En Windows, `os.replace` falla con `PermissionError` mientras otro proceso tiene abierto el
+    destino (el board leyéndolo, un antivirus): se reintenta un momento y, si no se pudo, se
+    borra el temporal antes de dejar subir el error.
+    """
     ruta = _ruta(registro["id"])
     ruta.parent.mkdir(parents=True, exist_ok=True)
-    temporal = ruta.with_name(f".{ruta.name}.tmp")
-    temporal.write_text(json.dumps({"esquema": ESQUEMA, **registro}, ensure_ascii=False),
-                        encoding="utf-8")
-    os.replace(temporal, ruta)
+    datos = json.dumps({"esquema": ESQUEMA, **registro}, ensure_ascii=False)
+    descriptor, nombre = tempfile.mkstemp(prefix=f".{ruta.name}.", suffix=".tmp",
+                                          dir=ruta.parent)
+    temporal = Path(nombre)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as archivo:
+            archivo.write(datos)
+        for intento in range(REINTENTOS):
+            try:
+                os.replace(temporal, ruta)
+                break
+            except PermissionError:
+                if intento == REINTENTOS - 1:
+                    raise
+                time.sleep(PAUSA_REINTENTO_S)
+    except BaseException:
+        try:
+            temporal.unlink()
+        except OSError:
+            pass
+        raise
     return registro
+
+
+def limpiar_temporales(ahora=None):
+    """Borra los `.tmp` que dejó una escritura cortada a mitad (el proceso murió entre escribir
+    y reemplazar). Solo los viejos: uno reciente puede ser de una escritura en marcha.
+    Devuelve cuántos borró."""
+    ahora = time.time() if ahora is None else ahora
+    borrados = 0
+    try:
+        temporales = list(carpeta().glob(".*.tmp"))
+    except OSError:
+        return 0
+    for temporal in temporales:
+        try:
+            if ahora - temporal.stat().st_mtime > TEMPORAL_VIEJO_S:
+                temporal.unlink()
+                borrados += 1
+        except OSError:
+            pass
+    return borrados
 
 
 def leer(tarea_id):
@@ -105,6 +158,7 @@ def todos():
     """{id: registro} de todas las tareas lanzadas. Uno roto se salta."""
     if not carpeta().is_dir():
         return {}
+    limpiar_temporales()
     salida = {}
     for archivo in carpeta().glob("*.json"):
         try:
@@ -285,17 +339,17 @@ def legible(linea):
     el agente, cada herramienta que usa (`→ Bash: pytest`) y cómo terminó. Lo que no es JSON va
     tal cual, recortado.
     """
-    texto = linea.strip()
+    texto = texto_board.sin_ansi(linea).strip()
     if not texto:
         return None
     if not texto.startswith("{"):
-        return texto[:LINEA_MAX]
+        return texto_board.para_mostrar(texto[:LINEA_MAX])
     try:
         datos = json.loads(texto)
     except ValueError:
-        return texto[:LINEA_MAX]
+        return texto_board.para_mostrar(texto[:LINEA_MAX])
     if not isinstance(datos, dict):
-        return texto[:LINEA_MAX]
+        return texto_board.para_mostrar(texto[:LINEA_MAX])
     tipo = datos.get("type")
     if tipo == "assistant":
         partes = []
@@ -307,13 +361,14 @@ def legible(linea):
             elif parte.get("type") == "tool_use":
                 dice = _resumen_entrada(parte.get("input"))
                 partes.append(f"→ {parte.get('name', '?')}" + (f": {dice}" if dice else ""))
-        return "\n".join(partes) or None
+        return texto_board.para_mostrar("\n".join(partes)) if partes else None
     if tipo == "result":
         final = " ".join(str(datos.get("result") or "").split())[:400]
         cabeza = "— Terminó con un error" if datos.get("is_error") else "— Terminó"
-        return cabeza + (f": {final}" if final else "")
+        return texto_board.para_mostrar(cabeza + (f": {final}" if final else ""))
     if tipo == "system" and datos.get("subtype") == "init":
-        return "— Empezó" + (f" con {datos['model']}" if datos.get("model") else "")
+        return texto_board.para_mostrar(
+            "— Empezó" + (f" con {datos['model']}" if datos.get("model") else ""))
     return None
 
 

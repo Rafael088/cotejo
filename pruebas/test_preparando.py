@@ -152,6 +152,14 @@ class Vistas(unittest.TestCase):
         self.assertIn("$ cotejo init turnos", reg)
         self.assertIn("hola desde el agente", reg)
 
+    def test_el_registro_limpia_ansi_y_explica_un_error_del_cliente(self):
+        Path(self.base, "salida.log").write_text(
+            "\x1b[91mError: Not logged in · Please run /login\x1b[0m")
+        reg = self.ver(20).registro
+        self.assertIn("El agente no tiene una sesión iniciada.", reg)
+        self.assertIn("Original:\nError: Not logged in · Please run /login", reg)
+        self.assertNotIn("\x1b", reg)
+
     def test_preparacion_que_no_existe(self):
         v = preparando.Preparando("nada-000000", str(self.bitacora)).refrescar()
         self.assertEqual(v.situacion, preparacion.FALLO)

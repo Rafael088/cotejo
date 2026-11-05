@@ -60,6 +60,14 @@ class QueSeVeEnLaCarta(unittest.TestCase):
                 self.assertEqual(texto, "Falta la prueba")
                 self.assertTrue(titulo.startswith("DEVUELTA"))
 
+    def test_un_motivo_del_cliente_se_limpia_y_se_explica_sin_ocultar_el_original(self):
+        _, _, texto = anotacion_visible(
+            tarea(), anotacion(operacion="bloquear",
+                               motivo="\x1b[31mInsufficient account funds\x1b[0m"))
+        self.assertIn("La cuenta del modelo no tiene saldo.", texto)
+        self.assertIn("Original:\nInsufficient account funds", texto)
+        self.assertNotIn("\x1b", texto)
+
     def test_bloqueada_por_el_agente_y_devuelta_por_una_persona_no_dicen_lo_mismo(self):
         """Las dos se ven igual, en ámbar, porque las dos piden que alguien mire; pero una la
         paró quien la estaba haciendo y la otra la paró quien la iba a comprobar."""

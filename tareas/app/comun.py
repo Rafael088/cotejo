@@ -9,7 +9,7 @@ from pathlib import Path
 from gi.repository import Gtk
 from enrutador import config as enrutador_config, niveles as enrutador_niveles
 
-from .. import modelo, rutas
+from .. import modelo, rutas, texto_board
 from ..markup import texto_a_markup
 from .escala import px
 
@@ -49,6 +49,22 @@ def guardar_board(**cambios):
         ruta.write_text(json.dumps(datos, ensure_ascii=False))
     except OSError:
         pass
+
+
+AVISO_ENCIERRO_WINDOWS = "aviso_encierro_windows"
+
+
+def tomar_aviso_encierro_windows():
+    """True una sola vez, al primer agente que el board lanza en Windows.
+
+    Vive en ``board.json`` porque es un recuerdo de la interfaz, no una preferencia que cambie
+    cómo trabaja Cotejo. Se marca antes de presentar el diálogo: si la ventana se cierra con el
+    aviso abierto, no vuelve a aparecer en el lanzamiento siguiente.
+    """
+    if rutas.sistema() != "windows" or cargar_board().get(AVISO_ENCIERRO_WINDOWS):
+        return False
+    guardar_board(**{AVISO_ENCIERRO_WINDOWS: True})
+    return True
 
 
 # Tokens de movimiento: dos duraciones, no una copiada en todo (entrar es lo único que se anima).
@@ -180,9 +196,10 @@ def anotacion_visible(tarea, anotacion):
         return None
     if anotacion.get("motivo"):
         palabra = "BLOQUEADA" if anotacion.get("operacion") == "bloquear" else "DEVUELTA"
-        clase, texto = "detenida", anotacion["motivo"]
+        clase, texto = "detenida", texto_board.para_mostrar(anotacion["motivo"])
     elif tarea.columna == "por-validar" and anotacion.get("evidencia"):
-        clase, palabra, texto = "entregada", "ENTREGADA", anotacion["evidencia"]
+        clase, palabra, texto = ("entregada", "ENTREGADA",
+                                 texto_board.para_mostrar(anotacion["evidencia"]))
     else:
         return None
     detalle = " · ".join(parte for parte in (

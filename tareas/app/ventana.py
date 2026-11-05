@@ -3,7 +3,7 @@
 from gi.repository import Adw, GLib, Gdk, Gtk
 from enrutador import config as enrutador_config
 
-from .. import almacen, decision, estado, fuente as f, marca, modelo, temas
+from .. import almacen, decision, estado, fuente as f, marca, modelo, temas, texto_board
 from . import comun, escala
 from .comun import (
     ATAJOS, ENTRADA_MS, ESPACIADO_MD, ESPACIADO_SM, ESPACIADO_XL, MARGEN_TABLERO_LADOS,
@@ -14,6 +14,7 @@ from .piezas import (
     Finalizadas, banda_de_avisos, cabecera_de_marca, dibujar_arranque, etiquetar, icono,
     muestra_de_tema, pintar_logo, poner_avisos,
 )
+from .al_cerrar import AlCerrar
 from .banda import Banda
 from .capa_dot import CapaDot
 from .cartas import Cartas
@@ -38,7 +39,7 @@ from .vista_revision import Revision
 
 
 class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, PestanaRevisarPlan, PestanaMapa,
-            VerApp, Maestro, Columnas, Banda, Pie, Cartas, Detalle, Decisiones, Revision, Resumen, Teclado,
+            AlCerrar, VerApp, Maestro, Columnas, Banda, Pie, Cartas, Detalle, Decisiones, Revision, Resumen, Teclado,
             Movimientos, Lanzar, Modelos, CapaDot, Adw.ApplicationWindow):
     """Las tareas en sus cuatro estados, un proyecto a la vez.
 
@@ -54,6 +55,7 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
     def __init__(self, app):
         super().__init__(application=app, title="CotejoBoard")
         self.app = app
+        self.poner_al_cerrar()   # el primer «close-request»: pregunta antes de que nada se pare
         self.fuente = app.fuente
         self.set_default_size(*self.tamano_inicial())
         self.columnas = {}
@@ -524,7 +526,8 @@ class Board(PestanaInicio, PestanaEquipo, PestanaEntrevista, PestanaPreparando, 
     def aviso(self, texto, segundos=4, boton="", al_pulsar=None):
         """Un aviso que no se sale de la ventana: el texto largo se parte en líneas. Con `boton`,
         lleva un botón que llama a `al_pulsar`."""
-        etiqueta = Gtk.Label(label=texto, wrap=True, max_width_chars=48, xalign=0,
+        etiqueta = Gtk.Label(label=texto_board.para_mostrar(texto), wrap=True,
+                             max_width_chars=48, xalign=0,
                              natural_wrap_mode=Gtk.NaturalWrapMode.WORD)
         toast = Adw.Toast(custom_title=etiqueta, timeout=segundos)
         if boton and al_pulsar is not None:
