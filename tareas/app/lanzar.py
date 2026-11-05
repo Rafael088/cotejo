@@ -41,7 +41,7 @@ import traceback
 from gi.repository import Adw, GLib, Gtk, Pango
 
 from .. import bitacora, lanzados, modelo, retomar, senal_vida
-from . import segundo_plano
+from . import comun, segundo_plano
 from .comun import ESPACIADO_SM, ESPACIADO_XS, animaciones_activas, id_corto
 from .escala import px
 from .piezas import icono
@@ -296,9 +296,25 @@ class Lanzar:
             self.aviso(f"No la lancé: {error}")
         else:
             self.foco_tras_pintar = estado.get("id") or tarea.id
+            self.avisar_encierro_windows()
             self.aviso(f"{estado.get('modelo') or 'El agente'} empezó a trabajar en "
                        f"{id_corto(estado.get('id') or tarea.id)}")
         self.app.refrescar()
+
+    def avisar_encierro_windows(self):
+        """Cuenta con claridad el límite de Windows, solo tras el primer lanzamiento real."""
+        if not comun.tomar_aviso_encierro_windows():
+            return None
+        dialogo = Adw.AlertDialog(
+            heading="En Windows, el agente no queda encerrado",
+            body=("Puede abrir y cambiar otros archivos de tu cuenta, igual que tú. Cotejo le "
+                  "pone algunos frenos, como negarle los comandos más peligrosos, pero todavía "
+                  "no puede encerrarlo dentro de la carpeta del proyecto."))
+        dialogo.add_response("entendido", "Entendido")
+        dialogo.set_default_response("entendido")
+        dialogo.set_close_response("entendido")
+        dialogo.present(self)
+        return dialogo
 
     # --- pausar: Haciendo → Pendiente a mano (cotejo-z7ma7r) --------------------------------
 

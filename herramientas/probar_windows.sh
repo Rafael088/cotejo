@@ -29,6 +29,9 @@
 #   --volcar-ms N       el board vuelca sus hilos (faulthandler) si su bucle pasa N ms sin latir
 #   --faulthandler-s S  además, faulthandler.dump_traceback_later(S, repeat=True)
 #   --perfil            perfilar (cProfile) los refrescos del board: volcados/perfil.txt
+#   --cerrar-trabajando parar|dejar
+#                       cerrar el board con el agente aún trabajando (detrás de un cmd /c, como
+#                       uno de npm) y contestar eso a «pararlos o dejarlos»; usa --espera 60
 #   --compilar          compilar la copia (compileall) antes: como una instalación que ya
 #                       arrancó una vez y tiene su __pycache__; sin esto, el primer import de
 #                       cada módulo se compila en el momento y cuenta en lo que se mide
@@ -51,6 +54,7 @@ ESPERA=8
 VOLCAR_MS=0
 FH_S=0
 PERFIL=0
+CERRAR=""
 COMPILAR=0
 TOPE_SUITE=1800
 SALIDA=""
@@ -70,6 +74,7 @@ while [ $# -gt 0 ]; do
         --volcar-ms) VOLCAR_MS=$2; shift ;;
         --faulthandler-s) FH_S=$2; shift ;;
         --perfil) PERFIL=1 ;;
+        --cerrar-trabajando) CERRAR=$2; shift ;;
         --compilar) COMPILAR=1 ;;
         --tope-suite) TOPE_SUITE=$2; shift ;;
         --salida) SALIDA=$2; shift ;;
@@ -81,6 +86,7 @@ while [ $# -gt 0 ]; do
     shift
 done
 case "$SOLO" in todo|suite|humo) ;; *) echo "--solo es suite o humo" >&2; exit 2 ;; esac
+case "$CERRAR" in ""|parar|dejar) ;; *) echo "--cerrar-trabajando es parar o dejar" >&2; exit 2 ;; esac
 for numero in "$ESPERA" "$VOLCAR_MS" "$FH_S" "$TOPE_SUITE"; do
     [[ "$numero" =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo "no es un número: $numero" >&2; exit 2; }
 done
@@ -118,7 +124,7 @@ if [ "$EN_SECO" = 1 ]; then
     echo "rama: $RAMA ($REF$( [ "$SUCIO" = 1 ] && echo ', con lo no commiteado'))"
     echo "host: $HOST · carpeta: %TEMP%\\cotejo-prueba\\$NOMBRE · salida: $SALIDA"
     [ "$SOLO" != humo ] && echo "suite: tarea interactiva $TAREA_PROGRAMADA: runtime\\bin\\python.exe -m unittest discover -v -s pruebas${PATRON:+ -p $PATRON} (tope ${TOPE_SUITE}s)"
-    [ "$SOLO" != suite ] && echo "humo: tarea interactiva $TAREA_PROGRAMADA: pythonw humo_windows.py vigilar --espera $ESPERA --volcar-ms $VOLCAR_MS --faulthandler-s $FH_S --perfil $PERFIL"
+    [ "$SOLO" != suite ] && echo "humo: tarea interactiva $TAREA_PROGRAMADA: pythonw humo_windows.py vigilar --espera $ESPERA --volcar-ms $VOLCAR_MS --faulthandler-s $FH_S --perfil $PERFIL${CERRAR:+ --cerrar-trabajando $CERRAR}"
     exit 0
 fi
 
@@ -204,7 +210,7 @@ if [ "$SOLO" != suite ]; then
     TOPE_HUMO=$(python3 -c "print(int(float('$ESPERA')) + 240)")
     echo "→ humo del board en el escritorio de $HOST (hasta ${TOPE_HUMO}s)"
     set +e
-    en_escritorio vigilar '"--carpeta `"" + (Join-Path $base "humo") + "`" --salida `"" + (Join-Path $base "humo.json") + "`" --espera '"$ESPERA"' --volcar-ms '"$VOLCAR_MS"' --faulthandler-s '"$FH_S"' --perfil '"$PERFIL"'"' humo.json "$TOPE_HUMO"
+    en_escritorio vigilar '"--carpeta `"" + (Join-Path $base "humo") + "`" --salida `"" + (Join-Path $base "humo.json") + "`" --espera '"$ESPERA"' --volcar-ms '"$VOLCAR_MS"' --faulthandler-s '"$FH_S"' --perfil '"$PERFIL"''"${CERRAR:+ --cerrar-trabajando $CERRAR}"'"' humo.json "$TOPE_HUMO"
     CODIGO_HUMO=$?
     set -e
     rm -rf "$SALIDA/volcados"

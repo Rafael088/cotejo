@@ -88,6 +88,18 @@ export default function PrimerosPasos() {
         </div>
       </section>
 
+      <section className="seccion" aria-labelledby="t-seguridad-windows">
+        <div className="seccion__cabeza">
+          <h2 id="t-seguridad-windows" className="titulo-2">Seguridad en Windows.</h2>
+          <p className="parrafo">
+            En Windows, el agente que lanza Cotejo no queda encerrado dentro de la carpeta del
+            proyecto: puede abrir y cambiar otros archivos de tu cuenta, igual que tú. Cotejo le
+            pone algunos frenos, como negarle los comandos más peligrosos, pero eso no es un
+            encierro. El board te lo recuerda la primera vez que lanza un agente.
+          </p>
+        </div>
+      </section>
+
       <section className="seccion" aria-labelledby="t-cada">
         <div className="seccion__cabeza">
           <h2 id="t-cada" className="titulo-2">Cada día.</h2>

@@ -51,6 +51,22 @@ def guardar_board(**cambios):
         pass
 
 
+AVISO_ENCIERRO_WINDOWS = "aviso_encierro_windows"
+
+
+def tomar_aviso_encierro_windows():
+    """True una sola vez, al primer agente que el board lanza en Windows.
+
+    Vive en ``board.json`` porque es un recuerdo de la interfaz, no una preferencia que cambie
+    cómo trabaja Cotejo. Se marca antes de presentar el diálogo: si la ventana se cierra con el
+    aviso abierto, no vuelve a aparecer en el lanzamiento siguiente.
+    """
+    if rutas.sistema() != "windows" or cargar_board().get(AVISO_ENCIERRO_WINDOWS):
+        return False
+    guardar_board(**{AVISO_ENCIERRO_WINDOWS: True})
+    return True
+
+
 # Tokens de movimiento: dos duraciones, no una copiada en todo (entrar es lo único que se anima).
 ENTRADA_MS = 180
 

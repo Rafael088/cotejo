@@ -549,8 +549,9 @@ class AgenteDelProyecto(ConProyecto):
         self.assertIn("#agente/persona ^cotejo-bbb222", self.tareas_md())
 
 
-class AnadirModelo(unittest.TestCase):
+class AnadirModelo(ConMaquinaFalsa):
     def setUp(self):
+        super().setUp()
         temporal = tempfile.TemporaryDirectory()
         self.addCleanup(temporal.cleanup)
         self.config = Path(temporal.name) / "config.json"
@@ -570,6 +571,7 @@ class AnadirModelo(unittest.TestCase):
             modelos_vivos.definicion("codex", "gpt", nivel="n0")
 
     def test_agregar_es_lo_mismo_que_la_cli_y_no_duplica(self):
+        self.cli("codex", CODEX)
         guardado, reemplazado = modelos_vivos.agregar("codex", "gpt-terra", "Terra", "n3",
                                                       ruta=self.config)
         self.assertFalse(reemplazado)
@@ -583,6 +585,37 @@ class AnadirModelo(unittest.TestCase):
         self.assertEqual(len(modelos), 1)
         self.assertEqual(modelos[0]["nivel"], "n2")
         self.assertEqual(niveles.por_nombre("gpt-terra", modelos).cliente, "codex")
+
+    def test_no_guarda_un_id_ausente_y_sugiere_el_proveedor(self):
+        self.cli("opencode", OPENCODE)
+        with self.assertRaisesRegex(modelos_vivos.ModeloNoDisponible,
+                                    "opencode-go/kimi-k2.7-code"):
+            modelos_vivos.agregar("opencode", "kimi-k2.7-code", ruta=self.config)
+        self.assertFalse(self.config.exists())
+
+    def test_avisa_si_el_cliente_no_esta_instalado(self):
+        with self.assertRaisesRegex(modelos_vivos.ModeloNoDisponible, "no está instalado"):
+            modelos_vivos.agregar("codex", "gpt-terra", ruta=self.config)
+        self.assertFalse(self.config.exists())
+
+    def test_la_validacion_respeta_el_tope(self):
+        # El falso duerme mediante Python porque el PATH de esta prueba no contiene `sleep`.
+        python = shutil.which("python3")
+        guion = f'#!/bin/sh\n"{python}" -c "import time; time.sleep(5)"\n'
+        self.cli("opencode", guion)
+        inicio = time.monotonic()
+        with self.assertRaisesRegex(modelos_vivos.ModeloNoDisponible, "tope"):
+            modelos_vivos.agregar("opencode", "proveedor/modelo", ruta=self.config, tope=0.1)
+        self.assertLess(time.monotonic() - inicio, 2)
+        self.assertFalse(self.config.exists())
+
+    def test_un_registrado_roto_no_se_convierte_en_predeterminado(self):
+        self.cli("codex", CODEX)
+        modelos_vivos.listar("codex", refrescar=True)
+        propios = [{"clave": "roto", "modelo_id": "gpt-que-no-esta", "cliente": "codex",
+                    "nivel": "n2"}]
+        self.assertFalse(modelos_vivos.disponibilidad("codex", "gpt-que-no-esta"))
+        self.assertNotEqual(niveles.modelo_por_defecto("codex", propios), "roto")
 
 
 try:
@@ -605,6 +638,9 @@ def textos(widget):
 @unittest.skipUnless(HAY_GTK, "sin GTK o sin pantalla no se puede construir el menú")
 class EnElBoard(ConMaquinaFalsa):
     def board(self, agente_del_proyecto=""):
+        for cliente in ("claude", "codex", "gemini"):
+            if not (self.bin / cliente).exists():
+                self.cli(cliente)
         asignadas, avisos = [], []
         falso = types.SimpleNamespace(
             agentes=("opus", "sonnet", "haiku", "persona"), alias_persona=("persona",),
@@ -665,6 +701,7 @@ class EnElBoard(ConMaquinaFalsa):
         self.assertEqual(cfg.cargar(config)["modelos"][0]["cliente"], "codex")
 
     def test_escrito_gana_y_vacio_no_registra(self):
+        self.cli("gemini")
         config = self.raiz / "config.json"
         falso = self.board()
         with mock.patch.object(cfg, "ruta_config", return_value=config), \
@@ -674,10 +711,10 @@ class EnElBoard(ConMaquinaFalsa):
             dialogo.modelo.set_selected(dialogo.lista.get_n_items() - 1)   # «Otro»
             self.assertIsNone(falso.al_responder_anadir(dialogo, "agregar"))
             self.assertTrue(falso.avisos and "No añadí" in falso.avisos[-1])
-            dialogo.escrito.set_text("gemini-3-pro-preview")
+            dialogo.escrito.set_text("flash")
             guardado = falso.al_responder_anadir(dialogo, "agregar")
         self.assertEqual((guardado["cliente"], guardado["modelo_id"]),
-                         ("gemini", "gemini-3-pro-preview"))
+                         ("gemini", "flash"))
 
 
 if __name__ == "__main__":

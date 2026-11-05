@@ -649,7 +649,7 @@ Los ajustes del enrutador van en ese mismo archivo, bajo la clave `enrutador` �
 ```
 
 - `proyectos`: en qué carpeta trabaja el agente para cada proyecto. Sin entrada, corre donde estés.
-- `modelos`: catálogo de modelos añadidos por clientes de IA. Cada entrada tiene `clave`, `modelo_id`, `cliente` y `nivel`; se gestiona con `cotejo modelos agregar` y `modelos quitar`.
+- `modelos`: catálogo de modelos añadidos por clientes de IA. Cada entrada tiene `clave`, `modelo_id`, `cliente` y `nivel`; se gestiona con `cotejo modelos agregar` y `modelos quitar`. Al añadir, Cotejo comprueba el identificador contra el catálogo del cliente con un tiempo máximo de espera y no guarda nada si el cliente falta o el modelo no existe.
 - `reglas_extra` y `reglas_apagadas`: las reglas propias ganan a las de fábrica, y cualquiera de fábrica se apaga por su nombre (`cotejo config` las lista).
 - `maestro`: `modelos` es el modelo con que habla el maestro en cada cliente (`{"claude": "opus"}`; sin entrada, el que ese cliente tenga por defecto), `timeout_seg` cuánto espera cada turno (600) y `argumentos_extra.<cliente>` lo que se le añade (solo añade: sus permisos van siempre). `terminal` ya no es del maestro: es con qué se abre una preparación que se colgó («abrir en una terminal»). Sin entrada, sale de la plataforma: `["xdg-terminal-exec"]` en Linux, `["cmd", "/c", "start", ""]` en Windows.
 - `motores.headless.clientes.<cliente>`: `comando` y `argumentos_extra` para lanzar un cliente que no es Claude.
