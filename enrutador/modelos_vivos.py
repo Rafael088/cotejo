@@ -375,6 +375,87 @@ def listar(nombre, refrescar=False, tope=TOPE):
     return _modelos(nombre, preguntar_cli=True, refrescar=refrescar, tope=tope)[0]
 
 
+class ModeloNoDisponible(ValueError):
+    """El modelo no se puede registrar porque el cliente no confirma que pueda usarlo."""
+
+
+def catalogo_para_validar(nombre, tope=TOPE):
+    """Catálogo que sirve para aceptar un modelo nuevo, o un error que no escribe nada.
+
+    A diferencia de la lista tolerante que usa el maestro, al registrar no vale una caché
+    incierta: un identificador dudoso acabaría como destino real de tareas. Los clientes que
+    publican catálogo se consultan con el mismo tope que ``preguntar``; Claude y Gemini se
+    limitan a sus alias estables documentados.
+    """
+    nombre = (nombre or "").strip().lower()
+    if nombre not in clientes.CLIENTES:
+        raise ModeloNoDisponible(
+            f"No conozco el cliente «{nombre or '<vacío>'}»; elige uno de: "
+            f"{', '.join(clientes.CLIENTES)}.")
+    cliente = clientes.CLIENTES[nombre]
+    if shutil.which(cliente.ejecutable) is None:
+        raise ModeloNoDisponible(
+            f"{cliente.titulo or nombre} no está instalado; no añadí el modelo.")
+    if nombre not in PREGUNTA:
+        return list(RESPALDO.get(nombre, ()))
+    modelos = preguntar(nombre, tope=tope)
+    if modelos is None:
+        raise ModeloNoDisponible(
+            f"No pude comprobar los modelos de {cliente.titulo or nombre} dentro del tope de "
+            f"{tope:g} segundos; no añadí el modelo.")
+    return list(modelos)
+
+
+def validar_modelo(nombre, modelo_id, tope=TOPE, catalogo=None):
+    """Confirma que ``modelo_id`` está en el catálogo de ``nombre`` y lo devuelve limpio.
+
+    ``catalogo`` permite al diálogo reutilizar la lista que ya cargó en segundo plano, sin
+    congelar GTK con una segunda llamada al CLI. La CLI lo omite y hace la consulta aquí.
+    """
+    nombre = (nombre or "").strip().lower()
+    modelo_id = (modelo_id or "").strip()
+    if nombre not in clientes.CLIENTES:
+        raise ModeloNoDisponible(
+            f"No conozco el cliente «{nombre or '<vacío>'}»; elige uno de: "
+            f"{', '.join(clientes.CLIENTES)}.")
+    cliente = clientes.CLIENTES[nombre]
+    if shutil.which(cliente.ejecutable) is None:
+        raise ModeloNoDisponible(
+            f"{cliente.titulo or nombre} no está instalado; no añadí el modelo.")
+    disponibles = catalogo_para_validar(nombre, tope) if catalogo is None else list(catalogo)
+    if modelo_id in disponibles:
+        return modelo_id
+    parecidos = [m for m in disponibles if m.rsplit("/", 1)[-1] == modelo_id]
+    pista = f" Usa «{parecidos[0]}» (incluido el proveedor)." if parecidos else ""
+    titulo = clientes.CLIENTES[nombre].titulo or nombre
+    raise ModeloNoDisponible(
+        f"{titulo} no ofrece el modelo «{modelo_id}».{pista} No añadí el modelo.")
+
+
+def disponibilidad(nombre, modelo_id):
+    """``True``/``False`` si el catálogo local permite decidir; ``None`` si aún no se sabe.
+
+    Solo lee disco y PATH: se usa al pintar desplegables, donde nunca se lanza un CLI.
+    """
+    nombre = (nombre or "").strip().lower()
+    modelo_id = (modelo_id or "").strip()
+    if not modelo_id:
+        return True
+    cliente = clientes.CLIENTES.get(nombre)
+    if cliente is None or shutil.which(cliente.ejecutable) is None:
+        return False
+    if nombre not in PREGUNTA:
+        return modelo_id in RESPALDO.get(nombre, ())
+    if nombre == "codex":
+        modelos = leer_cache_codex()
+        if modelos:
+            return modelo_id in modelos
+    guardado = _leer_guardado(nombre)
+    if guardado and guardado["modelos"]:
+        return modelo_id in guardado["modelos"]
+    return None
+
+
 @dataclass(frozen=True)
 class EstadoAgente:
     """Una sola respuesta para Inicio/Ajustes y para el maestro."""
@@ -511,9 +592,10 @@ def definicion(cliente, modelo_id, nombre="", nivel="n2", registrados=()):
             "entrada_mtok": 0.0, "salida_mtok": 0.0}
 
 
-def agregar(cliente, modelo_id, nombre="", nivel="n2", ruta=None):
+def agregar(cliente, modelo_id, nombre="", nivel="n2", ruta=None, tope=TOPE, catalogo=None):
     """Registra el modelo como `cotejo modelos agregar` (`config.registrar_modelo`). Devuelve
     `(guardado, reemplazado)`. Levanta ValueError o `config.ConfigInvalida`."""
     from . import config as cfg
+    validar_modelo(cliente, modelo_id, tope=tope, catalogo=catalogo)
     registrados = (cfg.cargar(ruta) or {}).get("modelos") or []
     return cfg.registrar_modelo(definicion(cliente, modelo_id, nombre, nivel, registrados), ruta)

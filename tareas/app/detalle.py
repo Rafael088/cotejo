@@ -340,7 +340,11 @@ class Detalle:
                                          css_classes=["menu-titulo"]))
             for agente in nombres:
                 if agente != tarea.agente:
-                    agentes.append(self.opcion(agente, funcion or self.al_asignar, proyecto,
+                    from enrutador import niveles
+                    from .modelos import texto_de_modelo
+                    nivel = niveles.por_nombre(agente, getattr(self, "definiciones", ()))
+                    texto = texto_de_modelo(nivel)
+                    agentes.append(self.opcion(texto, funcion or self.al_asignar, proyecto,
                                                tarea, agente, popover, "agente"))
         anadir = funcion_anadir or getattr(self, "al_anadir_y_asignar", None)
         if anadir is not None:
