@@ -570,7 +570,9 @@ class LanzarDesdeElBoard(base.PestanaInicio):
             entrada = Gtk.Entry(text="Falta el caso del archivo vacío.")
             self.board.al_responder_motivo(None, "devolver", entrada, fila.proyecto,
                                            fila.tarea, "en-curso")
-        self.assertIn("#pendiente", self.linea("^cotejo-con"))
+        # Pendiente es no llevar etiqueta de estado.
+        self.assertNotIn("#por-validar", self.linea("^cotejo-con"))
+        self.assertNotIn("#en-curso", self.linea("^cotejo-con"))
         self.assertIn("#agente/sonnet", self.linea("^cotejo-con"))
         self.assertFalse(self.argv_falso.exists())
         rechazo = [json.loads(l) for l in bitacora.ARCHIVO.read_text().splitlines()
