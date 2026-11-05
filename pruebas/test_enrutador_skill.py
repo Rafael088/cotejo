@@ -112,12 +112,44 @@ class Destinos(unittest.TestCase):
         self.assertNotIn("Ningún agente conocido", salida)
         self.assertTrue((hogar / ".claude/skills/cotejo/SKILL.md").exists())
 
+    def test_el_instalador_encuentra_un_cliente_oficial_aunque_no_este_en_el_path(self):
+        hogar = self.dir / "hogar"
+        hogar.mkdir()
+        claude = hogar / ".local/bin/claude"
+        claude.parent.mkdir(parents=True)
+        claude.write_text("#!/bin/sh\n", encoding="utf-8")
+        claude.chmod(0o755)
+        entorno = {"HOME": str(hogar), "PATH": os.environ["PATH"]}
+        subprocess.run([sys.executable, "-m", "tareas.skill"], cwd=skill.RAIZ, env=entorno,
+                       capture_output=True, text=True, check=True)
+        self.assertTrue((hogar / ".claude/skills/cotejo/SKILL.md").exists())
+
     def test_no_se_le_crea_carpeta_a_un_agente_que_no_esta_instalado(self):
         hecho = skill.instalar(hogar=self.dir)
         self.assertEqual(hecho, [])
         self.assertFalse((self.dir / ".gemini").exists())
 
+    def test_una_carpeta_de_config_residual_no_cuenta_como_agente(self):
+        (self.dir / ".claude").mkdir()
+        (self.dir / ".codex").mkdir()
+        hecho = skill.instalar(hogar=self.dir)
+        self.assertEqual(hecho, [])
+        self.assertFalse((self.dir / ".claude/skills/cotejo").exists())
+        self.assertFalse((self.dir / ".claude/skills/cotejo-fuentes").exists())
+        self.assertFalse((self.dir / ".claude/skills/cotejo-modelos").exists())
+        self.assertFalse((self.dir / ".codex/skills/cotejo").exists())
+
+    def test_al_aparecer_un_cliente_una_nueva_revision_le_pone_las_skills(self):
+        hogar = self.dir / "hogar"
+        hogar.mkdir()
+        self.assertEqual(skill.instalar(hogar=hogar), [])
+        self.falso("claude")
+        skill.instalar(hogar=hogar)
+        for nombre in ("cotejo", "cotejo-fuentes", "cotejo-modelos"):
+            self.assertTrue((hogar / ".claude/skills" / nombre / "SKILL.md").exists())
+
     def test_al_agente_instalado_se_le_deja_el_protocolo(self):
+        self.falso("claude", "gemini")
         (self.dir / ".claude").mkdir()
         (self.dir / ".gemini").mkdir()
         (self.dir / ".gemini/GEMINI.md").write_text("# Lo mío\n", encoding="utf-8")
@@ -129,6 +161,7 @@ class Destinos(unittest.TestCase):
         self.assertIn(skill.INICIO, gemini)
 
     def test_la_skill_vieja_del_enrutador_se_quita_al_instalar(self):
+        self.falso("claude")
         vieja = self.dir / ".claude/skills/focorouter"
         vieja.mkdir(parents=True)
         (vieja / "SKILL.md").write_text("el de antes\n", encoding="utf-8")
@@ -137,12 +170,14 @@ class Destinos(unittest.TestCase):
         self.assertTrue((self.dir / ".claude/skills/cotejo/SKILL.md").exists())
 
     def test_se_guarda_copia_antes_de_tocar_un_archivo_ajeno(self):
+        self.falso("gemini")
         (self.dir / ".gemini").mkdir()
         (self.dir / ".gemini/GEMINI.md").write_text("# Lo mío\n", encoding="utf-8")
         skill.instalar(hogar=self.dir)
         self.assertTrue((self.dir / ".gemini/GEMINI.md.bak").exists())
 
     def test_desinstalar_devuelve_el_archivo_ajeno_a_como_estaba(self):
+        self.falso("gemini")
         (self.dir / ".gemini").mkdir()
         ruta = self.dir / ".gemini/GEMINI.md"
         ruta.write_text("# Lo mío\n", encoding="utf-8")
@@ -151,6 +186,7 @@ class Destinos(unittest.TestCase):
         self.assertEqual(ruta.read_text(encoding="utf-8"), "# Lo mío\n")
 
     def test_desinstalar_quita_tambien_la_skill_de_modelos(self):
+        self.falso("claude")
         (self.dir / ".claude").mkdir()
         skill.instalar(hogar=self.dir)
         skill.desinstalar(hogar=self.dir)

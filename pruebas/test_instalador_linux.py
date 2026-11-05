@@ -98,6 +98,15 @@ class Instalador(unittest.TestCase):
         ayuda = self.correr(self.bin / "cotejo", "--help", **sin_gi)
         self.assertIn("usage: cotejo", ayuda.stdout)
 
+    def test_sin_agentes_no_crea_skills_en_carpetas_de_config_residuales(self):
+        (self.hogar / ".claude").mkdir()
+        (self.hogar / ".codex").mkdir()
+        self.instalar("--sin-board", PATH=f"{self.tmp / 'falsos'}:/usr/bin:/bin")
+        self.assertFalse((self.hogar / ".claude/skills/cotejo").exists())
+        self.assertFalse((self.hogar / ".claude/skills/cotejo-fuentes").exists())
+        self.assertFalse((self.hogar / ".claude/skills/cotejo-modelos").exists())
+        self.assertFalse((self.hogar / ".codex/skills/cotejo").exists())
+
     def test_el_lanzador_no_se_deja_suplantar_por_la_carpeta_actual(self):
         self.instalar("--sin-board", "--sin-agentes")
         trampa = self.tmp / "trampa" / "tareas"
