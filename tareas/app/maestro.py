@@ -238,31 +238,29 @@ class Maestro:
         self.parar_reloj_maestro()
 
     def poner_en_su_sitio(self):
-        """La primera vez, abajo al centro, encima del pie. Después, donde la persona la dejó."""
+        """Sin moverlo a mano: abajo al centro, encima del pie, y lo que crece o mengua
+        (mensajes nuevos, minimizar) lo hace hacia arriba sin despegarse del pie. Si la
+        persona lo arrastró, se queda donde lo dejó, solo que dentro de la ventana."""
         if not self.panel_maestro.get_visible() or getattr(self, "encima", None) is None:
             return
         if self.panel_maestro.movido:
             self.panel_maestro.reencajar()
         else:
-            GLib.idle_add(self._colocar_conversacion)
+            self._colocar_conversacion()
 
     def _colocar_conversacion(self):
-        """Calcula el hueco con el tamaño natural del panel, sin esperar a que se asigne."""
+        """Ancho a la medida del tablero y el borde de abajo justo encima del pie."""
         panel = self.panel_maestro
-        ancho_encima, alto_encima = self.encima.get_width(), self.encima.get_height()
-        if not panel.get_visible() or ancho_encima < 2 or alto_encima < 2:
-            return False
+        ancho_encima = self.encima.get_width()
         margen = px(ESPACIADO_LG)
-        ancho = min(px(720), max(px(280), ancho_encima - 2 * margen))
-        panel.set_size_request(ancho, -1)
-        _minimo, alto, _mb, _nb = panel.measure(Gtk.Orientation.VERTICAL, ancho)
-        alto_pie = self.pie.get_height() or px(64)
-        panel.mover_a((ancho_encima - ancho) // 2,
-                      max(margen, alto_encima - alto - alto_pie - margen), movido=False)
+        if ancho_encima > 1:
+            panel.set_size_request(min(px(720), max(px(280), ancho_encima - 2 * margen)), -1)
+        alto_pie = getattr(self, "pie", None) and self.pie.get_height() or px(64)
+        panel.anclar_abajo(alto_pie + margen)
         return False
 
     def ajustar_conversacion(self):
-        """Con la ventana redimensionada: recentrar (o solo reencajar, si la movieron)."""
+        """Con la ventana redimensionada: recolocar (o solo reencajar, si la movieron)."""
         if getattr(self, "panel_maestro", None) is None or not self.panel_maestro.get_visible():
             return
         self.poner_en_su_sitio()
