@@ -7,6 +7,7 @@ abre en «Revisar el equipo» (el primer arranque), que pasa al Inicio. La lógi
 GTK en `test_resumen_inicio.py`.
 """
 
+import json
 import os
 import tempfile
 import types
@@ -738,7 +739,10 @@ class UnRepoQueFalta(PestanaInicio):
         (bueno / ".cotejo").mkdir()
         (bueno / ".cotejo" / "tareas.md").write_text("# Tareas\n\n- [ ] Una ^b1\n", encoding="utf-8")
         self.perdido = raiz / "perdido"
-        return {"COTEJO_REPOS": os.pathsep.join([str(self.perdido), str(bueno)])}
+        (raiz / "config.json").write_text(json.dumps({
+            "fuente": "repo", "fuentes": {"repo": {
+                "repos": [str(self.perdido), str(bueno)]}}}), encoding="utf-8")
+        return {}
 
     def test_inicio_enseña_el_proyecto_y_el_aviso_con_como_arreglarlo(self):
         b = self.board
@@ -754,6 +758,11 @@ class UnRepoQueFalta(PestanaInicio):
         detalle = b.inicio_aviso_detalle.get_label()
         self.assertIn(str(self.perdido), detalle)
         self.assertIn("quítalo", detalle)
+        boton = b.inicio_aviso_acciones.get_first_child()
+        self.assertIn(self.perdido.name, boton.get_label())
+        with mock.patch.object(type(b), "confirmar_quitar_proyecto") as confirmar:
+            boton.emit("clicked")
+        confirmar.assert_called_once_with("", str(self.perdido), ausente=True)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 ---
 id: arq-lfay
 temas: [arquitectura]
-actualizado: 2026-11-02
+actualizado: 2026-11-04
 ---
 # Arquitectura de Cotejo
 
@@ -36,4 +36,4 @@ Cotejo tiene dos caras sobre el mismo núcleo en Python: el CLI `cotejo` (lo que
 ## Cómo se abre
 
 - comando: python3 herramientas/cotejo_dev.py --board
-- qué esperar: CotejoBoard de este código en una ventana aparte del Cotejo instalado, abierto en la pestaña Inicio con el vault de prueba
+- qué esperar: CotejoBoard de este código en una ventana aparte del Cotejo instalado, abierto en la pestaña Inicio con el vault de prueba; los repos ausentes ofrecen quitarlos y cada mapa permite quitar su proyecto

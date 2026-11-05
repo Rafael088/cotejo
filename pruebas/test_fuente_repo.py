@@ -209,7 +209,7 @@ class DondeVive(PruebaConRepos):
         codigo, datos = self.correr("fuentes", "info", "repo")
         self.assertEqual(codigo, 0)
         self.assertEqual(datos["tipo"], "built-in")
-        self.assertEqual(set(datos["parametros"]), {"repos", "raiz"})
+        self.assertEqual(set(datos["parametros"]), {"repos", "raiz", "ocultos"})
 
 
 class NormalizacionParaWindows(PruebaConRepos):

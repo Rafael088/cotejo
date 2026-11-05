@@ -21,6 +21,7 @@ cotejo-36mzm0), que pasa al Inicio; con la fuente rota, en el tablero, donde est
 """
 
 import datetime
+from pathlib import Path
 
 from gi.repository import Adw, Gtk, Pango
 
@@ -160,6 +161,9 @@ class PestanaInicio:
                                               css_classes=["vacio-pista"])
         self.inicio_aviso.append(self.inicio_aviso_titulo)
         self.inicio_aviso.append(self.inicio_aviso_detalle)
+        self.inicio_aviso_acciones = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
+                                              spacing=px(ESPACIADO_XS))
+        self.inicio_aviso.append(self.inicio_aviso_acciones)
         cuerpo.append(self.inicio_aviso)
 
         # La constelación (cotejo-7wc9hb): oculta mientras no haya proyectos que dibujar.
@@ -214,6 +218,17 @@ class PestanaInicio:
         if faltan:
             self.inicio_aviso_titulo.set_label(faltan[0])
             self.inicio_aviso_detalle.set_label("\n\n".join(faltan[1]))
+            vaciar(self.inicio_aviso_acciones)
+            for aviso in faltan[2]:
+                ruta = aviso["repo_falta"]
+                nombre = Path(ruta).name or ruta
+                boton = con_mano(Gtk.Button(label=f"Quitar {nombre} de Cotejo",
+                                             halign=Gtk.Align.START,
+                                             tooltip_text=ruta, css_classes=["flat"]))
+                etiquetar(boton, f"Quitar {ruta} de Cotejo")
+                boton.connect("clicked", lambda _b, r=ruta:
+                              self.confirmar_quitar_proyecto("", r, ausente=True))
+                self.inicio_aviso_acciones.append(boton)
         self.inicio_aviso.set_visible(bool(faltan))
         entregas = sum(t.por_comprobar for t in tarjetas)
         self.inicio_entregas_texto.set_label(
