@@ -164,6 +164,24 @@ class Sintetica(unittest.TestCase):
         self.assertEqual(progreso.pasos(e, {"estado": "preparando", "id": "x"})[1]["estado"],
                          "en curso")
 
+    def test_lo_que_ya_esta_en_disco_mueve_los_pasos_sin_bitacora(self):
+        # cotejo-8m9ab7: en Windows el proyecto quedó entero y el board seguía en el paso 1.
+        existe = {"init": 1, "editar": 1, "proponer": 3, "anotar": 1}
+        pasos = progreso.pasos([], "preparando", desde=90, ahora=140, existe=existe)
+        self.assertEqual(estados(pasos), ["hecho", "hecho", "hecho", "hecho", "en curso"])
+        self.assertEqual(pasos[2]["detalle"], "3 decisiones propuestas")
+        self.assertEqual(pasos[2]["n"], 3)
+        self.assertIsNone(pasos[2]["duracion"])   # no se sabe cuándo: no se inventa
+        pasos = progreso.pasos([], "listo", existe={**existe, "crear": 5})
+        self.assertEqual(estados(pasos), ["hecho"] * 5)
+        self.assertEqual(pasos[4]["detalle"], "5 tareas creadas")
+
+    def test_la_bitacora_manda_sobre_el_disco_en_el_detalle(self):
+        e = self.eventos(linea("init", self.C, 100, git_init=True))
+        pasos = progreso.pasos(e, "preparando", desde=90, ahora=140, existe={"init": 1})
+        self.assertEqual(pasos[0]["detalle"], "Carpeta creada y preparada")
+        self.assertEqual(pasos[0]["duracion"], 10)
+
     def test_los_pasos_no_cambian_la_entrada(self):
         e = self.eventos(linea("init", self.C, 1))
         antes = json.dumps(e)

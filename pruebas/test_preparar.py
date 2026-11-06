@@ -59,6 +59,16 @@ CLIENTE = textwrap.dedent('''
         sys.exit(3)
     elif modo == "dormir":
         time.sleep(60)
+    elif modo == "colgar":
+        # Como `opencode` en Windows: deja el proyecto entero y no sale.
+        c = os.path.join(carpeta, ".cotejo")
+        for sub in ("decisiones", "arquitectura"):
+            os.makedirs(os.path.join(c, sub), exist_ok=True)
+        open(os.path.join(c, "proyecto.md"), "w").write("# turnos\\n\\n## Objetivo\\nX\\n")
+        open(os.path.join(c, "decisiones", "d.md"), "w").write("# d\\n")
+        open(os.path.join(c, "arquitectura", "a.md"), "w").write("# a\\n")
+        open(os.path.join(c, "tareas.md"), "w").write("# T\\n- [ ] Una: x #v0.1.0\\n")
+        time.sleep(60)
 ''')
 
 
@@ -201,6 +211,38 @@ class Preparar(unittest.TestCase):
         e = preparar.estado(salida["id"])
         self.assertEqual((e["estado"], e["codigo"]), (preparacion.FALLO, 124))
         self.assertFalse(procesos.vivo(salida["pid"]))
+
+    def test_termina_al_ver_el_resultado_entero_aunque_el_agente_no_salga(self):
+        # cotejo-8m9ab7: `cmd.exe /c opencode.cmd` no salía con el proyecto ya creado.
+        with mock.patch.object(preparacion, "segundos_de_gracia", return_value=0), \
+                mock.patch.object(preparar, "CADA_SEG", 0.2):
+            recibidos = []
+            salida, hilo = self.lanzar("colgar", al_terminar=recibidos.append)
+            hilo.join(20)
+        self.assertFalse(hilo.is_alive())
+        registro = preparacion.leer(salida["id"])
+        self.assertEqual((registro["fase"], registro["codigo"], registro.get("por_resultado")),
+                         ("terminado", 0, True))
+        self.assertFalse(procesos.vivo(salida["pid"]))
+        self.assertEqual([e["estado"] for e in recibidos], [preparacion.LISTO])
+
+    def test_cancelar_para_al_agente_y_deja_reintentar(self):
+        salida, hilo = self.lanzar("dormir")
+        self.assertTrue(salida["puede_cancelar"])
+        e = preparar.cancelar(salida["id"])
+        self.assertEqual(e["estado"], preparacion.CANCELADO)
+        self.assertEqual(e["acciones"], ["reintentar", "abrir_en_terminal"])
+        hilo.join(20)
+        self.assertFalse(procesos.vivo(salida["pid"]))
+        # El hilo que lo esperaba no pisa la cancelación al verlo salir.
+        self.assertEqual(preparacion.leer(salida["id"])["fase"], preparacion.CANCELADO)
+        self.assertEqual(preparar.estado(salida["id"])["estado"], preparacion.CANCELADO)
+        with self.assertRaises(preparar.NoSePuede):
+            preparar.cancelar(salida["id"])
+        self.modo("ok")
+        preparar.reintentar(salida["id"], config=self.config)
+        self.hilos[-1].join(20)
+        self.assertEqual(preparar.estado(salida["id"])["estado"], preparacion.LISTO)
 
     # --- colgado ------------------------------------------------------------------------
 

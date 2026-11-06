@@ -17,6 +17,13 @@ Cómo se sigue, reutilizando lo de los despachos:
   también muere, el estado se deduce del pid y de lo que haya en la carpeta.
 - **Aviso por la barra** al lanzar y al terminar: se reescribe `estado.json`, que ahora lleva
   `preparaciones` y que el widget `cotejo.barra` vigila.
+- **Termina cuando el trabajo termina** (cotejo-8m9ab7). En Windows `cmd.exe /c opencode.cmd`
+  y su `opencode.exe` pueden quedarse vivos con el proyecto ya entero: `vigilar` no espera solo
+  al proceso, mira cada `CADA_SEG` si el resultado está completo
+  (`preparacion.resultado_completo`) y, si lo está, para el árbol del agente y lo anota como
+  terminado con 0.
+- **Cancelar** mientras prepara (`cancelar`): para el agente y lo deja en `cancelado`, desde
+  donde se puede reintentar.
 - **Colgado o fallido → reintentar o abrir en terminal.** `reintentar` para el proceso viejo y
   lanza otra vez el mismo comando; `abrir_en_terminal` lo para y abre el mismo prompt en una
   sesión que se ve, como el maestro (`motores/terminal.py`, `maestro.terminal` de la config).
@@ -47,11 +54,16 @@ import os
 import shutil
 import subprocess
 import threading
+import time
 from pathlib import Path
 
 from tareas import inicio, preparacion
 from . import clientes, config as cfg, mismo_cotejo, niveles, procesos, sandbox
 from .motores import fondo, terminal
+
+
+# Cada cuánto mira `vigilar` si el resultado ya está entero mientras espera al proceso.
+CADA_SEG = 5
 
 
 class NoSePuede(Exception):
@@ -279,20 +291,47 @@ def _arrancar(registro, config, al_terminar):
     return preparacion.estado(registro)
 
 
-def vigilar(proceso, ident, timeout, al_terminar=None):
-    """Espera al proceso en un hilo y anota cómo volvió. Devuelve el hilo."""
-    def esperar():
+def _parar_proceso(proceso, registro=None):
+    """Para el árbol del agente (`procesos.terminar`, que en Windows recorre los hijos) y, si
+    no cede, el proceso que se lanzó."""
+    registro = registro or {}
+    procesos.terminar(proceso.pid, registro.get("programa", ""), registro.get("nacio"))
+    try:
+        proceso.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        proceso.kill()
+        proceso.wait()
+
+
+def _esperar(proceso, ident, timeout, cada=None):
+    """Espera al proceso hasta `timeout`, mirando cada `cada` segundos si el trabajo ya está.
+    Devuelve `(codigo, por_resultado)`; 124 si no volvió a tiempo."""
+    cada = cada or CADA_SEG
+    limite = time.monotonic() + timeout
+    while True:
         try:
-            codigo = proceso.wait(timeout=timeout)
+            return proceso.wait(timeout=max(0.1, min(cada, limite - time.monotonic()))), False
         except subprocess.TimeoutExpired:
-            procesos.terminar(proceso.pid)
-            try:
-                proceso.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                proceso.kill()
-                proceso.wait()
-            codigo = 124
-        registro = preparacion.anotar_terminado(ident, codigo, pid=proceso.pid)
+            pass
+        registro = preparacion.leer(ident) or {}
+        # Cancelado, en una terminal o relanzado: quien lo hizo ya lo paró, y aquí solo se
+        # espera a que salga (`anotar_terminado` no pisará lo que anotó).
+        suyo = registro.get("fase") == "lanzado" and registro.get("pid") == proceso.pid
+        if suyo and preparacion.resultado_completo(registro):
+            _parar_proceso(proceso, registro)
+            return 0, True
+        if time.monotonic() >= limite:
+            _parar_proceso(proceso)
+            return 124, False
+
+
+def vigilar(proceso, ident, timeout, al_terminar=None, cada=None):
+    """Espera al proceso en un hilo y anota cómo volvió, o lo para si el resultado ya está
+    entero aunque no vuelva. Devuelve el hilo."""
+    def esperar():
+        codigo, por_resultado = _esperar(proceso, ident, timeout, cada)
+        registro = preparacion.anotar_terminado(ident, codigo, pid=proceso.pid,
+                                                por_resultado=por_resultado)
         avisar_a_la_barra()
         if al_terminar and registro:
             al_terminar(preparacion.estado(registro))
@@ -392,8 +431,22 @@ def abrir_en_terminal(ident, config=None, simular=False):
     return dict(salida, abierto=True)
 
 
+def cancelar(ident):
+    """«Cancelar» mientras prepara: para al agente (con sus hijos) y lo deja en `cancelado`.
+    Lo que ya dejó en la carpeta se queda; un `reintentar` sigue desde ahí."""
+    registro = _leer(ident)
+    if registro.get("fase") != "lanzado":
+        raise NoSePuede("Esta preparación ya no está en marcha.")
+    _parar(registro)
+    preparacion.anotar_cancelado(ident)
+    avisar_a_la_barra()
+    return estado(ident)
+
+
 def descartar(ident):
-    """La persona ya lo vio: deja de salir en la barra y en la pantalla."""
+    """La persona ya lo vio: deja de salir en la barra y en la pantalla. Si el agente seguía
+    vivo (listo por resultado, sin que nadie lo parara), se para."""
+    _parar(preparacion.leer(ident) or {})
     preparacion.marcar_visto(ident)
     avisar_a_la_barra()
 
@@ -407,5 +460,5 @@ def estado(ident):
     return preparacion.estado(_leer(ident))
 
 
-__all__ = ["NoSePuede", "lanzar", "reintentar", "rehacer", "abrir_en_terminal", "descartar",
-           "estados", "estado", "comando", "carpetas_de_escritura", "vigilar"]
+__all__ = ["NoSePuede", "lanzar", "reintentar", "rehacer", "abrir_en_terminal", "cancelar",
+           "descartar", "estados", "estado", "comando", "carpetas_de_escritura", "vigilar"]
