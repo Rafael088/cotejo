@@ -24,6 +24,11 @@ entonces como uno de npm, `cmd.exe /c python.exe cliente_falso.py` (lo que es `o
 para ver que parar mata el árbol entero y no solo el `cmd`. Lo que había del agente antes de
 cerrar y lo que sigue vivo después queda en `al_cerrar.agente`.
 
+Con `--maestro` (cotejo-va7lgn), en vez de mover la carta le escribe al maestro del proyecto
+desde la barra del pie (`hablar_al_maestro`), con el falso como cliente: el turno corre con todos
+los permisos y lanza lo que lanzaría un maestro con shell (`cmd.exe /c`, `git`), y se mide igual
+que no salga ninguna consola ni terminal. `agente.respuesta` es lo que contestó.
+
 Al final cierra lo que abrió (procesos que nacieron del board y ventanas de terminal nuevas) y
 deja todo en `<carpeta>/humo.json`. No arregla nada: que hoy salgan ventanas de terminal o
 bloqueos es el diagnóstico, no un fallo del humo; `ok` solo dice si el humo pudo medir.
@@ -117,7 +122,7 @@ def nota_humo():
 
 
 def entorno_del_humo(carpeta, espera_s, volcar_ms=0, faulthandler_s=0, perfil=False,
-                     al_cerrar=""):
+                     al_cerrar="", maestro=False):
     """Lo que el humo añade al entorno del board: sus carpetas y los ganchos de volcado."""
     carpeta = Path(carpeta)
     entorno = {"COTEJO_CONFIG": str(carpeta / "config.json"),
@@ -139,6 +144,13 @@ def entorno_del_humo(carpeta, espera_s, volcar_ms=0, faulthandler_s=0, perfil=Fa
         entorno["COTEJO_HUMO_PERFIL"] = "1"
     if al_cerrar:
         entorno["COTEJO_HUMO_AL_CERRAR"] = al_cerrar
+    if maestro:
+        # Lo que correría un maestro con shell: un `cmd` y un `git`, cada uno de consola.
+        entorno["COTEJO_HUMO_MAESTRO"] = "1"
+        entorno["FALSO_COMANDOS"] = json.dumps([
+            ["cmd.exe", "/c", "echo", "el maestro corre comandos"],
+            ["git", "-C", str(carpeta / "repo"), "status", "--short"]])
+        entorno["FALSO_RESPUESTA"] = "Hola desde el humo."
     return entorno
 
 
@@ -548,7 +560,8 @@ def vigilar(args):
                                                   for n in PROCESOS_TERMINAL)
         entorno = entorno_del_lanzador(args.instalacion, args.codigo)
         entorno.update(entorno_del_humo(carpeta, args.espera, args.volcar_ms, args.faulthandler_s,
-                                        args.perfil, cerrar_trabajando))
+                                        args.perfil, cerrar_trabajando,
+                                        getattr(args, "maestro", False)))
         pythonw = Path(args.instalacion) / "runtime" / "bin" / "pythonw.exe"
         registro = open(carpeta / "board.log", "w", encoding="utf-8")
         board = subprocess.Popen([str(pythonw), str(Path(__file__).resolve()), "board",
@@ -728,6 +741,12 @@ def board(args):
             board.al_responder_cierre(respuesta, vivos)
 
         Board.preguntar_al_cerrar = contestar
+    maestro = bool(os.environ.get("COTEJO_HUMO_MAESTRO"))
+    if maestro:
+        # El falso no tiene sesión que preguntar: el maestro lo da por listo.
+        from types import SimpleNamespace
+        from enrutador import modelos_vivos
+        modelos_vivos.estado = lambda *_a, **_k: SimpleNamespace(listo=True, problema="")
     medir_refrescos(aplicacion.App, estado, volcados)
     app = aplicacion.App()
     app.set_application_id(f"{APP_ID}{os.getpid()}")
@@ -753,6 +772,36 @@ def board(args):
                 bucle["huecos"].append([round(ultimo[0] - desde, 2), hueco])
         ultimo[0] = ahora
         return True
+
+    def hablar():
+        b = app.board
+        if b is None:
+            return True
+        try:
+            b.ver_pestana("tablero")
+            b.seleccion = PROYECTO
+            antes = estado["soltar_en"] = time.monotonic()
+            b.hablar_al_maestro("claude", "hola")
+            estado["bucle"]["soltar_ms"] = round((time.monotonic() - antes) * 1000, 1)
+            guardar(fase="trabajando", agente={"lanzado": True, "maestro": True})
+        except Exception:
+            guardar(fase="fallo", error=traceback.format_exc())
+            return False
+        GLib.timeout_add(200, contesto)
+        return False
+
+    def contesto():
+        from enrutador import conversacion
+        try:
+            if conversacion.contestando(PROYECTO):
+                return True
+            turno = (conversacion.leer(PROYECTO)["turnos"] or [{}])[-1]
+            estado["agente"].update(termino=True, respuesta=turno.get("texto"),
+                                    ok=turno.get("ok"))
+            guardar(fase="terminado")
+        except Exception:
+            guardar(fase="fallo", error=traceback.format_exc())
+        return False
 
     def lanzar():
         b = app.board
@@ -808,7 +857,7 @@ def board(args):
         return True
 
     GLib.timeout_add(20, latido)
-    GLib.timeout_add(2500, lanzar)
+    GLib.timeout_add(2500, hablar if maestro else lanzar)
     GLib.timeout_add(200, vigilar_fin)
     codigo = app.run([sys.argv[0], "--board"])
     guardar()
@@ -990,6 +1039,8 @@ def argumentos(argv=None):
                    help="faulthandler.dump_traceback_later cada estos segundos")
     v.add_argument("--perfil", type=int, default=0,
                    help="1: perfilar (cProfile) cada refresco del board en volcados/perfil.txt")
+    v.add_argument("--maestro", action="store_true",
+                   help="un turno del maestro desde la barra, en vez de mover la carta")
     v.add_argument("--cerrar-trabajando", choices=("", "parar", "dejar"), default="",
                    help="cerrar con el agente trabajando y contestar esto a la pregunta")
     b = sub.add_parser("board", help="(lo lanza vigilar) el board de la rama")

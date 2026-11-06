@@ -144,6 +144,10 @@ class Movimientos:
         if destino == modelo.HECHA and tarea.columna == "por-validar":
             plan = revision.plan_integracion(tarea.id, bitacora.ultima_entrega(tarea.id))
         por_integrar = bool(plan and plan.get("del_inicio") and plan.get("repo"))
+        if destino == modelo.HECHA:
+            # Lo aprueba la persona: el candado del maestro no lo deshace (cotejo-va7lgn).
+            from enrutador import candado
+            candado.lo_aprueba_la_persona(tarea.id)
         try:
             actual = tarea
             if actual.hecha and destino != modelo.HECHA:

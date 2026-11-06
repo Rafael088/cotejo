@@ -19,6 +19,10 @@ Para el maestro (cotejo-9ybn1a): con `FALSO_CREAR=<texto>` y `FALSO_PROYECTO=<no
 Con `FALSO_ESCRIBIR=<archivo>`, mientras espera añade una línea a ese archivo cada
 `FALSO_ESCRIBIR_CADA` segundos (0,5 por defecto): un agente que va tocando `.cotejo/` (o el
 vault) mientras trabaja, para medir que el board no se traba al refrescar (cotejo-72a7di).
+
+Con `FALSO_COMANDOS=<lista JSON de argv>` corre cada uno en su carpeta antes de contestar: un
+maestro con shell que toca lo que no debe (poner una `[x]` a mano, aceptar una decisión, un
+`git merge`), para ver que el candado lo deshace (cotejo-va7lgn).
 """
 
 import json
@@ -89,6 +93,13 @@ def crear(texto, proyecto):
         print(hecho.stdout + hecho.stderr, file=sys.stderr, flush=True)
 
 
+def comandos():
+    for argv in json.loads(os.environ.get("FALSO_COMANDOS") or "[]"):
+        hecho = subprocess.run(argv, capture_output=True, text=True)
+        if hecho.returncode:
+            print(hecho.stdout + hecho.stderr, file=sys.stderr, flush=True)
+
+
 def main():
     if os.environ.get("FALSO_ARGV"):
         with open(os.environ["FALSO_ARGV"], "w", encoding="utf-8") as archivo:
@@ -99,12 +110,14 @@ def main():
     if os.environ.get("FALSO_PLANO"):
         if os.environ.get("FALSO_CREAR"):
             crear(os.environ["FALSO_CREAR"], os.environ.get("FALSO_PROYECTO", ""))
+        comandos()
         esperar()
         print(respuesta, flush=True)
         return int(os.environ.get("FALSO_CODIGO", "0"))
     linea({"type": "system", "subtype": "init", "model": "falso"})
     if os.environ.get("FALSO_CREAR"):
         crear(os.environ["FALSO_CREAR"], os.environ.get("FALSO_PROYECTO", ""))
+    comandos()
     linea({"type": "assistant", "message": {"content": [
         {"type": "text", "text": "Voy a mirar el repo."},
         {"type": "tool_use", "name": "Bash", "input": {"command": "git status"}}]}})

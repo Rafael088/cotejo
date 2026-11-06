@@ -225,7 +225,9 @@ class Maestro(PruebaDeEnrutador):
         for fuera in ("cotejo-prop", "cotejo-hum1", "cotejo-pers"):
             self.assertNotIn(fuera, instruccion)
         self.assertIn("REPARTIR:", instruccion)
-        self.assertNotIn("despachar", instruccion.replace("no despaches", ""))
+        # Desde la 1.3.1 puede despachar como la persona (cotejo-va7lgn); aprobar, nunca.
+        self.assertIn("despacharlas y lanzar agentes", instruccion)
+        self.assertIn("Lo ÚNICO que no puedes hacer es aprobar", instruccion)
         self.assertIn("/tmp/uno", instruccion)
         self.assertFalse(datos["lanzado"])
 

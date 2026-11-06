@@ -2,24 +2,29 @@
 
 Desde la 1.3.0 (cotejo-9ybn1a, decisión del dueño del 2026-10-27) el maestro ya no abre una
 terminal. La persona le escribe en lenguaje llano en la barra del pie de CotejoBoard y ve la
-conversación en la app: le pide **añadir tareas** («apunta que falta el login»), **pregunta por el
-proyecto** («qué falta», «cómo va», «qué hace la pieza Fuente») y le pide **repartir lo
-asignado**. Cada mensaje es un turno de un cliente sin interfaz (`conversacion.py`) que solo
-puede correr `cotejo`; este módulo arma lo que lee en cada turno, sin E/S.
+conversación en la app. Cada mensaje es un turno de un cliente sin interfaz (`conversacion.py`);
+este módulo arma lo que lee en cada turno, sin E/S.
+
+Desde la 1.3.1 (cotejo-va7lgn, pedido del dueño del 2026-11-06) el maestro **puede hacer todo
+lo que haría la persona en una terminal**: leer y editar el código, correr comandos, crear y
+editar tareas, asignar modelos, despachar y lanzar agentes, entregar, bloquear, hacer commits
+en ramas. Lo único vedado es **aprobar**: dar una tarea por hecha, integrar la rama de una
+tarea en la principal y aceptar una decisión propuesta. Eso se le dice en el prompt y, como
+tiene shell, además lo hace cumplir Cotejo (`candado.py`): lo que apruebe se deshace al cerrar
+el turno y se le dice a la persona.
 
 Por qué así y no de otra manera:
 
 - **Nunca una terminal.** Una terminal es una ventana fuera de la app que la persona no sabe
   leer ni cerrar sin miedo, y que trabaja donde el board no lo ve. La conversación es la misma
   persona pidiéndolo, con lo que hace a la vista en el board.
-- **Repartir lo hace el board, no el agente.** El maestro no lanza agentes: si la persona le
-  pide repartir, termina su respuesta con una línea `REPARTIR: <ids>` y el board le enseña un
-  botón para lanzarlas por el mismo camino que mover una carta a Haciendo (con su ficha en
-  vivo, su worktree y la capacidad de la máquina). Solo valen las pendientes que **una persona
-  asignó a un modelo** (`asignadas`): ni las sin modelo ni las de una persona, y Cotejo vuelve
-  a filtrar lo que el agente proponga (`pedidas`).
-- **Tampoco finaliza ni entrega.** Puede apuntar trabajo (`cotejo crear`), porque apuntar no
-  afirma que esté hecho; entregar es de quien hizo la tarea y `[x]` es de una persona.
+- **Repartir sigue siendo un atajo del board.** Si la persona le pide repartir lo asignado,
+  puede terminar su respuesta con una línea `REPARTIR: <ids>` y el board le enseña un botón
+  para lanzarlas por el mismo camino que mover una carta a Haciendo (con su ficha en vivo, su
+  worktree y la capacidad de la máquina). Solo valen las pendientes que **una persona asignó a
+  un modelo** (`asignadas`), y Cotejo vuelve a filtrar lo que el agente proponga (`pedidas`).
+- **Aprobar es de una persona.** `[x]` lo pone quien comprueba, en el board; el maestro que lo
+  intente ve cómo Cotejo lo deshace.
 """
 
 import re
@@ -75,31 +80,35 @@ def instruccion(proyecto, asignadas, directorio=None, pedido="", historia=(), ra
         "CotejoBoard, en una conversación. Contesta en español, en lenguaje llano y corto: "
         "quien te lee puede no programar. No hay terminal: lo que respondas es lo que se ve.",
         "",
-        "Puedes hacer tres cosas:",
-        "",
-        "1. Añadir tareas al proyecto cuando te lo pidan, una por cada cosa que hacer:",
-        f"       cotejo crear \"<qué hay que hacer>\" --proyecto {comillas}",
-        "   Di cuáles apuntaste, con su id.",
-        "2. Contestar preguntas sobre el proyecto (qué falta, cómo va, qué hace una pieza). "
-        "Míralo con la CLI antes de contestar, no lo adivines:",
+        "Puedes hacer lo mismo que haría el dueño en una terminal: leer y editar el código "
+        "del proyecto, correr comandos, hacer commits en ramas, crear y editar tareas, "
+        "asignarles modelo, despacharlas y lanzar agentes, entregar y bloquear. Hazlo si te lo "
+        "piden, y di en llano qué hiciste. Para saber cómo está el proyecto, míralo antes de "
+        "contestar, no lo adivines:",
         f"       cotejo tareas --proyecto {comillas} [--estado pendiente|en-curso|por-validar]",
         f"       cotejo contexto{repo}",
         f"       cotejo buscar --tipo arquitectura{repo}   ·   cotejo leer <id>{repo}",
-        "   Si hace falta, lee el código del proyecto; no lo modifiques.",
-        "3. Repartir lo asignado, si te lo piden. No lances nada tú: termina la respuesta con "
-        "una línea sola así, y el board le enseñará a la persona un botón para repartirlas:",
+        "Para apuntar trabajo, una tarea por cada cosa que hacer, y di cuáles apuntaste con su "
+        "id:",
+        f"       cotejo crear \"<qué hay que hacer>\" --proyecto {comillas}",
+        "",
+        "Lo ÚNICO que no puedes hacer es aprobar. Aprobar es del dueño, en el board:",
+        "- no marques ninguna tarea como hecha ([x], finalizada o «por integrar»), ni a mano "
+        "en el archivo ni con ningún comando;",
+        "- no integres (merge) la rama cotejo/<id> de una tarea en la rama principal;",
+        "- no aceptes una decisión propuesta (ni cambies su estado a aceptada).",
+        "Si lo intentas, Cotejo lo deshace al terminar tu turno y se lo dice al dueño. Si te lo "
+        "piden, explica que eso se hace en el board: [x] lo pone una persona.",
+        "",
+        "Atajo para repartir lo asignado: termina la respuesta con una línea sola así, y el "
+        "board le enseñará a la persona un botón para lanzarlas:",
         f"       {MARCA_REPARTIR} <id> <id> …",
-        "   Solo valen las pendientes que una persona ya asignó a un modelo"
-        + (":" if asignadas else ", y ahora mismo no hay ninguna: dilo y explica que se "
-           "asignan en el board, en ⋮ → Asignar a."),
+        "Solo valen las pendientes que una persona ya asignó a un modelo"
+        + (":" if asignadas else ", y ahora mismo no hay ninguna: si te piden repartir, dilo "
+           "y explica que se asignan en el board, en ⋮ → Asignar a, o asígnalas tú si te dicen "
+           "a qué modelo."),
     ]
     partes += [f"       - {t['id']} → {t['modelo']}: {t['texto']}" for t in asignadas]
-    partes += [
-        "",
-        "No hagas nada más: no edites archivos, no hagas commits, no despaches ni tomes "
-        "tareas, no entregues ni bloquees las de otros. No hay verbo para marcar una tarea "
-        "como hecha y es a propósito: [x] lo pone una persona en el board.",
-    ]
     if ramas:
         partes += [
             "",

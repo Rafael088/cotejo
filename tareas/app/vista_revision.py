@@ -352,6 +352,8 @@ class Revision:
     def al_integrar_sola(self, proyecto, tarea, plan, resultado):
         self.integrando.discard(tarea.id)
         if resultado.get("integrada"):
+            from enrutador import candado
+            candado.lo_aprueba_la_persona(tarea.id)
             try:
                 actual = self.fuente.marcar(tarea, hecha=True)
                 bitacora.anotar("comprobar", proyecto, actual, de=modelo.POR_INTEGRAR,
