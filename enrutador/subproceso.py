@@ -32,7 +32,6 @@ import functools
 import ntpath
 import os
 import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -69,29 +68,32 @@ def _camino(entorno=None):
 
 @functools.lru_cache(maxsize=64)
 def _which(programa, path, pathext):
-    """Resuelve como Windows, con el PATH y PATHEXT que recibirá el hijo.
+    """Resuelve como Windows, con el PATH y PATHEXT que recibirá el hijo: carpeta por carpeta, y
+    en cada una las extensiones de PATHEXT antes que el nombre pelado.
 
-    El intento explícito por extensión sirve además al simular Windows en Linux: allí
-    ``shutil.which`` no aplica PATHEXT y una prueba no tiene que hacer ejecutable el `.cmd`.
+    El nombre pelado va al final porque npm deja, junto a `opencode.cmd`, un `opencode` sin
+    extensión que es un script de sh: Windows no lo ejecuta, y `shutil.which(mode=F_OK)` lo
+    daba por bueno (en el Windows real, 06-nov). Se mira a mano, con `isfile`, para que la
+    prueba en Linux no tenga que hacer ejecutable el `.cmd`.
     """
-    try:
-        ruta = shutil.which(programa, mode=os.F_OK, path=path)
-    except (OSError, ValueError, AttributeError, TypeError, NameError):
-        ruta = None
-    if ruta or ntpath.splitext(programa)[1]:
-        return ruta
-    for extension in pathext.split(";"):
-        extension = extension.strip()
-        if not extension:
-            continue
-        # Windows no distingue mayúsculas; el sistema de archivos de la prueba en Linux sí.
-        for candidata in dict.fromkeys((extension, extension.lower())):
-            try:
-                ruta = shutil.which(programa + candidata, mode=os.F_OK, path=path)
-            except (OSError, ValueError, AttributeError, TypeError, NameError):
-                ruta = None
-            if ruta:
-                return ruta
+    if ntpath.dirname(programa):
+        carpetas, programa = [ntpath.dirname(programa)], ntpath.basename(programa)
+    else:
+        carpetas = [c.strip().strip('"') for c in path.split(";") if c.strip()]
+    if ntpath.splitext(programa)[1]:
+        extensiones = [""]
+    else:
+        extensiones = [e.strip() for e in pathext.split(";") if e.strip()] + [""]
+    for carpeta in carpetas:
+        for extension in extensiones:
+            # Windows no distingue mayúsculas; el sistema de archivos de la prueba en Linux sí.
+            for candidata in dict.fromkeys((extension, extension.lower())):
+                ruta = os.path.join(carpeta, programa + candidata)
+                try:
+                    if os.path.isfile(ruta):
+                        return ruta
+                except (OSError, ValueError):
+                    pass
     return None
 
 

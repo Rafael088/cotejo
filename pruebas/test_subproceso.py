@@ -158,7 +158,7 @@ class ElHelper(unittest.TestCase):
 
     def test_git_va_sin_consola(self):
         # Sin conhost.exe por llamada: un agente lanzado desde el board hacía ocho.
-        with self.en("win32"), mock.patch.object(subproceso.shutil, "which",
+        with self.en("win32"), mock.patch.object(subproceso, "_which",
                                                  return_value=r"C:\Git\cmd\git.EXE"):
             for argv in (["git", "status"], [r"C:\Git\cmd\git.exe", "status"], ["taskkill"]):
                 with self.subTest(argv):
@@ -171,7 +171,7 @@ class ElHelper(unittest.TestCase):
     def test_un_git_cmd_o_cualquier_otro_lleva_consola_invisible(self):
         # Un .cmd lo corre cmd.exe: sin consola, el git.exe que lanza abriría la suya. Y los
         # demás (clientes, python, cmd) lanzan hijos de consola que heredan la invisible.
-        with self.en("win32"), mock.patch.object(subproceso.shutil, "which",
+        with self.en("win32"), mock.patch.object(subproceso, "_which",
                                                  return_value=r"C:\x\git.cmd"):
             for argv in (["git", "status"], ["claude", "-p"], ["cmd", "/c", "start", ""],
                          [sys.executable, "-c", ""], "git status", None):
@@ -181,7 +181,7 @@ class ElHelper(unittest.TestCase):
 
     def test_el_programa_se_lee_de_args_o_de_la_palabra_args(self):
         with self.en("win32"), mock.patch.object(subprocess, "run") as real, \
-                mock.patch.object(subproceso.shutil, "which", return_value="git.exe"):
+                mock.patch.object(subproceso, "_which", return_value="git.exe"):
             subproceso.run(args=["git", "status"])
         self.assertEqual(real.call_args.kwargs["creationflags"], subproceso.DETACHED_PROCESS)
 
@@ -199,6 +199,18 @@ class ElHelper(unittest.TestCase):
             [esperado, "run", "hola"], env=entorno,
             creationflags=subproceso.CREATE_NO_WINDOW)
         self.assertNotIn("shell", real.call_args.kwargs)
+
+    def test_el_script_sh_sin_extension_de_npm_no_tapa_al_cmd(self):
+        # npm deja `opencode` (sh) junto a `opencode.cmd`; en el Windows real `which(F_OK)`
+        # devolvía el de sh y el shim no se resolvía (06-nov).
+        with tempfile.TemporaryDirectory() as temporal:
+            carpeta = Path(temporal)
+            (carpeta / "opencode").write_text("#!/bin/sh\nexec node x.js\n", encoding="utf-8")
+            (carpeta / "opencode.cmd").write_text(SHIM_OPENCODE, encoding="utf-8")
+            entorno = {"PATH": str(carpeta), "PATHEXT": ".COM;.EXE;.BAT;.CMD"}
+            with self.en("win32"), mock.patch.object(subprocess, "Popen") as real:
+                subproceso.Popen(["opencode", "run"], env=entorno)
+        self.assertTrue(real.call_args.args[0][0].endswith("opencode.exe"))
 
     def test_shim_node_lanza_node_y_el_script_directamente(self):
         with tempfile.TemporaryDirectory() as temporal:
