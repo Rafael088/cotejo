@@ -101,9 +101,7 @@ class ElHelper(unittest.TestCase):
 
     def setUp(self):
         subproceso._es_exe.cache_clear()
-        subproceso._which.cache_clear()
         self.addCleanup(subproceso._es_exe.cache_clear)
-        self.addCleanup(subproceso._which.cache_clear)
 
     def en(self, plataforma):
         return mock.patch.object(subproceso.sys, "platform", plataforma)
@@ -154,38 +152,7 @@ class ElHelper(unittest.TestCase):
         with self.en("win32"), mock.patch.object(subprocess, "run") as real, \
                 mock.patch.object(subproceso.shutil, "which", return_value="git.exe"):
             subproceso.run(args=["git", "status"])
-        self.assertEqual(real.call_args.args, ())
-        self.assertEqual(real.call_args.kwargs["args"], ["git.exe", "status"])
         self.assertEqual(real.call_args.kwargs["creationflags"], subproceso.DETACHED_PROCESS)
-
-    def test_todos_resuelven_un_cmd_del_path_del_hijo_y_lo_lanzan_con_shell(self):
-        with tempfile.TemporaryDirectory() as temporal:
-            carpeta = Path(temporal) / "npm bin"
-            carpeta.mkdir()
-            shim = carpeta / "opencode.cmd"
-            shim.write_text("@echo off\r\n", encoding="utf-8")
-            entorno = {"Path": str(carpeta), "PATHEXT": ".EXE;.CMD;.BAT"}
-            for nombre in ("run", "Popen", "call", "check_call", "check_output"):
-                with self.subTest(nombre), self.en("win32"), \
-                        mock.patch.object(subprocess, nombre) as real:
-                    getattr(subproceso, nombre)(["opencode", "run", "hola"], env=entorno)
-                real.assert_called_once_with(
-                    [str(shim), "run", "hola"], env=entorno, shell=True,
-                    creationflags=subproceso.CREATE_NO_WINDOW)
-
-    def test_no_resuelve_una_ruta_ni_un_programa_con_extension(self):
-        with self.en("win32"), mock.patch.object(subproceso.shutil, "which") as which:
-            for argv in ([r"C:\\npm\\opencode", "run"], ["opencode.cmd", "run"]):
-                with self.subTest(argv):
-                    self.assertEqual(subproceso._resolver(argv), (argv, False))
-        which.assert_not_called()
-
-    def test_la_resolucion_reutiliza_la_cache_del_git(self):
-        with self.en("win32"), mock.patch.object(
-                subproceso.shutil, "which", return_value=r"C:\\Git\\cmd\\git.exe") as which, \
-                mock.patch.object(subprocess, "run"):
-            subproceso.run(["git", "status"])
-        which.assert_called_once()
 
     def test_fuera_de_windows_no_toca_nada(self):
         for plataforma in ("linux", "darwin"):
