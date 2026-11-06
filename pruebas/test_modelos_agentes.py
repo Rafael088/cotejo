@@ -203,6 +203,15 @@ class SesionEnElLlavero(ConMaquinaFalsa):
         self.assertFalse(modelos_vivos.estado_del_cli("opencode", tope=0.5))
         self.assertLess(time.monotonic() - antes, 5)
 
+    def test_opencode_en_frio_tiene_su_propio_tope(self):
+        # En el Windows real `opencode auth list` tarda 6,3 s en frío (06-nov): con el tope de
+        # todos (5 s) decía que no había sesión.
+        os.symlink(shutil.which("sleep", path=os.defpath), self.bin / "sleep")
+        self.cli("opencode", "#!/bin/sh\nsleep 0.4\necho 'OpenRouter  OpenRouter  stored'\n")
+        with mock.patch.object(modelos_vivos, "TOPE_ESTADO", 0.2):
+            self.assertTrue(modelos_vivos.estado_del_cli("opencode"))
+        self.assertGreater(modelos_vivos.TOPES_ESTADO["opencode"], 6.3)
+
     def test_caduca(self):
         self.cli("codex", self.CODEX_SI)
         self.assertTrue(modelos_vivos.sesion("codex", preguntar_cli=True))

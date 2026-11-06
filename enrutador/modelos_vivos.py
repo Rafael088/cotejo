@@ -106,6 +106,9 @@ ESTADO_CLI = {
     "opencode": ("auth", "list"),
 }
 TOPE_ESTADO = 5            # segundos como mucho por pregunta
+# OpenCode en Windows tarda 6,3 s la primera vez (opencode.exe en frío, con su opencode.db de
+# ~100 MB) y 0,2 s después (06-nov): con 5 s el maestro decía «falta iniciar sesión».
+TOPES_ESTADO = {"opencode": 20}
 CADUCA_ESTADO = 30         # lo que vale el sí/no del CLI
 _estado_cli = {}           # nombre → (cuándo, sí/no)
 
@@ -137,9 +140,11 @@ def _leer_estado(nombre, salida, codigo):
 ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 
-def estado_del_cli(nombre, tope=TOPE_ESTADO):
+def estado_del_cli(nombre, tope=None):
     """Le pregunta al CLI si tiene sesión (sí/no) y lo guarda `CADUCA_ESTADO` segundos. Sin
-    CLI, si falla o si tarda más de `tope`: no."""
+    CLI, si falla o si tarda más de `tope` (el suyo de `TOPES_ESTADO`, o `TOPE_ESTADO`): no."""
+    if tope is None:
+        tope = TOPES_ESTADO.get(nombre, TOPE_ESTADO)
     if os.environ.get("COTEJO_NO_PREGUNTAR_CLI"):
         # Las pruebas lo ponen: ninguna llama al claude/codex de verdad de quien las corre.
         return False
