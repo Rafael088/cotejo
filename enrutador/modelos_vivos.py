@@ -9,7 +9,8 @@ Dos preguntas, las dos sin gastar un token ni abrir un navegador:
   (`ESTADO_CLI`), con tope y caché corta, y nunca al pintar el board (cotejo-2j6un7). Claude Code,
   `~/.claude/.credentials.json` (o `oauthAccount` en `~/.claude.json`, que es lo que queda en
   macOS, donde la credencial va al llavero); Codex, `~/.codex/auth.json` (o `CODEX_HOME`);
-  OpenCode, alguna credencial en su `auth.json` (`opencode auth list` lee ese mismo archivo);
+  OpenCode, alguna credencial en su `auth.json` (versiones antiguas) o un proveedor que
+  `opencode auth list` marque como `stored` (2.1.4 guarda la sesión en `opencode.db`);
   Gemini CLI, `~/.gemini/oauth_creds.json`. Antigravity CLI guarda su sesión en el llavero y no
   documenta cómo preguntarle si la tiene (`SESION_INVISIBLE`): solo se ve la que va por entorno
   (`AGY_ADC_AUTH=true`, o `GEMINI_API_KEY` con `modelProvider: "gemini"` en su settings.json,
@@ -102,6 +103,7 @@ def _claude_con_cuenta(ruta):
 ESTADO_CLI = {
     "codex": ("login", "status"),
     "claude": ("auth", "status"),
+    "opencode": ("auth", "list"),
 }
 TOPE_ESTADO = 5            # segundos como mucho por pregunta
 CADUCA_ESTADO = 30         # lo que vale el sí/no del CLI
@@ -118,7 +120,21 @@ def _leer_estado(nombre, salida, codigo):
         except ValueError:
             return False
         return isinstance(datos, dict) and datos.get("loggedIn") is True
+    if nombre == "opencode":
+        # 2.1.4 imprime, con o sin colores, una fila como
+        # `OpenRouter  OpenRouter  stored`. Una lista vacía no contiene ninguna. No basta con
+        # buscar `stored` a secas: un diagnóstico como `No credentials stored` debe ser «no».
+        for linea in salida.splitlines():
+            limpia = ANSI.sub("", linea).strip().lower()
+            palabras = re.findall(r"[a-z0-9_-]+", limpia)
+            if "stored" in palabras and len(palabras) >= 2 \
+                    and not {"no", "not", "none", "zero", "0"}.intersection(palabras):
+                return codigo == 0
+        return False
     return False
+
+
+ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 
 def estado_del_cli(nombre, tope=TOPE_ESTADO):
@@ -148,7 +164,7 @@ def estado_del_cli(nombre, tope=TOPE_ESTADO):
         except subprocess.TimeoutExpired:
             try:
                 os.killpg(proceso.pid, signal.SIGKILL)
-            except OSError:
+            except (AttributeError, OSError):
                 proceso.kill()
             proceso.communicate()
     _estado_cli[nombre] = (time.monotonic(), si)

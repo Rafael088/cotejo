@@ -145,6 +145,9 @@ class SesionEnElLlavero(ConMaquinaFalsa):
     CLAUDE_SI = ("#!/bin/sh\n[ \"$1 $2\" = 'auth status' ] || exit 9\n"
                  "echo '{\"loggedIn\": true, \"email\": \"alguien@ejemplo.org\"}'\n")
     CLAUDE_NO = "#!/bin/sh\necho '{\"loggedIn\": false}'\nexit 1\n"
+    OPENCODE_SI = ("#!/bin/sh\n[ \"$1 $2\" = 'auth list' ] || exit 9\n"
+                   "printf '\\033[32mOpenRouter  OpenRouter  stored\\033[0m\\n'\n")
+    OPENCODE_NO = "#!/bin/sh\n[ \"$1 $2\" = 'auth list' ] || exit 9\nexit 0\n"
 
     def test_codex_contesta_que_si_solo_si_se_le_pregunta(self):
         self.cli("codex", self.CODEX_SI)
@@ -176,9 +179,29 @@ class SesionEnElLlavero(ConMaquinaFalsa):
         self.assertFalse(modelos_vivos.estado_del_cli("claude", tope=0.5))
         self.assertLess(time.monotonic() - antes, 5)
 
-    def test_opencode_y_gemini_no_se_preguntan(self):
-        self.cli("opencode", "#!/bin/sh\necho 'Logged in'\n")
+    def test_opencode_2_1_4_lee_proveedor_guardado_y_lo_deja_en_cache(self):
+        cli = self.cli("opencode", self.OPENCODE_SI)
+        self.assertFalse(modelos_vivos.sesion("opencode"))
+        self.assertTrue(modelos_vivos.sesion("opencode", preguntar_cli=True))
+        cli.write_text(self.OPENCODE_NO, encoding="utf-8")
+        self.assertTrue(modelos_vivos.sesion("opencode"))
+        self.assertIn("opencode", modelos_vivos.listos())       # Inicio usa lo guardado
+        self.assertIn("opencode", modelos_vivos.utilizables())  # maestro usa lo guardado
+
+    def test_opencode_sin_credenciales_dice_que_no(self):
+        self.cli("opencode", self.OPENCODE_NO)
         self.assertFalse(modelos_vivos.sesion("opencode", preguntar_cli=True))
+
+    def test_opencode_no_confunde_un_mensaje_negativo_con_credenciales(self):
+        self.cli("opencode", "#!/bin/sh\necho 'No credentials stored'\n")
+        self.assertFalse(modelos_vivos.sesion("opencode", preguntar_cli=True))
+
+    def test_opencode_colgado_respeta_el_tope(self):
+        os.symlink(shutil.which("sleep", path=os.defpath), self.bin / "sleep")
+        self.cli("opencode", "#!/bin/sh\nsleep 10\necho 'OpenRouter stored'\n")
+        antes = time.monotonic()
+        self.assertFalse(modelos_vivos.estado_del_cli("opencode", tope=0.5))
+        self.assertLess(time.monotonic() - antes, 5)
 
     def test_caduca(self):
         self.cli("codex", self.CODEX_SI)
