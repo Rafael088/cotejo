@@ -65,7 +65,7 @@ DEFECTOS = {
                      "aislar": True, "memoria_max": "50%"},
     },
     # El maestro de un proyecto (`cotejo maestro`, y la conversación del board, cotejo-9ybn1a):
-    # cada mensaje es un turno sin interfaz que solo corre `cotejo`. `modelos` es el modelo con
+    # cada mensaje es un turno sin interfaz que puede todo menos aprobar. `modelos` es el modelo con
     # que habla cada cliente (sin entrada, el que ese cliente tenga por defecto); `timeout_seg`
     # y `argumentos_extra.<cliente>` (solo añaden) son opcionales. `terminal` ya no es suya: es
     # con qué abre preparar una sesión «en una terminal» (sin entrada,

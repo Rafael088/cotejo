@@ -1080,8 +1080,8 @@ def anadir(sub):
     config.set_defaults(funcion=cmd_config)
 
     maestro_ = sub.add_parser(
-        "maestro", help="Hablar con el maestro de un proyecto: añade tareas, contesta sobre "
-                        "el proyecto y propone repartir lo asignado")
+        "maestro", help="Hablar con el maestro de un proyecto: hace lo que harías tú en una "
+                        "terminal menos aprobar (eso lo deshace Cotejo)")
     maestro_.add_argument("--proyecto")
     maestro_.add_argument("--cliente",
                           help=f"Con qué agente habla el maestro: {' | '.join(clientes.CLIENTES)} "

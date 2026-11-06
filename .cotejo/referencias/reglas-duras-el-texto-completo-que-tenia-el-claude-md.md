@@ -121,11 +121,16 @@ Movido del CLAUDE.md del repo el 2026-11-04 (cotejo-d9cbol). El CLAUDE.md las de
   terminar; si se cuelga o falla, se ofrece reintentar o abrirlo en una terminal que se ve. Y
   mover a mano una tarea de Pendiente a Haciendo (cotejo-7xsjb8): `enrutador/despacho_board.py`
   la lanza con su modelo asignado y lo que hace se ve en vivo en su ficha. Y cada mensaje al
-  maestro (cotejo-9ybn1a): `enrutador/conversacion.py` lanza un turno que solo corre `cotejo`,
-  con la conversación a la vista. Nada más usa `motores/fondo.py`, y ninguna de las tres lanza
+  maestro (cotejo-9ybn1a): `enrutador/conversacion.py` lanza un turno, con la conversación a la
+  vista. Nada más usa `motores/fondo.py`, y ninguna de las tres lanza
   nada que la persona no haya pedido.
-- **El maestro es una conversación dentro del board, nunca una terminal, y solo propone
-  repartir lo asignado** (decisión del dueño del 2026-10-27, cotejo-9ybn1a; antes «se abre en
+- **El maestro es una conversación dentro del board, nunca una terminal, y puede todo menos
+  aprobar** (v1.3.1, pedido del dueño del 2026-11-06, cotejo-va7lgn, dec-qnug, propuesta, que
+  reemplaza lo de abajo): edita el código, corre comandos, crea y asigna tareas, despacha,
+  entrega y bloquea; dar una tarea por hecha, integrar la rama `cotejo/<id>` en la principal y
+  aceptar una decisión siguen siendo de una persona, y `enrutador/candado.py` deshace al cerrar
+  el turno lo que el maestro apruebe (`pruebas/test_candado_maestro.py`). Lo de antes: solo
+  proponía repartir lo asignado (decisión del dueño del 2026-10-27, cotejo-9ybn1a; antes «se abre en
   una terminal que se ve»). Por qué cambió: la terminal era una ventana fuera de la app que
   quien no programa no sabe leer, interrumpir ni cerrar sin miedo, y lo que hacía ahí el board
   no lo veía; la regla vieja quería evitar el «proceso que nadie ve», y eso se cumple mejor con

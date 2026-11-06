@@ -365,6 +365,27 @@ class Almacen:
         datos = {**entrada.datos, **campos, "estado": nuevo}
         return self._reemplazar(entrada, version, componer(datos, entrada.cuerpo))
 
+    def deshacer_estado(self, entrada_id, version, anterior, quitar=()):
+        """Devuelve una decisión al estado que tenía antes de que la aceptara quien no debía.
+
+        Es la única vuelta atrás fuera de `TRANSICIONES`, y solo la pide el candado del maestro
+        (`enrutador/candado.py`, cotejo-va7lgn): aceptar es de una persona, y lo que el maestro
+        aceptó por su cuenta durante un turno no puede quedar aceptado. Solo deshace lo que
+        aceptar hace: `aceptada` → `propuesta`, o la reemplazada → como estaba. `quitar` son
+        los campos que puso al aceptar (`aceptada_el`, `reemplazada_por`).
+        """
+        entrada = self.leer(entrada_id)
+        if entrada.version != version:
+            raise EntradaCambiada(entrada.id, version, entrada.version)
+        atras = {("aceptada", "propuesta"), ("reemplazada", "aceptada"),
+                 ("reemplazada", "propuesta")}
+        if entrada.tipo != "decision" or (entrada.estado, anterior) not in atras:
+            raise NoSeEdita(f"«{entrada.id}» está {entrada.estado or 'sin estado'} y no vuelve "
+                            f"a {anterior}.")
+        datos = {k: v for k, v in entrada.datos.items() if k not in quitar}
+        datos["estado"] = anterior
+        return self._reemplazar(entrada, version, componer(datos, entrada.cuerpo))
+
     def bitacora(self, texto, fecha=None):
         """Añade `texto` al final del archivo del día. Devuelve la entrada del día.
 

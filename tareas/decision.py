@@ -80,6 +80,9 @@ def aceptar(alm, entrada_id, version):
     entrada = alm.leer(entrada_id)
     if entrada.tipo != "decision":
         raise NoEsDecision(entrada)
+    # Solo la pide la persona, en el board: el candado del maestro no la deshace (cotejo-va7lgn).
+    from enrutador import candado
+    candado.lo_aprueba_la_persona(entrada.id)
     # La fecha en que se aceptó es la que `cotejo release` compara con la del último tag.
     aceptada = alm.poner_estado(entrada.id, version, "aceptada",
                                 campos={"aceptada_el": almacen._hoy()})

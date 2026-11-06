@@ -1,5 +1,5 @@
 """La conversación con el maestro: cada mensaje de la persona es un turno de un cliente sin
-interfaz que solo puede correr `cotejo` (v1.3.0, cotejo-9ybn1a).
+interfaz (v1.3.0, cotejo-9ybn1a) que puede todo menos aprobar (v1.3.1, cotejo-va7lgn).
 
 Lo que se dice el maestro (`maestro.instruccion`) lleva la conversación entera, recortada: no
 todos los clientes tienen una forma documentada de retomar su sesión sin interfaz, y así vale
@@ -7,27 +7,31 @@ igual para Claude Code, Codex, OpenCode, Gemini CLI y Antigravity CLI. La conver
 proyecto vive en `<estado>/maestro/<proyecto>.json` (fuera del vault, como `board.json`); la
 salida de cada turno, al lado (`.out` y `.err`), y de ahí la lee el board mientras contesta.
 
-**Lo que puede hacer el cliente** (`comando`): leer, y correr `cotejo`. Nada de editar
-archivos. Cada uno con lo suyo y con lo que ya hay para los demás lanzamientos:
+**Lo que puede hacer el cliente** (`comando`, v1.3.1, cotejo-va7lgn): todo lo que haría la persona
+en una terminal —leer y editar el código, correr comandos, crear, asignar, despachar, entregar,
+bloquear— menos aprobar. Arranca en la carpeta del código (o en la de las tareas si no se sabe
+cuál es). Cada cliente con su forma de no preguntar, porque sin nadie delante lo que pregunta
+se niega solo:
 
-- **Claude Code**: `--allowedTools Bash(cotejo:*)` (lo demás que pida permiso, sin nadie
-  delante, se niega), `Edit`/`Write`/`NotebookEdit` en `--disallowedTools` y sin los ajustes del
-  proyecto (`SOLO_AJUSTES_DE_LA_PERSONA`). `stream-json` para ver en el board qué hace.
-- **Codex**: su sandbox `workspace-write` con la carpeta donde se escriben las tareas como
-  directorio de trabajo y la de estado (`--add-dir`), sin confianza en el proyecto. Lo demás,
-  incluido el código, en solo lectura. Codex escribe el progreso en stderr y solo el mensaje
+- **Claude Code**: `--permission-mode bypassPermissions`, sin los ajustes del proyecto
+  (`SOLO_AJUSTES_DE_LA_PERSONA`) y `stream-json` para ver en el board qué hace.
+- **Codex**: `--dangerously-bypass-approvals-and-sandbox`, sin confianza en el proyecto (su
+  `.codex/` no arranca servidores MCP). Codex escribe el progreso en stderr y solo el mensaje
   final en stdout (https://learn.chatgpt.com/docs/non-interactive-mode): stdout es la respuesta.
-- **OpenCode**: `permission.edit: deny`, `permission.bash` todo `deny` salvo `cotejo`
-  (https://opencode.ai/docs/permissions/, gana la última regla que casa) y sin los servidores MCP
-  ni los plugins del proyecto.
-- **Gemini CLI**: `--allowed-tools run_shell_command(cotejo)`, como al preparar, y sin lo que su
-  `.gemini/settings.json` del proyecto le haría arrancar.
-- **Antigravity CLI**: no tiene cómo permitir un solo comando en la invocación; va con
-  `--dangerously-skip-permissions` dentro de la jaula de bubblewrap de Cotejo, que solo deja
-  escribir donde se escriben las tareas y en la de estado. Sin bwrap no se lanza.
+- **OpenCode**: `permission` con `edit`, `bash` (`{"*": "allow"}`) y `webfetch` en `allow`
+  (https://opencode.ai/docs/permissions/), sin los servidores MCP ni los plugins del proyecto.
+- **Gemini CLI**: `--approval-mode yolo`, sin lo que su `.gemini/settings.json` del proyecto le
+  haría arrancar.
+- **Antigravity CLI**: `--dangerously-skip-permissions`, ya sin la jaula de bubblewrap (no hay
+  escritura que limitar), así que también habla en Windows y en un Linux sin bwrap.
 
-Lo lanza `motores/fondo.py` (`lanzar_aparte`), como todo lo que corre sin interfaz. Para todos, la config de Cotejo vedada (`COTEJO_CONFIG_VEDADA`) y el mismo `cotejo` que el board
-primero en el PATH (`mismo_cotejo`). Aquí no hay GTK: la CLI (`cotejo maestro`) y el board lo usan
+Lo único vedado, aprobar, no se le confía al prompt: el candado (`candado.py`) fotografía antes
+de cada turno lo que estaba aprobado y, al terminar (también si muere o se para), deshace lo
+que el maestro aprobó y lo dice en su respuesta.
+
+Lo lanza `motores/fondo.py` (`lanzar_aparte`), como todo lo que corre sin interfaz: en Windows sin
+ninguna consola a la vista (`subproceso`). Para todos, el mismo `cotejo` que el board primero en
+el PATH (`mismo_cotejo`); la config ya no va vedada (puede asignar modelos, como la persona). Aquí no hay GTK: la CLI (`cotejo maestro`) y el board lo usan
 igual.
 """
 
@@ -40,7 +44,7 @@ import time
 from pathlib import Path
 
 from tareas import lanzados, rutas
-from . import clientes, maestro, mismo_cotejo, procesos, sandbox
+from . import candado, clientes, maestro, mismo_cotejo, procesos
 from .motores import fondo
 
 TIMEOUT_SEG = 600
@@ -133,8 +137,7 @@ def _permisos_opencode(previo):
     datos = datos if isinstance(datos, dict) else {}
     permiso = datos.get("permission")
     permiso = dict(permiso) if isinstance(permiso, dict) else {}
-    permiso.update(edit="deny", webfetch="deny",
-                   bash={"*": "deny", "cotejo": "allow", "cotejo *": "allow"})
+    permiso.update(edit="allow", webfetch="allow", bash={"*": "allow"})
     datos["permission"] = permiso
     return json.dumps(datos, ensure_ascii=False)
 
@@ -142,9 +145,10 @@ def _permisos_opencode(previo):
 def comando(config, cliente, modelo, prompt, directorio, escritura):
     """`(argv, variables, carpeta donde arranca)` de un turno del maestro con `cliente`.
 
-    `directorio` es la carpeta del código (o None); `escritura`, las carpetas donde `cotejo`
-    tiene que poder escribir (`carpetas_de_escritura`). Lo que pone la persona en
-    `enrutador.maestro.argumentos_extra.<cliente>` solo añade; los permisos de aquí van siempre.
+    `directorio` es la carpeta del código (o None); `escritura`, las carpetas donde escribe
+    `cotejo` (`carpetas_de_escritura`): la primera es donde arranca si no hay código. Lo que pone
+    la persona en `enrutador.maestro.argumentos_extra.<cliente>` solo añade; los permisos de aquí
+    van siempre.
     """
     from . import niveles, preparar
     propios = preparar._propios(config, cliente)
@@ -155,13 +159,11 @@ def comando(config, cliente, modelo, prompt, directorio, escritura):
     env = {}
     if cliente.nombre == "claude":
         extra += ["--output-format", "stream-json", "--verbose",
-                  *clientes.SOLO_AJUSTES_DE_LA_PERSONA, "--allowedTools", "Bash(cotejo:*)",
-                  "--disallowedTools", "Edit", "Write", "NotebookEdit"]
+                  *clientes.SOLO_AJUSTES_DE_LA_PERSONA, "--permission-mode", "bypassPermissions"]
     elif cliente.nombre == "codex":
-        # El directorio de trabajo es lo único que `workspace-write` deja escribir además de
-        # `--add-dir`: la carpeta de las tareas, no la del código.
-        trabajo = escritura[0] if escritura else trabajo
-        extra += cliente.permisos(escritura[1:])[0] + clientes._codex_sin_confianza(trabajo)
+        # `--skip-git-repo-check`: `exec` se niega fuera de un repo, y el proyecto puede no serlo.
+        extra += (["--dangerously-bypass-approvals-and-sandbox", "--skip-git-repo-check"]
+                  + clientes._codex_sin_confianza(trabajo))
     elif cliente.nombre == "opencode":
         env = {"OPENCODE_CONFIG_CONTENT": _permisos_opencode(
             os.environ.get("OPENCODE_CONFIG_CONTENT"))}
@@ -169,10 +171,11 @@ def comando(config, cliente, modelo, prompt, directorio, escritura):
             trabajo, clientes._opencode_sin_mcp_del_proyecto(trabajo, env))
     elif cliente.nombre == "gemini":
         extra, env = clientes._gemini_sin_lo_del_proyecto(
-            trabajo, extra + ["--allowed-tools", "run_shell_command(cotejo)"],
-            {"GEMINI_CLI_TRUST_WORKSPACE": "true"})
+            trabajo, extra + ["--approval-mode", "yolo"], {"GEMINI_CLI_TRUST_WORKSPACE": "true"})
     elif cliente.nombre == "antigravity":
-        extra += cliente.permisos(escritura)[0] + ["--dangerously-skip-permissions"]
+        # Las de `cotejo` (tareas, estado) al espacio de trabajo, con la del código.
+        extra += (cliente.permisos([c for c in escritura if c != trabajo])[0]
+                  + ["--dangerously-skip-permissions"])
     concreto = niveles.modelo_concreto(modelo, config.get("modelos"))
     if concreto is not None and concreto.cliente == cliente.nombre:
         modelo_cliente = cliente.modelo_de(concreto.modelo, concreto.modelo_id)
@@ -181,20 +184,12 @@ def comando(config, cliente, modelo, prompt, directorio, escritura):
         modelo_cliente = cliente.modelo_de(modelo or "", "")
     argv = cliente.argv_sin_interfaz(modelo_cliente, prompt,
                                      comando=propios.get("comando"), extra=extra)
-    if cliente.nombre == "antigravity":
-        hay, motivo = sandbox.disponible_bwrap()
-        if not hay:
-            raise NoSePuede(f"Antigravity CLI no habla sin la jaula de Cotejo: {motivo}.")
-        from tareas import configuracion
-        ajustes = sandbox.del_lanzamiento(escritura, vedadas=configuracion.archivos(),
-                                          token=None)["ajustes"]
-        argv = sandbox.envolver_antigravity(argv, ajustes, trabajo)
     return argv, env, trabajo
 
 
 def carpetas_de_escritura(carpeta_tareas):
     """Donde escribe `cotejo crear` (la carpeta del archivo de tareas del proyecto) y la de
-    estado (bitácora, ahorro, esta conversación). Ninguna más: ni el código ni la config."""
+    estado (bitácora, ahorro, esta conversación): donde arranca el maestro si no hay código."""
     lista = [c for c in (carpeta_tareas, rutas.estado()) if c]
     return [os.path.abspath(str(c)) for c in dict.fromkeys(str(c) for c in lista)]
 
@@ -249,11 +244,17 @@ def _respuesta_de(curso, codigo=None):
 
 
 def _cerrar(datos, respuesta, repartir=()):
+    """Cierra el turno en curso con `respuesta`, después de que el candado deshaga lo que el
+    maestro aprobó en él: lo deshecho va al final de lo que ve la persona."""
     curso = datos.pop("en_curso", None) or {}
     texto, ok = respuesta
-    turno = {"quien": QUIEN_MAESTRO, "texto": maestro.sin_marca(texto) or texto, "ok": ok,
-             "ts": time.time(), "cliente": curso.get("cliente"),
+    texto = maestro.sin_marca(texto) or texto
+    aviso = candado.revisar(curso.get("foto"))
+    turno = {"quien": QUIEN_MAESTRO, "texto": "\n\n".join(filter(None, (texto, aviso))),
+             "ok": ok, "ts": time.time(), "cliente": curso.get("cliente"),
              "out": curso.get("out"), "err": curso.get("err")}
+    if aviso:
+        turno["candado"] = aviso
     if repartir:
         turno["repartir"] = list(repartir)
     datos["turnos"].append(turno)
@@ -276,11 +277,13 @@ def empezar(proyecto, pedido, armado, al_terminar=None, timeout=TIMEOUT_SEG, aju
         n = len(datos["turnos"])
         base = carpeta() / f"{_nombre(proyecto)}-{n + 1}-{int(time.time())}"
         base.parent.mkdir(parents=True, exist_ok=True)
+        # Lo aprobado antes del turno, para deshacer al cerrarlo lo que apruebe el maestro.
         curso = {"cliente": armado["cliente"], "out": str(base) + ".out",
                  "err": str(base) + ".err", "desde": time.time(),
-                 "asignadas": armado["asignadas"]}
+                 "asignadas": armado["asignadas"],
+                 "foto": candado.foto(proyecto, armado.get("directorio"))}
         try:
-            entorno = mismo_cotejo.entorno({"COTEJO_CONFIG_VEDADA": "1", **armado["env"]})
+            entorno = mismo_cotejo.entorno(armado["env"])
         except OSError as error:
             raise NoSePuede(f"No pude preparar el Cotejo que usará el maestro: {error}") from error
         try:
@@ -340,6 +343,7 @@ def parar(proyecto, anotar=True):
         else:
             datos.pop("en_curso", None)
             _guardar(datos)
+            candado.revisar(curso.get("foto"))   # sin conversación, queda en la bitácora
     return True
 
 

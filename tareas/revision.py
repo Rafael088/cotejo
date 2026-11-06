@@ -462,6 +462,9 @@ def integrar(plan):
         if _git(repo, "rev-parse", "--verify", "--quiet", marca)[0] == 0:
             return {"integrada": False, "causa": "a-medias",
                     "motivo": f"{repo} está en mitad de otra operación de git; no integré nada"}
+    # Integrar es aprobar, y aquí lo pidió la persona: el candado del maestro no lo avisa.
+    from enrutador import candado
+    candado.lo_aprueba_la_persona(rama.split("/", 1)[-1])
     identidad = _identidad(repo)
     error = _guardar_cotejo(repo, identidad)
     if error:

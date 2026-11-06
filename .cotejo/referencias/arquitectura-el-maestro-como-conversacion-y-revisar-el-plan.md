@@ -21,12 +21,21 @@ un turno con el proceso muerto se cierra al leer. Antes de armar la instrucción
 le da al maestro las que aún tienen commits fuera, con su columna y el motivo correspondiente.
 Así una app vacía no se confunde con trabajo inexistente ni se manda rehacer lo que espera
 entrega, aprobación o integración. Las ramas históricas sin tarea en ese tablero no se mezclan.
-Permisos por cliente en `conversacion.comando`:
-Claude `--allowedTools Bash(cotejo:*)`, `Edit`/`Write` vedados y `--setting-sources user`; Codex
-`workspace-write` con la carpeta de las tareas como directorio de trabajo y la de estado (el código
-queda en solo lectura); OpenCode `edit: deny` y `bash` todo `deny` salvo `cotejo`, sin MCP ni
-plugins del proyecto; Gemini `run_shell_command(cotejo)` y sin lo de su `.gemini/`; Antigravity en
-la jaula de bwrap o no habla. Todos con la config vedada y el mismo `cotejo` del board. El panel
+Permisos por cliente en `conversacion.comando` (v1.3.1, cotejo-va7lgn, dec-qnug): todo lo que
+haría la persona en una terminal, sin preguntar, en la carpeta del código (o la de las tareas si
+no hay código). Claude `--permission-mode bypassPermissions` y `--setting-sources user`; Codex
+`--dangerously-bypass-approvals-and-sandbox` sin confianza en el proyecto; OpenCode `edit`, `bash`
+y `webfetch` en `allow`, sin MCP ni plugins del proyecto; Gemini `--approval-mode yolo` y sin lo
+de su `.gemini/`; Antigravity `--dangerously-skip-permissions`, ya sin bwrap. Todos con el mismo
+`cotejo` del board y la config sin vedar. Lo único vedado, aprobar, lo hace cumplir
+`enrutador/candado.py`: `conversacion.empezar` guarda en el turno una foto de lo aprobado (tareas
+hechas o por integrar, estado de las decisiones del `.cotejo/`, ramas principales y `cotejo/*`), y
+`conversacion._cerrar` (al terminar, al pararlo o al cerrar un turno muerto) devuelve por la fuente
+las tareas que pasaron a aprobadas, vuelve a propuesta las decisiones aceptadas
+(`Almacen.deshacer_estado`), avisa sin tocar git de un merge de `cotejo/<id>` y lo añade a la
+respuesta y a la bitácora. Lo que aprueba la persona en el board durante el turno se apunta en
+`candado.lo_aprueba_la_persona` (movimientos, integrar, `decision.aceptar`) y no se deshace.
+`pruebas/test_candado_maestro.py` lo prueba de punta a punta. El panel
 (`tareas/app/conversacion.py`, `PanelMaestro`) flota en el overlay del tablero (cotejo-w8vteb):
 no ocupa sitio en la caja, así que abrirlo no empuja ni redimensiona las columnas; se arrastra
 por su título, se minimiza y se cierra sin parar al maestro. «Repartir» va

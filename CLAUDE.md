@@ -49,7 +49,8 @@ Texto completo y la prueba que vigila cada una: ref-62y4.
 - Gastar lo decide una persona: el nivel humano no se despacha, sin `--forzar`; sin modelo
   puesto, se pregunta (dec-7aqz).
 - Solo tres cosas lanzan un agente sin interfaz, todas pedidas en el board (dec-1wh6); el
-  maestro es una conversación que solo propone repartir lo asignado (dec-ku4d).
+  maestro es una conversación que puede todo menos aprobar, y `enrutador/candado.py` deshace
+  lo que apruebe (dec-qnug, reemplaza a dec-ku4d).
 - Ante la duda se escala, nunca se abarata; las etiquetas del set de evaluación no se editan
   (dec-714y, dec-1qkk).
 - Toda decisión de `despachar` deja línea, también las negativas (dec-xeke).
@@ -58,7 +59,7 @@ Texto completo y la prueba que vigila cada una: ref-62y4.
   commitear, y nunca `git add -A` en un árbol compartido (apr-38jf).
 
 dec-pxtt, dec-vps5, dec-owvb, dec-8am7, dec-791y, dec-bhh5, dec-mcm0, dec-prwn, dec-0r9e,
-dec-7aqz, dec-1wh6, dec-ku4d, dec-714y y dec-xeke están **propuestas**: aceptarlas es de una
+dec-7aqz, dec-1wh6, dec-qnug, dec-714y y dec-xeke están **propuestas**: aceptarlas es de una
 persona.
 
 ## Índice

@@ -83,15 +83,16 @@ class Conversacion(PruebaDeEnrutador):
         self.assertEqual(turnos[0]["texto"], "apunta que falta el login")
         self.assertNotIn("en_curso", conversacion.leer("Uno"))
 
-    def test_el_cliente_va_sin_interfaz_y_solo_puede_correr_cotejo(self):
+    def test_el_cliente_va_sin_interfaz_y_con_todos_los_permisos(self):
         self.hablar("hola")
         argv = self.argv()["argv"]
         self.assertIn("-p", argv)
-        self.assertEqual(argv[argv.index("--allowedTools") + 1], "Bash(cotejo:*)")
-        for vedada in ("Edit", "Write"):
-            self.assertIn(vedada, argv[argv.index("--disallowedTools"):])
+        # v1.3.1 (cotejo-va7lgn): lo que haría la persona en una terminal, sin preguntar.
+        self.assertEqual(argv[argv.index("--permission-mode") + 1], "bypassPermissions")
+        for viejo in ("--allowedTools", "Bash(cotejo:*)", "--disallowedTools", "Edit", "Write"):
+            self.assertNotIn(viejo, argv[:-1])
         self.assertIn("--setting-sources", argv)
-        self.assertEqual(argv[-2], "--")      # el prompt no se lo come --disallowedTools
+        self.assertEqual(argv[-2], "--")      # el prompt va solo, detrás del fin de opciones
         # Trabaja en la carpeta del proyecto y usa el mismo cotejo que el board.
         self.assertEqual(self.argv()["cwd"], str(self.repo))
         self.assertTrue(self.argv()["path"].startswith(
@@ -131,9 +132,10 @@ class Conversacion(PruebaDeEnrutador):
         self.assertEqual(datos["respuesta"], "Hola, soy el maestro.")
         argv = self.argv()["argv"]
         self.assertIn("exec", argv)
-        self.assertEqual(argv[argv.index("--sandbox") + 1], "workspace-write")
-        # Codex escribe solo donde van las tareas: arranca ahí, no en el código.
-        self.assertEqual(Path(self.argv()["cwd"]), self.vault / self.CARPETA)
+        self.assertIn("--dangerously-bypass-approvals-and-sandbox", argv)
+        self.assertNotIn("--sandbox", argv)
+        # Arranca en el código, como la persona en su terminal.
+        self.assertEqual(Path(self.argv()["cwd"]), self.repo)
         self.assertIn("Algo nuevo", self.leer_nota("Uno.md"))
 
     def test_si_el_cliente_falla_lo_dice_en_la_conversacion(self):
@@ -175,47 +177,87 @@ class Conversacion(PruebaDeEnrutador):
 
 
 class Permisos(PruebaDeEnrutador):
-    """Lo que puede hacer cada cliente en un turno: solo leer y correr `cotejo`."""
+    """Lo que puede hacer cada cliente en un turno (v1.3.1, cotejo-va7lgn): todo lo que haría la
+    persona en una terminal, sin preguntar; aprobar lo veda el candado, no el cliente."""
 
     def comando(self, nombre, directorio="/tmp/proy", escritura=("/tmp/tareas", "/tmp/estado")):
         return conversacion.comando(cfg.cargar(), clientes.de(nombre), "", "PROMPT",
                                     directorio, list(escritura))
 
-    def test_opencode_no_edita_y_solo_corre_cotejo(self):
+    def test_claude_sin_preguntar_ni_herramientas_vedadas(self):
+        argv, _, trabajo = self.comando("claude")
+        self.assertEqual(argv[argv.index("--permission-mode") + 1], "bypassPermissions")
+        for viejo in ("--allowedTools", "Bash(cotejo:*)", "--disallowedTools", "Edit", "Write",
+                      "NotebookEdit"):
+            self.assertNotIn(viejo, argv)
+        self.assertIn("--setting-sources", argv)   # sin los ajustes del proyecto, como antes
+        self.assertEqual(argv[argv.index("--output-format") + 1], "stream-json")
+        self.assertEqual(argv[-2:], ["--", "PROMPT"])
+        self.assertEqual(trabajo, "/tmp/proy")
+
+    def test_opencode_edita_y_corre_lo_que_sea(self):
         argv, env, trabajo = self.comando("opencode")
         self.assertEqual(argv[:2], ["opencode", "run"])
         permiso = json.loads(env["OPENCODE_CONFIG_CONTENT"])["permission"]
-        self.assertEqual(permiso["edit"], "deny")
-        self.assertEqual(permiso["bash"], {"*": "deny", "cotejo": "allow", "cotejo *": "allow"})
+        self.assertEqual(permiso["edit"], "allow")
+        self.assertEqual(permiso["webfetch"], "allow")
+        self.assertEqual(permiso["bash"], {"*": "allow"})
         self.assertEqual(trabajo, "/tmp/proy")
 
-    def test_gemini_solo_corre_cotejo(self):
-        argv, env, _ = self.comando("gemini")
-        self.assertIn("run_shell_command(cotejo)", argv)
+    def test_gemini_en_yolo(self):
+        argv, env, trabajo = self.comando("gemini")
+        self.assertEqual(argv[argv.index("--approval-mode") + 1], "yolo")
+        self.assertNotIn("--allowed-tools", argv)
+        self.assertNotIn("run_shell_command(cotejo)", argv)
         self.assertEqual(argv[-2:], ["-p", "PROMPT"])
         self.assertIn("GEMINI_CLI_TRUST_WORKSPACE", env)
+        self.assertEqual(trabajo, "/tmp/proy")
 
-    def test_codex_escribe_solo_en_las_tareas_y_el_estado(self):
+    def test_codex_sin_sandbox_ni_aprobaciones_en_el_codigo(self):
         argv, _, trabajo = self.comando("codex")
-        self.assertEqual(trabajo, "/tmp/tareas")
-        self.assertEqual(argv[argv.index("--add-dir") + 1], "/tmp/estado")
-        self.assertNotIn("/tmp/proy", argv[:-1])
+        self.assertIn("--dangerously-bypass-approvals-and-sandbox", argv)
+        self.assertIn("--skip-git-repo-check", argv)
+        for viejo in ("--sandbox", "workspace-write", "--add-dir"):
+            self.assertNotIn(viejo, argv)
+        self.assertEqual(trabajo, "/tmp/proy")
+        # Sin confianza en el proyecto: su `.codex/` no arranca servidores MCP.
+        self.assertIn('trust_level="untrusted"', " ".join(argv))
 
-    def test_antigravity_no_habla_sin_su_jaula(self):
-        with mock.patch("enrutador.sandbox.disponible_bwrap", return_value=(False, "sin bwrap")):
-            with self.assertRaises(conversacion.NoSePuede):
-                self.comando("antigravity")
+    def test_antigravity_sin_jaula_ni_bwrap(self):
+        with mock.patch("enrutador.sandbox.disponible_bwrap",
+                        return_value=(False, "sin bwrap")):
+            argv, _, trabajo = self.comando("antigravity")
+        self.assertEqual(argv[0], "agy")             # ni bwrap delante ni NoSePuede
+        self.assertNotIn("bwrap", " ".join(argv))
+        self.assertIn("--dangerously-skip-permissions", argv)
+        self.assertEqual(argv[-2:], ["-p", "PROMPT"])
+        self.assertEqual(trabajo, "/tmp/proy")
+        pares = list(zip(argv, argv[1:]))
+        self.assertIn(("--add-dir", "/tmp/tareas"), pares)
+        self.assertIn(("--add-dir", "/tmp/estado"), pares)
+
+    def test_sin_codigo_arranca_donde_van_las_tareas(self):
+        for nombre in ("claude", "codex", "opencode", "gemini", "antigravity"):
+            with self.subTest(cliente=nombre):
+                self.assertEqual(self.comando(nombre, directorio=None)[2], "/tmp/tareas")
 
 
 class Instruccion(unittest.TestCase):
     ASIGNADAS = [{"id": "cotejo-asig", "modelo": "sonnet", "texto": "Arreglar el parseo"}]
 
-    def test_ensena_las_tres_cosas_y_ningun_verbo_para_finalizar(self):
+    def test_puede_todo_menos_aprobar_y_ningun_verbo_para_finalizar(self):
         texto = maestro.instruccion("Uno", self.ASIGNADAS, "/tmp/uno", "hola")
         for parte in ('cotejo crear "', "cotejo tareas --proyecto", "REPARTIR:",
-                      "cotejo-asig → sonnet", "/tmp/uno"):
+                      "cotejo-asig → sonnet", "/tmp/uno", "editar el código",
+                      "correr comandos", "despacharlas", "entregar y bloquear"):
             self.assertIn(parte, texto)
-        for verbo in ("cotejo finalizar", "cotejo marcar", "--motor headless", "terminal que"):
+        # Lo único vedado, dicho en llano: las tres formas de aprobar.
+        for vedado in ("Lo ÚNICO que no puedes hacer es aprobar", "[x]",
+                       "no integres (merge) la rama cotejo/<id>",
+                       "no aceptes una decisión propuesta"):
+            self.assertIn(vedado, texto)
+        for verbo in ("cotejo finalizar", "cotejo marcar", "--motor headless", "terminal que",
+                      "tres cosas", "no edites archivos"):
             self.assertNotIn(verbo, texto)
 
     def test_sin_asignadas_dice_donde_se_asignan(self):
