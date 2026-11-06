@@ -61,8 +61,9 @@ Cotejo\
   `runtime\bin\python.exe` (o `pythonw.exe`, el board) con `PYTHONPATH=app`, sin mirar el
   Python ni las variables `PYTHON*` que tenga el usuario, y devuelven su código de salida.
   Son `.exe` y no `.cmd` porque un `.cmd` no se encuentra desde Git Bash (que es donde corren
-  los agentes en Windows) ni desde `subprocess` sin `shell=True` (que es como Cotejo llama a
-  `cotejo-notion`).
+  los agentes en Windows). Cotejo sí reconoce los dos formatos de shim que genera npm y lanza
+  directamente su `.exe`, o `node` con su script, pero no ejecuta `.cmd` arbitrarios mediante
+  `cmd.exe` (que interpretaría los argumentos de la persona).
 - **El runtime sale de MSYS2**: se leen su índice y sus dependencias y se comprueba el SHA-256
   de cada paquete contra el índice. `runtime\PAQUETES.txt` dice cuáles entraron, con la licencia
   que declara cada uno y el nombre de su paquete fuente. `tcl` y `tk` se cortan (los pide

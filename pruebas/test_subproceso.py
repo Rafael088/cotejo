@@ -2,8 +2,8 @@
 
 Tres capas: el código (toda llamada a `subprocess` de `enrutador/` y `tareas/` pasa por
 `enrutador/subproceso.py`), el helper (con `sys.platform` de Windows simulado pone
-`CREATE_NO_WINDOW` y traduce `start_new_session`) y, en un Windows de verdad, que ni el hijo ni
-el nieto (lo que lanza el hijo sin flags, un `.cmd`) tienen ventana de consola.
+`CREATE_NO_WINDOW`, traduce `start_new_session` y abre los shims npm sin `cmd.exe`) y, en un
+Windows de verdad, que ni el hijo ni el nieto tienen ventana de consola.
 """
 
 import ast
@@ -34,6 +34,35 @@ SIN_FLAG_EN_SUELTO = {"call"}
 
 # Lo que hace un proceso de Windows para decir si tiene consola y si esa consola tiene ventana.
 CONSOLA = "import ctypes; k = ctypes.windll.kernel32; print(k.GetConsoleWindow(), k.GetConsoleCP())"
+SHIM_OPENCODE = r'''@ECHO off
+GOTO start
+:find_dp0
+SET dp0=%~dp0
+EXIT /b
+:start
+SETLOCAL
+CALL :find_dp0
+
+"%dp0%\node_modules\@opencode\cli\bin\opencode.exe"   %*
+'''
+SHIM_NODE = r'''@ECHO off
+GOTO start
+:find_dp0
+SET dp0=%~dp0
+EXIT /b
+:start
+SETLOCAL
+CALL :find_dp0
+
+IF EXIST "%dp0%\node.exe" (
+  SET "_prog=%dp0%\node.exe"
+) ELSE (
+  SET "_prog=node"
+  SET PATHEXT=%PATHEXT:;.JS;=;%
+)
+
+endLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & "%_prog%"  "%dp0%\node_modules\x\cli.js" %*
+'''
 
 
 def _archivos():
@@ -101,7 +130,9 @@ class ElHelper(unittest.TestCase):
 
     def setUp(self):
         subproceso._es_exe.cache_clear()
+        subproceso._which.cache_clear()
         self.addCleanup(subproceso._es_exe.cache_clear)
+        self.addCleanup(subproceso._which.cache_clear)
 
     def en(self, plataforma):
         return mock.patch.object(subproceso.sys, "platform", plataforma)
@@ -127,7 +158,7 @@ class ElHelper(unittest.TestCase):
 
     def test_git_va_sin_consola(self):
         # Sin conhost.exe por llamada: un agente lanzado desde el board hacía ocho.
-        with self.en("win32"), mock.patch.object(subproceso.shutil, "which",
+        with self.en("win32"), mock.patch.object(subproceso, "_which",
                                                  return_value=r"C:\Git\cmd\git.EXE"):
             for argv in (["git", "status"], [r"C:\Git\cmd\git.exe", "status"], ["taskkill"]):
                 with self.subTest(argv):
@@ -140,7 +171,7 @@ class ElHelper(unittest.TestCase):
     def test_un_git_cmd_o_cualquier_otro_lleva_consola_invisible(self):
         # Un .cmd lo corre cmd.exe: sin consola, el git.exe que lanza abriría la suya. Y los
         # demás (clientes, python, cmd) lanzan hijos de consola que heredan la invisible.
-        with self.en("win32"), mock.patch.object(subproceso.shutil, "which",
+        with self.en("win32"), mock.patch.object(subproceso, "_which",
                                                  return_value=r"C:\x\git.cmd"):
             for argv in (["git", "status"], ["claude", "-p"], ["cmd", "/c", "start", ""],
                          [sys.executable, "-c", ""], "git status", None):
@@ -150,9 +181,96 @@ class ElHelper(unittest.TestCase):
 
     def test_el_programa_se_lee_de_args_o_de_la_palabra_args(self):
         with self.en("win32"), mock.patch.object(subprocess, "run") as real, \
-                mock.patch.object(subproceso.shutil, "which", return_value="git.exe"):
+                mock.patch.object(subproceso, "_which", return_value="git.exe"):
             subproceso.run(args=["git", "status"])
         self.assertEqual(real.call_args.kwargs["creationflags"], subproceso.DETACHED_PROCESS)
+
+    def test_shim_real_de_opencode_lanza_directamente_su_exe(self):
+        with tempfile.TemporaryDirectory() as temporal:
+            carpeta = Path(temporal)
+            shim = carpeta / "opencode.cmd"
+            shim.write_text(SHIM_OPENCODE, encoding="utf-8")
+            entorno = {"Path": str(carpeta), "PATHEXT": ".EXE;.CMD;.BAT"}
+            esperado = str(carpeta / "node_modules" / "@opencode" / "cli" / "bin" /
+                           "opencode.exe")
+            with self.en("win32"), mock.patch.object(subprocess, "Popen") as real:
+                subproceso.Popen(["opencode", "run", "hola"], env=entorno)
+        real.assert_called_once_with(
+            [esperado, "run", "hola"], env=entorno,
+            creationflags=subproceso.CREATE_NO_WINDOW)
+        self.assertNotIn("shell", real.call_args.kwargs)
+
+    def test_el_script_sh_sin_extension_de_npm_no_tapa_al_cmd(self):
+        # npm deja `opencode` (sh) junto a `opencode.cmd`; en el Windows real `which(F_OK)`
+        # devolvía el de sh y el shim no se resolvía (06-nov).
+        with tempfile.TemporaryDirectory() as temporal:
+            carpeta = Path(temporal)
+            (carpeta / "opencode").write_text("#!/bin/sh\nexec node x.js\n", encoding="utf-8")
+            (carpeta / "opencode.cmd").write_text(SHIM_OPENCODE, encoding="utf-8")
+            entorno = {"PATH": str(carpeta), "PATHEXT": ".COM;.EXE;.BAT;.CMD"}
+            with self.en("win32"), mock.patch.object(subprocess, "Popen") as real:
+                subproceso.Popen(["opencode", "run"], env=entorno)
+        self.assertTrue(real.call_args.args[0][0].endswith("opencode.exe"))
+
+    def test_shim_node_lanza_node_y_el_script_directamente(self):
+        with tempfile.TemporaryDirectory() as temporal:
+            carpeta = Path(temporal)
+            shim = carpeta / "cliente.cmd"
+            shim.write_text(SHIM_NODE, encoding="utf-8")
+            entorno = {"PATH": str(carpeta), "PATHEXT": ".CMD"}
+            esperado = str(carpeta / "node_modules" / "x" / "cli.js")
+            with self.en("win32"), mock.patch.object(subprocess, "run") as real:
+                subproceso.run(["cliente", "--json"], env=entorno)
+        real.assert_called_once_with(
+            ["node", esperado, "--json"], env=entorno,
+            creationflags=subproceso.CREATE_NO_WINDOW)
+        self.assertNotIn("shell", real.call_args.kwargs)
+
+    def test_shim_node_prefiere_el_node_exe_que_tiene_al_lado(self):
+        with tempfile.TemporaryDirectory() as temporal:
+            carpeta = Path(temporal)
+            shim = carpeta / "cliente.cmd"
+            shim.write_text(SHIM_NODE, encoding="utf-8")
+            node = carpeta / "node.exe"
+            node.touch()
+            entorno = {"PATH": str(carpeta), "PATHEXT": ".CMD"}
+            with self.en("win32"), mock.patch.object(subprocess, "run") as real:
+                subproceso.run(["cliente", "--version"], env=entorno)
+        self.assertEqual(real.call_args.args[0][0], str(node))
+        self.assertNotIn("shell", real.call_args.kwargs)
+
+    def test_el_prompt_llega_intacto_sin_cmd(self):
+        prompt = 'primera & segunda | 50% ^ "literal"\ny otra línea'
+        with tempfile.TemporaryDirectory() as temporal:
+            carpeta = Path(temporal)
+            shim = carpeta / "opencode.cmd"
+            shim.write_text(SHIM_OPENCODE, encoding="utf-8")
+            entorno = {"PATH": str(carpeta), "PATHEXT": ".CMD"}
+            with self.en("win32"), mock.patch.object(subprocess, "Popen") as real:
+                subproceso.Popen(["opencode", "run", prompt], env=entorno)
+        argv = real.call_args.args[0]
+        self.assertEqual(argv[-1], prompt)
+        self.assertNotIn("shell", real.call_args.kwargs)
+        self.assertNotIn("cmd", argv[0].lower())
+
+    def test_una_ruta_cmd_explicita_tambien_se_resuelve(self):
+        with tempfile.TemporaryDirectory() as temporal:
+            shim = Path(temporal) / "opencode.cmd"
+            shim.write_text(SHIM_OPENCODE, encoding="utf-8")
+            with self.en("win32"), mock.patch.object(subprocess, "call") as real:
+                subproceso.call([str(shim), "run"])
+        self.assertTrue(real.call_args.args[0][0].endswith("opencode.exe"))
+        self.assertNotIn("shell", real.call_args.kwargs)
+
+    def test_un_cmd_que_no_se_entiende_falla_claro(self):
+        with tempfile.TemporaryDirectory() as temporal:
+            carpeta = Path(temporal)
+            shim = carpeta / "raro.cmd"
+            shim.write_text("@echo off\r\necho no soy un shim npm\r\n", encoding="utf-8")
+            entorno = {"PATH": str(carpeta), "PATHEXT": ".CMD"}
+            with self.en("win32"), self.assertRaisesRegex(
+                    OSError, r"(?i)No sé lanzar .*raro\.cmd sin cmd\.exe: no reconozco"):
+                subproceso.check_output(["raro", "argumento"], env=entorno)
 
     def test_fuera_de_windows_no_toca_nada(self):
         for plataforma in ("linux", "darwin"):
@@ -217,18 +335,6 @@ class EnWindows(unittest.TestCase):
         self.assertEqual(hecho.returncode, 0, hecho.stderr)
         ventana, _ = self.consola(hecho.stdout)
         self.assertEqual(ventana, 0)
-
-    def test_un_cmd_tampoco(self):
-        # Los clientes de npm son `.cmd`: los corre un cmd.exe, y lo que él lanza es el nieto.
-        with tempfile.TemporaryDirectory() as carpeta:
-            script = Path(carpeta) / "cliente.cmd"
-            script.write_text(f'@"{sys.executable}" -c "{CONSOLA}"\r\n', encoding="utf-8")
-            hecho = subproceso.run([str(script)], capture_output=True, text=True,
-                                   stdin=subprocess.DEVNULL, timeout=60)
-        ventana, pagina = self.consola(hecho.stdout)
-        self.assertEqual(ventana, 0)
-        self.assertNotEqual(pagina, 0)
-
 
 if __name__ == "__main__":
     unittest.main()

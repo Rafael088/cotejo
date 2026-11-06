@@ -48,7 +48,7 @@ OPENCODE = r"C:\Users\rafa\AppData\Roaming\npm\node_modules\opencode\bin\opencod
 CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 PROGRAMA = r"C:\Users\rafa\AppData\Roaming\npm\opencode.cmd"
 
-# El agente que se lanzó: `cmd.exe /c opencode.cmd` (pid 100, nació en 5000) → opencode.exe.
+# Un registro anterior: `cmd.exe /c opencode.cmd` (pid 100, nació en 5000) → opencode.exe.
 AGENTE = {100: (4, CMD, 5000), 101: (100, OPENCODE, 5001), 102: (101, OPENCODE, 5002)}
 # Chrome, con el pid 100 ya reciclado tras morir el agente.
 CHROME_RECICLADO = {100: (4, CHROME, 9000), 300: (100, CHROME, 9001), 301: (100, CHROME, 9002)}
@@ -126,6 +126,13 @@ class ElArbolDelAgente(EnWindows):
         win = self.windows(AGENTE)
         self.assertTrue(procesos.terminar(100, "opencode", 5000))
         self.assertEqual(len(win.parados), 3)
+
+    def test_el_shim_nuevo_anota_directamente_el_pid_del_exe(self):
+        directo = {101: (4, OPENCODE, 5001), 102: (101, OPENCODE, 5002)}
+        win = self.windows(directo)
+        self.assertTrue(procesos.vivo(101, "opencode", 5001))
+        self.assertTrue(procesos.terminar(101, "opencode", 5001))
+        self.assertEqual(win.parados, [101, 102])
 
 
 class ElNombreDelEjecutable(unittest.TestCase):
