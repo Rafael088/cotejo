@@ -1,7 +1,8 @@
 """La pantalla Preparando del board (v1.3.0, cotejo-hiifrz): qué hace el agente con el proyecto.
 
-Los cinco pasos con su estado y su tiempo, el reloj, el registro desplegable, el error con
-«Reintentar» y «Abrir en terminal», y «Revisar el plan» al terminar. Es una página más de la
+Los cinco pasos con su estado y su tiempo, el reloj, el registro desplegable, «Cancelar»
+mientras prepara, el error con «Reintentar» y «Abrir en terminal», y «Revisar el plan» al
+terminar. Es una página más de la
 pila (`"preparando"`, sin botón en el selector, como la entrevista). Aquí solo se pinta: lo que
 se enseña lo decide `tareas/preparando.py` (sin GTK) con `tareas/progreso.py` y
 `tareas/preparacion.py`; las acciones son de `enrutador/preparar.py`.
@@ -69,11 +70,12 @@ class PantallaPreparando(Gtk.ScrolledWindow):
         cuerpo.append(self.ver_registro)
 
         pie = Gtk.Box(spacing=px(ESPACIADO_SM), halign=Gtk.Align.END)
+        self.cancelar = con_mano(Gtk.Button(label="Cancelar", visible=False))
         self.reintentar = con_mano(Gtk.Button(label="Reintentar", visible=False))
         self.en_terminal = con_mano(Gtk.Button(label="Abrir en terminal", visible=False))
         self.revisar = con_mano(Gtk.Button(label="Revisar el plan", visible=False,
                                            css_classes=["principal"]))
-        for b in (self.reintentar, self.en_terminal, self.revisar):
+        for b in (self.cancelar, self.reintentar, self.en_terminal, self.revisar):
             etiquetar(b, b.get_label())
             pie.append(b)
         cuerpo.append(pie)
@@ -108,6 +110,7 @@ class PantallaPreparando(Gtk.ScrolledWindow):
         self.mensaje.set_visible(bool(v.mensaje))
         self.otro_cotejo.set_label(v.aviso)
         self.otro_cotejo.set_visible(bool(v.aviso))
+        self.cancelar.set_visible(v.puede_cancelar)
         self.reintentar.set_visible("reintentar" in v.acciones)
         self.en_terminal.set_visible("abrir_en_terminal" in v.acciones)
         self.revisar.set_visible(v.puede_revisar)
@@ -160,6 +163,7 @@ class PestanaPreparando:
         self.preparando_seguimiento = None
         self.pantalla_preparando = PantallaPreparando(self.refrescar_preparando)
         p = self.pantalla_preparando
+        p.cancelar.connect("clicked", lambda *_: self.cancelar_preparacion())
         p.reintentar.connect("clicked", lambda *_: self.reintentar_preparacion())
         p.en_terminal.connect("clicked", lambda *_: self.abrir_preparacion_en_terminal())
         p.revisar.connect("clicked", lambda *_: self.revisar_plan(self.estado_preparando()))
@@ -198,6 +202,15 @@ class PestanaPreparando:
         except preparar.NoSePuede:
             return {"id": self.preparando_seguimiento.id,
                     "proyecto": (self.pantalla_preparando.vista or preparando.Vista()).proyecto}
+
+    def cancelar_preparacion(self):
+        from enrutador import preparar
+        try:
+            preparar.cancelar(self.preparando_seguimiento.id)
+        except preparar.NoSePuede as error:
+            self.aviso(str(error))
+            return
+        self.refrescar_preparando()
 
     def reintentar_preparacion(self):
         from enrutador import preparar

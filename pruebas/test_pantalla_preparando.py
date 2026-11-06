@@ -102,6 +102,17 @@ class Preparando(base.PestanaInicio):
         self.assertIn("$ cotejo init", buf.get_text(buf.get_start_iter(), buf.get_end_iter(),
                                                     False))
 
+    def test_mientras_prepara_sale_cancelar_y_lo_llama(self):
+        self.estado = {"id": "turnos-abc123", "proyecto": "turnos"}
+        b, p = self.abrir()
+        self.assertTrue(p.cancelar.get_visible())
+        with mock.patch("enrutador.preparar.cancelar") as cancelar:
+            p.cancelar.emit("clicked")
+        cancelar.assert_called_once_with("turnos-abc123")
+        self.registrar(fase="terminado", codigo=3, terminado_ts=int(time.time()) - 5)
+        b.refrescar_preparando()
+        self.assertFalse(p.cancelar.get_visible())
+
     def test_con_error_salen_reintentar_y_abrir_en_terminal_y_los_llaman(self):
         self.linea("init", 60)
         self.registrar(fase="terminado", codigo=3, terminado_ts=int(time.time()) - 5)

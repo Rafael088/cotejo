@@ -137,6 +137,81 @@ class Vistas(unittest.TestCase):
         self.assertIn("terminal", v.mensaje)
         self.assertEqual(self.estados(v)[:2], ["hecho", "en curso"])
 
+    def entero(self, tareas=5):
+        """El resultado completo en la carpeta, como lo deja el agente, sin bitácora."""
+        c = Path(self.carpeta, ".cotejo")
+        (c / "proyecto.md").write_text("---\nid: proyecto\n---\n# turnos\n\n## Objetivo\nX\n")
+        for sub, nombre in (("decisiones", "2026-11-03-stack.md"), ("arquitectura", "a.md")):
+            (c / sub).mkdir(exist_ok=True)
+            (c / sub / nombre).write_text("---\nid: x\n---\n# x\n")
+        (c / "tareas.md").write_text("# T\n" + "".join(f"- [ ] T{i}: x #v0.1.0\n"
+                                                         for i in range(tareas)))
+
+    def test_lo_que_existe_en_la_carpeta(self):
+        self.assertEqual(preparacion.lo_que_existe(self.carpeta), {})
+        Path(self.carpeta, ".cotejo", "proyecto.md").write_text("---\nid: proyecto\n---\n# turnos\n")
+        self.assertEqual(preparacion.lo_que_existe(self.carpeta), {"init": 1})
+        self.entero(tareas=3)
+        self.assertEqual(preparacion.lo_que_existe(self.carpeta),
+                         {"init": 1, "editar": 1, "proponer": 1, "anotar": 1, "crear": 3})
+
+    def test_los_pasos_se_mueven_por_lo_que_ya_hay_aunque_la_bitacora_calle(self):
+        self.linea("init", 12)
+        self.entero()
+        v = self.ver(60)
+        self.assertEqual(self.estados(v)[:4], ["hecho"] * 4)
+        self.assertEqual(v.pasos[4]["detalle"], "5 tareas creadas")
+
+    def test_entero_y_quieto_es_listo_aunque_el_proceso_no_salga(self):
+        self.entero()
+        quieto = T0 + 600
+        for raiz, carpetas, archivos in os.walk(Path(self.carpeta, ".cotejo")):
+            for n in [raiz] + [os.path.join(raiz, a) for a in archivos]:
+                os.utime(n, (T0 + 300, T0 + 300))
+        registro = preparacion.leer("turnos-abc123")
+        con_gracia = mock.patch.object(preparacion, "segundos_de_gracia", return_value=120)
+        with con_gracia:
+            self.assertFalse(preparacion.resultado_completo(registro, ahora=T0 + 400))
+            self.assertTrue(preparacion.resultado_completo(registro, ahora=quieto))
+            e = preparacion.estado(registro, ahora=quieto, minutos=60)
+        self.assertEqual(e["estado"], preparacion.LISTO)
+        self.assertFalse(e["puede_cancelar"])
+        # Lo de antes del lanzamiento no basta: un reintento sobre un proyecto ya hecho.
+        registro["ts"] = T0 + 500
+        with con_gracia:
+            self.assertFalse(preparacion.resultado_completo(registro, ahora=quieto))
+        # Al rehacer una decisión lo que tiene que moverse es `decisiones/`.
+        registro.update(ts=T0 + 200, rehacer={"motivo": "otra"})
+        with con_gracia:
+            self.assertTrue(preparacion.resultado_completo(registro, ahora=quieto))
+        os.utime(Path(self.carpeta, ".cotejo", "decisiones", "2026-11-03-stack.md"), (T0, T0))
+        os.utime(Path(self.carpeta, ".cotejo", "decisiones"), (T0, T0))
+        with con_gracia:
+            self.assertFalse(preparacion.resultado_completo(registro, ahora=quieto))
+
+    def test_a_medias_no_es_listo(self):
+        self.entero()
+        os.remove(Path(self.carpeta, ".cotejo", "arquitectura", "a.md"))
+        with mock.patch.object(preparacion, "segundos_de_gracia", return_value=0):
+            self.assertFalse(preparacion.resultado_completo(preparacion.leer("turnos-abc123"),
+                                                            ahora=T0 + 10 ** 6))
+
+    def test_mientras_prepara_se_puede_cancelar(self):
+        self.assertTrue(self.ver(5).puede_cancelar)
+        preparacion.anotar_terminado("turnos-abc123", 3)
+        self.assertFalse(self.ver(60).puede_cancelar)
+
+    def test_cancelada_dice_que_lo_hecho_sigue_y_ofrece_reintentar(self):
+        self.linea("init", 12)
+        preparacion.anotar_cancelado("turnos-abc123")
+        v = self.ver(60)
+        self.assertEqual(v.situacion, preparacion.CANCELADO)
+        self.assertEqual(v.eyebrow, "Cancelada")
+        self.assertFalse(v.puede_cancelar)
+        self.assertEqual(v.acciones, ("reintentar", "abrir_en_terminal"))
+        self.assertIn("sigue ahí", v.mensaje)
+        self.assertNotIn(preparacion.CANCELADO, preparacion.PARA_LA_BARRA)
+
     def test_un_reintento_empieza_a_contar_de_nuevo(self):
         self.linea("init", 12)
         self.assertEqual(self.estados(self.ver(30))[0], "hecho")

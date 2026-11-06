@@ -79,8 +79,10 @@ DEFECTOS = {
     # settings.json de la persona): se le aprueba todo con `--dangerously-skip-permissions`, la
     # bandera documentada, y trabaja solo en las carpetas de `--add-dir`. Pasados
     # `minutos_sin_actividad` sin que nada se mueva en `.cotejo/` del proyecto, cuenta como
-    # colgado y la pantalla ofrece reintentar o abrirlo en una terminal.
-    "preparar": {"minutos_sin_actividad": 10,
+    # colgado y la pantalla ofrece reintentar o abrirlo en una terminal. Con los cinco pasos ya
+    # en `.cotejo/` y `segundos_de_gracia` sin cambios ahí, está listo aunque el agente no salga
+    # (cotejo-8m9ab7), y Cotejo lo para.
+    "preparar": {"minutos_sin_actividad": 10, "segundos_de_gracia": 120,
                  "argumentos_extra": {"claude": ["--allowedTools", "Bash(cotejo:*)"],
                                       "gemini": ["--allowed-tools", "run_shell_command(cotejo)"],
                                       "antigravity": ["--dangerously-skip-permissions"]}},

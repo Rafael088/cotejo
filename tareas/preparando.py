@@ -57,6 +57,7 @@ class Vista:
     pasos: list = field(default_factory=list)   # {titulo, estado, simbolo, tiempo, detalle}
     mensaje: str = ""                           # el porqué del fallo, o la nota de «en terminal»
     acciones: tuple = ()                        # "reintentar" y/o "abrir_en_terminal"
+    puede_cancelar: bool = False                # «Cancelar», mientras prepara
     puede_revisar: bool = False                 # «Revisar el plan»
     registro: str = ""                          # «Ver lo que hace el agente»
     aviso: str = ""                             # otro Cotejo de otra versión en el equipo
@@ -136,7 +137,11 @@ def vista(e, registro, seguimiento, ahora):
                   preparacion.EN_TERMINAL: preparacion.PREPARANDO}.get(situacion, situacion)
     if para_pasos == situacion:
         para_pasos = e
-    pasos = seguimiento.pasos(para_pasos, ahora)
+    # Lo que ya está en la carpeta mueve los pasos aunque la bitácora no lo cuente; al rehacer
+    # lo decide `_pasos_de_rehacer`.
+    existe = None if registro.get("rehacer") else preparacion.lo_que_existe(
+        registro.get("carpeta", ""))
+    pasos = seguimiento.pasos(para_pasos, ahora, existe)
     desde = int(registro.get("ts") or ahora)
     fin = registro.get("terminado_ts")
     transcurrido = (int(fin) if fin else ahora) - desde
@@ -148,6 +153,7 @@ def vista(e, registro, seguimiento, ahora):
     v.registro = texto_del_registro(seguimiento.crudo(registro))
     v.aviso = aviso_otro_cotejo(registro.get("otro_cotejo"))
     rehacer = bool(registro.get("rehacer"))
+    v.puede_cancelar = bool(e.get("puede_cancelar"))
     if rehacer:
         _pasos_de_rehacer(v.pasos, situacion)
     if situacion == preparacion.LISTO or situacion == preparacion.VISTO:
@@ -161,6 +167,13 @@ def vista(e, registro, seguimiento, ahora):
             else f"{proyecto} lleva mucho sin avanzar"
         v.reloj = f"Se detuvo a los {tiempo(transcurrido)}"
         v.mensaje = e.get("por_que") or "El agente se detuvo."
+        v.acciones = tuple(e.get("acciones") or ())
+    elif situacion == preparacion.CANCELADO:
+        v.eyebrow = "Cancelada"
+        v.titulo = f"Paraste la preparación de {proyecto}"
+        v.reloj = f"Se paró a los {tiempo(transcurrido)}"
+        v.mensaje = ("Lo que el agente ya dejó en la carpeta sigue ahí. «Reintentar» continúa "
+                     "desde ese punto.")
         v.acciones = tuple(e.get("acciones") or ())
     elif situacion == preparacion.EN_TERMINAL:
         v.eyebrow = "En una terminal"

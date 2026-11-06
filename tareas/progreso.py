@@ -11,7 +11,10 @@ Tres piezas:
 
 - `pasos(eventos, estado, ...)`: función pura. Recibe los eventos ya leídos (`eventos_de`) y,
   si se tiene, el estado de la preparación (`tareas.preparacion.estado`: el dict o solo su
-  `estado`), y devuelve los cinco pasos en el orden de `PASOS`.
+  `estado`) y lo que ya hay en disco (`existe`, de `preparacion.lo_que_existe`), y devuelve los
+  cinco pasos en el orden de `PASOS`. Un paso que está en disco cuenta como hecho aunque su
+  línea no haya llegado a la bitácora (cotejo-8m9ab7: en Windows el board se quedó en el paso 1
+  con el proyecto entero).
 - `Seguimiento`: seguir la bitácora sin releerla. Cada `avanzar()` lee solo lo que se añadió
   desde la última vez (por offset) y se queda únicamente con las líneas de este proyecto; está
   hecha para llamarse cada segundo.
@@ -94,6 +97,18 @@ def _plural(n, uno, varios):
     return f"{n} {uno if n == 1 else varios}"
 
 
+def _detalle_en_disco(verbo, n):
+    if verbo == "init":
+        return "Carpeta preparada"
+    if verbo == "editar":
+        return "Proyecto escrito"
+    if verbo == "proponer":
+        return _plural(n, "decisión propuesta", "decisiones propuestas")
+    if verbo == "anotar":
+        return "Arquitectura anotada"
+    return _plural(n, "tarea creada", "tareas creadas")
+
+
 def _detalle(verbo, eventos):
     n = len({_identidad(e) for e in eventos})
     if verbo == "init":
@@ -114,13 +129,14 @@ def _estado_de(estado):
     return estado.get("estado") if isinstance(estado, dict) else estado
 
 
-def pasos(eventos, estado=None, desde=0, ahora=None):
+def pasos(eventos, estado=None, desde=0, ahora=None, existe=None):
     """Los cinco pasos con su estado, hora y detalle. Pura: no lee ni escribe nada.
 
     `estado` es el de la preparación (`tareas.preparacion.estado`, o solo su `estado`:
     «preparando», «colgado», «listo», «fallo»); sin él, se asume que el agente sigue. `desde`
     es la hora en que se lanzó (el inicio del primer paso) y `ahora`, con la que se mide la
-    duración de lo que sigue en curso.
+    duración de lo que sigue en curso. `existe` es `{verbo: cuántos}` de lo que ya está en
+    disco: esos pasos cuentan como hechos (sin hora, si la bitácora no la dio).
 
     Cada paso es un dict: `verbo`, `titulo`, `estado` (pendiente | en curso | hecho | fallo),
     `inicio` y `fin` (segundos, o None), `duracion` (segundos, o None), `detalle` (en llano) y
@@ -129,7 +145,9 @@ def pasos(eventos, estado=None, desde=0, ahora=None):
     en hacerlo.
     """
     por_paso = [[e for e in eventos if e["paso"] == i] for i in range(len(PASOS))]
-    avanzado = max((i for i, es in enumerate(por_paso) if es), default=-1)
+    existe = existe or {}
+    en_disco = [bool(existe.get(p.verbo)) for p in PASOS]
+    avanzado = max((i for i, es in enumerate(por_paso) if es or en_disco[i]), default=-1)
     nivel = _estado_de(estado)
     # El paso que el agente tiene entre manos: el que sigue al más avanzado (o el último, si
     # ya hay tareas). Al terminar bien no queda ninguno.
@@ -140,27 +158,31 @@ def pasos(eventos, estado=None, desde=0, ahora=None):
         if i == en_curso:
             situacion = FALLO if nivel in ESTADOS_CON_FALLO else EN_CURSO
         else:
-            situacion = HECHO if es else PENDIENTE
+            situacion = HECHO if es or en_disco[i] else PENDIENTE
         primero = min((e["cuando"] for e in es), default=None)
         previas = [e["cuando"] for e in eventos if e["paso"] != i and
                    (primero is None or e["cuando"] <= primero)]
         inicio = max(previas, default=desde or None)
         if situacion == PENDIENTE:
             inicio = None
-        fin = max(e["cuando"] for e in es) if situacion == HECHO else None
+        fin = max(e["cuando"] for e in es) if situacion == HECHO and es else None
+        if situacion == HECHO and not es:
+            inicio = None   # solo se sabe que está, no cuándo
         duracion = None
-        if situacion == HECHO and inicio is not None:
+        if situacion == HECHO and inicio is not None and fin is not None:
             duracion = max(0, fin - inicio)
         elif situacion == EN_CURSO and inicio is not None and ahora is not None:
             duracion = max(0, int(ahora) - inicio)
-        detalle = _detalle(paso.verbo, es) if es else ""
-        if situacion == EN_CURSO and not es:
+        detalle = _detalle(paso.verbo, es) if es else (
+            _detalle_en_disco(paso.verbo, existe[paso.verbo]) if en_disco[i] else "")
+        if situacion == EN_CURSO and not detalle:
             detalle = "En marcha"
         elif situacion == FALLO:
             detalle = por_que or detalle or "Se detuvo en este paso"
+        n = len({_identidad(e) for e in es}) or int(existe.get(paso.verbo) or 0)
         salida.append({"verbo": paso.verbo, "titulo": paso.titulo, "estado": situacion,
                        "inicio": inicio, "fin": fin, "duracion": duracion, "detalle": detalle,
-                       "n": len({_identidad(e) for e in es})})
+                       "n": n})
     return salida
 
 
@@ -215,8 +237,8 @@ class Seguimiento:
                 cambio = True
         return cambio
 
-    def pasos(self, estado=None, ahora=None):
-        return pasos(self.eventos, estado, self.desde, ahora)
+    def pasos(self, estado=None, ahora=None, existe=None):
+        return pasos(self.eventos, estado, self.desde, ahora, existe)
 
     def crudo(self, registro=None, lineas=LINEAS_CRUDAS):
         return crudo(self.crudas, registro, lineas)

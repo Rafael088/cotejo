@@ -56,7 +56,14 @@ ajustes de `motores.headless`), anotado con pid como un despacho en
 la barra. Estados: `preparando`, `colgado` (vivo pero nada se movió en `.cotejo/` ni en su
 salida durante `enrutador.preparar.minutos_sin_actividad`, 10 por defecto), `fallo` (código
 ≠ 0, o 0 sin tareas, o muerto sin volver y sin tareas) y `listo`; los dos primeros malos traen
-`reintentar` y `abrir_en_terminal`. El agente corre con `inicio.ENTORNO`
+`reintentar` y `abrir_en_terminal`. `listo` también con el proceso vivo
+(cotejo-8m9ab7): en Windows `cmd.exe /c opencode.cmd` podía no salir con el proyecto ya entero.
+`preparacion.resultado_completo` mira el disco —los cinco pasos en `.cotejo/` (`lo_que_existe`),
+algo movido desde el lanzamiento y nada en `enrutador.preparar.segundos_de_gracia`, 120 por
+defecto— y `vigilar`, que mira cada `CADA_SEG`, para el árbol del agente y lo anota terminado con
+0 y `por_resultado`. Los pasos de Preparando también se mueven por `lo_que_existe`, aunque la
+bitácora no los cuente. Mientras prepara (o colgado) se ofrece «Cancelar» (`preparar.cancelar`):
+para al agente y deja `cancelado`, fuera de la barra y con `reintentar`. El agente corre con `inicio.ENTORNO`
 (`COTEJO_FUENTE=repo`): `init` registra la carpeta sin activar la fuente repo, y así `crear` y
 `asignar` la encuentran aunque la persona use Obsidian, sin tocarle la config. Y con un PATH que lleva primero el
 lanzador `cotejo` de `enrutador/mismo_cotejo.py` (en `<estado>/agente/bin`, reescrito en cada
