@@ -743,10 +743,11 @@ def board(args):
         Board.preguntar_al_cerrar = contestar
     maestro = bool(os.environ.get("COTEJO_HUMO_MAESTRO"))
     if maestro:
-        # El falso no tiene sesión que preguntar: el maestro lo da por listo.
-        from types import SimpleNamespace
+        # El falso no tiene sesión que preguntar: el maestro lo da por listo (instalado, con
+        # sesión y un modelo), sea cual sea el cliente que se le pida.
         from enrutador import modelos_vivos
-        modelos_vivos.estado = lambda *_a, **_k: SimpleNamespace(listo=True, problema="")
+        modelos_vivos.estado = lambda nombre, *_a, **_k: modelos_vivos.EstadoAgente(
+            nombre, nombre, True, True, True, ("falso",), True)
     medir_refrescos(aplicacion.App, estado, volcados)
     app = aplicacion.App()
     app.set_application_id(f"{APP_ID}{os.getpid()}")
