@@ -129,6 +129,10 @@ class Instalador(unittest.TestCase):
     def test_la_de_usuario_pone_board_menu_agentes_y_widget(self):
         omarchy = self.con_omarchy()
         (self.hogar / ".claude").mkdir()
+        # Desde cotejo-q50jcw la skill solo va a un agente cuyo comando está en el PATH: la
+        # carpeta sola no basta, y en la CI no hay ningún `claude` de verdad.
+        (self.tmp / "falsos" / "claude").write_text("#!/bin/sh\nexit 0\n")
+        (self.tmp / "falsos" / "claude").chmod(0o755)
         vieja = self.hogar / ".config/foco"
         vieja.mkdir()
         (vieja / "config.json").write_text("{}", encoding="utf-8")

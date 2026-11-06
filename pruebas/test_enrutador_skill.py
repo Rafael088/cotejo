@@ -252,7 +252,9 @@ class SkillCorta(unittest.TestCase):
         self.assertFalse(VERBOS_DE_ANTES - verbos, VERBOS_DE_ANTES - verbos)
         self.assertFalse(ACCIONES_DE_ANTES - acciones, ACCIONES_DE_ANTES - acciones)
 
-    def test_se_instalan_junto_a_la_skill_y_se_quitan_al_desinstalar(self):
+    # La carpeta del agente sola ya no cuenta (cotejo-q50jcw): en la CI no hay ningún cliente.
+    @mock.patch.object(skill, "instalado", return_value=True)
+    def test_se_instalan_junto_a_la_skill_y_se_quitan_al_desinstalar(self, _instalado):
         with tempfile.TemporaryDirectory() as hogar:
             hogar = Path(hogar)
             for agente in (".claude", ".codex"):
@@ -277,7 +279,9 @@ class SkillCorta(unittest.TestCase):
 class SkillsCompaneras(unittest.TestCase):
     """`cotejo-fuentes` va con el protocolo, y tampoco puede nombrar verbos que no existen."""
 
-    def test_se_instala_y_se_quita_junto_al_protocolo(self):
+    # La carpeta del agente sola ya no cuenta (cotejo-q50jcw): en la CI no hay ningún cliente.
+    @mock.patch.object(skill, "instalado", return_value=True)
+    def test_se_instala_y_se_quita_junto_al_protocolo(self, _instalado):
         with tempfile.TemporaryDirectory() as hogar:
             hogar = Path(hogar)
             (hogar / ".claude").mkdir()
