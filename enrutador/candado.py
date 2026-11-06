@@ -27,6 +27,7 @@ la persona vuelve a aprobarla).
 
 import threading
 import time
+from pathlib import Path
 
 from tareas import almacen, bitacora, modelo
 
@@ -89,31 +90,31 @@ def _git(repo, *args):
     return worktrees._git(repo, *args)
 
 
-def _principales(repo):
-    """Las ramas que reciben las integraciones: `main`, `master`, la de `origin/HEAD` y la que
-    esté abierta si no es de una tarea. `{rama: commit}` de las que existen."""
+def _ramas_de(repo):
+    """`(principales, de tareas)`, cada una `{rama: commit}`, con tres `git` en total (en Windows
+    cada uno se nota al pulsar Enviar). Principales: `main`, `master`, la de `origin/HEAD` y la
+    abierta si no es de una tarea; las que reciben las integraciones."""
     from tareas import worktrees
+    codigo, salida, _ = _git(repo, "for-each-ref", "--format=%(refname:short) %(objectname)",
+                             "refs/heads/")
+    if codigo != 0:
+        return {}, {}
+    todas = dict(l.split(" ", 1) for l in salida.splitlines() if " " in l)
     codigo, abierta, _ = _git(repo, "symbolic-ref", "--short", "-q", "HEAD")
     nombres = {"main", "master", worktrees.rama_por_defecto(repo)}
     if codigo == 0 and abierta and not abierta.startswith("cotejo/"):
         nombres.add(abierta)
-    salida = {}
-    for rama in sorted(n for n in nombres if n):
-        codigo, commit, _ = _git(repo, "rev-parse", "--verify", "-q", f"refs/heads/{rama}")
-        if codigo == 0 and commit:
-            salida[rama] = commit
-    return salida
+    return ({n: todas[n] for n in sorted(x for x in nombres if x) if n in todas},
+            {r: c for r, c in todas.items() if r.startswith("cotejo/")})
 
 
 def _ramas(directorio):
-    from tareas import worktrees
-    repo = worktrees.raiz_repo(directorio)
-    if repo is None:
+    if not directorio or not Path(directorio).is_dir():
         return None
-    codigo, salida, _ = _git(repo, "for-each-ref", "--format=%(refname:short) %(objectname)",
-                             "refs/heads/cotejo/")
-    tareas = dict(l.split(" ", 1) for l in salida.splitlines() if " " in l) if codigo == 0 else {}
-    return {"repo": str(repo), "principales": _principales(repo), "tareas": tareas}
+    principales, tareas = _ramas_de(directorio)
+    if not principales:
+        return None    # no es un repo, o no tiene rama principal que vigilar
+    return {"repo": str(directorio), "principales": principales, "tareas": tareas}
 
 
 def foto(proyecto, directorio):
@@ -193,11 +194,8 @@ def _revisar_ramas(foto_):
     if not antes:
         return []
     repo, desde = antes["repo"], foto_.get("desde") or 0
-    ahora = _principales(repo)
-    _, salida, _ = _git(repo, "for-each-ref", "--format=%(refname:short) %(objectname)",
-                        "refs/heads/cotejo/")
-    tareas = {**dict(l.split(" ", 1) for l in salida.splitlines() if " " in l),
-              **(antes.get("tareas") or {})}
+    ahora, nuevas = _ramas_de(repo)
+    tareas = {**nuevas, **(antes.get("tareas") or {})}
     metidas = []
     for principal, previo in (antes.get("principales") or {}).items():
         nuevo = ahora.get(principal)
