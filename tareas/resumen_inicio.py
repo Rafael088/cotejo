@@ -107,15 +107,15 @@ def titular(tarjetas):
 def repos_que_faltan(avisos):
     """Los avisos de repos de la lista que ya no existen, en llano, para el Inicio.
 
-    Devuelve `(titulo, [detalle, ...])` o None si no falta ninguno. Cada detalle dice qué repo
-    es y cómo arreglarlo; no hay verbo para quitarlo de la lista, y se dice así.
+    Devuelve `(titulo, [detalle, ...], [aviso, ...])` o None si no falta ninguno. Los avisos
+    conservan la ruta estructurada para que el Inicio pueda ofrecer quitar cada entrada.
     """
     faltan = [a for a in (avisos or []) if isinstance(a, dict) and a.get("repo_falta")]
     if not faltan:
         return None
     titulo = (f"{_contar(len(faltan), 'repo de tu lista ya no existe', 'repos de tu lista ya no existen')}"
               ": se salta y el resto sigue funcionando")
-    return titulo, [a["motivo"] for a in faltan]
+    return titulo, [a["motivo"] for a in faltan], faltan
 
 
 def columnas_de(proyecto):

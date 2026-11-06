@@ -1,7 +1,7 @@
 """El menú de los 3 puntos de una carta tiene que caber en la ventana, tenga los modelos que tenga.
 
 Un `Gtk.Popover` más alto que la ventana no se abre, y no da error: el clic simplemente no hace
-nada. Pasó el 2026-09-26 con 34 modelos en el catálogo (ver «Bugs conocidos» en CLAUDE.md). La
+nada. Pasó el 2026-09-26 con 34 modelos en el catálogo (ver pro-hoss en .cotejo/problemas). La
 lista «ASIGNAR A» crece con cada modelo que registra un cliente, así que lo que se vigila es que
 el alto del menú no dependa de cuántos haya.
 

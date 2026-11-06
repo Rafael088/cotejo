@@ -39,8 +39,10 @@ es JSON (Codex, OpenCode, Gemini) va tal cual.
 import json
 import os
 import socket
+import tempfile
 import threading
 import time
+from pathlib import Path
 
 from . import rutas, worktrees
 
@@ -73,15 +75,66 @@ def ruta_log(tarea_id):
     return carpeta() / f"{worktrees.seguro(tarea_id)}.log"
 
 
+# Cuántas veces y cada cuánto se reintenta el reemplazo en Windows (ver `guardar`).
+REINTENTOS, PAUSA_REINTENTO_S = 20, 0.05
+# Un temporal más viejo que esto ya no es de una escritura en curso: lo dejó un proceso que
+# murió a mitad (`limpiar_temporales`).
+TEMPORAL_VIEJO_S = 60
+
+
 def guardar(registro):
-    """Reemplazo atómico: quien lo lee (el board, la barra) nunca lo ve a medias."""
+    """Reemplazo atómico: quien lo lee (el board, la barra) nunca lo ve a medias, y no queda
+    ningún `.tmp` detrás (cotejo-qtegjk).
+
+    Cada escritura usa su propio temporal (dos hilos que guardan a la vez no se pisan el mismo).
+    En Windows, `os.replace` falla con `PermissionError` mientras otro proceso tiene abierto el
+    destino (el board leyéndolo, un antivirus): se reintenta un momento y, si no se pudo, se
+    borra el temporal antes de dejar subir el error.
+    """
     ruta = _ruta(registro["id"])
     ruta.parent.mkdir(parents=True, exist_ok=True)
-    temporal = ruta.with_name(f".{ruta.name}.tmp")
-    temporal.write_text(json.dumps({"esquema": ESQUEMA, **registro}, ensure_ascii=False),
-                        encoding="utf-8")
-    os.replace(temporal, ruta)
+    datos = json.dumps({"esquema": ESQUEMA, **registro}, ensure_ascii=False)
+    descriptor, nombre = tempfile.mkstemp(prefix=f".{ruta.name}.", suffix=".tmp",
+                                          dir=ruta.parent)
+    temporal = Path(nombre)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as archivo:
+            archivo.write(datos)
+        for intento in range(REINTENTOS):
+            try:
+                os.replace(temporal, ruta)
+                break
+            except PermissionError:
+                if intento == REINTENTOS - 1:
+                    raise
+                time.sleep(PAUSA_REINTENTO_S)
+    except BaseException:
+        try:
+            temporal.unlink()
+        except OSError:
+            pass
+        raise
     return registro
+
+
+def limpiar_temporales(ahora=None):
+    """Borra los `.tmp` que dejó una escritura cortada a mitad (el proceso murió entre escribir
+    y reemplazar). Solo los viejos: uno reciente puede ser de una escritura en marcha.
+    Devuelve cuántos borró."""
+    ahora = time.time() if ahora is None else ahora
+    borrados = 0
+    try:
+        temporales = list(carpeta().glob(".*.tmp"))
+    except OSError:
+        return 0
+    for temporal in temporales:
+        try:
+            if ahora - temporal.stat().st_mtime > TEMPORAL_VIEJO_S:
+                temporal.unlink()
+                borrados += 1
+        except OSError:
+            pass
+    return borrados
 
 
 def leer(tarea_id):
@@ -105,6 +158,7 @@ def todos():
     """{id: registro} de todas las tareas lanzadas. Uno roto se salta."""
     if not carpeta().is_dir():
         return {}
+    limpiar_temporales()
     salida = {}
     for archivo in carpeta().glob("*.json"):
         try:
@@ -153,8 +207,10 @@ def quitar_de_espera(tarea_id):
 def anotar_lanzado(registro, pid, programa):
     """Lo que se anota en cuanto el proceso existe, como `al_lanzar` en `despachar`."""
     with _CANDADO:
+        from enrutador import procesos  # aquí y no arriba, como en `_muerto`
+        # Cuándo nació, para que un pid reciclado no pase por este (cotejo-hrnx1m).
         registro.update(fase=LANZADO, pid=pid, programa=programa, host=socket.gethostname(),
-                        ts=int(time.time()))
+                        nacio=procesos.nacimiento(pid), ts=int(time.time()))
         for clave in ("codigo", "terminado_ts", "motivo", "detenido_ts", "motivo_antes",
                       "fin", "murio"):
             registro.pop(clave, None)

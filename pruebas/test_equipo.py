@@ -115,6 +115,18 @@ class Equipo(unittest.TestCase):
         self.assertFalse(revisar([]).hay_agente)
         self.assertTrue(revisar(["claude"]).hay_agente)
 
+    def test_revisar_a_peticion_pone_skills_antes_de_detectar(self):
+        visto = object()
+        orden = []
+        with mock.patch("tareas.instalar_agentes.sumar_al_path",
+                        side_effect=lambda: orden.append("path")), \
+                mock.patch("tareas.skill.instalar",
+                           side_effect=lambda: orden.append("skills")), \
+                mock.patch("tareas.equipo.revisar",
+                           side_effect=lambda: orden.append("revisar") or visto):
+            self.assertIs(equipo.revisar_y_poner_skills(), visto)
+        self.assertEqual(orden, ["path", "skills", "revisar"])
+
     def test_resume_y_separa_los_agentes_sin_meter_git(self):
         e = revisar(["claude", "codex"])
         self.assertEqual([a.clave for a in e.agentes_listos], ["claude", "codex"])

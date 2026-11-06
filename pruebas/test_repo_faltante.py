@@ -93,9 +93,10 @@ class ConUnRepoQueFalta(unittest.TestCase):
     def test_el_aviso_va_en_llano_para_el_inicio(self):
         avisos = []
         Repo({"repos": [str(self.perdido), str(self.bueno)]}).escanear(avisos=avisos)
-        titulo, detalles = resumen_inicio.repos_que_faltan(avisos)
+        titulo, detalles, faltan = resumen_inicio.repos_que_faltan(avisos)
         self.assertIn("1 repo de tu lista ya no existe", titulo)
         self.assertIn(str(self.perdido), detalles[0])
+        self.assertEqual(faltan[0]["repo_falta"], str(self.perdido))
         self.assertIsNone(resumen_inicio.repos_que_faltan([{"nota": "x", "motivo": "y"}]))
         self.assertIsNone(resumen_inicio.repos_que_faltan(None))
 

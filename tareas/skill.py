@@ -10,8 +10,8 @@ un archivo de instrucciones se le inyecta un bloque corto entre marcas. Corto a 
 archivo se carga en todas las sesiones de todos los proyectos, y meterle el protocolo entero
 sería el desperdicio de contexto que Cotejo existe para evitar.
 
-Solo se toca el archivo de un agente que ya esté instalado —que su carpeta de config exista o que
-su comando esté en el PATH: quien lo acaba de instalar y nunca lo abrió aún no tiene carpeta—, el bloque se reemplaza entre sus
+Solo se toca el archivo de un agente que ya esté instalado —su comando está en el PATH, el mismo
+criterio que usa «Tus agentes»: una carpeta de config residual no basta—, el bloque se reemplaza entre sus
 marcas y nunca se duplica, y antes de escribir en un archivo ajeno se deja una copia `.bak`.
 """
 
@@ -127,8 +127,8 @@ def quitar(texto):
 def destinos(hogar=None):
     """Dónde escribir, por agente: `(nombre, de qué depende, cómo, dónde)`.
 
-    Lo de lo que depende es la carpeta del agente: si no existe y su comando tampoco está en el
-    PATH (`instalado`), ese agente no está instalado y no se le crea nada. Añadir uno nuevo es una línea más.
+    La carpeta indica dónde escribir, no si el agente existe. Eso lo decide su comando en el PATH
+    (`instalado`), como en la pantalla «Tus agentes». Añadir uno nuevo es una línea más.
     """
     # XDG_CONFIG_HOME solo manda cuando el hogar es el de verdad: si alguien pasa un hogar de
     # mentira y la variable siguiera ganando, escribiríamos en la config real creyendo que
@@ -144,10 +144,14 @@ def destinos(hogar=None):
     ]
 
 
-def instalado(nombre, carpeta):
-    """Si el agente está: su carpeta de config existe o su comando responde en el PATH."""
+def instalado(nombre, carpeta=None):
+    """Si el agente está: su comando responde en el PATH.
+
+    `carpeta` se conserva en la firma porque `destinos` también la necesita para escribir, pero
+    no prueba que el cliente siga instalado: puede ser un resto de una instalación anterior.
+    """
     binario = BINARIOS.get(nombre)
-    return carpeta.is_dir() or bool(binario and shutil.which(binario))
+    return bool(binario and shutil.which(binario))
 
 
 def limpiar_viejas(hogar=None):
@@ -233,6 +237,12 @@ def main(argumentos=None):
     argumentos = list(sys.argv[1:] if argumentos is None else argumentos)
     quitando = "--desinstalar" in argumentos
     extra = [a for a in argumentos if not a.startswith("--")]
+    if not quitando:
+        # Los instaladores oficiales pueden dejar el ejecutable en su carpeta documentada sin
+        # que esta sesión haya actualizado aún el PATH. Es la misma preparación que hace
+        # «Tus agentes» antes de detectar.
+        from . import instalar_agentes
+        instalar_agentes.sumar_al_path()
     hecho = (desinstalar if quitando else instalar)(extra=extra)
     for linea in hecho:
         print(linea)

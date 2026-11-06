@@ -328,6 +328,14 @@ def revisar(preguntar_cli=False):
     return Equipo(agentes, git)
 
 
+def revisar_y_poner_skills():
+    """Revisa a petición de la persona y avisa a los agentes que acaban de aparecer."""
+    from . import instalar_agentes as inst, skill
+    inst.sumar_al_path()
+    skill.instalar()
+    return revisar()
+
+
 def es_primer_arranque(fuente):
     """Una fuente de repos sin ningún repo ni carpeta: no está rota, nadie la ha configurado.
 

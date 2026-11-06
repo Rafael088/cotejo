@@ -7,6 +7,7 @@ abre en «Revisar el equipo» (el primer arranque), que pasa al Inicio. La lógi
 GTK en `test_resumen_inicio.py`.
 """
 
+import json
 import os
 import tempfile
 import types
@@ -558,12 +559,14 @@ class SinFuente(PestanaInicio):
         b = self.board
         self.revisar([], git=True)
         self.assertEqual(self.filas()["Claude Code"], "No instalado")
-        with mock.patch("enrutador.clientes.instalados", return_value=["claude"]), \
+        with mock.patch("tareas.skill.instalar") as poner_skills, \
+                mock.patch("enrutador.clientes.instalados", return_value=["claude"]), \
                 mock.patch("enrutador.modelos_vivos.sesion", return_value=True), \
                 mock.patch("enrutador.modelos_vivos.en_cache", return_value=["sonnet"]), \
                 mock.patch("tareas.equipo.hay_git", return_value=True), \
                 mock.patch("tareas.equipo.puede_empujar", return_value="ssh"):
             b.equipo_revisar.emit("clicked")
+        poner_skills.assert_called_once_with()
         self.assertEqual(self.filas()["Claude Code"], "Listo")
         self.assertEqual(b.equipo_titular.get_label(),
                          "Antes de empezar, Cotejo revisa tu equipo")
@@ -738,7 +741,10 @@ class UnRepoQueFalta(PestanaInicio):
         (bueno / ".cotejo").mkdir()
         (bueno / ".cotejo" / "tareas.md").write_text("# Tareas\n\n- [ ] Una ^b1\n", encoding="utf-8")
         self.perdido = raiz / "perdido"
-        return {"COTEJO_REPOS": os.pathsep.join([str(self.perdido), str(bueno)])}
+        (raiz / "config.json").write_text(json.dumps({
+            "fuente": "repo", "fuentes": {"repo": {
+                "repos": [str(self.perdido), str(bueno)]}}}), encoding="utf-8")
+        return {}
 
     def test_inicio_enseña_el_proyecto_y_el_aviso_con_como_arreglarlo(self):
         b = self.board
@@ -754,6 +760,11 @@ class UnRepoQueFalta(PestanaInicio):
         detalle = b.inicio_aviso_detalle.get_label()
         self.assertIn(str(self.perdido), detalle)
         self.assertIn("quítalo", detalle)
+        boton = b.inicio_aviso_acciones.get_first_child()
+        self.assertIn(self.perdido.name, boton.get_label())
+        with mock.patch.object(type(b), "confirmar_quitar_proyecto") as confirmar:
+            boton.emit("clicked")
+        confirmar.assert_called_once_with("", str(self.perdido), ausente=True)
 
 
 if __name__ == "__main__":

@@ -311,7 +311,8 @@ def _leer(ident):
 
 def _parar(registro):
     if registro.get("fase") == "lanzado":
-        procesos.terminar(registro.get("pid"), registro.get("programa", ""))
+        procesos.terminar(registro.get("pid"), registro.get("programa", ""),
+                          registro.get("nacio"))
 
 
 def reintentar(ident, al_terminar=None, config=None):

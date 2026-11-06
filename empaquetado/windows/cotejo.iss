@@ -133,13 +133,17 @@ end;
 
   Se reconoce por el Python del runtime (…\runtime\bin\pythonw.exe) corriendo la app: el board
   o `-m tareas` sin verbo, --board o --fondo. Las llamadas de la CLI que hacen los agentes no se
-  tocan: duran un instante y cortarlas podría dejar una escritura a medias. }
+  tocan: duran un instante y cortarlas podría dejar una escritura a medias.
+
+  Después, el `gdbus.exe` del runtime: el bus de sesión que GLib arranca solo en Windows para la
+  instancia única. Sale por su cuenta unos 3 s después de que se vaya el último board, pero el
+  instalador va a reemplazar ese mismo archivo justo ahora (cotejo-cz80zj). }
 procedure CerrarCotejo;
 var
   Codigo: Integer;
 begin
   Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
-       '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -match ''\\runtime\\bin\\pythonw?\.exe$'' -and $_.CommandLine -match ''-m tareas(\.board\b|\s*$|\s+--(board|fondo|gapplication))'' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"',
+       '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -match ''\\runtime\\bin\\pythonw?\.exe$'' -and $_.CommandLine -match ''-m tareas(\.board\b|\s*$|\s+--(board|fondo|gapplication))'' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -match ''\\runtime\\bin\\gdbus\.exe$'' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"',
        '', SW_HIDE, ewWaitUntilTerminated, Codigo);
 end;
 

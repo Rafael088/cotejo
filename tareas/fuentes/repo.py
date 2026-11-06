@@ -36,6 +36,7 @@ class Repo(Obsidian):
                  "<repo>/.cotejo/tareas.md.",
         "raiz": "Carpeta donde buscar repos: cuenta cada hijo directo que sea un repo y tenga "
                 ".cotejo/tareas.md. Opcional, y se suma a «repos».",
+        "ocultos": "Repos de «raiz» quitados de Cotejo sin mover ni borrar su carpeta.",
     }
 
     @classmethod
@@ -53,6 +54,11 @@ class Repo(Obsidian):
         raiz = os.environ.get("COTEJO_RAIZ_REPOS")
         raiz = raiz if raiz is not None else config.get("raiz") or ""
         self.raiz = Path(raiz.strip()).expanduser() if isinstance(raiz, str) and raiz.strip() else None
+        ocultos = config.get("ocultos") or []
+        if isinstance(ocultos, str):
+            ocultos = [ocultos]
+        self.ocultos = [Path(ruta).expanduser() for ruta in ocultos
+                        if isinstance(ruta, str) and ruta.strip()]
         # Lo que Obsidian usa y aquí no aplica: sin vault ni carpetas sueltas.
         self.vault = None
         self.carpeta_proyectos = ""
@@ -93,9 +99,9 @@ class Repo(Obsidian):
         llano con cómo arreglarlo, y `repo_falta` deja la ruta para quien quiera actuar."""
         return {"nota": str(repo), "repo_falta": str(repo),
                 "motivo": (f"El repo «{repo}» ya no existe, así que se salta y los demás siguen "
-                           f"funcionando. Si lo borraste o lo moviste a propósito, quítalo de "
-                           f"«repos» en {configuracion.ruta()} (no hay un comando para quitarlo "
-                           f"todavía); si lo moviste, pon su ruta nueva.")}
+                           f"funcionando. Si lo borraste o lo moviste a propósito, quítalo "
+                           f"aquí; si lo moviste, corrige su ruta en "
+                           f"{configuracion.ruta()}.")}
 
     # --- qué repos hay ------------------------------------------------
 
@@ -116,6 +122,8 @@ class Repo(Obsidian):
         vistos, nombres, repos = set(), set(), []
         for ruta, explicito in candidatos:
             real = ruta.resolve()
+            if any(real == oculta.resolve() for oculta in self.ocultos):
+                continue
             if real in vistos:
                 continue
             vistos.add(real)

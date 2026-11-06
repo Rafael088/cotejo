@@ -384,7 +384,8 @@ def _lanzar(tarea_id, al_terminar, config, rechazada, rechazo_dado=None, forzar=
     if id_antes != tarea["id"]:
         lanzados.borrar(id_antes)   # tomarla le dio su id definitivo: el «en espera» era del otro
     _anotar(tarea, elegida, tomada=True, fase="lanzado", comando=argv, pid=proceso.pid,
-            programa=argv[0], host=socket.gethostname(), sandbox=encerrado["activo"],
+            programa=argv[0], nacio=registro.get("nacio"), host=socket.gethostname(),
+            sandbox=encerrado["activo"],
             **({"worktree": registro["worktree"]} if worktree else {}))
     vigilar(proceso, tarea, elegida,
             (config.get("lanzar") or {}).get("timeout_seg") or ajustes.get("timeout_seg", 3600),
@@ -733,7 +734,8 @@ def detener(tarea_id, motivo=""):
     if registro is None:
         return None
     if registro.get("fase") == lanzados.LANZADO:
-        procesos.terminar(registro.get("pid"), registro.get("programa", ""))
+        procesos.terminar(registro.get("pid"), registro.get("programa", ""),
+                          registro.get("nacio"))
         registro = lanzados.cambiar_fase(tarea_id, lanzados.DETENIDO, motivo=motivo,
                                          detenido_ts=int(time.time()))
     return lanzados.estado(registro)

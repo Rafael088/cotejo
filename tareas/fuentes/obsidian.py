@@ -108,6 +108,7 @@ class Obsidian(Fuente):
         "migrados": "Proyectos que ya viven en su repo, como {\"Cotejo\": \"/ruta/al/repo\"}: "
                     "se leen de <repo>/.cotejo/tareas.md y dejan de leerse del vault, aunque "
                     "su nota siga ahí. Quitar la marca lo deshace.",
+        "ocultos": "Proyectos quitados de Cotejo cuya nota se conserva en el vault.",
     }
 
     @classmethod
@@ -132,6 +133,11 @@ class Obsidian(Fuente):
         if isinstance(sueltas, str):
             sueltas = [sueltas]
         self.carpetas_sueltas = [c.strip().strip("/") for c in sueltas if _carpeta_valida(c)]
+        ocultos = config.get("ocultos") or []
+        if isinstance(ocultos, str):
+            ocultos = [ocultos]
+        self.ocultos = {nombre.strip().casefold() for nombre in ocultos
+                        if isinstance(nombre, str) and nombre.strip()}
         # Lo que pesó cada nota leída, por su ruta relativa al vault: el medidor de ahorro.
         self._leido = {}
         # Qué rutas se leyeron para cada proyecto (su `donde`), para que `leido()` pueda
@@ -178,6 +184,9 @@ class Obsidian(Fuente):
                 principal = entrada
                 nombre = entrada.stem
             else:
+                continue
+
+            if nombre.casefold() in self.ocultos:
                 continue
 
             meta = {}

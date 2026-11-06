@@ -1,11 +1,11 @@
 ---
 id: arq-lfay
 temas: [arquitectura]
-actualizado: 2026-11-02
+actualizado: 2026-11-04
 ---
 # Arquitectura de Cotejo
 
-Cotejo tiene dos caras sobre el mismo núcleo en Python: el CLI `cotejo` (lo que usan los agentes: `tareas/`, `enrutador/`) y CotejoBoard, la app GTK 4 (`tareas/app/`) donde la persona crea proyectos, reparte, mira y aprueba. Las tareas se leen de una fuente intercambiable (Obsidian, repo, Notion o externa, en `tareas/fuentes/`) y el conocimiento de cada proyecto vive en su `.cotejo/`. Los agentes se lanzan en un worktree propio con su sandbox y entregan con evidencia. El detalle de cada módulo está en CLAUDE.md.
+Cotejo tiene dos caras sobre el mismo núcleo en Python: el CLI `cotejo` (lo que usan los agentes: `tareas/`, `enrutador/`) y CotejoBoard, la app GTK 4 (`tareas/app/`) donde la persona crea proyectos, reparte, mira y aprueba. Las tareas se leen de una fuente intercambiable (Obsidian, repo, Notion o externa, en `tareas/fuentes/`) y el conocimiento de cada proyecto vive en su `.cotejo/`. Los agentes se lanzan en un worktree propio con su sandbox y entregan con evidencia. El detalle de cada módulo está en las referencias con tema `arquitectura` (`cotejo buscar --tipo referencia --temas arquitectura`).
 
 ## Piezas
 
@@ -36,4 +36,4 @@ Cotejo tiene dos caras sobre el mismo núcleo en Python: el CLI `cotejo` (lo que
 ## Cómo se abre
 
 - comando: python3 herramientas/cotejo_dev.py --board
-- qué esperar: CotejoBoard de este código en una ventana aparte del Cotejo instalado, abierto en la pestaña Inicio con el vault de prueba
+- qué esperar: CotejoBoard de este código en una ventana aparte del Cotejo instalado, abierto en la pestaña Inicio con el vault de prueba; los repos ausentes ofrecen quitarlos y cada mapa permite quitar su proyecto
