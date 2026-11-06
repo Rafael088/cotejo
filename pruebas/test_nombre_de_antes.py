@@ -113,7 +113,9 @@ class Skills(unittest.TestCase):
         self.assertEqual(despues.count(skill.INICIO), 1)
         self.assertTrue(despues.startswith("# Lo mío"))
 
-    def test_las_skills_de_foco_se_quitan_al_instalar(self):
+    # La carpeta del agente sola ya no cuenta (cotejo-q50jcw): en la CI no hay ningún cliente.
+    @mock.patch.object(skill, "instalado", return_value=True)
+    def test_las_skills_de_foco_se_quitan_al_instalar(self, _instalado):
         (self.dir / ".claude").mkdir()
         for vieja in ("foco", "foco-fuentes", "foco-modelos"):
             (self.dir / ".claude/skills" / vieja).mkdir(parents=True)
