@@ -17,7 +17,8 @@ from tareas import rutas
 
 RAIZ = Path(__file__).resolve().parent.parent
 HOGAR = Path("/hogar/de/nadie")
-VARIABLES = ("XDG_CONFIG_HOME", "XDG_STATE_HOME", "APPDATA", "LOCALAPPDATA", "COTEJO_ESTADO")
+VARIABLES = ("XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "APPDATA", "LOCALAPPDATA",
+             "COTEJO_ESTADO")
 
 
 class EnCadaSistema(unittest.TestCase):
@@ -57,6 +58,10 @@ class EnCadaSistema(unittest.TestCase):
         self.en("win32")
         self.assertEqual(rutas.config_base(), HOGAR / "AppData" / "Roaming")
         self.assertEqual(rutas.estado(), HOGAR / "AppData" / "Local" / "cotejo" / "estado")
+
+    def test_opencode_en_windows_guarda_datos_en_local_share_no_en_localappdata(self):
+        self.en("win32", LOCALAPPDATA="C:/U/AppData/Local")
+        self.assertEqual(rutas.datos_xdg(), HOGAR / ".local" / "share")
 
     def test_cotejo_estado_gana_en_cualquier_sistema(self):
         for plataforma in ("linux", "darwin", "win32"):
