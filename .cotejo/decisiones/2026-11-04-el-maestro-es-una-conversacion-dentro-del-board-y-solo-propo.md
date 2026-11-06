@@ -2,9 +2,10 @@
 id: dec-ku4d
 fecha: 2026-11-04
 temas: [maestro, enrutador]
-estado: aceptada
+estado: reemplazada
 autor: agente
 aceptada_el: 2026-11-05
+reemplazada_por: dec-qnug
 ---
 # El maestro es una conversación dentro del board y solo propone repartir lo asignado
 

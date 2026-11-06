@@ -2,9 +2,10 @@
 id: dec-qnug
 fecha: 2026-11-06
 temas: [maestro, enrutador]
-estado: propuesta
+estado: aceptada
 autor: agente
 reemplaza: dec-ku4d
+aceptada_el: 2026-11-06
 ---
 # El maestro del board puede todo lo que haría la persona en una terminal, menos aprobar
 
