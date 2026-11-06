@@ -140,6 +140,11 @@ jobs:
           key: cotejo-linux-${{ github.run_id }}
           path: salida
           fail-on-cache-miss: true
+      - name: Un Claude Code de mentira
+        # Desde cotejo-q50jcw la skill solo va a un agente cuyo comando está en el PATH, y en el
+        # contenedor no hay ninguno. Va en el workflow y no en probar_instalado.py para que
+        # relanzar el release de una etiqueta vieja con los workflows de main también lo tenga.
+        run: printf '#!/bin/sh\nexit 0\n' > /usr/local/bin/claude && chmod +x /usr/local/bin/claude
       - name: Instalar y probar
         run: |
           xvfb-run -a python empaquetado/linux/probar_instalado.py \
@@ -184,6 +189,11 @@ jobs:
           key: cotejo-linux-${{ github.run_id }}
           path: salida
           fail-on-cache-miss: true
+      - name: Un Claude Code de mentira
+        # Desde cotejo-q50jcw la skill solo va a un agente cuyo comando está en el PATH, y en el
+        # contenedor no hay ninguno. Va en el workflow y no en probar_instalado.py para que
+        # relanzar el release de una etiqueta vieja con los workflows de main también lo tenga.
+        run: printf '#!/bin/sh\nexit 0\n' > /usr/local/bin/claude && chmod +x /usr/local/bin/claude
       - name: Instalar y probar
         run: |
           if [ "${{ matrix.variante }}" = board ]; then
