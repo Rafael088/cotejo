@@ -257,7 +257,7 @@ class ElHelper(unittest.TestCase):
             shim.write_text("@echo off\r\necho no soy un shim npm\r\n", encoding="utf-8")
             entorno = {"PATH": str(carpeta), "PATHEXT": ".CMD"}
             with self.en("win32"), self.assertRaisesRegex(
-                    OSError, r"No sé lanzar .*raro\.cmd sin cmd\.exe: no reconozco"):
+                    OSError, r"(?i)No sé lanzar .*raro\.cmd sin cmd\.exe: no reconozco"):
                 subproceso.check_output(["raro", "argumento"], env=entorno)
 
     def test_fuera_de_windows_no_toca_nada(self):
