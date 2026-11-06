@@ -97,8 +97,9 @@ def terminar(pid, programa="", creado=None):
 
     En POSIX se para su grupo si lo encabeza (los agentes van con `start_new_session`: sus
     hijos y nietos están en él). En Windows no hay grupos que matar y `os.kill` solo cierra ese
-    proceso: un agente de npm es `cmd.exe /c opencode.cmd`, y parar el `cmd` dejaba vivo el
-    `opencode.exe` (cotejo-qtegjk). Allí se recorre el árbol a mano (`_terminar_arbol_windows`):
+    proceso. Los shims npm nuevos se resuelven al `.exe`, pero registros anteriores podían ser
+    `cmd.exe /c opencode.cmd` y dejar vivo `opencode.exe` (cotejo-qtegjk). Por eso allí se sigue
+    recorriendo el árbol a mano (`_terminar_arbol_windows`):
     `taskkill /T` se fía del ppid, que en Windows no cambia al morir el padre, y con un pid
     reciclado se llevaba por delante el árbol de otro programa (cotejo-hrnx1m).
     """
@@ -194,7 +195,8 @@ def _es_el_de_windows(info, programa, creado, estricto=False):
 def es_su_imagen(imagen, programa):
     """¿El ejecutable `imagen` (ruta de Windows) es el de `programa` (como se anotó: nombre o
     ruta, con o sin extensión)? Un `.cmd`/`.bat` lo corre un `cmd.exe`, y un nombre sin
-    extensión puede ser uno de ellos (el `opencode` de npm es `opencode.cmd`)."""
+    extensión puede ser uno de ellos. Los registros viejos podían decir `opencode.cmd`; los
+    nuevos anotan `opencode` y su pid ya es el de `opencode.exe`."""
     def nombre(ruta):
         return str(ruta).replace("\\", "/").rsplit("/", 1)[-1].lower()
 

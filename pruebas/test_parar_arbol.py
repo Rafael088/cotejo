@@ -1,10 +1,11 @@
 """Parar a un agente para también lo que él lanzó: el nieto muere (cotejo-qtegjk).
 
-Un agente de npm en Windows es `cmd.exe /c opencode.cmd` → `opencode.exe`: el board anota el pid
-del `cmd`, y parar solo ese dejaba vivo al `opencode.exe` que hacía el trabajo. Aquí se lanza de
-verdad un hijo (como lanza el board a un agente: `start_new_session`, por `subproceso`) que a su
-vez lanza un nieto, se para el hijo con `procesos.terminar` y se comprueba que el nieto ya no
-está. En Linux lo hace el grupo de procesos; en Windows, el árbol recorrido a mano por
+Antes un agente de npm en Windows era `cmd.exe /c opencode.cmd` → `opencode.exe`: el board
+anotaba el pid del `cmd`, y parar solo ese dejaba vivo al `opencode.exe` que hacía el trabajo.
+Aquí se lanza de verdad un hijo (como lanza el board a un agente: `start_new_session`, por
+`subproceso`) que a su vez lanza un nieto, se para el hijo con `procesos.terminar` y se comprueba
+que el nieto ya no está. En Linux lo hace el grupo de procesos; en Windows, el árbol recorrido
+a mano por
 `procesos._terminar_arbol_windows` (cotejo-hrnx1m; corre igual allí, con
 `herramientas/probar_windows.sh --solo suite --patron test_parar_arbol.py`).
 """
