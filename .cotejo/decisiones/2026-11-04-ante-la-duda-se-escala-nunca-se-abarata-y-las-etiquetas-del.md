@@ -2,8 +2,9 @@
 id: dec-714y
 fecha: 2026-11-04
 temas: [enrutador]
-estado: propuesta
+estado: aceptada
 autor: agente
+aceptada_el: 2026-11-05
 ---
 # Ante la duda se escala, nunca se abarata, y las etiquetas del set de evaluación no se editan
 

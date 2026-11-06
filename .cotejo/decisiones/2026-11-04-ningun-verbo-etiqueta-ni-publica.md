@@ -2,8 +2,9 @@
 id: dec-mcm0
 fecha: 2026-11-04
 temas: [release, seguridad]
-estado: propuesta
+estado: aceptada
 autor: agente
+aceptada_el: 2026-11-05
 ---
 # Ningún verbo etiqueta ni publica
 

@@ -2,8 +2,9 @@
 id: dec-owvb
 fecha: 2026-11-04
 temas: [arquitectura]
-estado: propuesta
+estado: aceptada
 autor: agente
+aceptada_el: 2026-11-05
 ---
 # Ningún módulo de tareas/ o enrutador/ pasa de 800 líneas
 

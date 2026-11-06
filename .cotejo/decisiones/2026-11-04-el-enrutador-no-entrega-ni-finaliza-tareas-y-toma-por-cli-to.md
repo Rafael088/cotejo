@@ -2,8 +2,9 @@
 id: dec-0r9e
 fecha: 2026-11-04
 temas: [enrutador]
-estado: propuesta
+estado: aceptada
 autor: agente
+aceptada_el: 2026-11-05
 ---
 # El enrutador no entrega ni finaliza tareas, y toma por cli.tomar_para
 

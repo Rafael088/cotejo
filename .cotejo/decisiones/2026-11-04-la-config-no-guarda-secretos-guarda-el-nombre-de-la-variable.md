@@ -2,8 +2,9 @@
 id: dec-791y
 fecha: 2026-11-04
 temas: [seguridad, config]
-estado: propuesta
+estado: aceptada
 autor: agente
+aceptada_el: 2026-11-05
 ---
 # La config no guarda secretos: guarda el nombre de la variable de entorno
 

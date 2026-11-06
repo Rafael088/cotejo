@@ -2,8 +2,9 @@
 id: dec-7aqz
 fecha: 2026-11-04
 temas: [enrutador]
-estado: propuesta
+estado: aceptada
 autor: agente
+aceptada_el: 2026-11-05
 ---
 # Gastar lo decide una persona: el nivel humano no se despacha y sin modelo puesto se pregunta
 

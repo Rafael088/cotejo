@@ -2,8 +2,9 @@
 id: dec-vps5
 fecha: 2026-11-04
 temas: [rutas, windows]
-estado: propuesta
+estado: aceptada
 autor: agente
+aceptada_el: 2026-11-05
 ---
 # Ninguna ruta de config o de estado se escribe a mano: salen de tareas/rutas.py
 

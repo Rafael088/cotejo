@@ -2,8 +2,9 @@
 id: dec-1wh6
 fecha: 2026-11-04
 temas: [enrutador, board]
-estado: propuesta
+estado: aceptada
 autor: agente
+aceptada_el: 2026-11-05
 ---
 # Solo tres cosas lanzan un agente sin interfaz, y las pide una persona en el board
 

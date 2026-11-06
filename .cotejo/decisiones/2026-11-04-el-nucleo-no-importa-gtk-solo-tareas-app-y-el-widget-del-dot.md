@@ -2,8 +2,9 @@
 id: dec-pxtt
 fecha: 2026-11-04
 temas: [arquitectura, gtk]
-estado: propuesta
+estado: aceptada
 autor: agente
+aceptada_el: 2026-11-05
 ---
 # El núcleo no importa GTK: solo tareas/app/ (y el widget del dot) lo hace
 

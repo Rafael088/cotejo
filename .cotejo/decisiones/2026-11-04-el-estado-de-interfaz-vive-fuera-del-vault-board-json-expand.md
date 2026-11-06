@@ -2,8 +2,9 @@
 id: dec-8am7
 fecha: 2026-11-04
 temas: [board]
-estado: propuesta
+estado: aceptada
 autor: agente
+aceptada_el: 2026-11-05
 ---
 # El estado de interfaz vive fuera del vault (board.json, expandidos.json)
 

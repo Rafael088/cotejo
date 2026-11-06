@@ -2,8 +2,9 @@
 id: dec-bhh5
 fecha: 2026-11-04
 temas: [fuentes]
-estado: propuesta
+estado: aceptada
 autor: agente
+aceptada_el: 2026-11-05
 ---
 # Una fuente externa que no contesta es un problema, no una lista vacía
 

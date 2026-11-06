@@ -2,8 +2,9 @@
 id: dec-xeke
 fecha: 2026-11-04
 temas: [enrutador]
-estado: propuesta
+estado: aceptada
 autor: agente
+aceptada_el: 2026-11-05
 ---
 # Toda decisión de despachar deja línea, también las negativas
 
