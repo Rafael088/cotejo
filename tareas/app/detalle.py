@@ -2,7 +2,7 @@
 
 from gi.repository import Adw, Gtk, Pango
 
-from .. import bitacora, modelo, revision, seguir_ficha
+from .. import bitacora, modelo, revision, seguir_ficha, texto_board
 from .comun import (
     ESPACIADO_LG, ESPACIADO_SM, ESPACIADO_XL, ESPACIADO_XS, ICONOS_COLUMNA, ICONOS_DIFICULTAD,
     NOMBRES_DIFICULTAD, anotacion_visible, id_corto,
@@ -243,7 +243,8 @@ class Detalle:
         caja.append(Gtk.Label(label="ENTREGA", xalign=0, css_classes=["detalle-clave"]))
         evidencia = (entregada.get("evidencia") or "").strip()
         if evidencia:
-            caja.append(Gtk.Label(label=evidencia, xalign=0, wrap=True, selectable=True,
+            caja.append(Gtk.Label(label=texto_board.para_mostrar(evidencia), xalign=0,
+                                  wrap=True, selectable=True,
                                   focusable=False, css_classes=["anotacion-texto"]))
         git = " · ".join(parte for parte in (
             datos.get("rama") or "",

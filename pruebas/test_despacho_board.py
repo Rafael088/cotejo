@@ -438,6 +438,12 @@ class Legible(unittest.TestCase):
             {"type": "result", "is_error": True, "result": "sin cuota"})),
             "— Terminó con un error: sin cuota")
 
+    def test_limpia_ansi_y_explica_el_error_del_cliente_con_el_original(self):
+        texto = lanzados.legible("\x1b[91m\x1b[1mError: \x1b[0mInvalid model reference")
+        self.assertIn("El modelo configurado", texto)
+        self.assertIn("Original:\nError: Invalid model reference", texto)
+        self.assertNotIn("\x1b", texto)
+
 
 class SeguimientoParcial(unittest.TestCase):
     def test_una_linea_a_medias_espera_a_la_siguiente_vuelta(self):

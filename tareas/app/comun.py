@@ -9,7 +9,7 @@ from pathlib import Path
 from gi.repository import Gtk
 from enrutador import config as enrutador_config, niveles as enrutador_niveles
 
-from .. import modelo, rutas
+from .. import modelo, rutas, texto_board
 from ..markup import texto_a_markup
 from .escala import px
 
@@ -196,9 +196,10 @@ def anotacion_visible(tarea, anotacion):
         return None
     if anotacion.get("motivo"):
         palabra = "BLOQUEADA" if anotacion.get("operacion") == "bloquear" else "DEVUELTA"
-        clase, texto = "detenida", anotacion["motivo"]
+        clase, texto = "detenida", texto_board.para_mostrar(anotacion["motivo"])
     elif tarea.columna == "por-validar" and anotacion.get("evidencia"):
-        clase, palabra, texto = "entregada", "ENTREGADA", anotacion["evidencia"]
+        clase, palabra, texto = ("entregada", "ENTREGADA",
+                                 texto_board.para_mostrar(anotacion["evidencia"]))
     else:
         return None
     detalle = " · ".join(parte for parte in (
