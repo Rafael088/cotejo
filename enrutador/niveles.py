@@ -255,10 +255,19 @@ def modelo_por_defecto(cliente, definiciones=()):
     Es lo que dejan puesto las interfaces para que no haya que decidir nada: Claude, `sonnet`;
     Codex, su modelo por defecto; Gemini, `gemini-flash`. "" si ese agente no tiene modelos.
     """
-    disponibles = modelos_de(cliente, definiciones)
+    from . import modelos_vivos
+    # Un registrado que ya no figura en el catálogo no puede ganar por ser n2: se conserva y
+    # se marca en los menús, pero el valor inicial se calcula sin él.
+    definiciones_validas = ([d for d in definiciones or ()
+                             if modelos_vivos.disponibilidad(
+                                 str(d.get("cliente", "")), str(d.get("modelo_id", "")))
+                             is not False]
+                            if not all(isinstance(d, Nivel) for d in definiciones or ())
+                            else definiciones)
+    disponibles = modelos_de(cliente, definiciones_validas)
     if not disponibles:
         return ""
-    preferido = del_cliente(DEFECTO, cliente, definiciones)
+    preferido = del_cliente(DEFECTO, cliente, definiciones_validas)
     for nivel in disponibles:
         if nivel.clave == preferido.clave or nivel.modelo == preferido.modelo:
             return nivel.modelo

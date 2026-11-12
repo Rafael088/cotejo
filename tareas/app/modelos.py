@@ -40,8 +40,11 @@ def texto_de_modelo(nivel):
     """
     clave = nivel.modelo or nivel.clave
     if not nivel.modelo_id and clave == nivel.cliente:
-        return f"{clave} · el del agente"
-    return clave
+        texto = f"{clave} · el del agente"
+    else:
+        texto = clave
+    return (f"{texto} · no disponible" if
+            modelos_vivos.disponibilidad(nivel.cliente, nivel.modelo_id) is False else texto)
 
 
 class Modelos:
@@ -91,6 +94,7 @@ class Modelos:
             caja.append(widget)
 
         dialogo.clientes = listos
+        dialogo.catalogos = {}
         dialogo.agente = Gtk.DropDown.new_from_strings([titulo_de(c) for c in listos])
         dialogo.agente.set_selected(listos.index(cliente))
         fila("AGENTE", dialogo.agente)
@@ -122,7 +126,7 @@ class Modelos:
         dialogo.set_response_appearance("agregar", Adw.ResponseAppearance.SUGGESTED)
         dialogo.set_default_response("agregar")
         dialogo.set_close_response("cancelar")
-        dialogo.set_response_enabled("agregar", True)
+        dialogo.set_response_enabled("agregar", False)
         dialogo.agente.connect("notify::selected",
                                lambda *_: self.cargar_modelos_del_dialogo(dialogo))
         dialogo.connect("response", self.al_responder_anadir, al_agregar)
@@ -137,16 +141,24 @@ class Modelos:
     def poner_modelos(self, dialogo, cliente, nombres, vivos):
         if self.cliente_del_dialogo(dialogo) != cliente:
             return False                      # cambiaron de agente mientras tanto
+        if isinstance(nombres, Exception):
+            dialogo.estado.set_label(str(nombres))
+            dialogo.set_response_enabled("agregar", False)
+            return False
         dialogo.lista.splice(0, dialogo.lista.get_n_items(), list(nombres) + [ESCRIBIR])
         dialogo.modelo.set_selected(0)
         dialogo.estado.set_label(
             f"{len(nombres)} modelos de {titulo_de(cliente)}" + ("" if vivos else
                                                                    " (buscando más…)"))
+        if vivos:
+            dialogo.catalogos[cliente] = list(nombres)
+        dialogo.set_response_enabled("agregar", vivos)
         return False
 
     def cargar_modelos_del_dialogo(self, dialogo):
         """Pone lo guardado ya y pide la lista en vivo en un hilo (`listar_en_fondo`)."""
         cliente = self.cliente_del_dialogo(dialogo)
+        dialogo.catalogos.pop(cliente, None)
         self.poner_modelos(dialogo, cliente, modelos_vivos.en_cache(cliente),
                            cliente not in modelos_vivos.PREGUNTA)
         if cliente in modelos_vivos.PREGUNTA:
@@ -154,10 +166,15 @@ class Modelos:
                 cliente, lambda nombres: self.poner_modelos(dialogo, cliente, nombres, True))
 
     def listar_en_fondo(self, cliente, al_terminar):
-        """`modelos_vivos.listar` en un hilo; vuelve por `GLib.idle_add`. Las pruebas lo
-        reemplazan por uno que corre seguido."""
+        """Consulta el catálogo validable en un hilo y vuelve por `GLib.idle_add`.
+
+        Las pruebas lo reemplazan por uno que corre seguido.
+        """
         def correr():
-            nombres = modelos_vivos.listar(cliente)
+            try:
+                nombres = modelos_vivos.catalogo_para_validar(cliente)
+            except modelos_vivos.ModeloNoDisponible as error:
+                nombres = error
             GLib.idle_add(lambda: al_terminar(nombres) and False)
         threading.Thread(target=correr, daemon=True).start()
 
@@ -177,7 +194,8 @@ class Modelos:
         try:
             guardado, _ = modelos_vivos.agregar(
                 self.cliente_del_dialogo(dialogo), self.modelo_del_dialogo(dialogo),
-                dialogo.nombre.get_text(), nivel)
+                dialogo.nombre.get_text(), nivel,
+                catalogo=dialogo.catalogos.get(self.cliente_del_dialogo(dialogo)))
         except (ValueError, enrutador_config.ConfigInvalida) as error:
             self.aviso(f"No añadí el modelo: {error}")
             return None

@@ -105,6 +105,8 @@ def cmd_modelos(args):
     try:
         config = cfg.cargar()
         if args.accion == "agregar":
+            from . import modelos_vivos
+            modelos_vivos.validar_modelo(args.cliente, args.modelo_id)
             definicion = {
                 "clave": args.clave,
                 "nombre": args.nombre or args.clave,
@@ -133,7 +135,7 @@ def cmd_modelos(args):
             imprimir({"esquema": ESQUEMA, "cambio": cambio, "operacion": "quitar",
                       "clave": args.clave})
             return OK
-    except cfg.ConfigInvalida as error:
+    except (cfg.ConfigInvalida, ValueError) as error:
         raise ErrorCLI(str(error), "Revisa la configuración de Cotejo y repite la operación.") from error
 
     imprimir({"esquema": ESQUEMA, "niveles": niveles.catalogo(config.get("modelos")),
