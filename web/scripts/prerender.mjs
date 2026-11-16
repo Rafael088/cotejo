@@ -5,7 +5,8 @@
 // ve el texto real de cada página; main.jsx luego hidrata la que toque.
 // No hay textos copiados a mano: lo que haya en src es lo que sale. También escribe el sitemap
 // con las mismas rutas, para que no se desfasen.
-import { readFileSync, writeFileSync, rmSync } from 'node:fs'
+import { readFileSync, writeFileSync, rmSync, mkdirSync } from 'node:fs'
+import { dirname } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { cspPortada, csp404, meterCsp } from './csp.mjs'
 
@@ -13,7 +14,7 @@ const web = fileURLToPath(new URL('..', import.meta.url))
 const dist = `${web}dist/`
 const servidor = `${web}.prerender`
 
-const { renderizar, RUTAS, canonical } = await import(pathToFileURL(`${servidor}/entrada-servidor.js`).href)
+const { renderizar, RUTAS, REDIRECCIONES, canonical } = await import(pathToFileURL(`${servidor}/entrada-servidor.js`).href)
 
 const plantilla = readFileSync(`${dist}index.html`, 'utf8')
 const vacio = '<div id="root"></div>'
@@ -52,10 +53,58 @@ for (const r of RUTAS) {
   if (!pagina.includes('<h1')) throw new Error(`El prerender de ${r.ruta} no produjo ningún <h1>`)
   const html = cabeza(plantilla, r).replace(vacio, () => `<div id="root">${pagina}</div>`)
   // Último paso: la CSP, con los hashes calculados sobre el HTML ya terminado (scripts/csp.mjs).
+  mkdirSync(dirname(`${dist}${r.archivo}`), { recursive: true })
   writeFileSync(`${dist}${r.archivo}`, meterCsp(html, cspPortada(html)))
   console.log(`prerender: dist/${r.archivo} (${r.ruta}) con ${pagina.length} caracteres de HTML y su CSP`)
+  // /docs es a la vez docs.html y la carpeta docs/: si GitHub Pages prefiere la carpeta y
+  // redirige a /docs/, sirve docs/index.html. La misma página en los dos sitios, mismo canonical.
+  if (RUTAS.some((otra) => otra.archivo.startsWith(r.archivo.replace(/\.html$/, '/')))) {
+    const indice = r.archivo.replace(/\.html$/, '/index.html')
+    mkdirSync(dirname(`${dist}${indice}`), { recursive: true })
+    writeFileSync(`${dist}${indice}`, meterCsp(html, cspPortada(html)))
+    console.log(`prerender: dist/${indice} (${r.ruta}/) copia de ${r.archivo}`)
+  }
 }
 rmSync(servidor, { recursive: true, force: true })
+
+// Las páginas de antes: HTML estático y autónomo (como la 404: sin JavaScript, solo su <style> con
+// hash) que manda a su equivalente en /docs con <meta http-equiv="refresh">, canonical al destino
+// y un enlace visible para quien no sigue la redirección. Fuera del sitemap. La CSP no frena el
+// refresh por meta (no hay directiva que lo gobierne), así que se queda la misma que la 404.
+const base = process.env.BASE || '/'
+const paginaRedireccion = ({ destino }) => `<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#101114" />
+  <title>Esta página se mudó · Cotejo</title>
+  <meta http-equiv="refresh" content="0; url=${base}${destino.slice(1)}" />
+  <link rel="canonical" href="${canonical(destino)}" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <style>
+    :root { --fondo: #101114; --texto: #ffffff; --texto-chip: #d6d9df; --tenue: #a8acb6; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-content: center; padding: 24px; background: var(--fondo); color: var(--texto-chip); font: 400 17px/1.6 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif; }
+    p { margin: 0; max-width: 46ch; }
+    a { color: var(--texto); text-underline-offset: 0.2em; }
+    .t { margin-bottom: 8px; font: 600 24px/1.2 'Sora Variable', 'Sora', ui-sans-serif, system-ui, sans-serif; color: var(--texto); }
+  </style>
+</head>
+<body>
+  <p class="t">Esta página se mudó.</p>
+  <p>Ahora vive en <a href="${base}${destino.slice(1)}">cotejo.dev${destino}</a>. Si no te lleva sola, entra desde ese enlace.</p>
+</body>
+</html>
+`
+for (const r of REDIRECCIONES) {
+  const html = paginaRedireccion(r)
+  mkdirSync(dirname(`${dist}${r.archivo}`), { recursive: true })
+  writeFileSync(`${dist}${r.archivo}`, meterCsp(html, csp404(html)))
+  console.log(`prerender: dist/${r.archivo} (${r.ruta}) redirige a ${r.destino}`)
+}
 
 const sitemap = [
   '<?xml version="1.0" encoding="UTF-8"?>',

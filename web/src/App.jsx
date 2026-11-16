@@ -7,7 +7,7 @@ export default function App({ ruta }) {
   return (
     <>
       <a className="saltar" href="#contenido">Saltar al contenido</a>
-      <Cabecera ruta={ruta} />
+      <Cabecera />
       <main id="contenido">
         <Pagina />
       </main>

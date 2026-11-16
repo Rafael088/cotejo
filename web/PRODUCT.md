@@ -41,7 +41,7 @@ Muchos tableros para agentes se venden como sacar a la persona del ciclo. Cotejo
 - Sistemas: Linux (tar.gz con `install.sh`, paquete de Arch/Omarchy) y Windows 10/11 x64 (instalador). No hay macOS.
 - Instalación prevista por un comando servido desde el dominio de Cotejo: `curl -fsSL https://<dominio>/install.sh | sh` (Linux) e `irm https://<dominio>/install.ps1 | iex` (Windows). **Dominio sin comprar todavía**: el valor vive en una constante y está marcado como pendiente.
 - Fuente por defecto: el **repo** (`.cotejo/`). Obsidian (incluida) y Notion (adaptador `cotejo-notion`) funcionan y sirven sobre todo para importar. Cualquier otra app se conecta escribiendo un adaptador (4 métodos, plantilla en `extras/plantilla/`). No se puede presentar ninguna otra app, RAG o servicio como compatible.
-- Versión 1.2.4 en **beta**; licencia propietaria, gratis (se dice «gratis», nunca «libre» ni «open source»); sin macOS; donaciones por Mercado Pago (`https://link.mercadopago.com.co/cotejo`).
+- Versión 1.3.1 en **beta**; licencia propietaria, gratis (se dice «gratis», nunca «libre» ni «open source»); sin macOS; donaciones por Mercado Pago (`https://link.mercadopago.com.co/cotejo`).
 - Primer release en español; inglés después.
 
 ## Brand Commitments

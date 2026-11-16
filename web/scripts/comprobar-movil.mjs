@@ -225,8 +225,12 @@ try {
       await evaluar('document.fonts.ready.then(() => true)')
       await espera(600)
 
-      for (const sistema of ['Linux', 'Windows']) {
+      // En /docs, además, con el índice desplegable abierto: es lo más ancho que tiene el móvil.
+      const abrirIndice = '(() => { const d = document.querySelector(".docs-movil"); if (d) d.open = true; return !!d })()'
+      for (const sistema of ['Linux', 'Windows', 'Índice']) {
+        if (sistema === 'Índice' && !(await evaluar(abrirIndice))) continue
         if (sistema === 'Windows') { await evaluar(ELEGIR_WINDOWS); await espera(500) }
+        if (sistema === 'Índice') await espera(300)
         await evaluar(RECORRER)
         const m = await evaluar(MEDIR)
         const etiqueta = `${ancho} px, ${ruta}, ${sistema}`
@@ -243,7 +247,7 @@ try {
           await mkdir(capturas, { recursive: true })
           const piezas = [
             ['hero', '.hero'],
-            ['cierre', '#cierre .instalar-rapido'],
+            ['cierre', '#cierre .instalar'],
             ['instalar', '#instalar'],
           ]
           for (const [nombre, selector] of piezas) {

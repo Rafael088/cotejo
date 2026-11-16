@@ -10,12 +10,13 @@ function conCortes(texto) {
 }
 
 // Una línea de terminal con su botón de copiar. El verde aparece solo al copiar: es «hecho».
-export default function Comando({ texto, prompt = '$', grande = false }) {
+// `principal`: el botón de copiar va en blanco, como la acción principal de la portada.
+export default function Comando({ texto, prompt = '$', grande = false, principal = false }) {
   const texto_ref = useRef()
   const { estado, alCopiar } = useCopiar(texto, texto_ref)
 
   return (
-    <div className={`comando ${grande ? 'comando--grande' : ''}`} data-estado={estado}>
+    <div className={`comando${grande ? ' comando--grande' : ''}${principal ? ' comando--principal' : ''}`} data-estado={estado}>
       <code className="comando__linea">
         <span className="comando__prompt" aria-hidden="true">{prompt}</span>
         <span className="comando__texto" ref={texto_ref}>{conCortes(texto)}</span>

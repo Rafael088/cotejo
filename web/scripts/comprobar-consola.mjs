@@ -1,6 +1,6 @@
 // Comprueba que la web carga sin mensajes en la consola: `node web/scripts/comprobar-consola.mjs`
 // después de `npm --prefix web run build` (o `npm run comprobar:consola` en web/). Sirve dist/
-// con un servidor node mínimo, abre Chromium headless y carga cada ruta de src/rutas.js y la 404 a 1440×900
+// con un servidor node mínimo, abre Chromium headless y carga cada ruta de src/rutas.js, las redirecciones (que tienen que acabar en su destino) y la 404 a 1440×900
 // (escritorio) y 390×844 (teléfono); en la portada recorre la página entera (para que corran
 // las animaciones de Motion al entrar cada sección) y elige Windows en los selectores. Falla si
 // sale cualquier cosa de nivel error o warning:
@@ -22,7 +22,7 @@ import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, extname, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { RUTAS } from '../src/rutas.js'
+import { RUTAS, REDIRECCIONES } from '../src/rutas.js'
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url))
 
@@ -176,6 +176,8 @@ document.addEventListener('securitypolicyviolation', (e) => {
 const PAGINAS = [
   ['portada', ''],
   ...RUTAS.filter((r) => r.ruta !== '/').map((r) => [r.ruta, r.ruta.slice(1)]),
+  // Las páginas de antes: tienen que acabar, tras el meta refresh, en su equivalente de /docs.
+  ...REDIRECCIONES.map((r) => [`${r.ruta} (redirige a ${r.destino})`, r.ruta.slice(1), r.destino]),
   ['404', '404.html'],
 ]
 const VISTAS = [
@@ -218,7 +220,7 @@ try {
   for (const [ancho, alto, movil] of VISTAS) {
     await s('Emulation.setDeviceMetricsOverride', { width: ancho, height: alto, deviceScaleFactor: movil ? 2 : 1, mobile: movil })
     await s('Emulation.setTouchEmulationEnabled', { enabled: movil })
-    for (const [nombre, ruta] of PAGINAS) {
+    for (const [nombre, ruta, destino] of PAGINAS) {
       mensajes = []
       const cargada = new Promise((ok) => {
         const f = (m) => { if (m.method === 'Page.loadEventFired' && m.sessionId === sessionId) { oyentes.splice(oyentes.indexOf(f), 1); ok() } }
@@ -235,6 +237,14 @@ try {
         await evaluar(RECORRER)
       }
       await espera(500)
+      if (destino) {
+        // El meta refresh tarda un momento en saltar: se espera a que la ruta cambie.
+        for (let i = 0; i < 20 && (await evaluar('location.pathname')) !== destino; i++) await espera(200)
+        const aterrizo = await evaluar('location.pathname')
+        if (aterrizo !== destino) fallos.push(`${nombre} a ${ancho} px: terminó en ${aterrizo}, esperaba ${destino}`)
+        await evaluar('document.fonts.ready.then(() => true)')
+        await espera(400)
+      }
       const violaciones = await evaluar('window.__violaciones || []')
       for (const v of violaciones) mensajes.push(`[securitypolicyviolation] ${v}`)
       const etiqueta = `${nombre} a ${ancho} px`
@@ -257,4 +267,4 @@ if (fallos.length) {
   for (const f of fallos) console.error(`  - ${f}`)
   process.exit(1)
 }
-console.log(`comprobar-consola: las ${RUTAS.length} rutas y la 404 sin errores, avisos ni violaciones de CSP a 1440 y 390 px`)
+console.log(`comprobar-consola: las ${RUTAS.length} rutas, las ${REDIRECCIONES.length} redirecciones y la 404 sin errores, avisos ni violaciones de CSP a 1440 y 390 px`)
