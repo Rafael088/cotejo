@@ -1,7 +1,7 @@
 import { Logo } from './Logo.jsx'
 import { CONTACTO, DONAR, LICENCIA, RELEASES, VERSION } from '../config.js'
 import Icono from './Icono.jsx'
-import { enlace } from '../paginas.js'
+import { enlace } from '../enlace.js'
 
 export default function Pie() {
   return (
@@ -17,9 +17,10 @@ export default function Pie() {
           <nav className="pie__links" aria-label="Pie">
             <a href={enlace('/')}>Inicio</a>
             <a href={enlace('/docs')}>Docs</a>
-            <a href={enlace('/comofunciona')}>Cómo funciona</a>
-            <a href={enlace('/primerospasos')}>Primeros pasos</a>
-            <a href={enlace('/tokens')}>Tokens</a>
+            <a href={enlace('/docs/primeros-pasos')}>Primeros pasos</a>
+            <a href={enlace('/docs/board')}>El board</a>
+            <a href={enlace('/docs/cli')}>La CLI</a>
+            <a href={enlace('/docs/tokens')}>Tokens</a>
             <a href={RELEASES}>Descargas</a>
             <a href={LICENCIA}>Licencia</a>
             <a href={`mailto:${CONTACTO}`}>{CONTACTO}</a>

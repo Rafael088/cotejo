@@ -154,7 +154,7 @@ La página no inventa un mundo de marketing: usa el material de CotejoBoard sin 
 
 La densidad es de herramienta, no de folleto: paneles oscuros que contienen terminales, JSON y cifras en mono, separados por huecos grandes entre secciones. La persuasión viene de la cifra medida y del material que la produce, no de decoración. La paleta, el reparto del verde y las tres familias tipográficas son compromisos de marca; la web los hereda del tema Oscuro (`../data/temas/oscuro.json`) con una sola desviación deliberada (ver Colors).
 
-El movimiento es el del board: muelles cortos y una curva de salida rápida (`cubic-bezier(0.16, 1, 0.3, 1)`). Todo respeta `prefers-reduced-motion`: `MotionConfig reducedMotion="user"` en la raíz, y las animaciones CSS (cursor de la terminal, pulso del botón Aprobar, la nota que corre en /tokens, la barra de progreso de las escenas) se apagan con la media query. La demo y las escenas de /comofunciona no avanzan solas con movimiento reducido.
+El movimiento es el del board: muelles cortos y una curva de salida rápida (`cubic-bezier(0.16, 1, 0.3, 1)`). Todo respeta `prefers-reduced-motion`: `MotionConfig reducedMotion="user"` en la raíz, y las animaciones CSS (cursor de la terminal, pulso del botón Aprobar, la barra de progreso de las escenas) se apagan con la media query. Las escenas de la portada no avanzan solas con movimiento reducido. /docs no anima nada salvo el botón de copiar.
 
 **Key Characteristics:**
 - Neutros del negro al blanco y un único acento, Verde Hecho, con significado fijo (check, comprobación, «Copiado»).
@@ -162,14 +162,14 @@ El movimiento es el del board: muelles cortos y una curva de salida rápida (`cu
 - Sora para titulares, Inter para texto, IBM Plex Mono para comandos, cifras y JSON.
 - Las piezas son las del board: columnas, cartas, chips, comandos con botón de copiar, terminal.
 - Iconos dibujados a mano en SVG, trazo 1,75 sobre caja de 24.
-- Cuatro páginas estáticas (rutas reales, no hash): /, /comofunciona, /primerospasos, /tokens. Navegación sin JavaScript.
+- Páginas estáticas (rutas reales, no hash): la portada `/` y once de documentación bajo `/docs`. Las de antes (`/comofunciona`, `/primerospasos`, `/tokens`) son solo HTML que redirige. Navegación sin JavaScript.
 
 ## Colors
 
 Neutros fríos del negro al blanco, heredados nombre por nombre del tema Oscuro de CotejoBoard, con un verde que significa «espera que lo compruebes / hecho» y un ámbar que significa «devuelta / bloqueada».
 
 ### Primary
-- **Verde Hecho** (`senal`): el check del logo, lo que espera comprobación (nombre de la columna «Para comprobar», su conteo, el borde de la carta entregada), el estado «Copiado» del comando y de las frases, el botón «Aprobar» de la demo y de /comofunciona, el anillo de foco (`outline 2px` con `offset 3px`), la selección de texto y el cursor. Nada más.
+- **Verde Hecho** (`senal`): el check del logo, lo que espera comprobación (nombre de la columna «Para comprobar», su conteo, el borde de la carta entregada), el estado «Copiado» del comando y de las frases, el botón «Aprobar» de la demo, el anillo de foco (`outline 2px` con `offset 3px`), la selección de texto y el cursor. Nada más.
 - **Sobre Verde** (`sobre-senal`): texto sobre cualquier relleno verde; es el mismo valor que el fondo.
 
 ### Secondary
@@ -177,9 +177,9 @@ Neutros fríos del negro al blanco, heredados nombre por nombre del tema Oscuro 
 
 ### Neutral
 - **Fondo Noche** (`fondo`): lienzo de la página, fondo del board y relleno de nodos vacíos.
-- **Columna** (`columna`): la ventana de la demo, paneles, consola de /comofunciona, bloques de instalación, comandos, frases y pestañas.
+- **Columna** (`columna`): la ventana de la demo, paneles, bloques de código y avisos de /docs, comandos, frases y pestañas.
 - **Columna Board** (`columna-board`): las cuatro columnas del tablero dentro de la demo, un punto más claras que la ventana que las contiene.
-- **Superficie** (`superficie`): cartas, botón de copiar en reposo, pestaña activa, globos y resumen de entrega en /comofunciona, `code` en línea.
+- **Superficie** (`superficie`): cartas, botón de copiar en reposo, pestaña activa, `code` en línea.
 - **Superficie Alta** (`superficie-alta`): hover de superficies (botón de copiar).
 - **Borde** (`borde`): el borde de 1px de cartas, comandos, frases, la ventana de la demo y los botones secundarios.
 - **Borde Hondo** (`borde-hondo`): bordes de paneles sobre fondo y divisorias internas (cabeceras y pies de panel, separador del pie).
@@ -187,14 +187,14 @@ Neutros fríos del negro al blanco, heredados nombre por nombre del tema Oscuro 
 - **Blanco** (`texto`): titulares, texto fuerte, comandos, la cifra 19,7× y la barra de la CLI.
 - **Plata** (`texto-chip`): párrafos, bajada del hero, valores del JSON.
 - **Tenue** (`tenue`): texto secundario, navegación en reposo, «Tú compruebas.» en la firma del pie, etiquetas.
-- **Tenue Hondo** (`tenue-hondo`): prompts de terminal, la nota cruda que corre en /tokens y su barra, notas al pie, texto legal. Es la única desviación respecto al board (allí `#6A6E78`): en la web lleva texto de cuerpo y se subió para pasar 4,5:1 sobre `fondo` y `columna`.
+- **Tenue Hondo** (`tenue-hondo`): prompts de terminal, la barra de la nota entera en /docs/tokens, notas al pie, texto legal. Es la única desviación respecto al board (allí `#6A6E78`): en la web lleva texto de cuerpo y se subió para pasar 4,5:1 sobre `fondo` y `columna`.
 - **Velo / Velo Fuerte** (`velo`, `velo-fuerte`): rellenos translúcidos de chips, evidencias y hover de navegación y de botones secundarios.
 - **Verde Claro** (`senal-claro`): solo el hover del botón verde.
 
 ### Named Rules
 **The Un Solo Verde Rule.** El verde significa «espera que lo compruebes / hecho / foco». Si algo es verde y no es eso, está mal. El verde nunca es el único portador de significado: va con texto («Copiado», «Para comprobar») o con el check.
 
-**The Ahorro en Plata Rule.** El ahorro de tokens (la escala de la portada y todo /tokens) va en blanco y plata, nunca en verde: la barra de la CLI es blanca y la de la nota `tenue-hondo`. Ahorrar no es «hecho».
+**The Ahorro en Plata Rule.** El ahorro de tokens (la escala de la portada y todo /docs/tokens) va en blanco y plata, nunca en verde: la barra de la CLI es blanca y la de la nota `tenue-hondo`. Ahorrar no es «hecho».
 
 **The Ámbar Es Devuelta Rule.** El ámbar solo aparece en una tarea devuelta o bloqueada.
 
@@ -210,7 +210,7 @@ Neutros fríos del negro al blanco, heredados nombre por nombre del tema Oscuro 
 
 ### Hierarchy
 - **Display** (600, clamp 42–88px en el hero de /; clamp 40–80px en el H1 de las páginas interiores; -0.04em): solo el H1.
-- **Cifra** (600, clamp 80–168px, 0.9, -0.05em, cifras tabulares): la razón medida (19,7×) en /tokens, en Sora y en blanco.
+- **Cifra** (600, clamp 80–168px, 0.9, -0.05em, cifras tabulares): sin uso desde que /tokens pasó a /docs/tokens, donde la razón medida (19,7×) va en una tabla.
 - **Headline** (600, clamp 32–56px, 1.08, -0.03em, `text-wrap: balance`): un H2 por sección.
 - **Title** (600, clamp 21–26px, 1.25): H3 dentro de una sección; Sora a 13–22px también nombra columnas, el board y frases de cierre.
 - **Body** (400, 17px / 16px en móvil, 1.6): párrafos en `texto-chip`, máximo 62ch; la bajada del hero sube a clamp 17–20px con 54ch.
@@ -226,7 +226,7 @@ Neutros fríos del negro al blanco, heredados nombre por nombre del tema Oscuro 
 
 Una columna central de `ancho` (1180px) con `margen` lateral fluido; cada sección abre con `hueco-seccion` arriba. La portada (`src/portada.css`) es la única página centrada: hero con H1 en dos tonos (blanco y `tenue`), una línea de bajada, la fila de acción (comando con Copiar en blanco + «Leer los docs») y, debajo, la ventana de CotejoBoard a todo el ancho de la columna, flotando sobre un halo de luz blanca. Sigue la franja de agentes (nombres en Sora, sin logos), la rejilla de funciones en 12 columnas (7/5 · 5/7 · 12) y el cierre.
 
-Páginas: `/` (hero + franja de agentes + rejilla de funciones + cierre), y las interiores `/comofunciona`, `/primerospasos`, `/tokens`, que quedan como estaban hasta que `/docs` las reemplace (la cabecera solo enlaza Docs e Instalar; el pie las conserva). Puntos de corte de la portada: 1100px (la franja de agentes se apila), 1020px (la ventana pierde su lateral de proyectos), 940px (la rejilla pasa a una columna), 860px (el tablero del hero se desplaza de lado y sigue solo a la acción), 640px (la fila de acción se apila) y 520px (la cabecera esconde la versión).
+Páginas: `/` (hero + franja de agentes + rejilla de funciones + cierre) y `/docs` con diez páginas más (ver «Docs»). La cabecera solo enlaza Docs e Instalar; el pie, las páginas de docs más usadas. Puntos de corte de la portada: 1100px (la franja de agentes se apila), 1020px (la ventana pierde su lateral de proyectos), 940px (la rejilla pasa a una columna), 860px (el tablero del hero se desplaza de lado y sigue solo a la acción), 640px (la fila de acción se apila) y 520px (la cabecera esconde la versión).
 
 ## Elevation & Depth
 
@@ -248,8 +248,8 @@ Esquinas suaves y escalonadas por tamaño: 6px en chips, evidencias y `code` en 
 ### Hero
 Centrado. H1 «El tablero de control para tu vibe coding.» en clamp 38–84px (la segunda mitad en `tenue`), bajada de una línea, `Instalar` y el producto. Fondo: una trama de puntos `borde` que se apaga con una máscara radial. La entrada es CSS (`.aparece`), nunca `opacity:0` en línea.
 
-### Producto del hero (video o BoardVivo)
-`VIDEO_HERO` en `src/config.js`: con un video, la ventana es un `<video autoplay muted loop playsinline>` con póster (con movimiento reducido se queda en el póster, con controles). Mientras sea `null`, `components/BoardVivo.jsx` recrea CotejoBoard: cabecera con el estado en mono, lateral de proyectos, las cuatro columnas y la barra del maestro en el pie. Su guion: se escribe un pedido al maestro, aparecen dos fichas en Pendiente, un cursor las arrastra a Haciéndola, los agentes muestran lo que hacen y las entregas quedan en Para comprobar. Nadie aprueba en el hero.
+### Producto del hero (BoardVivo)
+`components/BoardVivo.jsx` recrea CotejoBoard: cabecera con el estado en mono, lateral de proyectos, las cuatro columnas y la barra del maestro en el pie. Su guion: se escribe un pedido al maestro, aparecen dos fichas en Pendiente, un cursor las arrastra a Haciéndola, los agentes muestran lo que hacen y las entregas quedan en Para comprobar. Nadie aprueba en el hero. No hay video: el producto se enseña con el board en marcha.
 
 ### Escenas vivas (`components/vivo.jsx`)
 El motor común: `usePasos` (un guion por pasos que solo corre en pantalla; el prerender, el primer render y `prefers-reduced-motion` enseñan una «foto» que se lee sola), `useCursor`/`Cursor` (el puntero que arrastra, medido por offsets), `Ficha` y `Columna` (las piezas del board; las fichas cambian de columna por `layoutId`) y `Tecleada`. Estados de ficha: normal, viva (borde `borde-chip`, con lo que el agente hace en mono), cola (borde discontinuo), entregada (borde verde), devuelta (borde ámbar, con motivo), hecha (sin relleno, con check).
@@ -261,33 +261,25 @@ El motor común: `usePasos` (un guion por pasos que solo corre en pantalla; el p
 Cinco `article` sobre `columna` con borde `borde-hondo` y 16px de radio: arriba la escena (484px, sobre `fondo`) y abajo un H3 y una línea. Cada escena es una pieza del board en bucle: `EscenaAgentes` (Haciéndola de cerca, dos agentes y una tarea en cola), `EscenaMaestro` (el panel de la conversación con el botón Repartir y el aviso ámbar de la aprobación deshecha), `EscenaEnrutador` (cada pendiente recibe su modelo; lo tuyo va en un chip blanco lleno; debajo, 65 puntos con 24 en blanco), `EscenaComprobar` (entrega con evidencia y captura, Rechazar con motivo, reentrega y Aprobar) y `EscenaTokens` (la nota entera pasando contra el JSON de la CLI y las barras a escala, en blanco y plata). Las escenas de tablero enseñan la columna central entera y las vecinas cortadas con una máscara lateral.
 
 ### Instalar (portada)
-`components/Instalar.jsx`: el comando grande con su botón Copiar en blanco (`comando--principal`; verde al copiar), «Leer los docs» como botón con borde, pestañas Linux/Windows y la nota «Gratis · Linux y Windows 10/11 · beta». `InstalarRapido` queda para las páginas interiores.
+`components/Instalar.jsx`: el comando grande con su botón Copiar en blanco (`comando--principal`; verde al copiar), «Leer los docs» como botón con borde, pestañas Linux/Windows y la nota «Gratis · Linux y Windows 10/11 · beta». Las páginas de /docs usan `Comando` suelto.
 
 ### Cierre de la portada
 Panel `columna` de 24px de radio con un eco del halo, H2 «Instálalo y arrastra tu primera tarea.» e `Instalar`.
 
-### ComoFunciona
-Selector de dos pestañas (tablist con flechas): No programo (CfHistoria) y Programo (CfCiclo). Abre la que pida `?publico=no|si` y lo reescribe al cambiar.
+### Docs (`/docs`)
+Documentación para quien programa: sobria y legible, sin escenas ni halos. Tres columnas bajo la cabecera, en una caja de 1320px: **índice** a la izquierda (232px, `position: sticky`; grupos con nombre en Inter 600 y páginas en Inter 500 `tenue`, la actual en blanco sobre `velo-fuerte`), **texto** al centro (columna de 760px; la prosa a 70ch) y **«En esta página»** a la derecha (208px, un enlace por h2 con una guía de 1px `borde-hondo`; con JavaScript, el h2 que se lee pasa a blanco con una barra blanca). Ni el índice ni «En esta página» llevan verde. Bajo 1100px se va «En esta página»; bajo 900px el índice se vuelve un desplegable (`<details>`) pegado debajo de la cabecera, con el título de la página actual, y el texto ocupa todo el ancho. Al final de cada página, «Anterior / Siguiente» en dos paneles de 12px de radio.
 
-### CfHistoria
-Cuatro pasos (Pides, Se planea, Te entrega, Decides) con su escena: globos de diálogo, cartas, el resumen de una entrega con borde verde y, en la última, Aprobar o Devolver. Avanzan solos con una barra de progreso (animación CSS) hasta que se toca un paso; no avanzan con movimiento reducido ni con su panel oculto.
-
-### CfCiclo
-Seis verbos de la CLI (init, plan, despachar, entregar, comprobar, release) con su salida real abreviada (`src/comofunciona.js`, sacada de la CLI sobre un repo de prueba: claves y valores de verdad), el árbol real de `.cotejo/` y «Nada se cierra sin ti».
-
-### PrimerosPasos
-Dos secciones: El primer día (instalar, «empiezo un proyecto», las cinco preguntas, aceptar decisiones) y Cada día (frases copiables: `Frase`, `BotonCopiar` y el hook `useCopiar`, el mismo que usa el comando). Cada fila es una rejilla de `dia__cuando` (cuando) y `dia__cuerpo` (descripción + componente).
-
-### Tokens
-La nota entera corriendo contra la respuesta de `cotejo tareas` (claves reales), la escala a proporción, la cifra 19,7× con sus datos y su supuesto (y `cotejo ahorro` para medirlo uno mismo), y el flujo Obsidian/Notion → importar → `.cotejo/` → contexto, que se apila en móvil. Todas las cifras salen de `src/config.js`.
-
-### Cierre
-Panel con H2 e InstalarRapido, al final de /, /comofunciona y /tokens. Props: `id`, `titulo`, `nota`, `pie`.
+- **Titulares:** el H1 baja a clamp 34–48px (Sora 600, -0.035em): es documentación, no portada. Cada H2 abre sección con una divisoria `borde-hondo` y Sora 600 a clamp 24–30px; H3 a clamp 18–20px.
+- **Texto:** Inter 17px a 1.7 en `texto-chip`; los enlaces van en blanco con subrayado `tenue-hondo` (nunca en verde); `code` en línea en `superficie` con radio de 6px.
+- **Bloque de código (`Codigo`):** panel `columna` con borde `borde` y 12px de radio; mono 13,5px en `texto-chip`, con scroll horizontal dentro del bloque. El botón Copiar (el mismo `BotonCopiar` del comando) va en la cabecera del bloque si lleva título, o flotando arriba a la derecha si no; en móvil es solo el icono. Al copiar, el borde y el botón se vuelven verdes, como el comando. Una salida que se lee y no se pega no lleva botón (`data-lectura`).
+- **Aviso (`Aviso`):** panel de borde 1px con la etiqueta a la izquierda en Inter 600. «Nota» va sobre `columna`, con la etiqueta en `tenue`; «Ojo», sobre `superficie` con borde `borde-chip` y la etiqueta en blanco. No llevan verde ni ámbar: el verde es «hecho» y el ámbar es «devuelta».
+- **Tabla (`Tabla`):** envuelta en un panel de borde `borde-hondo` y 12px de radio con scroll propio si no cabe; cabecera en `columna` con Inter 600 a 13px `tenue` (sin mayúsculas: esas son del board); filas separadas por divisorias `borde-hondo`; la primera columna en blanco.
+- **Las páginas de antes** (`/comofunciona`, `/primerospasos`, `/tokens`) ya no son páginas: el build deja un HTML autónomo, sin JavaScript, con `<meta http-equiv="refresh">`, canonical al destino y un enlace visible. No están en el sitemap.
 
 ### Buttons
 Directos y compactos, de herramienta.
 - **Shape:** esquinas de 12px, alto mínimo 46px, padding horizontal 20px, Inter 600 a 15px, icono de 16–18px con 10px de separación.
-- **Mini verde (`mini-senal`):** solo «Aprobar», en la demo y en /comofunciona: Inter 600 a 12,5px, esquinas de 8px, hover a `senal-claro`.
+- **Mini verde (`mini-senal`):** solo «Aprobar», en la demo: Inter 600 a 12,5px, esquinas de 8px, hover a `senal-claro`.
 - **Mini (`mini`):** transparente con borde `borde`, hover con `velo-fuerte`: «Devolver», y «Otra vez» en la barra de la demo.
 - **Claro (`boton-claro`):** blanco sobre `fondo`, hover a `texto-chip`. La acción principal fuera del ciclo (donar, en el pie).
 - **Active:** `translateY(1px) scale(0.99)`. Transiciones de 0,2s con la curva de salida.
@@ -302,7 +294,7 @@ Segmentado sobre `columna` con borde hondo y padding de 3px; la activa lleva una
 
 ### Chips
 - **Chip de carta:** mono 10,5px en `tenue` sobre `velo`, esquinas de 6px; variante con borde `borde-chip` y texto `texto-chip` (el modelo de la carta).
-- **Etiqueta de agente:** pastilla mono con borde `borde-chip` (agentes compatibles en la portada, rasgos en /comofunciona).
+- **Etiqueta de agente:** pastilla mono con borde `borde-chip` (agentes compatibles en la portada).
 
 ### Cards / Containers
 - **Carta:** `superficie`, borde 1px `borde`, 10px de radio, padding 12px; la que espera comprobación cambia el borde a verde, la devuelta a ámbar, la hecha baja al 55% de opacidad.
@@ -311,10 +303,10 @@ Segmentado sobre `columna` con borde hondo y padding de 3px; la activa lleva una
 - **Evidencia:** caja mono 11–11,5px en `tenue` sobre `velo`, radio 6px, debajo del texto de la carta.
 
 ### Navigation
-Cabecera fija arriba (`position: sticky`, 64px, fondo translúcido con desenfoque y divisoria `borde-hondo`): logo y versión en una pastilla mono con borde; un solo enlace, «Docs» (a `/docs`), en Inter 500 a 15px, `tenue` con hover a blanco; «Instalar» en blanco lleva al bloque de instalación de la portada. Sin menú: cabe entera en un teléfono (bajo 520px se esconde la versión). Enlace «Saltar al contenido» visible al foco.
+Cabecera fija arriba (`position: sticky`, 64px, fondo translúcido con desenfoque y divisoria `borde-hondo`): logo y versión en una pastilla mono con borde; un solo enlace, «Docs» (a `/docs`), en Inter 500 a 15px, `tenue` con hover a blanco; el índice de los docs vive en su propia barra lateral, no aquí; «Instalar» en blanco lleva al bloque de instalación de la portada. Sin menú: cabe entera en un teléfono (bajo 520px se esconde la versión). Enlace «Saltar al contenido» visible al foco.
 
 ### Pie
-Firma con el logo y «Tus agentes entregan. Tú compruebas.» (la segunda frase en `tenue`): la frase de marca vive aquí y en la og:image, ya no en el titular. Enlaces a las cuatro páginas, descargas, licencia y contacto; donar con Mercado Pago; línea legal con la versión.
+Firma con el logo y «Tus agentes entregan. Tú compruebas.» (la segunda frase en `tenue`): la frase de marca vive aquí y en la og:image, ya no en el titular. Enlaces a Inicio, Docs, Primeros pasos, El board, La CLI y Tokens, descargas, licencia y contacto; donar con Mercado Pago; línea legal con la versión.
 
 ### El board en marcha (firma)
 La portada se gana con el producto trabajando: el visitante ve cómo se piden tareas al maestro, cómo se arrastran a Haciéndola y cómo arrancan los agentes; aprobar sigue siendo de quien mira. Ver «Producto del hero» arriba.

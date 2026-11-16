@@ -4,7 +4,7 @@ import Comando from './Comando.jsx'
 import Icono from './Icono.jsx'
 import { COMANDOS, RELEASES, VERSION } from '../config.js'
 import { sistemaDe } from '../sistema.js'
-import { enlace } from '../paginas.js'
+import { enlace } from '../enlace.js'
 
 const SISTEMAS = [
   ['linux', 'Linux', '$'],

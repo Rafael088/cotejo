@@ -1,9 +1,9 @@
 import { Logo } from './Logo.jsx'
 import { VERSION } from '../config.js'
-import { enlace } from '../paginas.js'
+import { enlace } from '../enlace.js'
 
-// Logo, versión, Docs e Instalar: cabe entera en un teléfono, sin menú. Las páginas de antes
-// (/comofunciona, /primerospasos, /tokens) siguen enlazadas desde el pie hasta que llegue /docs.
+// Logo, versión, Docs e Instalar: cabe entera en un teléfono, sin menú. El índice de /docs vive
+// en la barra lateral de cada página de docs (components/docs/Doc.jsx), no aquí.
 export default function Cabecera() {
   return (
     <header className="cab">

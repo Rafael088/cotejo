@@ -3,10 +3,10 @@ import { LayoutGroup } from 'motion/react'
 import Icono from './Icono.jsx'
 import { Columna, Cursor, Tecleada, useCursor, usePasos } from './vivo.jsx'
 
-// La recreación de CotejoBoard que ocupa el sitio del video del hero mientras VIDEO_HERO es
-// null (config.js). Cuenta lo mismo que contará el video: le pides tareas al maestro en la barra
-// del pie, aparecen en Pendiente, las arrastras a Haciéndola y los agentes arrancan en paralelo;
-// la primera entrega queda esperando que la compruebes. Nadie aprueba aquí: eso es tuyo.
+// La recreación de CotejoBoard del hero (sin video: el dueño decidió que el producto se enseña
+// con el board en marcha): le pides tareas al maestro en la barra del pie, aparecen en Pendiente,
+// las arrastras a Haciéndola y los agentes arrancan en paralelo; la primera entrega queda
+// esperando que la compruebes. Nadie aprueba aquí: eso es tuyo.
 
 const PEDIDO = 'apunta: login con correo y correo de bienvenida'
 

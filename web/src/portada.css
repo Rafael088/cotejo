@@ -202,14 +202,6 @@
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
   pointer-events: none;
 }
-.ventana--video {
-  line-height: 0;
-}
-.hero__video {
-  display: block;
-  width: 100%;
-  height: auto;
-}
 
 .ventana__cab {
   display: flex;
