@@ -17,10 +17,9 @@ const EXIGIDAS = {
   '/': {
     h1: 'El tablero de control para tu vibe coding.',
     secciones: [
-      ['pasos', 'De cero a tu primera entrega.'],
-      ['ahorro-inicio', 'Tu agente lee 480 tokens, no 4.700.'],
-      ['puertas', 'Programes o no, el check es tuyo.'],
-      ['cierre', 'Instálalo y pregúntale a tu agente qué falta.'],
+      ['agentes', 'Funciona con tu agente.'],
+      ['funciones', 'Diriges tú. Trabajan ellos.'],
+      ['cierre', 'Instálalo y arrastra tu primera tarea.'],
     ],
   },
   '/comofunciona': {

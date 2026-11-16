@@ -224,16 +224,16 @@ Neutros fríos del negro al blanco, heredados nombre por nombre del tema Oscuro 
 
 ## Layout
 
-Una columna central de `ancho` (1180px) con `margen` lateral fluido; cada sección abre con `hueco-seccion` arriba. Debajo de la cabecera fija, el hero abre con `padding-top` clamp 56–112px (no ocupa la pantalla entera): titular, bajada de 56ch máximo y el bloque InstalarRapido (pestañas Linux/Windows, comando con botón de copiar), alineados a la izquierda. La demo va justo debajo, en la misma columna de 1180px: terminal a la izquierda y las cuatro columnas del board a la derecha.
+Una columna central de `ancho` (1180px) con `margen` lateral fluido; cada sección abre con `hueco-seccion` arriba. La portada (`src/portada.css`) es la única página centrada: hero con H1 en dos tonos (blanco y `tenue`), una línea de bajada, la fila de acción (comando con Copiar en blanco + «Leer los docs») y, debajo, la ventana de CotejoBoard a todo el ancho de la columna, flotando sobre un halo de luz blanca. Sigue la franja de agentes (nombres en Sora, sin logos), la rejilla de funciones en 12 columnas (7/5 · 5/7 · 12) y el cierre.
 
-Cuatro páginas: `/` (Inicio, hero + demo + pasos + ahorro + puertas + cierre), `/comofunciona` (selector No programo / Programo con historia o ciclo real), `/primerospasos` (primer día y cada día con frases copiables), `/tokens` (nota entera contra la CLI, la medida y el segundo cerebro). Los puntos de corte principales: 860px (demo, /comofunciona y el flujo de /tokens pasan a una columna; el tablero de la demo se desplaza de lado y se corre solo hasta la columna del turno), 820px (cabecera con menú, tres pasos en una columna), 760px (puertas y paneles dobles en una columna) y 520–560px (botón de copiar solo con icono).
+Páginas: `/` (hero + franja de agentes + rejilla de funciones + cierre), y las interiores `/comofunciona`, `/primerospasos`, `/tokens`, que quedan como estaban hasta que `/docs` las reemplace (la cabecera solo enlaza Docs e Instalar; el pie las conserva). Puntos de corte de la portada: 1100px (la franja de agentes se apila), 1020px (la ventana pierde su lateral de proyectos), 940px (la rejilla pasa a una columna), 860px (el tablero del hero se desplaza de lado y sigue solo a la acción), 640px (la fila de acción se apila) y 520px (la cabecera esconde la versión).
 
 ## Elevation & Depth
 
 Plano por defecto: la profundidad se lee por tono (fondo → columna → superficie → superficie alta) y por bordes de 1px. Hay una sola sombra, en lo único que flota de verdad sobre el lienzo, negra, difusa y sin desplazamiento lateral.
 
 ### Shadow Vocabulary
-- **Ventana de la demo** (`box-shadow: 0 40px 120px rgba(0, 0, 0, 0.55)`): la ventana terminal + board de la portada.
+- **Ventana del hero** (`box-shadow: 0 40px 120px rgba(0, 0, 0, 0.55), 0 14px 36px rgba(0, 0, 0, 0.35)`): CotejoBoard en la portada, con un filo de luz de 1px en el borde de arriba y un halo radial blanco detrás (nunca verde). La ficha que se arrastra y los paneles del maestro llevan su propia sombra negra con desplazamiento.
 - **Pulso de Aprobar** (`0 0 0 5px` en verde al 18%, animado): el botón Aprobar de una carta que espera tu turno en la demo. No es profundidad sino llamada; se apaga con movimiento reducido.
 
 ### Named Rules
@@ -246,19 +246,25 @@ Esquinas suaves y escalonadas por tamaño: 6px en chips, evidencias y `code` en 
 ## Componentes
 
 ### Hero
-Sección de entrada con titular H1 en clamp 42–88px («El tablero de control para tu vibe coding.»), bajada de máximo 56ch, e InstalarRapido con tablas Linux/Windows y comando con botón copiar. Sin background decorativo ni animación del logo.
+Centrado. H1 «El tablero de control para tu vibe coding.» en clamp 38–84px (la segunda mitad en `tenue`), bajada de una línea, `Instalar` y el producto. Fondo: una trama de puntos `borde` que se apaga con una máscara radial. La entrada es CSS (`.aparece`), nunca `opacity:0` en línea.
 
-### Demo
-Terminal del agente a la izquierda y tablero a la derecha (Pendiente, Haciéndola, Para comprobar, Finalizada). La lógica es `src/demo.js` (estado, reductor y guion con sus tiempos); `components/Demo.jsx` la corre al entrar en pantalla y mueve las cartas con Motion (`layoutId`). El agente reparte y entrega solo; el check es del visitante: Aprobar o Devolver (la devuelta vuelve a Pendiente en ámbar con su motivo y el agente la reentrega). El HTML prerenderizado es el guion ya aplicado, así que sin JavaScript se lee entera; con movimiento reducido se queda ahí y los botones funcionan igual. A 860px se apila (terminal arriba).
+### Producto del hero (video o BoardVivo)
+`VIDEO_HERO` en `src/config.js`: con un video, la ventana es un `<video autoplay muted loop playsinline>` con póster (con movimiento reducido se queda en el póster, con controles). Mientras sea `null`, `components/BoardVivo.jsx` recrea CotejoBoard: cabecera con el estado en mono, lateral de proyectos, las cuatro columnas y la barra del maestro en el pie. Su guion: se escribe un pedido al maestro, aparecen dos fichas en Pendiente, un cursor las arrastra a Haciéndola, los agentes muestran lo que hacen y las entregas quedan en Para comprobar. Nadie aprueba en el hero.
 
-### InicioPasos
-Tres pasos: instalar, arrancar, revisar. Grid a 3 columnas con línea superior de `borde-hondo` y separadores entre. A 820px pasa a 1 columna con bordes inferiores.
+### Escenas vivas (`components/vivo.jsx`)
+El motor común: `usePasos` (un guion por pasos que solo corre en pantalla; el prerender, el primer render y `prefers-reduced-motion` enseñan una «foto» que se lee sola), `useCursor`/`Cursor` (el puntero que arrastra, medido por offsets), `Ficha` y `Columna` (las piezas del board; las fichas cambian de columna por `layoutId`) y `Tecleada`. Estados de ficha: normal, viva (borde `borde-chip`, con lo que el agente hace en mono), cola (borde discontinuo), entregada (borde verde), devuelta (borde ámbar, con motivo), hecha (sin relleno, con check).
 
-### InicioAhorro
-Escala de dos barras: la nota entera (~4.700 tokens) vs. respuesta de CLI (~480), a escala y con cifras. Solo mono y `tenue-hondo` para la nota, blanco para la CLI. Responsivo en 2 columnas a 1.
+### Franja de agentes
+«Funciona con tu agente.» a la izquierda con «O con cualquier agente que hable MCP.», y los nombres (`AGENTES` en config.js) en Sora 600 `tenue`, entre dos divisorias `borde-hondo`. Sin logos ajenos.
 
-### InicioPuertas
-Dos puertas (paneles enlazados): «No programo» y «Programo» que llevan a `/comofunciona` con parámetro `?publico=no|si`. A 760px pasan a 1 columna.
+### Rejilla de funciones
+Cinco `article` sobre `columna` con borde `borde-hondo` y 16px de radio: arriba la escena (484px, sobre `fondo`) y abajo un H3 y una línea. Cada escena es una pieza del board en bucle: `EscenaAgentes` (Haciéndola de cerca, dos agentes y una tarea en cola), `EscenaMaestro` (el panel de la conversación con el botón Repartir y el aviso ámbar de la aprobación deshecha), `EscenaEnrutador` (cada pendiente recibe su modelo; lo tuyo va en un chip blanco lleno; debajo, 65 puntos con 24 en blanco), `EscenaComprobar` (entrega con evidencia y captura, Rechazar con motivo, reentrega y Aprobar) y `EscenaTokens` (la nota entera pasando contra el JSON de la CLI y las barras a escala, en blanco y plata). Las escenas de tablero enseñan la columna central entera y las vecinas cortadas con una máscara lateral.
+
+### Instalar (portada)
+`components/Instalar.jsx`: el comando grande con su botón Copiar en blanco (`comando--principal`; verde al copiar), «Leer los docs» como botón con borde, pestañas Linux/Windows y la nota «Gratis · Linux y Windows 10/11 · beta». `InstalarRapido` queda para las páginas interiores.
+
+### Cierre de la portada
+Panel `columna` de 24px de radio con un eco del halo, H2 «Instálalo y arrastra tu primera tarea.» e `Instalar`.
 
 ### ComoFunciona
 Selector de dos pestañas (tablist con flechas): No programo (CfHistoria) y Programo (CfCiclo). Abre la que pida `?publico=no|si` y lo reescribe al cambiar.
@@ -305,13 +311,13 @@ Segmentado sobre `columna` con borde hondo y padding de 3px; la activa lleva una
 - **Evidencia:** caja mono 11–11,5px en `tenue` sobre `velo`, radio 6px, debajo del texto de la carta.
 
 ### Navigation
-Cabecera fija arriba (`position: sticky`, 64px, fondo translúcido con desenfoque y divisoria `borde-hondo`): logo y versión en una pastilla mono con borde; enlaces a Cómo funciona, Primeros pasos y Tokens en Inter 500 a 15px, `tenue` con hover a blanco, y blanco en la página actual (`aria-current`); «Instalar» con borde `borde` lleva al bloque de instalación de la portada. Bajo 820px, un botón de menú abre un panel con las cuatro páginas. Enlace «Saltar al contenido» visible al foco.
+Cabecera fija arriba (`position: sticky`, 64px, fondo translúcido con desenfoque y divisoria `borde-hondo`): logo y versión en una pastilla mono con borde; un solo enlace, «Docs» (a `/docs`), en Inter 500 a 15px, `tenue` con hover a blanco; «Instalar» en blanco lleva al bloque de instalación de la portada. Sin menú: cabe entera en un teléfono (bajo 520px se esconde la versión). Enlace «Saltar al contenido» visible al foco.
 
 ### Pie
 Firma con el logo y «Tus agentes entregan. Tú compruebas.» (la segunda frase en `tenue`): la frase de marca vive aquí y en la og:image, ya no en el titular. Enlaces a las cuatro páginas, descargas, licencia y contacto; donar con Mercado Pago; línea legal con la versión.
 
-### Demo (firma)
-La portada se gana con la demo: el visitante ve a un agente repartir y entregar, y es él quien pone el check. Ver «Demo» arriba.
+### El board en marcha (firma)
+La portada se gana con el producto trabajando: el visitante ve cómo se piden tareas al maestro, cómo se arrastran a Haciéndola y cómo arrancan los agentes; aprobar sigue siendo de quien mira. Ver «Producto del hero» arriba.
 
 ## Do's and Don'ts
 
@@ -329,4 +335,5 @@ La portada se gana con la demo: el visitante ve a un agente repartir y entregar,
 - **Don't** separar la C de «otejo», rotar, sombrear o degradar el logo, ni poner el check en otro color que `senal`.
 - **Don't** poner etiquetas mono en mayúsculas como titulillo encima de un H2; esas etiquetas son cromo del board.
 - **Don't** usar texto de cuerpo en un gris más oscuro que `tenue-hondo` (#878B95).
-- **Don't** construir grids de features con iconos, capturas flotantes ni testimonios.
+- **Don't** construir tarjetas de función con un icono y un párrafo: cada una lleva su escena de UI viva hecha con piezas del board. Sin testimonios ni logos ajenos.
+- **Don't** teñir de verde ni de color el halo del hero: es luz blanca.

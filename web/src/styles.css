@@ -364,8 +364,7 @@ strong {
   gap: 4px;
   margin-left: auto;
 }
-.cab__nav a,
-.cab__panel a {
+.cab__nav a {
   text-decoration: none;
   color: var(--tenue);
 }
@@ -379,8 +378,7 @@ strong {
   color: var(--texto);
   background: var(--velo);
 }
-.cab__nav a[aria-current='page'],
-.cab__panel a[aria-current='page'] {
+.cab__nav a[aria-current='page'] {
   color: var(--texto);
 }
 .cab__cta {
@@ -397,79 +395,20 @@ strong {
 .cab__cta:hover {
   background: var(--velo-fuerte);
 }
-.cab__menu {
-  display: none;
-  margin-left: auto;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  border: 1px solid var(--borde);
-  background: transparent;
-  color: var(--texto);
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-.cab__panel {
-  display: none;
-  width: min(var(--ancho), 100% - 2 * var(--margen));
-  margin-inline: auto;
-  border-top: 1px solid var(--borde-hondo);
-  padding-block: 8px 16px;
-}
-.cab__panel a {
-  font: 500 18px/1 var(--inter);
-  padding: 16px 4px;
-  border-bottom: 1px solid var(--borde-hondo);
-}
-
-@media (max-width: 820px) {
-  .cab__nav,
-.cab__cta {
+@media (max-width: 520px) {
+  .cab__fila {
+    gap: 8px;
+  }
+  .cab__version {
     display: none;
   }
-  .cab__menu {
-    display: inline-flex;
-  }
-  .cab__panel:not([hidden]) {
-    display: grid;
+  .cab__nav a {
+    padding-inline: 10px;
   }
 }
 
-/* ---------- Hero ---------- */
-
-.hero {
-  width: min(var(--ancho), 100% - 2 * var(--margen));
-  margin-inline: auto;
-  padding-top: clamp(56px, 9vw, 112px);
-  display: grid;
-  gap: clamp(28px, 4vw, 40px);
-}
-
-.hero__texto {
-  display: grid;
-  gap: 20px;
-  max-width: 900px;
-}
-
-.hero__titular {
-  font-family: var(--sora);
-  font-weight: 600;
-  font-size: clamp(42px, 7vw, 88px);
-  line-height: 1;
-  letter-spacing: -0.04em;
-  margin: 0;
-  text-wrap: balance;
-}
-
-.hero__bajada {
-  color: var(--texto-chip);
-  font-size: clamp(17px, 1.7vw, 20px);
-  line-height: 1.55;
-  max-width: 54ch;
-  margin: 0;
-  text-wrap: pretty;
-}
+/* ---------- Instalación de las páginas interiores (InstalarRapido) ----------
+   El hero y el resto de la portada viven en portada.css. */
 
 .instalar-rapido {
   min-width: 0;

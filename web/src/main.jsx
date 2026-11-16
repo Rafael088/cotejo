@@ -4,6 +4,7 @@ import '@fontsource-variable/inter'
 import '@fontsource/ibm-plex-mono/400.css'
 import '@fontsource/ibm-plex-mono/500.css'
 import './styles.css'
+import './portada.css'
 import Raiz from './Raiz.jsx'
 import { rutaDe } from './rutas.js'
 

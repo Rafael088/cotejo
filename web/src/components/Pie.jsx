@@ -16,6 +16,7 @@ export default function Pie() {
           </div>
           <nav className="pie__links" aria-label="Pie">
             <a href={enlace('/')}>Inicio</a>
+            <a href={enlace('/docs')}>Docs</a>
             <a href={enlace('/comofunciona')}>Cómo funciona</a>
             <a href={enlace('/primerospasos')}>Primeros pasos</a>
             <a href={enlace('/tokens')}>Tokens</a>

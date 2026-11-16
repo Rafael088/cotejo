@@ -243,7 +243,7 @@ try {
           await mkdir(capturas, { recursive: true })
           const piezas = [
             ['hero', '.hero'],
-            ['cierre', '#cierre .instalar-rapido'],
+            ['cierre', '#cierre .instalar'],
             ['instalar', '#instalar'],
           ]
           for (const [nombre, selector] of piezas) {

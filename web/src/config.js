@@ -41,3 +41,17 @@ export const AHORRO = {
 
 // Estimación documentada para una consulta: las pendientes de un proyecto contra la nota entera.
 export const CONSULTA = { nota: 4700, cli: 480 }
+
+// El video del hero de la portada: CotejoBoard de verdad, grabado. Mientras sea null, la portada
+// enseña en su sitio una recreación animada (components/BoardVivo.jsx). Cuando exista, los
+// archivos van en web/public/ y aquí queda, por ejemplo:
+//   { mp4: 'hero.mp4', webm: 'hero.webm', poster: 'hero.jpg', ancho: 1920, alto: 1200 }
+// (`webm` es opcional; `ancho` y `alto` son los del video y reservan su sitio antes de cargar).
+export const VIDEO_HERO = null
+
+// Los agentes de terminal con los que Cotejo trabaja en la 1.3.1 (los que el maestro sabe lanzar).
+export const AGENTES = ['Claude Code', 'Codex', 'OpenCode', 'Gemini CLI', 'Antigravity CLI']
+
+// Medido al etiquetar el set de evaluación del enrutador (README, «El enrutador»): de 65 tareas
+// pendientes reales, 24 no eran para ningún modelo.
+export const TAREAS_MEDIDAS = { total: 65, persona: 24 }
