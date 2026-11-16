@@ -56,6 +56,14 @@ for (const r of RUTAS) {
   mkdirSync(dirname(`${dist}${r.archivo}`), { recursive: true })
   writeFileSync(`${dist}${r.archivo}`, meterCsp(html, cspPortada(html)))
   console.log(`prerender: dist/${r.archivo} (${r.ruta}) con ${pagina.length} caracteres de HTML y su CSP`)
+  // /docs es a la vez docs.html y la carpeta docs/: si GitHub Pages prefiere la carpeta y
+  // redirige a /docs/, sirve docs/index.html. La misma página en los dos sitios, mismo canonical.
+  if (RUTAS.some((otra) => otra.archivo.startsWith(r.archivo.replace(/\.html$/, '/')))) {
+    const indice = r.archivo.replace(/\.html$/, '/index.html')
+    mkdirSync(dirname(`${dist}${indice}`), { recursive: true })
+    writeFileSync(`${dist}${indice}`, meterCsp(html, cspPortada(html)))
+    console.log(`prerender: dist/${indice} (${r.ruta}/) copia de ${r.archivo}`)
+  }
 }
 rmSync(servidor, { recursive: true, force: true })
 
